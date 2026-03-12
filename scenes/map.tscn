@@ -1,0 +1,27 @@
+[gd_scene format=3 uid="uid://0ni8d3847pdi"]
+
+[ext_resource type="Script" uid="uid://de0rwo7p0eqcp" path="res://scripts/map_loader.gd" id="1_4xfga"]
+[ext_resource type="Shader" uid="uid://173chww7nkdg" path="res://shaders/province_highlight.gdshader" id="2_0cso3"]
+[ext_resource type="Texture2D" uid="uid://yb0k2biphyja" path="res://map_data/PoliticalMap.png" id="2_2klcf"]
+[ext_resource type="Texture2D" uid="uid://dgnqfb03phxmc" path="res://map_data/ProvinceMap.png" id="3_2klcf"]
+[ext_resource type="Script" uid="uid://btl7b33ji8c5a" path="res://scripts/map_interaction.gd" id="3_gldc4"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_2klcf"]
+shader = ExtResource("2_0cso3")
+shader_parameter/province_tex = ExtResource("3_2klcf")
+shader_parameter/hover_color = Vector3(0, 0, 0)
+shader_parameter/selected_color = Vector3(0, 0, 0)
+shader_parameter/has_hover = false
+shader_parameter/has_selected = false
+
+[node name="map2D" type="Node2D" unique_id=92782134]
+script = ExtResource("1_4xfga")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=388768891]
+material = SubResource("ShaderMaterial_2klcf")
+texture = ExtResource("2_2klcf")
+script = ExtResource("3_gldc4")
+logic_map = ExtResource("3_2klcf")
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=2038283175]
+zoom = Vector2(0.2, 0.2)

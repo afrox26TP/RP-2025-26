@@ -1,0 +1,72 @@
+[gd_scene load_steps=13 format=3 uid="uid://0ni8d3847pdi"]
+
+[ext_resource type="Script" uid="uid://de0rwo7p0eqcp" path="res://scripts/map_loader.gd" id="1_4xfga"]
+[ext_resource type="Shader" uid="uid://173chww7nkdg" path="res://shaders/province_highlight.gdshader" id="2_0cso3"]
+[ext_resource type="Texture2D" uid="uid://boltwf0k0dj3n" path="res://map_data/ProvinceMap.png" id="3_2klcf"]
+[ext_resource type="Script" uid="uid://btl7b33ji8c5a" path="res://scripts/map_interaction.gd" id="3_gldc4"]
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_paxxb"]
+load_path = "res://.godot/imported/ProvinceMap.png-55c9b592815aa416bd77afb0f611bc11.s3tc.ctex"
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_gldc4"]
+transparency = 1
+depth_draw_mode = 1
+albedo_texture = SubResource("CompressedTexture2D_paxxb")
+disable_receive_shadows = true
+
+[sub_resource type="QuadMesh" id="QuadMesh_0cso3"]
+material = SubResource("StandardMaterial3D_gldc4")
+size = Vector2(50, 50)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_2lpho"]
+render_priority = 0
+shader = ExtResource("2_0cso3")
+shader_parameter/province_tex = ExtResource("3_2klcf")
+shader_parameter/hover_color = Vector3(0, 0, 0)
+shader_parameter/selected_color = Vector3(0, 0, 0)
+shader_parameter/has_hover = false
+shader_parameter/has_selected = false
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_gldc4"]
+size = Vector3(50, 50, 0.2)
+
+[sub_resource type="QuadMesh" id="QuadMesh_paxxb"]
+material = SubResource("StandardMaterial3D_gldc4")
+size = Vector2(50, 50)
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_gldc4"]
+load_path = "res://.godot/imported/ProvinceMap.png-55c9b592815aa416bd77afb0f611bc11.s3tc.ctex"
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_0cso3"]
+albedo_texture = SubResource("CompressedTexture2D_gldc4")
+disable_receive_shadows = true
+
+[node name="Map" type="Node3D"]
+script = ExtResource("1_4xfga")
+
+[node name="RayCast3D" type="RayCast3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)
+target_position = Vector3(0, -500, 0)
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.70710677, 0.70710677, 0, -0.70710677, 0.70710677, 0, 20, 20)
+current = true
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, -0.018752694, 0, 0)
+mesh = SubResource("QuadMesh_0cso3")
+surface_material_override/0 = SubResource("ShaderMaterial_2lpho")
+script = ExtResource("3_gldc4")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="MeshInstance3D"]
+transform = Transform3D(1, 0, 0, 0, 0.99999684, 0.002513287, 0, -0.002513287, 0.99999684, 0.018752694, 0, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="MeshInstance3D/StaticBody3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 1.4551912e-10, 0, -1.4551912e-10, 1, 0, 0, 0)
+shape = SubResource("BoxShape3D_gldc4")
+
+[node name="highlightmesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, 0.01, 0)
+visible = false
+mesh = SubResource("QuadMesh_paxxb")
+surface_material_override/0 = SubResource("StandardMaterial3D_0cso3")

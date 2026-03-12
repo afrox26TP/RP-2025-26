@@ -1,0 +1,16 @@
+# Godot
+.import/
+*.import
+
+# Godot 4 textures
+*.ctex
+*.md5
+*.s3tc.ctex
+
+# Cache a temporary
+.godot/
+
+# Exporty map
+map_data/*.png.import
+map_data/*.png
+opengs_export/
