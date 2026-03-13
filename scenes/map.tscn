@@ -46,3 +46,35 @@ layout_mode = 2
 
 [node name="OwnerLabel" type="Label" parent="InfoUI/PanelContainer/VBoxContainer" unique_id=310120436]
 layout_mode = 2
+
+[node name="PopLabel" type="Label" parent="InfoUI/PanelContainer/VBoxContainer" unique_id=1570697724]
+layout_mode = 2
+
+[node name="GdpLabel" type="Label" parent="InfoUI/PanelContainer/VBoxContainer" unique_id=1249478558]
+layout_mode = 2
+
+[node name="GdpPerCapitaLabel" type="Label" parent="InfoUI/PanelContainer/VBoxContainer" unique_id=446696204]
+layout_mode = 2
+
+[node name="ActionMenu" type="PanelContainer" parent="InfoUI" unique_id=1589379181]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -40.0
+offset_right = 40.0
+grow_vertical = 0
+
+[node name="HBoxContainer" type="HBoxContainer" parent="InfoUI/ActionMenu" unique_id=1043278302]
+layout_mode = 2
+
+[node name="VerbovatButton" type="Button" parent="InfoUI/ActionMenu/HBoxContainer" unique_id=640737456]
+layout_mode = 2
+text = "Verbovat"
+
+[node name="StavetButton" type="Button" parent="InfoUI/ActionMenu/HBoxContainer" unique_id=1367988471]
+layout_mode = 2
+text = "Stavet"
+
+[node name="LikvidovatButton" type="Button" parent="InfoUI/ActionMenu/HBoxContainer" unique_id=998880142]
+layout_mode = 2
+text = "Likvidovat"

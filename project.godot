@@ -18,6 +18,11 @@ config/name="EU_Map_Project"
 run/main_scene="uid://0ni8d3847pdi"
 config/features=PackedStringArray("4.6")
 
+[display]
+
+window/size/viewport_width=1920
+window/size/viewport_height=1080
+
 [rendering]
 
 environment/defaults/default_clear_color=Color(0.078431375, 0.3137255, 0.78431374, 1)
