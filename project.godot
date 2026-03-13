@@ -17,3 +17,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 config/name="EU_Map_Project"
 run/main_scene="uid://0ni8d3847pdi"
 config/features=PackedStringArray("4.6")
+
+[rendering]
+
+environment/defaults/default_clear_color=Color(0.1614975, 0.35776594, 0, 1)

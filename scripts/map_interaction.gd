@@ -56,7 +56,8 @@ var country_colors = {
 	"CHE": Color("#AD2A2A"), # Švýcarsko (Sytá červená)
 	"TUR": Color("#3A8C67"), # Turecko (Osmanská zelená)
 	"UKR": Color("#DEC243"), # Ukrajina (Žlutá)
-	"GBR": Color("#9E2633")  # Velká Británie (Tmavě červená)
+	"GBR": Color("#9E2633"),  # Velká Británie (Tmavě červená)
+	"SEA": Color("5b556fff")  # Velká Británie (Tmavě červená)
 }
 
 func _ready():
@@ -67,7 +68,11 @@ func _ready():
 	
 	# Inicializace prázdné datové textury pro mapové módy
 	data_image = Image.create_empty(total_provinces, 1, false, Image.FORMAT_RGBA8)
-	data_image.fill(Color.GRAY) # Výchozí barva, než se zapne nějaký mód
+	
+	# --- TADY JE TA OPRAVA ---
+	# Místo Color.GRAY tam dáme Color.TRANSPARENT
+	data_image.fill(Color.TRANSPARENT) 
+	
 	data_texture = ImageTexture.create_from_image(data_image)
 	
 	# Předání základních dat do shaderu
@@ -156,36 +161,46 @@ func _zpracuj_interakci(mouse_pos: Vector2, je_kliknuti: bool):
 	else:
 		material.set_shader_parameter("has_hover", false)
 
-# --- FUNKCE PRO PŘEPÍNÁNÍ MAPOVÝCH MÓDŮ ---
 func aktualizuj_mapovy_mod(mod: String, province_db: Dictionary):
+	var more_nalezeno = false # Flag pro jednorázový debug výpis
+	
 	for prov_id in province_db.keys():
 		var prov_data = province_db[prov_id]
 		var barva = Color.GRAY
 		
-		if mod == "political":
-			var owner = prov_data.get("owner", "")
-			# Pokud máme barvu státu definovanou, použijeme ji
-			if country_colors.has(owner):
-				barva = country_colors[owner]
-			else:
-				# Pokud ne, vygenerujeme nouzovou barvu, ať není mapa šedá
-				var hash_val = owner.hash()
-				barva = Color(
-					float((hash_val & 0xFF0000) >> 16) / 255.0,
-					float((hash_val & 0x00FF00) >> 8) / 255.0,
-					float(hash_val & 0x0000FF) / 255.0
-				)
+		# Vyčištění textu od mezer a převod na stejnou velikost písmen, ať eliminujeme chyby!
+		var owner = str(prov_data.get("owner", "")).strip_edges().to_upper()
+		var type = str(prov_data.get("type", "")).strip_edges().to_lower()
+		
+		# --- ROBUSTNÍ KONTROLA PRO MOŘE ---
+		if owner == "SEA" or type == "sea":
+			barva = Color(0.0, 0.0, 0.0, 0.0) # Průhledná barva!
+			
+			if not more_nalezeno:
+				print("DEBUG: Moře ('", owner, "') nalezeno na ID ", prov_id, ", posílám průhlednou barvu!")
+				more_nalezeno = true # Abychom nespamovali konzoli
+		else:
+			if mod == "political":
+				if country_colors.has(owner):
+					barva = country_colors[owner]
+					barva.a = 1.0 # Ujistíme se, že pevnina není průhledná
+				else:
+					var hash_val = owner.hash()
+					barva = Color(
+						float((hash_val & 0xFF0000) >> 16) / 255.0,
+						float((hash_val & 0x00FF00) >> 8) / 255.0,
+						float(hash_val & 0x0000FF) / 255.0,
+						1.0
+					)
+			elif mod == "population":
+				var pop = float(prov_data.get("population", 0))
+				var sytost = clamp(pop / 1000000.0, 0.0, 1.0)
+				barva = Color(sytost, 0.2, 0.2, 1.0)
+			elif mod == "gdp":
+				var gdp = float(prov_data.get("gdp", 0.0))
+				var sytost = clamp(gdp / 5.0, 0.0, 1.0)
+				barva = Color(0.2, 0.8 * sytost, sytost, 1.0)
 				
-		elif mod == "population":
-			var pop = float(prov_data.get("population", 0))
-			var sytost = clamp(pop / 1000000.0, 0.0, 1.0) # Milion obyvatel = max červená
-			barva = Color(sytost, 0.2, 0.2, 1.0)
-			
-		elif mod == "gdp":
-			var gdp = float(prov_data.get("gdp", 0.0))
-			var sytost = clamp(gdp / 5.0, 0.0, 1.0) # GDP 5.0 = max modrá
-			barva = Color(0.2, 0.8 * sytost, sytost, 1.0)
-			
 		# Zápis nové barvy na index provincie
 		data_image.set_pixel(prov_id, 0, barva)
 		

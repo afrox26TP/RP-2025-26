@@ -1,6 +1,7 @@
 extends Node2D
 
 var provinces = {}
+var color_cache = {} # Slouží jako paměť pro bleskové hledání myší
 
 func _ready():
 	load_provinces()
@@ -10,6 +11,7 @@ func _ready():
 	var sprite = $Sprite2D # Ujisti se, že cesta ke Spritu sedí s tvým stromem uzlů
 	if sprite and sprite.has_method("aktualizuj_mapovy_mod"):
 		sprite.aktualizuj_mapovy_mod("political", provinces)
+
 func load_provinces():
 	var file = FileAccess.open("res://map_data/Provinces.txt", FileAccess.READ)
 	if file == null:
@@ -45,8 +47,15 @@ func load_provinces():
 			"gdp": gdp_val
 		}
 
-# Funkce pro vyhledání provincie
+# Funkce pro vyhledání provincie (TEĎ UŽ S FUNKČNÍ CACHE)
 func get_province_data_by_color(clicked_color: Color):
+	var hex = clicked_color.to_html(false)
+	
+	# 1. Zkusíme barvu najít v bleskové paměti (bez lagu)
+	if color_cache.has(hex):
+		return provinces[color_cache[hex]]
+		
+	# 2. Pokud v paměti není, spočítáme to starou cestou přes distance_to
 	var v_clicked = Vector3(clicked_color.r, clicked_color.g, clicked_color.b)
 	
 	for id in provinces:
@@ -54,6 +63,8 @@ func get_province_data_by_color(clicked_color: Color):
 		var v_prov = Vector3(c.r, c.g, c.b)
 		
 		if v_prov.distance_to(v_clicked) < 0.02:
+			# DŮLEŽITÉ: Uložíme výsledek do paměti, ať se to při dalším pohybu myší nepočítá znova!
+			color_cache[hex] = id
 			return provinces[id]
 			
 	return null

@@ -27,12 +27,6 @@ texture = ExtResource("2_2klcf")
 script = ExtResource("3_gldc4")
 logic_map = ExtResource("3_2klcf")
 
-[node name="Sprite2D2" type="Sprite2D" parent="." unique_id=2124186770]
-material = SubResource("ShaderMaterial_2klcf")
-texture = ExtResource("2_2klcf")
-script = ExtResource("3_gldc4")
-logic_map = ExtResource("3_2klcf")
-
 [node name="Camera2D" type="Camera2D" parent="." unique_id=2038283175]
 zoom = Vector2(0.2, 0.2)
 script = ExtResource("6_2lpho")
