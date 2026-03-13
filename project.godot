@@ -20,4 +20,4 @@ config/features=PackedStringArray("4.6")
 
 [rendering]
 
-environment/defaults/default_clear_color=Color(0.1614975, 0.35776594, 0, 1)
+environment/defaults/default_clear_color=Color(0.078431375, 0.3137255, 0.78431374, 1)
