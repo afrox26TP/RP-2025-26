@@ -22,7 +22,7 @@ func zobraz_data(data: Dictionary):
 	var owner = str(data.get("owner", "")).strip_edges().to_upper()
 	var je_more = (owner == "SEA")
 	
-	id_label.text = "ID: " + str(data.get("id", "N/A"))
+	id_label.text = "Provincie: " + str(data.get("province_name", "Neznamo"))
 	owner_label.text = "Vlastnik: " + owner
 	
 	if je_more:

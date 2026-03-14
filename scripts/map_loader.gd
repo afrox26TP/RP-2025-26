@@ -1,31 +1,5 @@
 extends Node2D
-# Pridej k ostatnim promennym nahoře
-@onready var camera = get_node("../Camera2D") # Uprav cestu ke kamere
-@onready var label_container = $ProvinceLabels
 
-func _process(_delta):
-	_aktualizuj_viditelnost_labelu()
-
-func _aktualizuj_viditelnost_labelu():
-	if not camera or not label_container: return
-	
-	var zoom_level = camera.zoom.x
-	
-	# PRAVIDLA PRO VIDITELNOST:
-	# Zoom > 0.8: Vidim provincie
-	# Zoom < 0.8: Vidim jen staty (zatim schovame vse krom hlavnich mest)
-	
-	for lbl in label_container.get_children():
-		var data = provinces.get(lbl.province_id)
-		if not data: continue
-		
-		# Logika pro zoom
-		if zoom_level > 0.8:
-			lbl.visible = true
-			# Zde muzes pridat podminku: if not d.is_capital: lbl.visible = true
-		else:
-			# Schovame vse, co neni hlavni mesto (pokud mas v TXT info o hlavnim meste)
-			lbl.visible = false
 @export var label_scene = preload("res://scenes/ProvinceLabel.tscn")
 
 var provinces = {}
@@ -35,13 +9,20 @@ func _ready():
 	load_provinces()
 	print("Nacteno provincii z TXT: ", provinces.size())
 	
+	# oprava cesty ke kamere (je to primy potomek, takze staci $)
+	var kamera = $Camera2D 
+	if kamera:
+		kamera.zoom_zmenen.connect(_na_zmenu_zoomu)
+	else:
+		print("Chyba: Kamera nenalezena!")
+
 	var sprite = $Sprite2D
 	if sprite and sprite.has_method("aktualizuj_mapovy_mod"):
 		sprite.aktualizuj_mapovy_mod("political", provinces)
 	
 	# spustime generovani popisku
 	generuj_nazvy_provincii()
-
+	
 func load_provinces():
 	var file = FileAccess.open("res://map_data/Provinces.txt", FileAccess.READ)
 	if file == null:
@@ -70,9 +51,9 @@ func load_provinces():
 			"type": parts[4],
 			"state": parts[5],
 			"owner": parts[6],
-			"x": float(parts[8]), # pridano
-			"y": float(parts[9]), # pridano
-			"province_name": parts[10], # pridano
+			"x": float(parts[8]), 
+			"y": float(parts[9]), 
+			"province_name": parts[10], 
 			"population": pop,
 			"gdp": gdp_val
 		}
@@ -83,29 +64,54 @@ func generuj_nazvy_provincii():
 	add_child(label_container)
 	
 	var sprite = $Sprite2D
-	# vypocet offsetu, pokud je mapa centrovana (sprite.centered)
 	var offset = Vector2.ZERO
 	if sprite and sprite.centered:
 		offset = sprite.position - (sprite.texture.get_size() / 2.0)
 	elif sprite:
 		offset = sprite.position
 
-	for id in provinces:
-		var d = provinces[id]
+	# 1. Seřadíme provincie podle populace, aby ty největší dostaly přednost
+	var serazene_provinci = provinces.values()
+	serazene_provinci.sort_custom(func(a, b): return a.get("population", 0) > b.get("population", 0))
+
+	var umistene_pozice = []
+	var MIN_VZDALENOST = 60.0 # <-- TADY NASTAVUJEŠ, JAK MOC OD SEBE MUSÍ TEXTY BÝT (v pixelech)
+
+	for d in serazene_provinci:
+		if str(d.get("owner", "")) == "SEA" or str(d.get("province_name", "")) == "":
+			continue
+			
+		var pozice = Vector2(d.get("x", 0), d.get("y", 0)) + offset
 		
-		if d.owner == "SEA" or d.province_name == "":
+		# 2. Zkontrolujeme, jestli už není v okolí jiný text
+		var moc_blizko = false
+		for p in umistene_pozice:
+			if pozice.distance_to(p) < MIN_VZDALENOST:
+				moc_blizko = true
+				break
+				
+		# Pokud je moc blízko jiné (lidnatější) provincie, text vůbec nevytvoříme
+		if moc_blizko:
 			continue
 			
 		var lbl_inst = label_scene.instantiate()
+		
+		# 1. NEJDŘÍV nastavujeme proměnné!
+		lbl_inst.set("province_id", d.id)
+		lbl_inst.set("je_hlavni", not moc_blizko) 
+		
+		# 2. AŽ PAK ho přidáváme do scény!
 		label_container.add_child(lbl_inst)
 		
-		# v ProvinceLabel.tscn musi byt uzel Label
 		var l = lbl_inst.get_node("Label")
 		if l:
-			l.text = d.province_name
+			var cisty_nazev = str(d.province_name).replace(" Voivodeship", "").replace(" County", "")
+			l.text = cisty_nazev
 		
-		# nastaveni pozice s ohledem na souradnice v txt a pozici mapy
-		lbl_inst.position = Vector2(d.x, d.y) + offset
+		lbl_inst.position = pozice
+		
+		# Uložíme si pozici tohoto textu, aby se mu ostatní vyhýbaly
+		umistene_pozice.append(pozice)
 
 func get_province_data_by_color(clicked_color: Color):
 	var hex = clicked_color.to_html(false)
@@ -124,3 +130,13 @@ func get_province_data_by_color(clicked_color: Color):
 			return provinces[id]
 			
 	return null
+
+func _na_zmenu_zoomu(aktualni_zoom):
+	var labels = get_node_or_null("ProvinceLabels")
+	if not labels: return
+	
+	# texty se ukazi, pokud je zoom vetsi nez 0.8
+	var zobrazit_texty = aktualni_zoom > 0.8
+	
+	for lbl in labels.get_children():
+		lbl.visible = zobrazit_texty
