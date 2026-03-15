@@ -56,6 +56,13 @@ func _unhandled_input(event):
 			if event.keycode == KEY_1: aktualizuj_mapovy_mod("political", root.provinces)
 			elif event.keycode == KEY_2: aktualizuj_mapovy_mod("population", root.provinces)
 			elif event.keycode == KEY_3: aktualizuj_mapovy_mod("gdp", root.provinces)
+			
+			# Přidaná klávesa C pro dobývání
+			elif event.keycode == KEY_C:
+				var vybrana_provincie = material.get_shader_parameter("selected_id")
+				if vybrana_provincie != null and float(vybrana_provincie) >= 0.0:
+					# TADY použijeme stát z menu!
+					dobyt_provincii(int(vybrana_provincie), GameManager.hrac_stat)
 
 func _zpracuj_interakci(mouse_pos: Vector2, je_kliknuti: bool):
 	if map_image == null: return
@@ -88,15 +95,18 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary):
 		material.set_shader_parameter("hovered_id", prov_id)
 		material.set_shader_parameter("has_hover", true)
 
-	# --- 2. Dynamické labely (čisté a bez skákání) ---
+	# --- 2. Dynamické labely (PŘESNÍ SOUSEDÉ) ---
 	var labels = get_parent().get_node_or_null("ProvinceLabels")
 	if labels:
+		var aktualni_sousede = data.get("neighbors", [])
+		
 		for lbl in labels.get_children():
-			# Převedeme oboje na int, abychom měli 100% jistotu, že se najdou
-			var is_target = (int(lbl.get("province_id")) == int(prov_id))
+			var l_id = int(lbl.get("province_id"))
+			var je_cil = (l_id == int(prov_id))
+			var je_soused = l_id in aktualni_sousede
 			
-			if lbl.has_method("nastav_stav"):
-				lbl.nastav_stav(is_target)
+			if lbl.has_method("nastav_stav_souseda"):
+				lbl.nastav_stav_souseda(je_cil, je_soused)
 
 func _vymaz_hover():
 	material.set_shader_parameter("has_hover", false)
@@ -126,3 +136,17 @@ func aktualizuj_mapovy_mod(mod: String, province_db: Dictionary):
 				
 		data_image.set_pixel(prov_id, 0, barva)
 	data_texture.update(data_image)
+
+# --- Přidaná funkce pro dobývání ---
+func dobyt_provincii(prov_id: int, novy_vlastnik: String):
+	var root = get_parent()
+	if not root or not "provinces" in root: return
+	
+	if root.provinces.has(prov_id):
+		# 1. Změníme majitele v datech
+		root.provinces[prov_id]["owner"] = novy_vlastnik
+		
+		# 2. Okamžitě překreslíme politickou mapu
+		aktualizuj_mapovy_mod("political", root.provinces)
+		
+		print("Provincie ", prov_id, " byla dobyta státem ", novy_vlastnik)

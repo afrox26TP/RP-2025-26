@@ -15,8 +15,12 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="EU_Map_Project"
-run/main_scene="uid://0ni8d3847pdi"
+run/main_scene="uid://bdo5ls6bigipe"
 config/features=PackedStringArray("4.6")
+
+[autoload]
+
+GameManager="*uid://of6r8suummud"
 
 [display]
 

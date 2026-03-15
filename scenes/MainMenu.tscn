@@ -1,0 +1,39 @@
+[gd_scene format=3 uid="uid://bdo5ls6bigipe"]
+
+[ext_resource type="Script" uid="uid://hm0xv0vabr0x" path="res://scripts/MainMenu.gd" id="1_yqorp"]
+
+[node name="MainMenu" type="Control" unique_id=1394648690]
+layout_mode = 3
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_yqorp")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=1802369220]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -49.0
+offset_top = -41.0
+offset_right = 49.0
+offset_bottom = 41.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Label" type="Label" parent="VBoxContainer" unique_id=340904285]
+layout_mode = 2
+text = "vyber si stat:"
+
+[node name="OptionButton" type="OptionButton" parent="VBoxContainer" unique_id=1834597632]
+layout_mode = 2
+
+[node name="PlayButton" type="Button" parent="VBoxContainer" unique_id=909067166]
+layout_mode = 2
+text = "hrat!"

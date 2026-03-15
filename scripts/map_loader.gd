@@ -29,21 +29,37 @@ func load_provinces():
 		push_error("Chybi soubor Provinces.txt!")
 		return
 		
-	file.get_line()
+	file.get_line() # Přeskočení hlavičky
 	
 	while not file.eof_reached():
 		var line = file.get_line().strip_edges()
 		if line == "": continue
 			
 		var parts = line.split(";")
-		if parts.size() < 11: continue 
+		if parts.size() < 18: continue # Teď vyžadujeme 18 sloupců z tvého nového exportu
 			
 		var prov_id = int(parts[0])
 		
+		# Bezpečné načtení populace a HDP
 		var pop = 0
 		var gdp_val = 0.0
-		if parts.size() > 12: pop = int(parts[12])
-		if parts.size() > 13: gdp_val = float(parts[13])
+		if parts[12].strip_edges() != "": pop = int(parts[12])
+		if parts[13].strip_edges() != "": gdp_val = float(parts[13])
+		
+		# Parsování hlavního města (sloupce 15 a 16)
+		var je_to_hlavni = false
+		var nazev_mesta = ""
+		if parts[15].strip_edges() == "1":
+			je_to_hlavni = true
+			nazev_mesta = parts[16].strip_edges()
+			
+		# Parsování sousedů (sloupec 17) z "1,2,3" na pole [1, 2, 3]
+		var neighbors_array = []
+		var n_str = parts[17].strip_edges()
+		if n_str != "":
+			for n in n_str.split(","):
+				if n.strip_edges() != "":
+					neighbors_array.append(int(n))
 		
 		provinces[prov_id] = {
 			"id": prov_id,
@@ -55,7 +71,10 @@ func load_provinces():
 			"y": float(parts[9]), 
 			"province_name": parts[10], 
 			"population": pop,
-			"gdp": gdp_val
+			"gdp": gdp_val,
+			"is_capital": je_to_hlavni,
+			"capital_name": nazev_mesta, # TADY PŘIDÁVÁME NÁZEV MĚSTA
+			"neighbors": neighbors_array
 		}
 
 func generuj_nazvy_provincii():
@@ -70,12 +89,16 @@ func generuj_nazvy_provincii():
 	elif sprite:
 		offset = sprite.position
 
-	# 1. Seřadíme provincie podle populace, aby ty největší dostaly přednost
+	# 1. VIP ŘAZENÍ: Hlavní města jdou nekompromisně první, pak až zbytek podle populace
 	var serazene_provinci = provinces.values()
-	serazene_provinci.sort_custom(func(a, b): return a.get("population", 0) > b.get("population", 0))
+	serazene_provinci.sort_custom(func(a, b): 
+		if a.get("is_capital", false) != b.get("is_capital", false):
+			return a.get("is_capital", false)
+		return a.get("population", 0) > b.get("population", 0)
+	)
 
 	var umistene_pozice = []
-	var MIN_VZDALENOST = 60.0 # <-- TADY NASTAVUJEŠ, JAK MOC OD SEBE MUSÍ TEXTY BÝT (v pixelech)
+	var MIN_VZDALENOST = 60.0 
 
 	for d in serazene_provinci:
 		if str(d.get("owner", "")) == "SEA" or str(d.get("province_name", "")) == "":
@@ -83,36 +106,42 @@ func generuj_nazvy_provincii():
 			
 		var pozice = Vector2(d.get("x", 0), d.get("y", 0)) + offset
 		
-		# 2. Zkontrolujeme, jestli už není v okolí jiný text
+		var je_to_capital = d.get("is_capital", false)
 		var moc_blizko = false
-		for p in umistene_pozice:
-			if pozice.distance_to(p) < MIN_VZDALENOST:
-				moc_blizko = true
-				break
+		
+		# 2. OCHRANA: Pokud je to hlavní město, kašle na okolí a NIKDY se neschová
+		if not je_to_capital:
+			for p in umistene_pozice:
+				if pozice.distance_to(p) < MIN_VZDALENOST:
+					moc_blizko = true
+					break
 				
-		# Pokud je moc blízko jiné (lidnatější) provincie, text vůbec nevytvoříme
-		if moc_blizko:
-			continue
-			
 		var lbl_inst = label_scene.instantiate()
 		
-		# 1. NEJDŘÍV nastavujeme proměnné!
 		lbl_inst.set("province_id", d.id)
 		lbl_inst.set("je_hlavni", not moc_blizko) 
+		lbl_inst.set("is_capital", je_to_capital)
 		
-		# 2. AŽ PAK ho přidáváme do scény!
 		label_container.add_child(lbl_inst)
 		
 		var l = lbl_inst.get_node("Label")
 		if l:
-			var cisty_nazev = str(d.province_name).replace(" Voivodeship", "").replace(" County", "")
-			l.text = cisty_nazev
+			var zobrazeny_nazev = str(d.province_name).replace(" Voivodeship", "").replace(" County", "")
+			
+			# 3. SPRÁVNÉ JMÉNO: Pokud je to capital, vezme název z indexu 16
+			if je_to_capital:
+				var jmeno_mesta = d.get("capital_name", "")
+				if jmeno_mesta != "":
+					zobrazeny_nazev = "★ " + jmeno_mesta
+				else:
+					zobrazeny_nazev = "★ " + zobrazeny_nazev # Záloha, kdyby město v TXT chybělo
+				
+			l.text = zobrazeny_nazev
 		
 		lbl_inst.position = pozice
 		
-		# Uložíme si pozici tohoto textu, aby se mu ostatní vyhýbaly
-		umistene_pozice.append(pozice)
-
+		if not moc_blizko:
+			umistene_pozice.append(pozice)
 func get_province_data_by_color(clicked_color: Color):
 	var hex = clicked_color.to_html(false)
 	
@@ -135,8 +164,10 @@ func _na_zmenu_zoomu(aktualni_zoom):
 	var labels = get_node_or_null("ProvinceLabels")
 	if not labels: return
 	
-	# texty se ukazi, pokud je zoom vetsi nez 0.8
-	var zobrazit_texty = aktualni_zoom > 0.8
+	var odzoomovano = aktualni_zoom <= 0.8
 	
 	for lbl in labels.get_children():
-		lbl.visible = zobrazit_texty
+		if "is_zoomed_out" in lbl:
+			lbl.is_zoomed_out = odzoomovano
+			lbl.aktualni_zoom = aktualni_zoom # TADY předáváme číslo zoomu
+			lbl.reset_stav()
