@@ -56,12 +56,11 @@ func _unhandled_input(event):
 			if event.keycode == KEY_1: aktualizuj_mapovy_mod("political", root.provinces)
 			elif event.keycode == KEY_2: aktualizuj_mapovy_mod("population", root.provinces)
 			elif event.keycode == KEY_3: aktualizuj_mapovy_mod("gdp", root.provinces)
+			elif event.keycode == KEY_4: aktualizuj_mapovy_mod("ideology", root.provinces) # NOVÁ KLÁVESA 4
 			
-			# Přidaná klávesa C pro dobývání
 			elif event.keycode == KEY_C:
 				var vybrana_provincie = material.get_shader_parameter("selected_id")
 				if vybrana_provincie != null and float(vybrana_provincie) >= 0.0:
-					# TADY použijeme stát z menu!
 					dobyt_provincii(int(vybrana_provincie), GameManager.hrac_stat)
 
 func _zpracuj_interakci(mouse_pos: Vector2, je_kliknuti: bool):
@@ -85,7 +84,6 @@ func _zpracuj_interakci(mouse_pos: Vector2, je_kliknuti: bool):
 	_vymaz_hover()
 
 func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary):
-	# --- 1. Shader a UI ---
 	if je_kliknuti:
 		material.set_shader_parameter("selected_id", prov_id)
 		material.set_shader_parameter("has_selected", true)
@@ -95,7 +93,6 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary):
 		material.set_shader_parameter("hovered_id", prov_id)
 		material.set_shader_parameter("has_hover", true)
 
-	# --- 2. Dynamické labely (PŘESNÍ SOUSEDÉ) ---
 	var labels = get_parent().get_node_or_null("ProvinceLabels")
 	if labels:
 		var aktualni_sousede = data.get("neighbors", [])
@@ -133,20 +130,26 @@ func aktualizuj_mapovy_mod(mod: String, province_db: Dictionary):
 				"gdp":
 					var s = clamp(float(d.get("gdp", 0.0)) / 500.0, 0.0, 1.0)
 					barva = Color(0.2, 0.8 * s, s, 1.0)
+				"ideology": # NOVÁ VĚTEV PRO IDEOLOGII
+					var ideo = str(d.get("ideology", ""))
+					if ideo == "demokracie": barva = Color("#2944A6")
+					elif ideo == "komunismus": barva = Color("#D13A3A")
+					elif ideo == "fasismus": barva = Color("#664229")
+					elif ideo == "nacismus": barva = Color("4b4b4fff")
+					elif ideo == "kralovstvi": barva = Color("#D4B04C")
+					elif ideo == "autokracie": barva = Color("275b34ff")
+					else: barva = Color("#666666") # Šedá, pokud to v TXT chybí
+					barva.a = 1.0
 				
 		data_image.set_pixel(prov_id, 0, barva)
 	data_texture.update(data_image)
 
-# --- Přidaná funkce pro dobývání ---
 func dobyt_provincii(prov_id: int, novy_vlastnik: String):
 	var root = get_parent()
 	if not root or not "provinces" in root: return
 	
 	if root.provinces.has(prov_id):
-		# 1. Změníme majitele v datech
 		root.provinces[prov_id]["owner"] = novy_vlastnik
-		
-		# 2. Okamžitě překreslíme politickou mapu
+		# Aktualizujeme zrovna ten mód, ve kterém se nacházíme (aby to nedělalo brikule)
 		aktualizuj_mapovy_mod("political", root.provinces)
-		
 		print("Provincie ", prov_id, " byla dobyta státem ", novy_vlastnik)
