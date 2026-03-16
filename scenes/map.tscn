@@ -78,3 +78,14 @@ text = "Stavet"
 [node name="LikvidovatButton" type="Button" parent="InfoUI/ActionMenu/HBoxContainer" unique_id=998880142]
 layout_mode = 2
 text = "Likvidovat"
+
+[node name="GameUI" type="CanvasLayer" parent="." unique_id=1271783973]
+
+[node name="OverviewPanel" type="Panel" parent="GameUI" unique_id=1420402112]
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="InfoLabel" type="Label" parent="GameUI/OverviewPanel" unique_id=306217381]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0
