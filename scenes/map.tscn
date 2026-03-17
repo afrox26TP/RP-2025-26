@@ -8,6 +8,7 @@
 [ext_resource type="Texture2D" uid="uid://bva1ty4a6bp00" path="res://map_data/ProvinceIDMask.png" id="3_jh32y"]
 [ext_resource type="Script" uid="uid://b07wygxmoms6q" path="res://scripts/map_camera.gd" id="6_2lpho"]
 [ext_resource type="Script" uid="uid://c6m733k5b7qxd" path="res://scripts/InfoUI.gd" id="7_nakos"]
+[ext_resource type="Script" uid="uid://bcuk57in5kv32" path="res://scripts/GameUI.gd" id="9_be0no"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_2klcf"]
 shader = ExtResource("2_0cso3")
@@ -35,8 +36,10 @@ script = ExtResource("6_2lpho")
 script = ExtResource("7_nakos")
 
 [node name="PanelContainer" type="PanelContainer" parent="InfoUI" unique_id=516417990]
-offset_right = 40.0
-offset_bottom = 40.0
+custom_minimum_size = Vector2(231, 0)
+offset_top = 970.0
+offset_right = 60.0
+offset_bottom = 1074.0
 
 [node name="VBoxContainer" type="VBoxContainer" parent="InfoUI/PanelContainer" unique_id=529708643]
 layout_mode = 2
@@ -53,15 +56,13 @@ layout_mode = 2
 [node name="GdpLabel" type="Label" parent="InfoUI/PanelContainer/VBoxContainer" unique_id=1249478558]
 layout_mode = 2
 
-[node name="GdpPerCapitaLabel" type="Label" parent="InfoUI/PanelContainer/VBoxContainer" unique_id=446696204]
-layout_mode = 2
-
 [node name="ActionMenu" type="PanelContainer" parent="InfoUI" unique_id=1589379181]
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_top = -40.0
-offset_right = 40.0
+offset_top = -155.0
+offset_right = 231.0
+offset_bottom = -115.0
 grow_vertical = 0
 
 [node name="HBoxContainer" type="HBoxContainer" parent="InfoUI/ActionMenu" unique_id=1043278302]
@@ -80,12 +81,29 @@ layout_mode = 2
 text = "Likvidovat"
 
 [node name="GameUI" type="CanvasLayer" parent="." unique_id=1271783973]
+script = ExtResource("9_be0no")
 
 [node name="OverviewPanel" type="Panel" parent="GameUI" unique_id=1420402112]
+offset_right = 300.0
+offset_bottom = 400.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="GameUI/OverviewPanel" unique_id=128986979]
+layout_mode = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="InfoLabel" type="Label" parent="GameUI/OverviewPanel" unique_id=306217381]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 23.0
+[node name="CountryNameLabel" type="Label" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=306217381]
+layout_mode = 2
+text = "test"
+
+[node name="IdeologyLabel" type="Label" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=240606362]
+layout_mode = 2
+
+[node name="TotalPopLabel" type="Label" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=1425988809]
+layout_mode = 2
+
+[node name="TotalGdpLabel" type="Label" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=1680951380]
+layout_mode = 2
+
+[node name="GdpPerCapitaLabel" type="Label" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=446696204]
+layout_mode = 2

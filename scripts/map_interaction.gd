@@ -87,8 +87,21 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary):
 	if je_kliknuti:
 		material.set_shader_parameter("selected_id", prov_id)
 		material.set_shader_parameter("has_selected", true)
-		var ui = get_tree().current_scene.find_child("InfoUI", true, false)
-		if ui and ui.has_method("zobraz_data"): ui.zobraz_data(data)
+		
+		# Získáme všechny provincie z hlavního uzlu
+		var root = get_parent()
+		var vsechny_provincie = root.provinces if "provinces" in root else {}
+		
+		# 1. Volání detailu provincie (InfoUI)
+		var info_ui = get_tree().current_scene.find_child("InfoUI", true, false)
+		if info_ui and info_ui.has_method("zobraz_data"):
+			info_ui.zobraz_data(data)
+			
+		# 2. Volání přehledu celého státu (GameUI)
+		var game_ui = get_tree().current_scene.find_child("GameUI", true, false)
+		if game_ui and game_ui.has_method("zobraz_prehled_statu"):
+			game_ui.zobraz_prehled_statu(data, vsechny_provincie)
+			
 	else:
 		material.set_shader_parameter("hovered_id", prov_id)
 		material.set_shader_parameter("has_hover", true)

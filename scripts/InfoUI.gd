@@ -22,6 +22,9 @@ func zobraz_data(data: Dictionary):
 	var owner = str(data.get("owner", "")).strip_edges().to_upper()
 	var je_more = (owner == "SEA")
 	
+	# Zásadní proměnná: Je tohle moje území?
+	var je_moje = (owner == GameManager.hrac_stat)
+	
 	id_label.text = "Provincie: " + str(data.get("province_name", "Neznamo"))
 	owner_label.text = "Vlastnik: " + owner
 	
@@ -30,16 +33,11 @@ func zobraz_data(data: Dictionary):
 		pop_label.hide()
 		gdp_label.hide()
 		gdp_pc_label.hide()
-		
-		# Upravime menu tlacitek
-		btn_stavet.disabled = true
-		btn_verbovat.disabled = true
-		btn_likvidovat.disabled = false # Pouze likvidovat je povoleno
 	else:
 		# Ukazeme data pro pevninu
 		pop_label.show()
 		gdp_label.show()
-		gdp_pc_label.show()
+		
 		
 		var pop = int(data.get("population", 0))
 		pop_label.text = "Populace: " + _formatuj_cislo(pop)
@@ -47,18 +45,18 @@ func zobraz_data(data: Dictionary):
 		var gdp = float(data.get("gdp", 0.0))
 		gdp_label.text = "HDP: %.2f mld. USD" % gdp
 		
-		if pop > 0:
-			var gdp_per_capita = (gdp * 1000000000.0) / float(pop)
-			gdp_pc_label.text = "HDP na osobu: $%.0f" % gdp_per_capita
-		else:
-			gdp_pc_label.text = "HDP na osobu: N/A"
+		
 			
-		# Povolime vsechna tlacitka
+
+	# TADY JE TA LOGIKA: Zobraz akce jenom, když to vlastníš
+	if je_moje and not je_more:
 		btn_stavet.disabled = false
 		btn_verbovat.disabled = false
 		btn_likvidovat.disabled = false
-
-	action_menu.show()
+		action_menu.show()
+	else:
+		# Cizí stát nebo moře -> žádné akce
+		action_menu.hide()
 
 func _formatuj_cislo(cislo: int) -> String:
 	var text_cisla = str(cislo)
