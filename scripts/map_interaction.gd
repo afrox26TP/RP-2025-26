@@ -56,7 +56,8 @@ func _unhandled_input(event):
 			if event.keycode == KEY_1: aktualizuj_mapovy_mod("political", root.provinces)
 			elif event.keycode == KEY_2: aktualizuj_mapovy_mod("population", root.provinces)
 			elif event.keycode == KEY_3: aktualizuj_mapovy_mod("gdp", root.provinces)
-			elif event.keycode == KEY_4: aktualizuj_mapovy_mod("ideology", root.provinces) # NOVÁ KLÁVESA 4
+			elif event.keycode == KEY_4: aktualizuj_mapovy_mod("ideology", root.provinces) 
+			elif event.keycode == KEY_5: aktualizuj_mapovy_mod("recruitable_population", root.provinces) # NOVÁ KLÁVESA 5
 			
 			elif event.keycode == KEY_C:
 				var vybrana_provincie = material.get_shader_parameter("selected_id")
@@ -143,7 +144,7 @@ func aktualizuj_mapovy_mod(mod: String, province_db: Dictionary):
 				"gdp":
 					var s = clamp(float(d.get("gdp", 0.0)) / 500.0, 0.0, 1.0)
 					barva = Color(0.2, 0.8 * s, s, 1.0)
-				"ideology": # NOVÁ VĚTEV PRO IDEOLOGII
+				"ideology": 
 					var ideo = str(d.get("ideology", ""))
 					if ideo == "demokracie": barva = Color("#2944A6")
 					elif ideo == "komunismus": barva = Color("#D13A3A")
@@ -151,8 +152,11 @@ func aktualizuj_mapovy_mod(mod: String, province_db: Dictionary):
 					elif ideo == "nacismus": barva = Color("4b4b4fff")
 					elif ideo == "kralovstvi": barva = Color("#D4B04C")
 					elif ideo == "autokracie": barva = Color("275b34ff")
-					else: barva = Color("#666666") # Šedá, pokud to v TXT chybí
+					else: barva = Color("#666666") 
 					barva.a = 1.0
+				"recruitable_population": 
+					var s = clamp(float(d.get("recruitable_population", 0)) / 500000.0, 0.0, 1.0)
+					barva = Color(s, 0.8 * s, 0.1, 1.0)
 				
 		data_image.set_pixel(prov_id, 0, barva)
 	data_texture.update(data_image)

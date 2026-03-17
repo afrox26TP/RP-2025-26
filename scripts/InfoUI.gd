@@ -3,6 +3,7 @@ extends CanvasLayer
 @onready var id_label = $PanelContainer/VBoxContainer/IDLabel
 @onready var owner_label = $PanelContainer/VBoxContainer/OwnerLabel
 @onready var pop_label = $PanelContainer/VBoxContainer/PopLabel
+@onready var recruit_label = $PanelContainer/VBoxContainer/RecruitLabel
 @onready var gdp_label = $PanelContainer/VBoxContainer/GdpLabel
 
 
@@ -31,16 +32,21 @@ func zobraz_data(data: Dictionary):
 	if je_more:
 		# Schovame ekonomicke udaje pro more
 		pop_label.hide()
+		recruit_label.hide()
 		gdp_label.hide()
 		
 	else:
 		# Ukazeme data pro pevninu
 		pop_label.show()
+		recruit_label.show()
 		gdp_label.show()
 		
 		
 		var pop = int(data.get("population", 0))
 		pop_label.text = "Populace: " + _formatuj_cislo(pop)
+		
+		var rekruti = int(data.get("recruitable_population", 0))
+		recruit_label.text = "Rekruti: " + _formatuj_cislo(rekruti)
 		
 		var gdp = float(data.get("gdp", 0.0))
 		gdp_label.text = "HDP: %.2f mld. USD" % gdp

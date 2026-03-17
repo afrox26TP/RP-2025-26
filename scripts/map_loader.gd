@@ -85,7 +85,8 @@ func load_provinces():
 			"is_capital": je_to_hlavni,
 			"capital_name": nazev_mesta,
 			"neighbors": neighbors_array,
-			"ideology": ideologie_statu # Zápis ideologie do slovníku
+			"ideology": ideologie_statu, # Tady nezapomeň na čárku!
+			"recruitable_population": int(parts[19]) # PŘIDÁNO TADY
 		}
 
 func generuj_nazvy_provincii():

@@ -37,9 +37,9 @@ script = ExtResource("7_nakos")
 
 [node name="PanelContainer" type="PanelContainer" parent="InfoUI" unique_id=516417990]
 custom_minimum_size = Vector2(231, 0)
-offset_top = 970.0
-offset_right = 60.0
-offset_bottom = 1074.0
+offset_top = 940.0
+offset_right = 231.0
+offset_bottom = 1071.0
 
 [node name="VBoxContainer" type="VBoxContainer" parent="InfoUI/PanelContainer" unique_id=529708643]
 layout_mode = 2
@@ -56,13 +56,16 @@ layout_mode = 2
 [node name="GdpLabel" type="Label" parent="InfoUI/PanelContainer/VBoxContainer" unique_id=1249478558]
 layout_mode = 2
 
+[node name="RecruitLabel" type="Label" parent="InfoUI/PanelContainer/VBoxContainer" unique_id=162769011]
+layout_mode = 2
+
 [node name="ActionMenu" type="PanelContainer" parent="InfoUI" unique_id=1589379181]
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_top = -155.0
+offset_top = -205.0
 offset_right = 231.0
-offset_bottom = -115.0
+offset_bottom = -165.0
 grow_vertical = 0
 
 [node name="HBoxContainer" type="HBoxContainer" parent="InfoUI/ActionMenu" unique_id=1043278302]
