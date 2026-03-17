@@ -4,7 +4,7 @@ extends CanvasLayer
 @onready var owner_label = $PanelContainer/VBoxContainer/OwnerLabel
 @onready var pop_label = $PanelContainer/VBoxContainer/PopLabel
 @onready var gdp_label = $PanelContainer/VBoxContainer/GdpLabel
-@onready var gdp_pc_label = $PanelContainer/VBoxContainer/GdpPerCapitaLabel
+
 
 @onready var action_menu = $ActionMenu
 @onready var btn_stavet = $ActionMenu/HBoxContainer/StavetButton
@@ -32,7 +32,7 @@ func zobraz_data(data: Dictionary):
 		# Schovame ekonomicke udaje pro more
 		pop_label.hide()
 		gdp_label.hide()
-		gdp_pc_label.hide()
+		
 	else:
 		# Ukazeme data pro pevninu
 		pop_label.show()
