@@ -51,10 +51,13 @@ layout_mode = 2
 [node name="OwnerLabel" type="Label" parent="InfoUI/PanelContainer/VBoxContainer" unique_id=310120436]
 layout_mode = 2
 
-[node name="PopLabel" type="Label" parent="InfoUI/PanelContainer/VBoxContainer" unique_id=1570697724]
+[node name="GdpLabel" type="Label" parent="InfoUI/PanelContainer/VBoxContainer" unique_id=1249478558]
 layout_mode = 2
 
-[node name="GdpLabel" type="Label" parent="InfoUI/PanelContainer/VBoxContainer" unique_id=1249478558]
+[node name="IncomeLabel" type="Label" parent="InfoUI/PanelContainer/VBoxContainer" unique_id=695409761]
+layout_mode = 2
+
+[node name="PopLabel" type="Label" parent="InfoUI/PanelContainer/VBoxContainer" unique_id=1570697724]
 layout_mode = 2
 
 [node name="RecruitLabel" type="Label" parent="InfoUI/PanelContainer/VBoxContainer" unique_id=162769011]
@@ -76,7 +79,7 @@ layout_mode = 2
 layout_mode = 2
 text = "Verbovat"
 
-[node name="StavetButton" type="Button" parent="InfoUI/ActionMenu/HBoxContainer" unique_id=1367988471]
+[node name="StavetMenuButton" type="MenuButton" parent="InfoUI/ActionMenu/HBoxContainer" unique_id=1012339346]
 layout_mode = 2
 text = "Stavet"
 

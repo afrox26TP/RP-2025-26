@@ -11,7 +11,7 @@ func _ready():
 	load_provinces()
 	print("Nacteno provincii z TXT: ", provinces.size())
 	
-	# oprava cesty ke kamere (je to primy potomek, takze staci $)
+	# oprava cesty ke kamere 
 	var kamera = $Camera2D 
 	if kamera:
 		kamera.zoom_zmenen.connect(_na_zmenu_zoomu)
@@ -187,7 +187,7 @@ func generuj_nazvy_statu():
 		"KOS": Vector2(15, 0),
 		"BIH": Vector2(-25, -10),
 		"SRB": Vector2(25, 15),
-		"NOR": Vector2(-40, -40) # TADY JE ZMĚNA: -40 = doleva, druhé -40 = nahoru
+		"NOR": Vector2(-40, -40) 
 	}
 
 	for p in provinces.values():
