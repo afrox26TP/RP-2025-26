@@ -25,9 +25,13 @@ func _ready():
 	# spustime generovani popisku
 	generuj_nazvy_provincii()
 	
-	# ZMĚNA: TADY TO CHYBĚLO! Musíme Godotu říct, ať ty státy opravdu vygeneruje
+	# Musíme Godotu říct, ať ty státy opravdu vygeneruje
 	generuj_nazvy_statu() 
 	
+	# --- NOVÉ: INICIALIZACE EKONOMIKY PRO 1. KOLO ---
+	# Pošleme celou načtenou mapu do GameManageru, aby věděl, z čeho počítat daně
+	if GameManager.has_method("spocitej_prijem"):
+		GameManager.spocitej_prijem(provinces)
 func load_provinces():
 	var file = FileAccess.open("res://map_data/Provinces.txt", FileAccess.READ)
 	if file == null:

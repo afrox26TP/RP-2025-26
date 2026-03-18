@@ -4,8 +4,9 @@ extends CanvasLayer
 @onready var name_label = $OverviewPanel/VBoxContainer/CountryNameLabel
 @onready var ideo_label = $OverviewPanel/VBoxContainer/IdeologyLabel 
 @onready var pop_label = $OverviewPanel/VBoxContainer/TotalPopLabel
+@onready var recruit_label = $OverviewPanel/VBoxContainer/TotalRecruitsLabel 
 @onready var gdp_label = $OverviewPanel/VBoxContainer/TotalGdpLabel
-# Napojení nového Labelu pro HDP na hlavu
+# Zpátky přidaný label pro HDP na osobu
 @onready var gdp_pc_label = $OverviewPanel/VBoxContainer/GdpPerCapitaLabel 
 
 func _ready():
@@ -26,16 +27,26 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 		
 	var total_pop = 0
 	var total_gdp = 0.0
+	var total_recruits = 0
 	
+	# Projedeme mapu a sečteme data pro daný stát
 	for p_id in all_provinces:
 		var p = all_provinces[p_id]
 		if str(p.get("owner", "")).strip_edges().to_upper() == owner:
 			total_pop += int(p.get("population", 0))
 			total_gdp += float(p.get("gdp", 0.0))
+			total_recruits += int(p.get("recruitable_population", 0))
 			
 	name_label.text = "Stát: " + plne_jmeno
 	ideo_label.text = "Zřízení: " + ideologie.capitalize()
 	pop_label.text = "Celková populace: " + _formatuj_cislo(total_pop)
+	
+	# Výpočet procenta rekrutů vůči celkové populaci
+	var procento = 0.0
+	if total_pop > 0:
+		procento = (float(total_recruits) / float(total_pop)) * 100.0
+		
+	recruit_label.text = "Celkoví rekruti: " + _formatuj_cislo(total_recruits) + " (%.2f %%)" % procento
 	gdp_label.text = "Celkové HDP: %.2f mld. USD" % total_gdp
 	
 	# Výpočet průměrného HDP na osobu pro celý stát

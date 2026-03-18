@@ -10,886 +10,913 @@ province_id;province_name;country;population;population_date;wikidata_uri;popula
 8;Tirana;Albania;1025241;2022-01-01;http://www.wikidata.org/entity/Q229892;matched_scaled_official
 9;Lezhë;Albania;130770;2022-01-01;http://www.wikidata.org/entity/Q193436;matched_scaled_official
 10;Berat;Albania;128280;2022-01-01;http://www.wikidata.org/entity/Q189296;matched_scaled_official
-11;Lower Austria;Austria;2469722;2020-01-01;http://www.wikidata.org/entity/Q42497;matched_scaled_official
-12;Upper Austria;Austria;2185242;2020-01-01;http://www.wikidata.org/entity/Q41967;matched_scaled_official
-13;Burgenland;Austria;431741;2020-01-01;http://www.wikidata.org/entity/Q43210;matched_scaled_official
-14;Vorarlberg;Austria;593811;2022-06-30;http://www.wikidata.org/entity/Q38981;matched_scaled_official
-15;Salzburg;Austria;818814;2020-01-01;http://www.wikidata.org/entity/Q43325;matched_scaled_official
-16;Carinthia;Austria;823042;2020-01-01;http://www.wikidata.org/entity/Q37985;matched_scaled_official
-17;Styria;Austria;1827628;2020-01-01;http://www.wikidata.org/entity/Q41358;matched_scaled_official
-18;West Flanders;Belgium;4223390;2023-01-01;;imputed_scaled_official
-19;Hainaut;Belgium;843097;2023-01-01;;imputed_scaled_official
-20;Namur;Belgium;1022803;2023-01-01;;imputed_scaled_official
-21;Luxembourg;Belgium;956142;2023-01-01;;imputed_scaled_official
-22;Liège;Belgium;1139777;2023-01-01;;imputed_scaled_official
-23;East Flanders;Belgium;962779;2023-01-01;;imputed_scaled_official
-24;Antwerp;Belgium;765361;2023-01-01;;imputed_scaled_official
-25;Limburg;Belgium;711346;2023-01-01;;imputed_scaled_official
-26;Flemish Brabant;Belgium;607457;2023-01-01;;imputed_scaled_official
-27;Walloon Brabant;Belgium;587848;2023-01-01;;imputed_scaled_official
-28;Burgas;Bulgaria;498069;2024-12-31;http://www.wikidata.org/entity/Q369220;matched_scaled_official
-29;Yambol;Bulgaria;135018;2024-12-31;http://www.wikidata.org/entity/Q220736;matched_scaled_official
-30;Haskovo;Bulgaria;265551;2024-12-31;http://www.wikidata.org/entity/Q182809;matched_scaled_official
-31;Vidin;Bulgaria;90340;2024-12-31;http://www.wikidata.org/entity/Q2012772;matched_scaled_official
-32;Pernik;Bulgaria;140726;2024-12-31;http://www.wikidata.org/entity/Q2012234;matched_scaled_official
-33;Sofia;Bulgaria;287763;2024-12-31;http://www.wikidata.org/entity/Q202904;matched_scaled_official
-34;Kyustendil;Bulgaria;135917;2024-12-31;http://www.wikidata.org/entity/Q1112985;matched_scaled_official
-35;Blagoevgrad;Bulgaria;366692;2024-12-31;http://www.wikidata.org/entity/Q804311;matched_scaled_official
-36;Silistra;Bulgaria;119804;2024-12-31;http://www.wikidata.org/entity/Q2012423;matched_scaled_official
-37;Ruse;Bulgaria;238320;2024-12-31;http://www.wikidata.org/entity/Q1251933;matched_scaled_official
-38;Dobrich;Bulgaria;185960;2024-12-31;http://www.wikidata.org/entity/Q907395;matched_scaled_official
-39;Vratsa;Bulgaria;186978;2024-12-31;http://www.wikidata.org/entity/Q2012785;matched_scaled_official
-40;Pleven;Bulgaria;275757;2024-12-31;http://www.wikidata.org/entity/Q2012242;matched_scaled_official
-41;Veliko Tarnovo;Bulgaria;256659;2024-12-31;http://www.wikidata.org/entity/Q2012621;matched_scaled_official
-42;Kardzhali;Bulgaria;191429;2024-12-31;http://www.wikidata.org/entity/Q1104675;matched_scaled_official
-43;Smolyan;Bulgaria;115943;2024-12-31;http://www.wikidata.org/entity/Q2012430;matched_scaled_official
-44;Varna;Bulgaria;560311;2024-12-31;http://www.wikidata.org/entity/Q183487;matched_scaled_official
-45;Plovdiv;Bulgaria;814018;2024-12-31;http://www.wikidata.org/entity/Q187874;matched_scaled_official
-46;Stara Zagora;Bulgaria;369770;2024-12-31;http://www.wikidata.org/entity/Q2012583;matched_scaled_official
-47;Sliven;Bulgaria;216813;2024-12-31;http://www.wikidata.org/entity/Q113120;matched_scaled_official
-48;Shumen;Bulgaria;191175;2024-12-31;http://www.wikidata.org/entity/Q184981;matched_scaled_official
-49;Razgrad;Bulgaria;127373;2024-12-31;http://www.wikidata.org/entity/Q2790675;matched_scaled_official
-50;Targovishte;Bulgaria;121323;2024-12-31;http://www.wikidata.org/entity/Q2012589;matched_scaled_official
-51;Gabrovo;Bulgaria;120147;2024-12-31;http://www.wikidata.org/entity/Q1007272;matched_scaled_official
-52;Pazardzhik;Bulgaria;286218;2024-12-31;http://www.wikidata.org/entity/Q2012227;matched_scaled_official
-53;Lovech;Bulgaria;141926;2024-12-31;http://www.wikidata.org/entity/Q6587068;matched_scaled_official
-54;Herzegovina-Neretva Canton;Bosnia and Herzegovina;252142;2023-01-01;;imputed_scaled_official
-55;Trebinje;Bosnia and Herzegovina;241800;2023-01-01;;imputed_scaled_official
-56;Foča;Bosnia and Herzegovina;72775;2023-01-01;;imputed_scaled_official
-57;Banja Luka;Bosnia and Herzegovina;279028;2023-01-01;;imputed_scaled_official
-58;Una-Sana Canton;Bosnia and Herzegovina;187024;2023-01-01;;imputed_scaled_official
-59;Doboj;Bosnia and Herzegovina;194566;2023-01-01;;imputed_scaled_official
-60;Bijeljina;Bosnia and Herzegovina;519820;2023-01-01;;imputed_scaled_official
-61;Livno;Bosnia and Herzegovina;282578;2023-01-01;;imputed_scaled_official
-62;West Herzegovina Canton;Bosnia and Herzegovina;136244;2023-01-01;;imputed_scaled_official
-63;Vlasenica;Bosnia and Herzegovina;118895;2023-01-01;;imputed_scaled_official
-64;Central Bosnia Canton;Bosnia and Herzegovina;307732;2023-01-01;;imputed_scaled_official
-65;Zenica-Doboj Canton;Bosnia and Herzegovina;88266;2013-01-01;http://www.wikidata.org/entity/Q11198;matched_scaled_official
-66;Tuzla Canton;Bosnia and Herzegovina;129001;2023-01-01;;imputed_scaled_official
-67;Sarajevo-Romanija;Bosnia and Herzegovina;199838;2023-01-01;;imputed_scaled_official
-68;Sarajevo Canton;Bosnia and Herzegovina;200291;2023-01-01;;imputed_scaled_official
-69;Gomel;Belarus;1708382;2025-01-01;http://www.wikidata.org/entity/Q188732;matched_scaled_official
-70;Brest;Belarus;1672283;2025-01-01;http://www.wikidata.org/entity/Q173822;matched_scaled_official
-71;Vitebsk;Belarus;1379165;2025-01-01;http://www.wikidata.org/entity/Q185700;matched_scaled_official
-72;Grodno;Belarus;1267007;2025-01-01;http://www.wikidata.org/entity/Q191061;matched_scaled_official
-73;Mahilioŭ;Belarus;1249621;2025-01-01;http://www.wikidata.org/entity/Q189822;matched_scaled_official
-74;Minsk;Belarus;1873542;2025-01-01;http://www.wikidata.org/entity/Q192959;matched_scaled_official
-75;Valais;Switzerland;520954;2018-12-31;http://www.wikidata.org/entity/Q834;matched_scaled_official
-76;Ticino;Switzerland;535173;2018-12-31;http://www.wikidata.org/entity/Q12724;matched_scaled_official
-77;Grisons;Switzerland;300465;2018-12-31;http://www.wikidata.org/entity/Q11925;matched_scaled_official
-78;Thurgau;Switzerland;418745;2018-12-31;http://www.wikidata.org/entity/Q12713;matched_scaled_official
-79;Zürich;Switzerland;2303654;2018-12-31;http://www.wikidata.org/entity/Q11943;matched_scaled_official
-80;Aargau;Switzerland;1027211;2018-12-31;http://www.wikidata.org/entity/Q11972;matched_scaled_official
-81;St. Gallen;Switzerland;768957;2018-12-31;http://www.wikidata.org/entity/Q12746;matched_scaled_official
-82;Solothurn;Switzerland;413780;2018-12-31;http://www.wikidata.org/entity/Q11929;matched_scaled_official
-83;Vaud;Switzerland;1210383;2018-12-31;http://www.wikidata.org/entity/Q12771;matched_scaled_official
-84;Bern;Switzerland;302457;2023-01-01;;imputed_scaled_official
-85;Lucerne;Switzerland;620315;2018-12-31;http://www.wikidata.org/entity/Q12121;matched_scaled_official
-86;Uri;Switzerland;55182;2018-12-31;http://www.wikidata.org/entity/Q12404;matched_scaled_official
-87;Fribourg;Switzerland;482724;2018-12-31;http://www.wikidata.org/entity/Q12640;matched_scaled_official
-88;Famagusta;Cyprus;84268;2011-01-01;http://www.wikidata.org/entity/Q59148;matched_scaled_official
-89;Nicosia;Cyprus;590914;2011-01-01;http://www.wikidata.org/entity/Q59147;matched_scaled_official
-90;Limassol;Cyprus;425286;2011-01-01;http://www.wikidata.org/entity/Q59150;matched_scaled_official
-91;Paphos;Cyprus;159532;2011-01-01;http://www.wikidata.org/entity/Q59133;matched_scaled_official
-92;Ústí nad Labem;Czech Republic;926708;2025-01-01;http://www.wikidata.org/entity/Q192702;matched_scaled_official
-93;Liberec;Czech Republic;515305;2025-01-01;http://www.wikidata.org/entity/Q193266;matched_scaled_official
-94;Karlovy Vary;Czech Republic;336122;2025-01-01;http://www.wikidata.org/entity/Q191091;matched_scaled_official
-95;Plzeň-;Czech Republic;704630;2025-01-01;http://www.wikidata.org/entity/Q46070;matched_scaled_official
-96;South Bohemian;Czech Republic;748867;2025-01-01;http://www.wikidata.org/entity/Q188373;matched_scaled_official
-97;Hradec Králové;Czech Republic;637316;2025-01-01;http://www.wikidata.org/entity/Q193295;matched_scaled_official
-98;Olomouc;Czech Republic;723959;2025-01-01;http://www.wikidata.org/entity/Q193307;matched_scaled_official
-99;Pardubice;Czech Republic;608136;2025-01-01;http://www.wikidata.org/entity/Q193317;matched_scaled_official
-100;Moravian-Silesian;Czech Republic;1363316;2024-01-01;http://www.wikidata.org/entity/Q190550;matched_scaled_official
-101;South Moravian;Czech Republic;1409331;2025-01-01;http://www.wikidata.org/entity/Q192697;matched_scaled_official
-102;Zlín;Czech Republic;663770;2025-01-01;http://www.wikidata.org/entity/Q192536;matched_scaled_official
-103;Vysočina;Czech Republic;593436;2025-01-01;http://www.wikidata.org/entity/Q190930;matched_scaled_official
-104;Central Bohemian;Czech Republic;1669104;2024-01-01;http://www.wikidata.org/entity/Q188399;matched_scaled_official
-105;Saxony;Germany;4788876;2023-12-31;http://www.wikidata.org/entity/Q1202;matched_scaled_official
-106;Bavaria;Germany;15369417;2022-01-01;http://www.wikidata.org/entity/Q980;matched_scaled_official
-107;Saarland;Germany;1191599;2022-01-01;http://www.wikidata.org/entity/Q1201;matched_scaled_official
-108;Schleswig-Holstein;Germany;3458359;2022-12-31;http://www.wikidata.org/entity/Q1194;matched_scaled_official
-109;Lower Saxony;Germany;9372220;2022-01-01;http://www.wikidata.org/entity/Q1197;matched_scaled_official
-110;North Rhine-Westphalia;Germany;20999612;2022-01-01;http://www.wikidata.org/entity/Q1198;matched_scaled_official
-111;Baden-Württemberg;Germany;13003127;2022-01-01;http://www.wikidata.org/entity/Q985;matched_scaled_official
-112;Brandenburg;Germany;2967470;2022-01-01;http://www.wikidata.org/entity/Q1208;matched_scaled_official
-113;Mecklenburg-Western Pomerania;Germany;1839470;2022-01-01;http://www.wikidata.org/entity/Q1196;matched_scaled_official
-114;Hesse;Germany;6449754;2022-01-01;http://www.wikidata.org/entity/Q1199;matched_scaled_official
-115;Thuringia;Germany;2530590;2022-01-01;http://www.wikidata.org/entity/Q1205;matched_scaled_official
-116;Saxony-Anhalt;Germany;2629506;2022-01-01;http://www.wikidata.org/entity/Q1206;matched_scaled_official
-117;Southern Denmark;Denmark;2373800;2019-10-01;http://www.wikidata.org/entity/Q26061;matched_scaled_official
-118;Denmark;Denmark;3586200;2019-10-01;http://www.wikidata.org/entity/Q26073;matched_scaled_official
-119;Navarre;Spain;1467500;2024-01-01;http://www.wikidata.org/entity/Q4018;region_scaled_official
-120;Gipuzkoa;Spain;1817464;2023-01-01;;region_scaled_official
-121;Huesca;Spain;603597;2023-01-01;;region_scaled_official
-122;Lleida;Spain;2749189;2023-01-01;;region_scaled_official
-123;Girona;Spain;1782041;2023-01-01;;region_scaled_official
-124;Badajoz;Spain;777407;2023-01-01;;region_scaled_official
-125;Cádiz;Spain;332678;2023-01-01;;region_scaled_official
-126;Ourense;Spain;802968;2023-01-01;;region_scaled_official
-127;Cáceres;Spain;258545;2023-01-01;;region_scaled_official
-128;Salamanca;Spain;1425517;2023-01-01;;region_scaled_official
-129;Zamora;Spain;1151597;2023-01-01;;region_scaled_official
-130;Pontevedra;Spain;506645;2023-01-01;;region_scaled_official
-131;Huelva;Spain;2090688;2023-01-01;;region_scaled_official
-132;Barcelona;Spain;1695732;2023-01-01;;region_scaled_official
-133;Tarragona;Spain;1679270;2023-01-01;;region_scaled_official
-134;Castellón;Spain;1776250;2023-01-01;;region_scaled_official
-135;Valencia;Spain;1191795;2023-01-01;;region_scaled_official
-136;Alicante;Spain;1034987;2023-01-01;;region_scaled_official
-137;Murcia;Spain;489609;2024-01-01;http://www.wikidata.org/entity/Q5772;region_scaled_official
-138;Almería;Spain;1082128;2023-01-01;;region_scaled_official
-139;Granada;Spain;861868;2023-01-01;;region_scaled_official
-140;Málaga;Spain;719105;2023-01-01;;region_scaled_official
-141;Seville;Spain;760160;2023-01-01;;region_scaled_official
-142;A Coruña;Spain;848513;2023-01-01;;region_scaled_official
-143;Lugo;Spain;501992;2023-01-01;;region_scaled_official
-144;Asturias;Spain;991906;2024-01-01;http://www.wikidata.org/entity/Q3934;region_scaled_official
-145;Cantabria;Spain;582102;2024-01-01;http://www.wikidata.org/entity/Q3946;region_scaled_official
-146;Biscay;Spain;1200094;2023-01-01;;region_scaled_official
-147;Santa Cruz de Tenerife;Spain;754733;2023-01-01;;region_scaled_official
-148;Las Palmas;Spain;1305850;2023-01-01;;region_scaled_official
-149;Balearic Islands;Spain;805684;2022-01-01;http://www.wikidata.org/entity/Q107356467;region_scaled_official
-150;Zaragoza;Spain;514966;2023-01-01;;region_scaled_official
-151;La Rioja;Spain;319211;2024-01-01;http://www.wikidata.org/entity/Q5727;region_scaled_official
-152;Araba / Álava;Spain;576040;2023-01-01;;region_scaled_official
-153;Albacete;Spain;131614;2023-01-01;;region_scaled_official
-154;Teruel;Spain;207716;2023-01-01;;region_scaled_official
-155;Cuenca;Spain;219959;2023-01-01;;region_scaled_official
-156;Toledo;Spain;268386;2023-01-01;;region_scaled_official
-157;León;Spain;1563737;2024-01-01;http://www.wikidata.org/entity/Q5739;region_scaled_official
-158;Soria;Spain;574585;2023-01-01;;region_scaled_official
-159;Burgos;Spain;370651;2023-01-01;;region_scaled_official
-160;Ávila;Spain;1377892;2023-01-01;;region_scaled_official
-161;Palencia;Spain;1369196;2023-01-01;;region_scaled_official
-162;Ciudad Real;Spain;750821;2023-01-01;;region_scaled_official
-163;Córdoba;Spain;1540838;2023-01-01;;region_scaled_official
-164;Guadalajara;Spain;694508;2023-01-01;;region_scaled_official
-165;Jaén;Spain;1094289;2023-01-01;;region_scaled_official
-166;Community of Madrid;Spain;1345508;2024-01-01;http://www.wikidata.org/entity/Q5756;region_scaled_official
-167;Segovia;Spain;819540;2023-01-01;;region_scaled_official
-168;Valladolid;Spain;812929;2023-01-01;;region_scaled_official
-169;Viljandi;Estonia;45516;2023-01-01;http://www.wikidata.org/entity/Q192061;matched_scaled_official
-170;Pärnu;Estonia;87186;2023-01-01;http://www.wikidata.org/entity/Q185036;matched_scaled_official
-171;Valga;Estonia;27851;2024-01-01;http://www.wikidata.org/entity/Q192362;matched_scaled_official
-172;Võru;Estonia;33959;2024-01-01;http://www.wikidata.org/entity/Q188076;matched_scaled_official
-173;Ida-Viru;Estonia;133003;2023-01-01;http://www.wikidata.org/entity/Q189963;matched_scaled_official
-174;Põlva;Estonia;23973;2023-01-01;http://www.wikidata.org/entity/Q191813;matched_scaled_official
-175;Tartu;Estonia;161958;2023-01-01;http://www.wikidata.org/entity/Q192370;matched_scaled_official
-176;Jõgeva;Estonia;27666;2023-01-01;http://www.wikidata.org/entity/Q189974;matched_scaled_official
-177;Lääne;Estonia;20571;2024-01-01;http://www.wikidata.org/entity/Q189968;matched_scaled_official
-178;Harju;Estonia;644592;2024-01-01;http://www.wikidata.org/entity/Q180200;matched_scaled_official
-179;Lääne-Viru;Estonia;59450;2023-01-01;http://www.wikidata.org/entity/Q189952;matched_scaled_official
-180;Saare;Estonia;31937;2024-01-01;http://www.wikidata.org/entity/Q203272;matched_scaled_official
-181;Hiiu;Estonia;8397;2024-01-01;http://www.wikidata.org/entity/Q1466462;matched_scaled_official
-182;Rapla;Estonia;33948;2023-01-01;http://www.wikidata.org/entity/Q192352;matched_scaled_official
-183;Järva;Estonia;29993;2023-01-01;http://www.wikidata.org/entity/Q188068;matched_scaled_official
-184;Lapland;Finland;206040;2021-01-01;http://www.wikidata.org/entity/Q5700;matched_scaled_official
-185;Kainuu;Finland;83581;2021-01-01;http://www.wikidata.org/entity/Q5694;matched_scaled_official
-186;North Karelia;Finland;190718;2021-01-01;http://www.wikidata.org/entity/Q5703;matched_scaled_official
-187;South Karelia;Finland;147037;2021-12-31;http://www.wikidata.org/entity/Q5691;matched_scaled_official
-188;Kymenlaakso;Finland;189867;2021-01-01;http://www.wikidata.org/entity/Q5698;matched_scaled_official
-189;Uusimaa;Finland;1987512;2021-01-01;http://www.wikidata.org/entity/Q5711;matched_scaled_official
-190;Finland Proper;Finland;58679;2023-01-01;;imputed_scaled_official
-191;Satakunta;Finland;251093;2021-01-01;http://www.wikidata.org/entity/Q5709;matched_scaled_official
-192;Ostrobothnia;Finland;205002;2021-01-01;http://www.wikidata.org/entity/Q5702;matched_scaled_official
-193;Central Ostrobothnia;Finland;79259;2021-01-01;http://www.wikidata.org/entity/Q5696;matched_scaled_official
-194;Northern Savonia;Finland;483472;2023-01-01;;imputed_scaled_official
-195;Southern Savonia;Finland;165212;2023-01-01;;imputed_scaled_official
-196;Central Finland;Finland;317782;2021-01-01;http://www.wikidata.org/entity/Q5697;matched_scaled_official
-197;Southern Ostrobothnia;Finland;204256;2023-01-01;;imputed_scaled_official
-198;Pirkanmaa;Finland;610498;2021-01-01;http://www.wikidata.org/entity/Q5701;matched_scaled_official
-199;Tavastia Proper;Finland;189963;2023-01-01;;imputed_scaled_official
-200;Päijänne Tavastia;Finland;240029;2021-01-01;http://www.wikidata.org/entity/Q5708;matched_scaled_official
-201;Nord;France;828116;2013-01-01;http://www.wikidata.org/entity/Q16987;region_scaled_official
-202;Ardennes;France;973747;2023-01-01;;region_scaled_official
-203;Aisne;France;2459069;2023-01-01;;region_scaled_official
-204;Meuse;France;950883;2023-01-01;;region_scaled_official
-205;Meurthe-et-Moselle;France;720657;2023-01-01;;region_scaled_official
-206;Moselle;France;766536;2023-01-01;;region_scaled_official
-207;Alpes-Maritimes;France;932717;2023-01-01;;region_scaled_official
-208;Alpes-de-Haute-Provence;France;951770;2023-01-01;;region_scaled_official
-209;Hautes-Alpes;France;888761;2023-01-01;;region_scaled_official
-210;Savoie;France;602926;2013-01-01;http://www.wikidata.org/entity/Q463;region_scaled_official
-211;Haute-Savoie;France;821154;2023-01-01;;region_scaled_official
-212;Pyrenees-Atlantics;France;569577;2023-01-01;;region_scaled_official
-213;Haute-Garonne;France;482834;2023-01-01;;region_scaled_official
-214;Hautes-Pyrénées;France;551623;2023-01-01;;region_scaled_official
-215;Ariège;France;397784;2023-01-01;;region_scaled_official
-216;Pyrénées-Orientales;France;616464;2023-01-01;;region_scaled_official
-217;Bas-Rhin;France;327903;2023-01-01;;region_scaled_official
-218;Haut-Rhin;France;358995;2023-01-01;;region_scaled_official
-219;Doubs;France;445405;2023-01-01;;region_scaled_official
-220;Ain;France;866413;2023-01-01;;region_scaled_official
-221;Jura;France;577635;2023-01-01;;region_scaled_official
-222;Var;France;747611;2023-01-01;;region_scaled_official
-223;Bouches-du-Rhône;France;808748;2023-01-01;;region_scaled_official
-224;Gard;France;404899;2023-01-01;;region_scaled_official
-225;Hérault;France;436223;2023-01-01;;region_scaled_official
-226;Aude;France;335958;2023-01-01;;region_scaled_official
-227;Landes;France;542316;2023-01-01;;region_scaled_official
-228;Gironde;France;526635;2023-01-01;;region_scaled_official
-229;Charente-Maritime;France;469296;2023-01-01;;region_scaled_official
-230;Vendée;France;744659;2023-01-01;;region_scaled_official
-231;Loire-Atlantique;France;655451;2023-01-01;;region_scaled_official
-232;Morbihan;France;692112;2023-01-01;;region_scaled_official
-233;Finistère;France;722600;2023-01-01;;region_scaled_official
-234;Côtes-d'Armor;France;740329;2023-01-01;;region_scaled_official
-235;Ille-et-Vilaine;France;1032039;2023-01-01;;region_scaled_official
-236;Manche;France;896701;2023-01-01;;region_scaled_official
-237;Calvados;France;635773;2023-01-01;;region_scaled_official
-238;Eure;France;619281;2023-01-01;;region_scaled_official
-239;Seine-Maritime;France;633528;2023-01-01;;region_scaled_official
-240;Somme;France;1010451;2023-01-01;;region_scaled_official
-241;Pas-de-Calais;France;1013074;2023-01-01;;region_scaled_official
-242;Corse-du-Sud;France;814635;2023-01-01;;region_scaled_official
-243;Gers;France;598911;2023-01-01;;region_scaled_official
-244;Haute-Vienne;France;555979;2023-01-01;;region_scaled_official
-245;Corrèze;France;526264;2023-01-01;;region_scaled_official
-246;Tarn-et-Garonne;France;546546;2023-01-01;;region_scaled_official
-247;Tarn;France;559167;2023-01-01;;region_scaled_official
-248;Isère;France;704575;2023-01-01;;region_scaled_official
-249;Drôme;France;756134;2023-01-01;;region_scaled_official
-250;Aveyron;France;440691;2023-01-01;;region_scaled_official
-251;Lot;France;382539;2023-01-01;;region_scaled_official
-252;Indre-et-Loire;France;456107;2023-01-01;;region_scaled_official
-253;Indre;France;407281;2023-01-01;;region_scaled_official
-254;Loir-et-Cher;France;432449;2023-01-01;;region_scaled_official
-255;Creuse;France;366865;2023-01-01;;region_scaled_official
-256;Mayenne;France;725782;2023-01-01;;region_scaled_official
-257;Sarthe;France;940528;2023-01-01;;region_scaled_official
-258;Vaucluse;France;1034462;2023-01-01;;region_scaled_official
-259;Haute-Marne;France;486608;2023-01-01;;region_scaled_official
-260;Marne;France;305856;2023-01-01;;region_scaled_official
-261;Dordogne;France;564192;2023-01-01;;region_scaled_official
-262;Rhône;France;772387;2022-01-01;http://www.wikidata.org/entity/Q18338206;region_scaled_official
-263;Vosges;France;368830;2023-01-01;;region_scaled_official
-264;Ardèche;France;642412;2023-01-01;;region_scaled_official
-265;Loire;France;607763;2022-01-01;http://www.wikidata.org/entity/Q13947;region_scaled_official
-266;Puy-de-Dôme;France;706193;2023-01-01;;region_scaled_official
-267;Allier;France;428383;2023-01-01;;region_scaled_official
-268;Loiret;France;458804;2023-01-01;;region_scaled_official
-269;Maine-et-Loire;France;958169;2023-01-01;;region_scaled_official
-270;Aube;France;508429;2023-01-01;;region_scaled_official
-271;Val-d'Oise;France;1870009;2023-01-01;;region_scaled_official
-272;Yvelines;France;3124230;2023-01-01;;region_scaled_official
-273;Charente;France;526259;2023-01-01;;region_scaled_official
-274;Cher;France;368248;2023-01-01;;region_scaled_official
-275;Eure-et-Loir;France;555456;2023-01-01;;region_scaled_official
-276;Haute-Loire;France;811510;2023-01-01;;region_scaled_official
-277;Cantal;France;749977;2023-01-01;;region_scaled_official
-278;Lot-et-Garonne;France;654630;2023-01-01;;region_scaled_official
-279;Lozère;France;554973;2023-01-01;;region_scaled_official
-280;Nièvre;France;153814;2023-01-01;;region_scaled_official
-281;Côte-d’Or;France;239435;2023-01-01;;region_scaled_official
-282;Oise;France;913012;2023-01-01;;region_scaled_official
-283;Orne;France;678923;2023-01-01;;region_scaled_official
-284;Haute-Saône;France;537970;2023-01-01;;region_scaled_official
-285;Saône-et-Loire;France;470439;2023-01-01;;region_scaled_official
-286;Deux-Sèvres;France;536663;2023-01-01;;region_scaled_official
-287;Vienne;France;503810;2023-01-01;;region_scaled_official
-288;Yonne;France;484360;2023-01-01;;region_scaled_official
-289;Essonne;France;3514041;2023-01-01;;region_scaled_official
-290;Seine-et-Marne;France;4336647;2023-01-01;;region_scaled_official
-291;Strabane;United Kingdom;342656;2023-01-01;;region_scaled_official
-292;Fermanagh;United Kingdom;353373;2023-01-01;;region_scaled_official
-293;Wrexham;United Kingdom;585514;2023-01-01;;region_scaled_official
-294;Shropshire;United Kingdom;2881837;2023-01-01;;region_scaled_official
-295;Powys;United Kingdom;660236;2023-01-01;;region_scaled_official
-296;Herefordshire;United Kingdom;2392788;2023-01-01;;region_scaled_official
-297;Gloucestershire;United Kingdom;2539696;2023-01-01;;region_scaled_official
-298;Scottish Borders;United Kingdom;236300;2023-01-01;;region_scaled_official
-299;Northumberland;United Kingdom;2298735;2023-01-01;;region_scaled_official
-300;Cumbria;United Kingdom;2929374;2023-01-01;;region_scaled_official
-301;Dumfries and Galloway;United Kingdom;479602;2023-01-01;;region_scaled_official
-302;Stirling;United Kingdom;247205;2023-01-01;;region_scaled_official
-303;Durham;United Kingdom;2288399;2023-01-01;;region_scaled_official
-304;North Yorkshire;United Kingdom;1829008;2023-01-01;;region_scaled_official
-305;East Riding of Yorkshire;United Kingdom;2005096;2023-01-01;;region_scaled_official
-306;North East Lincolnshire;United Kingdom;1414135;2023-01-01;;region_scaled_official
-307;Lincolnshire;United Kingdom;2858783;2023-01-01;;region_scaled_official
-308;Norfolk;United Kingdom;1831046;2023-01-01;;region_scaled_official
-309;Suffolk;United Kingdom;2347058;2023-01-01;;region_scaled_official
-310;Essex;United Kingdom;2222970;2023-01-01;;region_scaled_official
-311;Kent;United Kingdom;1048532;2023-01-01;;region_scaled_official
-312;East Sussex;United Kingdom;1354064;2023-01-01;;region_scaled_official
-313;West Sussex;United Kingdom;3426649;2023-01-01;;region_scaled_official
-314;Hampshire;United Kingdom;1000717;2023-01-01;;region_scaled_official
-315;Dorset;United Kingdom;945088;2023-01-01;;region_scaled_official
-316;Cornwall;United Kingdom;2299324;2023-01-01;;region_scaled_official
-317;Somerset;United Kingdom;1927189;2023-01-01;;region_scaled_official
-318;Carmarthenshire;United Kingdom;437670;2023-01-01;;region_scaled_official
-319;Pembrokeshire;United Kingdom;508410;2023-01-01;;region_scaled_official
-320;Ceredigion;United Kingdom;493045;2023-01-01;;region_scaled_official
-321;Gwynedd;United Kingdom;229293;2023-01-01;;region_scaled_official
-322;Conwy;United Kingdom;252438;2023-01-01;;region_scaled_official
-323;Lancashire;United Kingdom;1920306;2023-01-01;;region_scaled_official
-324;South Ayrshire;United Kingdom;319718;2023-01-01;;region_scaled_official
-325;Argyll and Bute;United Kingdom;714441;2023-01-01;;region_scaled_official
-326;Highland;United Kingdom;411118;2023-01-01;;region_scaled_official
-327;Moray;United Kingdom;450121;2023-01-01;;region_scaled_official
-328;Aberdeenshire;United Kingdom;292999;2023-01-01;;region_scaled_official
-329;Angus;United Kingdom;205007;2023-01-01;;region_scaled_official
-330;Perth and Kinross;United Kingdom;239711;2023-01-01;;region_scaled_official
-331;Fife;United Kingdom;388534;2023-01-01;;region_scaled_official
-332;Outer Hebrides;United Kingdom;156426;2023-01-01;;region_scaled_official
-333;Shetland Islands;United Kingdom;364029;2023-01-01;;region_scaled_official
-334;East Ayrshire;United Kingdom;171121;2023-01-01;;region_scaled_official
-335;South Lanarkshire;United Kingdom;788716;2023-01-01;;region_scaled_official
-336;Omagh;United Kingdom;1228419;2023-01-01;;region_scaled_official
-337;Hertfordshire;United Kingdom;908497;2023-01-01;;region_scaled_official
-338;Cambridgeshire;United Kingdom;2271151;2023-01-01;;region_scaled_official
-339;Buckinghamshire;United Kingdom;867210;2023-01-01;;region_scaled_official
-340;Nottinghamshire;United Kingdom;1958245;2023-01-01;;region_scaled_official
-341;Northamptonshire;United Kingdom;581882;2023-01-01;;region_scaled_official
-342;Leicestershire;United Kingdom;1130720;2023-01-01;;region_scaled_official
-343;Cheshire East;United Kingdom;596289;2023-01-01;;region_scaled_official
-344;Derbyshire;United Kingdom;567263;2023-01-01;;region_scaled_official
-345;Staffordshire;United Kingdom;738165;2023-01-01;;region_scaled_official
-346;Worcestershire;United Kingdom;521134;2023-01-01;;region_scaled_official
-347;Warwickshire;United Kingdom;695809;2023-01-01;;region_scaled_official
-348;Oxfordshire;United Kingdom;1433646;2023-01-01;;region_scaled_official
-349;Surrey;United Kingdom;829590;2023-01-01;;region_scaled_official
-350;Wiltshire;United Kingdom;883503;2023-01-01;;region_scaled_official
-351;Abkhazia;Georgia;638563;2023-01-01;;imputed_scaled_official
-352;Shida Kartli;Georgia;580590;2021-01-01;http://www.wikidata.org/entity/Q200047;matched_scaled_official
-353;Racha-Lechkhumi and Kvemo Svaneti;Georgia;73321;2021-01-01;http://www.wikidata.org/entity/Q38893;matched_scaled_official
-354;Samtskhe–Javakheti;Georgia;345247;2021-01-01;http://www.wikidata.org/entity/Q19039;matched_scaled_official
-355;Adjara;Georgia;747394;2023-01-01;;imputed_scaled_official
-356;Guria;Georgia;244712;2021-01-01;http://www.wikidata.org/entity/Q19038;matched_scaled_official
-357;Imereti;Georgia;1100173;2021-01-01;http://www.wikidata.org/entity/Q200045;matched_scaled_official
-358;West Macedonia;Greece;433497;2023-01-01;;imputed_scaled_official
-359;Epirus;Greece;378215;2021-01-01;http://www.wikidata.org/entity/Q180484;matched_scaled_official
-360;East Macedonia and Thrace;Greece;664496;2021-01-01;http://www.wikidata.org/entity/Q171314;matched_scaled_official
-361;Thessalia;Greece;813486;2021-01-01;http://www.wikidata.org/entity/Q22807284;matched_scaled_official
-362;Central Greece;Greece;600733;2021-01-01;http://www.wikidata.org/entity/Q199580;matched_scaled_official
-363;Attica;Greece;4508046;2021-01-01;http://www.wikidata.org/entity/Q758056;matched_scaled_official
-364;Peloponnese;Greece;637706;2021-01-01;http://www.wikidata.org/entity/Q202484;matched_scaled_official
-365;West Greece;Greece;766167;2021-01-01;http://www.wikidata.org/entity/Q170291;matched_scaled_official
-366;Crete;Greece;738022;2021-01-01;http://www.wikidata.org/entity/Q1267522;matched_scaled_official
-367;South Aegean;Greece;387469;2021-01-01;http://www.wikidata.org/entity/Q173616;matched_scaled_official
-368;North Aegean;Greece;230415;2021-01-01;http://www.wikidata.org/entity/Q173620;matched_scaled_official
-369;Ionian Islands;Greece;241748;2021-01-01;http://www.wikidata.org/entity/Q1147674;matched_scaled_official
-370;Virovitica-Podravina;Croatia;126648;2011-01-01;http://www.wikidata.org/entity/Q58092;matched_scaled_official
-371;Koprivnica-Križevci;Croatia;172549;2011-01-01;http://www.wikidata.org/entity/Q58026;matched_scaled_official
-372;Osijek-Baranja;Croatia;455365;2011-01-01;http://www.wikidata.org/entity/Q58159;matched_scaled_official
-373;Istria;Croatia;291459;2021-08-31;http://www.wikidata.org/entity/Q58268;matched_scaled_official
-374;Dubrovnik-Neretva;Croatia;172964;2021-01-01;http://www.wikidata.org/entity/Q58289;matched_scaled_official
-375;Sisak-Moslavina;Croatia;276754;2001-03-31;http://www.wikidata.org/entity/Q57060;matched_scaled_official
-376;Brod-Posavina;Croatia;236728;2011-01-01;http://www.wikidata.org/entity/Q58129;matched_scaled_official
-377;Karlovac;Croatia;192427;2011-01-01;http://www.wikidata.org/entity/Q57071;matched_scaled_official
-378;Zadar;Croatia;238506;2021-08-31;http://www.wikidata.org/entity/Q58146;matched_scaled_official
-379;Vukovar-Syrmia;Croatia;267997;2011-01-01;http://www.wikidata.org/entity/Q58225;matched_scaled_official
-380;Varaždin;Croatia;262668;2011-01-01;http://www.wikidata.org/entity/Q57967;matched_scaled_official
-381;Krapina-Zagorje;Croatia;180190;2021-08-31;http://www.wikidata.org/entity/Q57056;matched_scaled_official
-382;Zagreb;Croatia;474190;2011-01-01;http://www.wikidata.org/entity/Q27038;matched_scaled_official
-383;Šibenik-Knin;Croatia;163280;2011-01-01;http://www.wikidata.org/entity/Q58194;matched_scaled_official
-384;Lika-Senj;Croatia;63817;2021-08-31;http://www.wikidata.org/entity/Q58081;matched_scaled_official
-385;Bjelovar-Bilogora;Croatia;178790;2011-01-01;http://www.wikidata.org/entity/Q58060;matched_scaled_official
-386;Požega-Slavonia;Croatia;95668;2021-08-31;http://www.wikidata.org/entity/Q58111;matched_scaled_official
-387;Szabolcs-Szatmár-Bereg;Hungary;663974;2022-10-01;http://www.wikidata.org/entity/Q190518;matched_scaled_official
-388;Békés;Hungary;395367;2022-10-01;http://www.wikidata.org/entity/Q191616;matched_scaled_official
-389;Hajdú-Bihar;Hungary;651131;2022-10-01;http://www.wikidata.org/entity/Q185368;matched_scaled_official
-390;Csongrád-Csanád;Hungary;490641;2022-10-01;http://www.wikidata.org/entity/Q193031;matched_scaled_official
-391;Győr-Moson-Sopron;Hungary;584410;2022-10-01;http://www.wikidata.org/entity/Q187753;matched_scaled_official
-392;Vas;Hungary;312951;2022-10-01;http://www.wikidata.org/entity/Q187677;matched_scaled_official
-393;Bács-Kiskun;Hungary;621251;2022-10-01;http://www.wikidata.org/entity/Q181018;matched_scaled_official
-394;Zala;Hungary;327108;2022-10-01;http://www.wikidata.org/entity/Q185374;matched_scaled_official
-395;Somogy;Hungary;368084;2022-10-01;http://www.wikidata.org/entity/Q190522;matched_scaled_official
-396;Baranya;Hungary;444031;2022-10-01;http://www.wikidata.org/entity/Q186195;matched_scaled_official
-397;Borsod-Abaúj-Zemplén;Hungary;781425;2022-10-01;http://www.wikidata.org/entity/Q188895;matched_scaled_official
-398;Nógrád;Hungary;228849;2022-10-01;http://www.wikidata.org/entity/Q194273;matched_scaled_official
-399;Komárom-Esztergom;Hungary;377066;2022-10-01;http://www.wikidata.org/entity/Q190018;matched_scaled_official
-400;Pest;Hungary;1672577;2022-10-01;http://www.wikidata.org/entity/Q188612;matched_scaled_official
-401;Jász-Nagykun-Szolnok;Hungary;446273;2022-10-01;http://www.wikidata.org/entity/Q189655;matched_scaled_official
-402;Fejér;Hungary;526352;2022-10-01;http://www.wikidata.org/entity/Q187693;matched_scaled_official
-403;Veszprém;Hungary;69133;2025-01-01;http://www.wikidata.org/entity/Q146317;matched_scaled_official
-404;Tolna;Hungary;260797;2022-10-01;http://www.wikidata.org/entity/Q191625;matched_scaled_official
-405;Heves;Hungary;358580;2022-10-01;http://www.wikidata.org/entity/Q191604;matched_scaled_official
-406;Donegal;Ireland;210911;2023-01-01;;imputed_scaled_official
-407;Cavan;Ireland;520924;2023-01-01;;imputed_scaled_official
-408;Monaghan;Ireland;204903;2023-01-01;;imputed_scaled_official
-409;Wicklow;Ireland;369137;2023-01-01;;imputed_scaled_official
-410;Wexford;Ireland;279494;2023-01-01;;imputed_scaled_official
-411;Kilkenny;Ireland;451764;2023-01-01;;imputed_scaled_official
-412;Waterford;Ireland;89601;2016-01-01;http://www.wikidata.org/entity/Q183551;matched_scaled_official
-413;Cork;Ireland;411857;2022-01-01;http://www.wikidata.org/entity/Q36647;matched_scaled_official
-414;Kerry;Ireland;444349;2023-01-01;;imputed_scaled_official
-415;Limerick;Ireland;116152;2022-04-03;http://www.wikidata.org/entity/Q133315;matched_scaled_official
-416;Clare;Ireland;259601;2023-01-01;;imputed_scaled_official
-417;Galway;Ireland;306899;2023-01-01;;imputed_scaled_official
-418;Mayo;Ireland;222676;2023-01-01;;imputed_scaled_official
-419;Sligo;Ireland;204714;2023-01-01;;imputed_scaled_official
-420;Meath;Ireland;292955;2023-01-01;;imputed_scaled_official
-421;Kildare;Ireland;98928;2023-01-01;;imputed_scaled_official
-422;Laois;Ireland;115702;2023-01-01;;imputed_scaled_official
-423;Offaly;Ireland;126042;2023-01-01;;imputed_scaled_official
-424;Westmeath;Ireland;176992;2023-01-01;;imputed_scaled_official
-425;Longford;Ireland;198450;2023-01-01;;imputed_scaled_official
-426;Roscommon;Ireland;128236;2023-01-01;;imputed_scaled_official
-427;Tipperary;Ireland;109713;2023-01-01;;imputed_scaled_official
-428;Austurland;Iceland;93031;2023-01-01;;imputed_scaled_official
-429;Southern;Iceland;89319;2020-01-01;http://www.wikidata.org/entity/Q204796;matched_scaled_official
-430;Western;Iceland;55169;2023-01-01;http://www.wikidata.org/entity/Q221791;matched_scaled_official
-431;Westfjords;Iceland;23209;2023-01-01;http://www.wikidata.org/entity/Q727267;matched_scaled_official
-432;Northwestern;Iceland;23030;2020-01-01;http://www.wikidata.org/entity/Q210866;matched_scaled_official
-433;Northeastern;Iceland;96242;2020-01-01;http://www.wikidata.org/entity/Q241551;matched_scaled_official
-434;Aosta;Italy;27599;2019-01-01;http://www.wikidata.org/entity/Q1222;matched_scaled_official
-435;Verbano-Cusio-Ossola;Italy;375183;2023-01-01;;imputed_scaled_official
-436;Varese;Italy;275281;2023-01-01;;imputed_scaled_official
-437;Como;Italy;272645;2023-01-01;;imputed_scaled_official
-438;Sondrio;Italy;324231;2023-01-01;;imputed_scaled_official
-439;Trentino-South Tyrol;Italy;235484;2019-01-01;http://www.wikidata.org/entity/Q1237;matched_scaled_official
-440;Imperia;Italy;177631;2023-01-01;;imputed_scaled_official
-441;Cuneo;Italy;400597;2023-01-01;;imputed_scaled_official
-442;Turin;Italy;348438;2023-01-01;;imputed_scaled_official
-443;Pesaro and Urbino;Italy;339651;2023-01-01;;imputed_scaled_official
-444;Belluno;Italy;3429601;2023-01-01;;imputed_scaled_official
-445;Udine;Italy;4291548;2023-01-01;;imputed_scaled_official
-446;Venice;Italy;1535754;2023-01-01;;imputed_scaled_official
-447;Padua;Italy;1535937;2023-01-01;;imputed_scaled_official
-448;Rovigo;Italy;2016029;2023-01-01;;imputed_scaled_official
-449;Ferrara;Italy;3574816;2023-01-01;;imputed_scaled_official
-450;Ravenna;Italy;675807;2023-01-01;;imputed_scaled_official
-451;Forlì-Cesena;Italy;363282;2023-01-01;;imputed_scaled_official
-452;Ancona;Italy;179763;2023-01-01;;imputed_scaled_official
-453;Macerata;Italy;405703;2023-01-01;;imputed_scaled_official
-454;Ascoli Piceno;Italy;518181;2023-01-01;;imputed_scaled_official
-455;Teramo;Italy;1182868;2023-01-01;;imputed_scaled_official
-456;Pescara;Italy;197211;2023-01-01;;imputed_scaled_official
-457;Chieti;Italy;1107433;2023-01-01;;imputed_scaled_official
-458;Campobasso;Italy;1115595;2023-01-01;;imputed_scaled_official
-459;Foggia;Italy;553645;2023-01-01;;imputed_scaled_official
-460;Barletta-Andria-Trani;Italy;591223;2023-01-01;;imputed_scaled_official
-461;Bari;Italy;825079;2023-01-01;;imputed_scaled_official
-462;Brindisi;Italy;340554;2023-01-01;;imputed_scaled_official
-463;Lecce;Italy;331162;2023-01-01;;imputed_scaled_official
-464;Taranto;Italy;288264;2023-01-01;;imputed_scaled_official
-465;Matera;Italy;429033;2023-01-01;;imputed_scaled_official
-466;Cosenza;Italy;297772;2023-01-01;;imputed_scaled_official
-467;Crotone;Italy;376864;2023-01-01;;imputed_scaled_official
-468;Catanzaro;Italy;321986;2023-01-01;;imputed_scaled_official
-469;Reggio Calabria;Italy;444045;2023-01-01;;imputed_scaled_official
-470;Vibo Valentia;Italy;332654;2023-01-01;;imputed_scaled_official
-471;Potenza;Italy;318674;2023-01-01;;imputed_scaled_official
-472;Salerno;Italy;195826;2023-01-01;;imputed_scaled_official
-473;Naples;Italy;413005;2023-01-01;;imputed_scaled_official
-474;Caserta;Italy;475951;2023-01-01;;imputed_scaled_official
-475;Latina;Italy;1108393;2023-01-01;;imputed_scaled_official
-476;Rome;Italy;256735;2023-01-01;;imputed_scaled_official
-477;Viterbo;Italy;621542;2023-01-01;;imputed_scaled_official
-478;Grosseto;Italy;296539;2023-01-01;;imputed_scaled_official
-479;Livorno;Italy;444340;2023-01-01;;imputed_scaled_official
-480;Pisa;Italy;385140;2023-01-01;;imputed_scaled_official
-481;Lucca;Italy;549706;2023-01-01;;imputed_scaled_official
-482;Massa-Carrara;Italy;1074406;2023-01-01;;imputed_scaled_official
-483;Liguria;Italy;340538;2019-01-01;http://www.wikidata.org/entity/Q1256;matched_scaled_official
-484;Savona;Italy;378256;2023-01-01;;imputed_scaled_official
-485;Trapani;Italy;503734;2023-01-01;;imputed_scaled_official
-486;Messina;Italy;185058;2023-01-01;;imputed_scaled_official
-487;Palermo;Italy;1062127;2023-01-01;;imputed_scaled_official
-488;Agrigento;Italy;780118;2023-01-01;;imputed_scaled_official
-489;Caltanissetta;Italy;183752;2023-01-01;;imputed_scaled_official
-490;Ragusa;Italy;425457;2023-01-01;;imputed_scaled_official
-491;Syracuse;Italy;350188;2023-01-01;;imputed_scaled_official
-492;Catania;Italy;856985;2023-01-01;;imputed_scaled_official
-493;Carbonia-Iglesias;Italy;580631;2023-01-01;;imputed_scaled_official
-494;Sassari;Italy;718151;2023-01-01;;imputed_scaled_official
-495;Nuoro;Italy;194883;2023-01-01;;imputed_scaled_official
-496;Olbia-Tempio;Italy;389320;2023-01-01;;imputed_scaled_official
-497;Oristano;Italy;491821;2023-01-01;;imputed_scaled_official
-498;Medio Campidano;Italy;320290;2023-01-01;;imputed_scaled_official
-499;Cagliari;Italy;296796;2023-01-01;;imputed_scaled_official
-500;Ogliastra;Italy;252077;2023-01-01;;imputed_scaled_official
-501;Enna;Italy;397551;2023-01-01;;imputed_scaled_official
-502;Benevento;Italy;527297;2023-01-01;;imputed_scaled_official
-503;Asti;Italy;815530;2023-01-01;;imputed_scaled_official
-504;Bergamo;Italy;481966;2023-01-01;;imputed_scaled_official
-505;Brescia;Italy;338695;2023-01-01;;imputed_scaled_official
-506;Cremona;Italy;258263;2023-01-01;;imputed_scaled_official
-507;Mantua;Italy;346332;2023-01-01;;imputed_scaled_official
-508;Milan;Italy;569753;2023-01-01;;imputed_scaled_official
-509;Siena;Italy;239065;2023-01-01;;imputed_scaled_official
-510;Arezzo;Italy;691225;2023-01-01;;imputed_scaled_official
-511;Florence;Italy;630057;2023-01-01;;imputed_scaled_official
-512;Vercelli;Italy;542007;2023-01-01;;imputed_scaled_official
-513;Pavia;Italy;488044;2023-01-01;;imputed_scaled_official
-514;Rieti;Italy;245902;2023-01-01;;imputed_scaled_official
-515;Novara;Italy;722839;2023-01-01;;imputed_scaled_official
-516;Alessandria;Italy;299371;2023-01-01;;imputed_scaled_official
-517;Trentino;Italy;409140;2023-01-01;;imputed_scaled_official
-518;Vicenza;Italy;333649;2023-01-01;;imputed_scaled_official
-519;Verona;Italy;244289;2023-01-01;;imputed_scaled_official
-520;Treviso;Italy;437648;2023-01-01;;imputed_scaled_official
-521;Piacenza;Italy;779430;2023-01-01;;imputed_scaled_official
-522;Parma;Italy;284532;2023-01-01;;imputed_scaled_official
-523;Reggio Emilia;Italy;370101;2023-01-01;;imputed_scaled_official
-524;Modena;Italy;247653;2023-01-01;;imputed_scaled_official
-525;Bologna;Italy;608153;2023-01-01;;imputed_scaled_official
-526;Terni;Italy;517283;2023-01-01;;imputed_scaled_official
-527;Perugia;Italy;566767;2023-01-01;;imputed_scaled_official
-528;Frosinone;Italy;333117;2023-01-01;;imputed_scaled_official
-529;Avellino;Italy;486054;2023-01-01;;imputed_scaled_official
-530;L'Aquila;Italy;428103;2023-01-01;;imputed_scaled_official
-531;Pordenone;Italy;212110;2023-01-01;;imputed_scaled_official
-532;Isernia;Italy;559086;2023-01-01;;imputed_scaled_official
-533;Plužine;Kosovo;745088;2023-01-01;http://www.wikidata.org/entity/Q1048331;matched_scaled_official
-534;Kačanik;Kosovo;333938;2023-01-01;;imputed_scaled_official
-535;Podujevo/Podujeva;Kosovo;375431;2023-01-01;;imputed_scaled_official
-536;Kosovo-Pomoravlje;Kosovo;305543;2023-01-01;;imputed_scaled_official
-537;Utena;Lithuania;202061;2023-01-01;http://www.wikidata.org/entity/Q2089798;matched_scaled_official
-538;Vilnius;Lithuania;548492;2023-01-01;http://www.wikidata.org/entity/Q118903;matched_scaled_official
-539;Alytus;Lithuania;136426;2023-01-01;http://www.wikidata.org/entity/Q769940;matched_scaled_official
-540;Panevėžys;Lithuania;189525;2023-01-01;http://www.wikidata.org/entity/Q1351758;matched_scaled_official
-541;Telšiai;Lithuania;210594;2023-01-01;http://www.wikidata.org/entity/Q588916;matched_scaled_official
-542;Klaipėda;Lithuania;343602;2023-01-01;http://www.wikidata.org/entity/Q141132;matched_scaled_official
-543;Šiauliai;Lithuania;218649;2023-01-01;http://www.wikidata.org/entity/Q1417346;matched_scaled_official
-544;Marijampolė;Lithuania;294361;2023-01-01;http://www.wikidata.org/entity/Q1931377;matched_scaled_official
-545;Tauragė;Lithuania;202206;2023-01-01;http://www.wikidata.org/entity/Q2071640;matched_scaled_official
-546;Kaunas;Lithuania;534084;2023-01-01;http://www.wikidata.org/entity/Q1351722;matched_scaled_official
-547;Diekirch;Luxembourg;670000;2015-01-01;http://www.wikidata.org/entity/Q208747;matched_scaled_official
-548;Valka;Latvia;13439;2025-01-01;http://www.wikidata.org/entity/Q1945263;matched_scaled_official
-549;Alūksne;Latvia;23122;2025-01-01;http://www.wikidata.org/entity/Q3393445;matched_scaled_official
-550;Kārsava;Latvia;9013;2021-01-01;http://www.wikidata.org/entity/Q2395952;matched_scaled_official
-551;Vecumnieki;Latvia;13703;2021-01-01;http://www.wikidata.org/entity/Q2299436;matched_scaled_official
-552;Saldus;Latvia;46812;2025-01-01;http://www.wikidata.org/entity/Q97232673;matched_scaled_official
-553;Vaiņode;Latvia;3896;2021-01-01;http://www.wikidata.org/entity/Q511151;matched_scaled_official
-554;Jelgava;Latvia;56265;2025-01-01;http://www.wikidata.org/entity/Q97231093;matched_scaled_official
-555;Daugavpils;Latvia;137327;2025-01-01;http://www.wikidata.org/entity/Q80021;matched_scaled_official
-556;Krāslava;Latvia;34286;2025-01-01;http://www.wikidata.org/entity/Q97231555;matched_scaled_official
-557;Ventspils;Latvia;18097;2025-01-01;http://www.wikidata.org/entity/Q1345325;matched_scaled_official
-558;Talsi;Latvia;61173;2025-01-01;http://www.wikidata.org/entity/Q97232890;matched_scaled_official
-559;Riga;Latvia;1045958;2025-01-01;http://www.wikidata.org/entity/Q1773;matched_scaled_official
-560;Limbaži;Latvia;48538;2025-01-01;http://www.wikidata.org/entity/Q97231916;matched_scaled_official
-561;Rēzekne;Latvia;48707;2025-01-01;http://www.wikidata.org/entity/Q97232589;matched_scaled_official
-562;Gulbene;Latvia;32514;2025-01-01;http://www.wikidata.org/entity/Q209187;matched_scaled_official
-563;Madona;Latvia;52554;2025-07-01;http://www.wikidata.org/entity/Q97231990;matched_scaled_official
-564;Ogre;Latvia;101367;2025-01-01;http://www.wikidata.org/entity/Q97232220;matched_scaled_official
-565;Kuldīga;Latvia;46873;2025-01-01;http://www.wikidata.org/entity/Q97231583;matched_scaled_official
-566;Tukums;Latvia;76356;2025-01-01;http://www.wikidata.org/entity/Q97232977;matched_scaled_official
-567;Edineț;Moldova;185610;2024-04-08;http://www.wikidata.org/entity/Q878290;matched_scaled_official
-568;Rîșcani;Moldova;160666;2024-04-08;http://www.wikidata.org/entity/Q611656;matched_scaled_official
-569;Fălești;Moldova;206258;2024-04-08;http://www.wikidata.org/entity/Q878375;matched_scaled_official
-570;Ungheni;Moldova;279005;2024-04-08;http://www.wikidata.org/entity/Q854443;matched_scaled_official
-571;Hîncești;Moldova;255663;2024-04-08;http://www.wikidata.org/entity/Q878297;matched_scaled_official
-572;Cantemir;Moldova;122127;2024-04-08;http://www.wikidata.org/entity/Q684183;matched_scaled_official
-573;Cahul;Moldova;267857;2024-04-08;http://www.wikidata.org/entity/Q2128882;matched_scaled_official
-574;Ștefan Vodă;Moldova;155635;2024-04-08;http://www.wikidata.org/entity/Q2129061;matched_scaled_official
-575;Căușeni;Moldova;210756;2024-04-08;http://www.wikidata.org/entity/Q2128869;matched_scaled_official
-576;Cimișlia;Moldova;114048;2024-04-08;http://www.wikidata.org/entity/Q286646;matched_scaled_official
-577;Taraclia;Moldova;97298;2024-04-08;http://www.wikidata.org/entity/Q865884;matched_scaled_official
-578;Comrat;Moldova;73418;2024-04-08;http://www.wikidata.org/entity/Q241122;matched_scaled_official
-579;Orhei;Moldova;291659;2024-04-08;http://www.wikidata.org/entity/Q2112462;matched_scaled_official
-580;Mavrovo and Rostuša;Macedonia;137089;2023-01-01;;imputed_scaled_official
-581;Debarca;Macedonia;64986;2023-01-01;;imputed_scaled_official
-582;Bogdanci;Macedonia;112622;2023-01-01;;imputed_scaled_official
-583;Kavadarci;Macedonia;74937;2023-01-01;;imputed_scaled_official
-584;Prilep;Macedonia;988999;2023-01-01;;imputed_scaled_official
-585;Bitola;Macedonia;118687;2023-01-01;;imputed_scaled_official
-586;Tearce;Macedonia;72811;2023-01-01;;imputed_scaled_official
-587;Staro Nagoričane;Macedonia;179259;2023-01-01;;imputed_scaled_official
-588;Berovo;Macedonia;80610;2023-01-01;;imputed_scaled_official
-589;Berane;Montenegro;60222;2017-01-01;http://www.wikidata.org/entity/Q4853794;matched_scaled_official
-590;Pljevlja;Montenegro;62140;2017-01-01;http://www.wikidata.org/entity/Q3299950;matched_scaled_official
-591;Nikšić;Montenegro;160060;2011-01-01;http://www.wikidata.org/entity/Q4865016;matched_scaled_official
-592;Podgorica;Montenegro;333578;2011-01-01;http://www.wikidata.org/entity/Q23564;matched_scaled_official
-593;Groningen;Netherlands;624820;2013-12-31;http://www.wikidata.org/entity/Q752;matched_scaled_official
-594;Drenthe;Netherlands;527316;2017-01-01;http://www.wikidata.org/entity/Q772;matched_scaled_official
-595;Overijssel;Netherlands;1224876;2015-08-01;http://www.wikidata.org/entity/Q773;matched_scaled_official
-596;Gelderland;Netherlands;2165579;2013-12-31;http://www.wikidata.org/entity/Q775;matched_scaled_official
-597;Limburg;Netherlands;1200907;2013-12-31;http://www.wikidata.org/entity/Q1093;matched_scaled_official
-598;Zeeland;Netherlands;414641;2022-01-01;http://www.wikidata.org/entity/Q705;matched_scaled_official
-599;North Brabant;Netherlands;2419865;2015-01-01;http://www.wikidata.org/entity/Q1101;matched_scaled_official
-600;South Holland;Netherlands;3835408;2013-12-31;http://www.wikidata.org/entity/Q694;matched_scaled_official
-601;North Holland;Netherlands;3016689;2017-01-01;http://www.wikidata.org/entity/Q701;matched_scaled_official
-602;Friesland;Netherlands;696892;2021-01-01;http://www.wikidata.org/entity/Q770;matched_scaled_official
-603;Flevoland;Netherlands;428779;2013-12-31;http://www.wikidata.org/entity/Q707;matched_scaled_official
-604;Utrecht;Netherlands;1344228;2013-12-31;http://www.wikidata.org/entity/Q776;matched_scaled_official
-605;Hedmark;Norway;346473;2019-01-01;http://www.wikidata.org/entity/Q50616;matched_scaled_official
-606;Østfold;Norway;522186;2019-01-01;http://www.wikidata.org/entity/Q50614;matched_scaled_official
-607;Finnmark;Norway;132966;2016-01-01;http://www.wikidata.org/entity/Q50632;matched_scaled_official
-608;Buskerud;Norway;474838;2024-08-01;http://www.wikidata.org/entity/Q50618;matched_scaled_official
-609;Vestfold;Norway;440675;2019-01-01;http://www.wikidata.org/entity/Q50619;matched_scaled_official
-610;Telemark;Norway;304196;2019-01-01;http://www.wikidata.org/entity/Q2254;matched_scaled_official
-611;Aust-Agder;Norway;206500;2019-01-01;http://www.wikidata.org/entity/Q50621;matched_scaled_official
-612;Vest-Agder;Norway;329243;2019-01-01;http://www.wikidata.org/entity/Q50623;matched_scaled_official
-613;Rogaland;Norway;876541;2024-01-01;http://www.wikidata.org/entity/Q50624;matched_scaled_official
-614;Hordaland;Norway;920556;2019-01-01;http://www.wikidata.org/entity/Q50625;matched_scaled_official
-615;Sogn og Fjordane;Norway;192668;2019-01-01;http://www.wikidata.org/entity/Q50626;matched_scaled_official
-616;Møre og Romsdal;Norway;465798;2019-01-01;http://www.wikidata.org/entity/Q50627;matched_scaled_official
-617;Svalbard;Norway;4684;2023-01-01;http://www.wikidata.org/entity/Q25231;matched_scaled_official
-618;Oppland;Norway;332676;2019-01-01;http://www.wikidata.org/entity/Q50617;matched_scaled_official
-619;Silesian Voivodeship;Poland;4380148;2023-01-01;http://www.wikidata.org/entity/Q54181;matched_scaled_official
-620;Lesser Poland Voivodeship;Poland;3188184;2013-01-01;http://www.wikidata.org/entity/Q54159;matched_scaled_official
-621;Podkarpackie Voivodeship;Poland;2012411;2020-01-01;http://www.wikidata.org/entity/Q54175;matched_scaled_official
-622;Lower Silesian Voivodeship;Poland;2765694;2012-12-31;http://www.wikidata.org/entity/Q54150;matched_scaled_official
-623;Opole Voivodeship;Poland;958380;2017-01-01;http://www.wikidata.org/entity/Q54171;matched_scaled_official
-624;Podlaskie Voivodeship;Poland;1132130;2014-06-30;http://www.wikidata.org/entity/Q54177;matched_scaled_official
-625;Warmian-Masurian Voivodeship;Poland;1364053;2016-06-30;http://www.wikidata.org/entity/Q54184;matched_scaled_official
-626;Lubusz Voivodeship;Poland;968402;2014-01-01;http://www.wikidata.org/entity/Q54157;matched_scaled_official
-627;West Pomeranian Voivodeship;Poland;1539513;2024-12-31;http://www.wikidata.org/entity/Q54188;matched_scaled_official
-628;Lublin Voivodeship;Poland;2041447;2014-01-01;http://www.wikidata.org/entity/Q54155;matched_scaled_official
-629;Pomeranian Voivodeship;Poland;2182011;2019-01-01;http://www.wikidata.org/entity/Q54180;matched_scaled_official
-630;Masovian Voivodeship;Poland;5210261;2011-03-31;http://www.wikidata.org/entity/Q54169;matched_scaled_official
-631;Łódź Voivodeship;Poland;2379780;2014-01-01;http://www.wikidata.org/entity/Q54158;matched_scaled_official
-632;Kuyavian-Pomeranian Voivodeship;Poland;1983577;2014-01-01;http://www.wikidata.org/entity/Q54153;matched_scaled_official
-633;Greater Poland Voivodeship;Poland;3316153;2019-01-01;http://www.wikidata.org/entity/Q54187;matched_scaled_official
-634;Świętokrzyskie Voivodeship;Poland;1177856;2018-01-01;http://www.wikidata.org/entity/Q54183;matched_scaled_official
-635;Évora;Portugal;94817;2018-01-01;http://www.wikidata.org/entity/Q274118;matched_scaled_official
-636;Portalegre;Portugal;40417;2018-01-01;http://www.wikidata.org/entity/Q225189;matched_scaled_official
-637;Viana do Castelo;Portugal;152989;2018-01-01;http://www.wikidata.org/entity/Q326214;matched_scaled_official
-638;Castelo Branco;Portugal;94343;2018-01-01;http://www.wikidata.org/entity/Q273529;matched_scaled_official
-639;Guarda;Portugal;70684;2018-01-01;http://www.wikidata.org/entity/Q273533;matched_scaled_official
-640;Bragança;Portugal;60711;2018-01-01;http://www.wikidata.org/entity/Q373528;matched_scaled_official
-641;Vila Real;Portugal;90142;2018-01-01;http://www.wikidata.org/entity/Q379372;matched_scaled_official
-642;Faro;Portugal;110218;2018-01-01;http://www.wikidata.org/entity/Q244521;matched_scaled_official
-643;Setúbal;Portugal;1425219;2018-01-01;http://www.wikidata.org/entity/Q274109;matched_scaled_official
-644;Lisbon;Portugal;3861019;2023-01-01;http://www.wikidata.org/entity/Q207199;matched_scaled_official
-645;Santarém;Portugal;103754;2018-01-01;http://www.wikidata.org/entity/Q244510;matched_scaled_official
-646;Leiria;Portugal;225693;2018-01-01;http://www.wikidata.org/entity/Q244512;matched_scaled_official
-647;Coimbra;Portugal;241720;2018-01-01;http://www.wikidata.org/entity/Q244517;matched_scaled_official
-648;Aveiro;Portugal;140842;2018-01-01;http://www.wikidata.org/entity/Q210527;matched_scaled_official
-649;Porto;Portugal;3284720;2023-01-01;http://www.wikidata.org/entity/Q322792;matched_scaled_official
-650;Azores;Portugal;427390;2021-01-01;http://www.wikidata.org/entity/Q25263;matched_scaled_official
-651;Viseu;Portugal;175322;2018-01-01;http://www.wikidata.org/entity/Q273525;matched_scaled_official
-652;Satu Mare;Romania;362390;2021-12-01;http://www.wikidata.org/entity/Q165459;matched_scaled_official
-653;Arad;Romania;449489;2021-12-01;http://www.wikidata.org/entity/Q179559;matched_scaled_official
-654;Bihor;Romania;604183;2021-12-01;http://www.wikidata.org/entity/Q179588;matched_scaled_official
-655;Timiș;Romania;712939;2021-12-01;http://www.wikidata.org/entity/Q185586;matched_scaled_official
-656;Mehedinți;Romania;256820;2021-12-01;http://www.wikidata.org/entity/Q191717;matched_scaled_official
-657;Dolj;Romania;656947;2021-12-01;http://www.wikidata.org/entity/Q191065;matched_scaled_official
-658;Călărași;Romania;310651;2021-12-01;http://www.wikidata.org/entity/Q188948;matched_scaled_official
-659;Teleorman;Romania;354582;2021-12-01;http://www.wikidata.org/entity/Q191653;matched_scaled_official
-660;Giurgiu;Romania;287207;2021-12-01;http://www.wikidata.org/entity/Q193055;matched_scaled_official
-661;Constanța;Romania;718927;2021-12-01;http://www.wikidata.org/entity/Q188505;matched_scaled_official
-662;Olt;Romania;420049;2021-12-01;http://www.wikidata.org/entity/Q188945;matched_scaled_official
-663;Caraș-Severin;Romania;270244;2021-12-01;http://www.wikidata.org/entity/Q187925;matched_scaled_official
-664;Botoșani;Romania;430505;2021-12-01;http://www.wikidata.org/entity/Q178861;matched_scaled_official
-665;Iași;Romania;833755;2021-12-01;http://www.wikidata.org/entity/Q182888;matched_scaled_official
-666;Vaslui;Romania;410646;2021-12-01;http://www.wikidata.org/entity/Q167199;matched_scaled_official
-667;Galați;Romania;544559;2021-12-01;http://www.wikidata.org/entity/Q188796;matched_scaled_official
-668;Suceava;Romania;704191;2021-12-01;http://www.wikidata.org/entity/Q181209;matched_scaled_official
-669;Maramureș;Romania;495881;2021-12-01;http://www.wikidata.org/entity/Q188813;matched_scaled_official
-670;Tulcea;Romania;211904;2021-12-01;http://www.wikidata.org/entity/Q191078;matched_scaled_official
-671;Cluj;Romania;744291;2021-12-01;http://www.wikidata.org/entity/Q182624;matched_scaled_official
-672;Bistrița-Năsăud;Romania;324383;2021-12-01;http://www.wikidata.org/entity/Q181513;matched_scaled_official
-673;Sălaj;Romania;232583;2021-12-01;http://www.wikidata.org/entity/Q190690;matched_scaled_official
-674;Dâmbovița;Romania;525394;2021-12-01;http://www.wikidata.org/entity/Q188797;matched_scaled_official
-675;Ilfov;Romania;594766;2021-12-01;http://www.wikidata.org/entity/Q191670;matched_scaled_official
-676;Argeș;Romania;624606;2021-12-01;http://www.wikidata.org/entity/Q179567;matched_scaled_official
-677;Gorj;Romania;344873;2021-12-01;http://www.wikidata.org/entity/Q190406;matched_scaled_official
-678;Hunedoara;Romania;396351;2021-12-01;http://www.wikidata.org/entity/Q191071;matched_scaled_official
-679;Vâlcea;Romania;374656;2021-12-01;http://www.wikidata.org/entity/Q186838;matched_scaled_official
-680;Prahova;Romania;761802;2021-12-01;http://www.wikidata.org/entity/Q188665;matched_scaled_official
-681;Covasna;Romania;219233;2021-12-01;http://www.wikidata.org/entity/Q188959;matched_scaled_official
-682;Vrancea;Romania;367479;2021-12-01;http://www.wikidata.org/entity/Q182778;matched_scaled_official
-683;Buzău;Romania;443829;2021-12-01;http://www.wikidata.org/entity/Q185309;matched_scaled_official
-684;Brașov;Romania;599052;2021-12-01;http://www.wikidata.org/entity/Q182614;matched_scaled_official
-685;Sibiu;Romania;425579;2021-12-01;http://www.wikidata.org/entity/Q184797;matched_scaled_official
-686;Mureș;Romania;567904;2021-12-01;http://www.wikidata.org/entity/Q190711;matched_scaled_official
-687;Harghita;Romania;319958;2021-12-01;http://www.wikidata.org/entity/Q190702;matched_scaled_official
-688;Neamț;Romania;497775;2021-12-01;http://www.wikidata.org/entity/Q188661;matched_scaled_official
-689;Bacău;Romania;659078;2021-12-01;http://www.wikidata.org/entity/Q179779;matched_scaled_official
-690;Alba;Romania;357209;2021-12-01;http://www.wikidata.org/entity/Q45868;matched_scaled_official
-691;Brăila;Romania;308452;2021-12-01;http://www.wikidata.org/entity/Q188503;matched_scaled_official
-692;Ialomița;Romania;274878;2021-12-01;http://www.wikidata.org/entity/Q193044;matched_scaled_official
-693;Pskov;Russia;690005;2025-01-01;http://www.wikidata.org/entity/Q2218;matched_scaled_official
-694;Krasnodar Krai;Russia;7017073;2025-01-01;http://www.wikidata.org/entity/Q3680;matched_scaled_official
-695;Karachay-Cherkess Republic;Russia;562499;2024-01-01;http://www.wikidata.org/entity/Q5328;matched_scaled_official
-696;Kabardino-Balkaria;Russia;1087548;2024-01-01;http://www.wikidata.org/entity/Q5267;matched_scaled_official
-697;Republic of North Ossetia-Alania;Russia;815398;2024-01-01;http://www.wikidata.org/entity/Q5237;matched_scaled_official
-698;Murmansk;Russia;788444;2024-01-01;http://www.wikidata.org/entity/Q1759;matched_scaled_official
-699;Kaliningrad;Russia;1194607;2023-01-01;http://www.wikidata.org/entity/Q1749;matched_scaled_official
-700;Smolensk;Russia;1037730;2024-01-01;http://www.wikidata.org/entity/Q2347;matched_scaled_official
-701;Bryansk;Russia;1360593;2025-01-01;http://www.wikidata.org/entity/Q2810;matched_scaled_official
-702;Kursk;Russia;1260888;2025-01-01;http://www.wikidata.org/entity/Q3178;matched_scaled_official
-703;Belgorod;Russia;1780051;2025-01-01;http://www.wikidata.org/entity/Q3329;matched_scaled_official
-704;Voronezh;Russia;2714526;2025-01-01;http://www.wikidata.org/entity/Q3447;matched_scaled_official
-705;Rostov;Russia;4969326;2025-01-01;http://www.wikidata.org/entity/Q3573;matched_scaled_official
-706;Orenburg;Russia;2196386;2024-01-01;http://www.wikidata.org/entity/Q5338;matched_scaled_official
-707;Saratov;Russia;2845877;2025-01-01;http://www.wikidata.org/entity/Q5334;matched_scaled_official
-708;Astrakhan;Russia;1136750;2024-01-01;http://www.wikidata.org/entity/Q3941;matched_scaled_official
-709;Volgograd;Russia;2923517;2025-01-01;http://www.wikidata.org/entity/Q3819;matched_scaled_official
-710;Autonomous Republic of Crimea;Russia;2277746;2022-01-01;http://www.wikidata.org/entity/Q15966495;matched_scaled_official
-711;Nenets Autonomous Okrug;Russia;50716;2024-01-01;http://www.wikidata.org/entity/Q2164;matched_scaled_official
-712;Saint Petersburg;Russia;6789687;2025-01-01;http://www.wikidata.org/entity/Q656;matched_scaled_official
-713;Arkhangelsk;Russia;1188404;2025-01-01;http://www.wikidata.org/entity/Q1875;matched_scaled_official
-714;Republic of Kalmykia;Russia;321399;2025-01-01;http://www.wikidata.org/entity/Q3953;matched_scaled_official
-715;Bashkortostan;Russia;4855273;2025-01-01;http://www.wikidata.org/entity/Q5710;matched_scaled_official
-716;Sverdlovsk;Russia;5070358;2025-01-01;http://www.wikidata.org/entity/Q5462;matched_scaled_official
-717;Lipetsk;Russia;1352337;2023-01-01;http://www.wikidata.org/entity/Q3510;matched_scaled_official
-718;Tambov;Russia;1148597;2024-01-01;http://www.wikidata.org/entity/Q3550;matched_scaled_official
-719;Republic of Tatarstan;Russia;4807996;2024-01-01;http://www.wikidata.org/entity/Q5481;matched_scaled_official
-720;Ulyanovsk;Russia;1408622;2024-01-01;http://www.wikidata.org/entity/Q5634;matched_scaled_official
-721;Penza;Russia;1457063;2024-01-01;http://www.wikidata.org/entity/Q5545;matched_scaled_official
-722;Oryol;Russia;831741;2024-01-01;http://www.wikidata.org/entity/Q3129;matched_scaled_official
-723;Republic of Mordovia;Russia;935611;2021-01-01;http://www.wikidata.org/entity/Q5340;matched_scaled_official
-724;Kaluga;Russia;1202271;2021-01-01;http://www.wikidata.org/entity/Q2842;matched_scaled_official
-725;Kostroma;Russia;680139;2024-01-01;http://www.wikidata.org/entity/Q2596;matched_scaled_official
-726;Yaroslavl;Russia;1426369;2024-01-01;http://www.wikidata.org/entity/Q2448;matched_scaled_official
-727;Vladimir;Russia;1573363;2024-01-01;http://www.wikidata.org/entity/Q2702;matched_scaled_official
-728;Ryazan;Russia;1253019;2024-01-01;http://www.wikidata.org/entity/Q2753;matched_scaled_official
-729;Ivanovo;Russia;1088071;2024-01-01;http://www.wikidata.org/entity/Q2654;matched_scaled_official
-730;Nizhny Novgorod;Russia;3650629;2025-01-01;http://www.wikidata.org/entity/Q2246;matched_scaled_official
-731;Tula;Russia;1766977;2024-01-01;http://www.wikidata.org/entity/Q2792;matched_scaled_official
-732;Chuvash Republic;Russia;6323459;2023-01-01;;imputed_scaled_official
-733;Vologda;Russia;1393804;2021-01-01;http://www.wikidata.org/entity/Q2015;matched_scaled_official
-734;Novgorod;Russia;680973;2025-01-01;http://www.wikidata.org/entity/Q2240;matched_scaled_official
-735;Tver;Russia;1429991;2025-01-01;http://www.wikidata.org/entity/Q2292;matched_scaled_official
-736;Moscow;Russia;15943654;2025-01-01;http://www.wikidata.org/entity/Q649;matched_scaled_official
-737;Mari El Republic;Russia;804558;2024-01-01;http://www.wikidata.org/entity/Q5446;matched_scaled_official
-738;Kirov;Russia;1357158;2024-01-01;http://www.wikidata.org/entity/Q5387;matched_scaled_official
-739;Udmurt Republic;Russia;24902898;2023-01-01;;imputed_scaled_official
-740;Komi Republic;Russia;858524;2025-01-01;http://www.wikidata.org/entity/Q2073;matched_scaled_official
-741;Perm Krai;Russia;2983076;2025-01-01;http://www.wikidata.org/entity/Q5400;matched_scaled_official
-742;Samara;Russia;3738483;2025-01-01;http://www.wikidata.org/entity/Q1727;matched_scaled_official
-743;Stavropol Krai;Russia;3464390;2025-01-01;http://www.wikidata.org/entity/Q5207;matched_scaled_official
-744;Republic of Adygea;Russia;601426;2025-01-01;http://www.wikidata.org/entity/Q3734;matched_scaled_official
-745;North Bačka;Republic of Serbia;301281;2023-01-01;;imputed_scaled_official
-746;West Bačka;Republic of Serbia;165243;2023-01-01;;imputed_scaled_official
-747;North Banat;Republic of Serbia;192479;2023-01-01;;imputed_scaled_official
-748;Pčinja;Republic of Serbia;109723;2023-01-01;;imputed_scaled_official
-749;Bor;Republic of Serbia;115035;2023-01-01;;imputed_scaled_official
-750;Zaječar;Republic of Serbia;130416;2023-01-01;;imputed_scaled_official
-751;Pirot;Republic of Serbia;267044;2023-01-01;;imputed_scaled_official
-752;Raška;Republic of Serbia;159395;2023-01-01;;imputed_scaled_official
-753;Rasina;Republic of Serbia;130708;2023-01-01;;imputed_scaled_official
-754;Toplica;Republic of Serbia;175617;2023-01-01;;imputed_scaled_official
-755;Zlatibor;Republic of Serbia;104975;2023-01-01;;imputed_scaled_official
-756;Srem;Republic of Serbia;332979;2023-01-01;;imputed_scaled_official
-757;Mačva;Republic of Serbia;113194;2023-01-01;;imputed_scaled_official
-758;South Bačka;Republic of Serbia;81542;2023-01-01;;imputed_scaled_official
-759;Central Banat;Republic of Serbia;647149;2023-01-01;;imputed_scaled_official
-760;South Banat;Republic of Serbia;244654;2023-01-01;;imputed_scaled_official
-761;Braničevo;Republic of Serbia;375619;2023-01-01;;imputed_scaled_official
-762;Belgrade;Republic of Serbia;195696;2023-01-01;;imputed_scaled_official
-763;Podunavlje;Republic of Serbia;12661;2023-01-01;;imputed_scaled_official
-764;Nišava;Republic of Serbia;103871;2023-01-01;;imputed_scaled_official
-765;Pomoravski;Republic of Serbia;533487;2023-01-01;;imputed_scaled_official
-766;Šumadija;Republic of Serbia;186195;2023-01-01;;imputed_scaled_official
-767;Moravica;Republic of Serbia;1386298;2023-01-01;;imputed_scaled_official
-768;Kolubara;Republic of Serbia;534739;2023-01-01;;imputed_scaled_official
-769;Žilina;Slovakia;767546;2024-12-31;http://www.wikidata.org/entity/Q184228;matched_scaled_official
-770;Prešov;Slovakia;906211;2024-12-31;http://www.wikidata.org/entity/Q189001;matched_scaled_official
-771;Košice;Slovakia;871296;2024-12-31;http://www.wikidata.org/entity/Q186295;matched_scaled_official
-772;Bratislava;Slovakia;823844;2024-12-31;http://www.wikidata.org/entity/Q183498;matched_scaled_official
-773;Trenčín;Slovakia;632744;2024-12-31;http://www.wikidata.org/entity/Q183139;matched_scaled_official
-774;Banská Bystrica;Slovakia;683707;2024-12-31;http://www.wikidata.org/entity/Q183640;matched_scaled_official
-775;Nitra;Slovakia;744652;2024-12-31;http://www.wikidata.org/entity/Q184548;matched_scaled_official
-776;Podvelka;Slovenia;2120000;2020-07-01;http://www.wikidata.org/entity/Q1016800;matched_scaled_official
-777;Norrbotten;Sweden;254180;2025-09-30;http://www.wikidata.org/entity/Q103686;matched_scaled_official
-778;Jämtland;Sweden;135463;2025-09-30;http://www.wikidata.org/entity/Q103679;matched_scaled_official
-779;Dalarna;Sweden;292241;2025-09-30;http://www.wikidata.org/entity/Q103732;matched_scaled_official
-780;Värmland;Sweden;289374;2025-09-30;http://www.wikidata.org/entity/Q106789;matched_scaled_official
-781;Västra Götaland;Sweden;1815915;2025-09-30;http://www.wikidata.org/entity/Q103093;matched_scaled_official
-782;Västernorrland;Sweden;246282;2025-09-30;http://www.wikidata.org/entity/Q104891;matched_scaled_official
-783;Gävleborg;Sweden;289911;2025-09-30;http://www.wikidata.org/entity/Q103699;matched_scaled_official
-784;Uppsala;Sweden;419350;2025-09-30;http://www.wikidata.org/entity/Q104926;matched_scaled_official
-785;Stockholm;Sweden;2538227;2025-09-30;http://www.wikidata.org/entity/Q104231;matched_scaled_official
-786;Södermanland;Sweden;307404;2025-09-30;http://www.wikidata.org/entity/Q106915;matched_scaled_official
-787;Östergötland;Sweden;482829;2025-09-30;http://www.wikidata.org/entity/Q104940;matched_scaled_official
-788;Kalmar;Sweden;250990;2025-09-30;http://www.wikidata.org/entity/Q103707;matched_scaled_official
-789;Blekinge;Sweden;160223;2025-09-30;http://www.wikidata.org/entity/Q102377;matched_scaled_official
-790;Skåne;Sweden;1464118;2025-09-30;http://www.wikidata.org/entity/Q103659;matched_scaled_official
-791;Halland;Sweden;353439;2025-09-30;http://www.wikidata.org/entity/Q103691;matched_scaled_official
-792;Gotland;Sweden;62333;2025-09-30;http://www.wikidata.org/entity/Q103738;matched_scaled_official
-793;Västmanland;Sweden;286986;2025-09-30;http://www.wikidata.org/entity/Q105075;matched_scaled_official
-794;Jönköping;Sweden;377882;2025-09-30;http://www.wikidata.org/entity/Q103672;matched_scaled_official
-795;Örebro;Sweden;315093;2025-09-30;http://www.wikidata.org/entity/Q104257;matched_scaled_official
-796;Kronoberg;Sweden;207760;2025-09-30;http://www.wikidata.org/entity/Q104746;matched_scaled_official
-797;Ardahan;Turkey;622351;2023-01-01;;imputed_scaled_official
-798;Artvin;Turkey;815859;2023-01-01;;imputed_scaled_official
-799;Kırklareli;Turkey;639466;2023-01-01;;imputed_scaled_official
-800;Edirne;Turkey;196523;2023-01-01;;imputed_scaled_official
-801;Kars;Turkey;384442;2023-01-01;;imputed_scaled_official
-802;Mardin;Turkey;423476;2023-01-01;;imputed_scaled_official
-803;Şanlıurfa;Turkey;884473;2023-01-01;;imputed_scaled_official
-804;Kilis;Turkey;578402;2023-01-01;;imputed_scaled_official
-805;Hatay;Turkey;1177547;2023-01-01;;imputed_scaled_official
-806;Istanbul;Turkey;728983;2023-01-01;;imputed_scaled_official
-807;Tekirdağ;Turkey;9834908;2023-01-01;;imputed_scaled_official
-808;Çanakkale;Turkey;5508711;2023-01-01;;imputed_scaled_official
-809;Rize;Turkey;5067117;2023-01-01;;imputed_scaled_official
-810;Trabzon;Turkey;2837457;2023-01-01;;imputed_scaled_official
-811;Giresun;Turkey;2084946;2023-01-01;;imputed_scaled_official
-812;Ordu;Turkey;2764466;2023-01-01;;imputed_scaled_official
-813;Samsun;Turkey;2145528;2023-01-01;;imputed_scaled_official
-814;Sinop;Turkey;1826874;2023-01-01;;imputed_scaled_official
-815;Kastamonu;Turkey;657145;2023-01-01;;imputed_scaled_official
-816;Bartın;Turkey;592625;2023-01-01;;imputed_scaled_official
-817;Zonguldak;Turkey;655696;2023-01-01;;imputed_scaled_official
-818;Düzce;Turkey;1120102;2023-01-01;;imputed_scaled_official
-819;Sakarya;Turkey;1034453;2023-01-01;;imputed_scaled_official
-820;Kocaeli;Turkey;283299;2023-01-01;;imputed_scaled_official
-821;Bursa;Turkey;1076948;2023-01-01;;imputed_scaled_official
-822;Balıkesir;Turkey;553969;2023-01-01;;imputed_scaled_official
-823;İzmir;Turkey;290856;2023-01-01;;imputed_scaled_official
-824;Aydın;Turkey;659633;2023-01-01;;imputed_scaled_official
-825;Muğla;Turkey;1050132;2023-01-01;;imputed_scaled_official
-826;Antalya;Turkey;923685;2023-01-01;;imputed_scaled_official
-827;Mersin;Turkey;879782;2023-01-01;;imputed_scaled_official
-828;Adana;Turkey;481600;2023-01-01;;imputed_scaled_official
-829;Bolu;Turkey;734711;2023-01-01;;imputed_scaled_official
-830;Ankara;Turkey;646128;2023-01-01;;imputed_scaled_official
-831;Bilecik;Turkey;503690;2023-01-01;;imputed_scaled_official
-832;Eskişehir;Turkey;985833;2023-01-01;;imputed_scaled_official
-833;Çankırı;Turkey;946851;2023-01-01;;imputed_scaled_official
-834;Karabük;Turkey;1869688;2023-01-01;;imputed_scaled_official
-835;Tokat;Turkey;126830;2023-01-01;;imputed_scaled_official
-836;Sivas;Turkey;686676;2023-01-01;;imputed_scaled_official
-837;Çorum;Turkey;523389;2023-01-01;;imputed_scaled_official
-838;Amasya;Turkey;450953;2023-01-01;;imputed_scaled_official
-839;Kütahya;Turkey;655979;2023-01-01;;imputed_scaled_official
-840;Konya;Turkey;899277;2023-01-01;;imputed_scaled_official
-841;Karaman;Turkey;354352;2023-01-01;;imputed_scaled_official
-842;Niğde;Turkey;469563;2023-01-01;;imputed_scaled_official
-843;Kayseri;Turkey;634395;2023-01-01;;imputed_scaled_official
-844;Isparta;Turkey;550299;2023-01-01;;imputed_scaled_official
-845;Manisa;Turkey;888080;2023-01-01;;imputed_scaled_official
-846;Denizli;Turkey;583841;2023-01-01;;imputed_scaled_official
-847;Burdur;Turkey;1231559;2023-01-01;;imputed_scaled_official
-848;Aksaray;Turkey;197473;2023-01-01;;imputed_scaled_official
-849;Nevşehir;Turkey;306175;2023-01-01;;imputed_scaled_official
-850;Yozgat;Turkey;241191;2023-01-01;;imputed_scaled_official
-851;Kırşehir;Turkey;399252;2023-01-01;;imputed_scaled_official
-852;Uşak;Turkey;438673;2023-01-01;;imputed_scaled_official
-853;Erzincan;Turkey;1022966;2023-01-01;;imputed_scaled_official
-854;Tunceli;Turkey;1363977;2023-01-01;;imputed_scaled_official
-855;Afyonkarahisar;Turkey;1209734;2023-01-01;;imputed_scaled_official
-856;Kırıkkale;Turkey;745144;2023-01-01;;imputed_scaled_official
-857;Kahramanmaraş;Turkey;1205876;2023-01-01;;imputed_scaled_official
-858;Muş;Turkey;1988287;2023-01-01;;imputed_scaled_official
-859;Erzurum;Turkey;1434279;2023-01-01;;imputed_scaled_official
-860;Malatya;Turkey;1439922;2023-01-01;;imputed_scaled_official
-861;Elazığ;Turkey;804306;2023-01-01;;imputed_scaled_official
-862;Bitlis;Turkey;2409159;2023-01-01;;imputed_scaled_official
-863;Bingöl;Turkey;496020;2023-01-01;;imputed_scaled_official
-864;Osmaniye;Turkey;1287538;2023-01-01;;imputed_scaled_official
-865;Adıyaman;Turkey;720382;2023-01-01;;imputed_scaled_official
-866;Diyarbakır;Turkey;371925;2023-01-01;;imputed_scaled_official
-867;Batman;Turkey;882874;2023-01-01;;imputed_scaled_official
-868;Bayburt;Turkey;2637152;2023-01-01;;imputed_scaled_official
-869;Gümüşhane;Turkey;1174147;2023-01-01;;imputed_scaled_official
-870;Chernihiv;Ukraine;923835;2022-01-01;http://www.wikidata.org/entity/Q167874;matched_scaled_official
-871;Volyn;Ukraine;983581;2022-01-01;http://www.wikidata.org/entity/Q167859;matched_scaled_official
-872;Rivne;Ukraine;1099555;2022-01-01;http://www.wikidata.org/entity/Q174187;matched_scaled_official
-873;Zhytomyr;Ukraine;1135426;2022-01-01;http://www.wikidata.org/entity/Q40637;matched_scaled_official
-874;Kyiv;Ukraine;1728688;2022-01-01;http://www.wikidata.org/entity/Q170036;matched_scaled_official
-875;Zakarpattia;Ukraine;1198449;2022-01-01;http://www.wikidata.org/entity/Q170213;matched_scaled_official
-876;Chernivtsi;Ukraine;857524;2022-01-01;http://www.wikidata.org/entity/Q168856;matched_scaled_official
-877;Ivano-Frankivsk;Ukraine;1301825;2022-01-01;http://www.wikidata.org/entity/Q178269;matched_scaled_official
-878;Odessa;Ukraine;2264425;2022-01-01;http://www.wikidata.org/entity/Q171852;matched_scaled_official
-879;Vinnytsia;Ukraine;1453686;2022-01-01;http://www.wikidata.org/entity/Q166709;matched_scaled_official
-880;Lviv;Ukraine;2386479;2022-01-01;http://www.wikidata.org/entity/Q164193;matched_scaled_official
-881;Sumy;Ukraine;997464;2022-01-01;http://www.wikidata.org/entity/Q170446;matched_scaled_official
-882;Kharkiv;Ukraine;2502838;2022-01-01;http://www.wikidata.org/entity/Q170666;matched_scaled_official
-883;Luhansk;Ukraine;2087625;2018-01-01;http://www.wikidata.org/entity/Q171965;matched_scaled_official
-884;Donetsk;Ukraine;4045105;2018-01-01;http://www.wikidata.org/entity/Q2012050;matched_scaled_official
-885;Kherson;Ukraine;964554;2022-01-01;http://www.wikidata.org/entity/Q163271;matched_scaled_official
-886;Zaporizhzhia;Ukraine;1577863;2022-01-01;http://www.wikidata.org/entity/Q171334;matched_scaled_official
-887;Mykolaiv;Ukraine;1051440;2022-01-01;http://www.wikidata.org/entity/Q181633;matched_scaled_official
-888;Poltava;Ukraine;1302269;2022-01-01;http://www.wikidata.org/entity/Q169501;matched_scaled_official
-889;Khmelnytskyi;Ukraine;1183381;2022-01-01;http://www.wikidata.org/entity/Q171331;matched_scaled_official
-890;Ternopil;Ukraine;983925;2022-01-01;http://www.wikidata.org/entity/Q173407;matched_scaled_official
-891;Dnipropetrovsk;Ukraine;2981960;2022-01-01;http://www.wikidata.org/entity/Q170672;matched_scaled_official
-892;Cherkasy;Ukraine;1117814;2022-01-01;http://www.wikidata.org/entity/Q161808;matched_scaled_official
-893;Kirovohrad;Ukraine;870289;2022-01-01;http://www.wikidata.org/entity/Q180981;matched_scaled_official
+11;Lower Austria;Austria;2202328;2020-01-01;http://www.wikidata.org/entity/Q42497;matched_scaled_official
+12;Upper Austria;Austria;1948648;2020-01-01;http://www.wikidata.org/entity/Q41967;matched_scaled_official
+13;Burgenland;Austria;384997;2020-01-01;http://www.wikidata.org/entity/Q43210;matched_scaled_official
+14;Vorarlberg;Austria;529519;2022-06-30;http://www.wikidata.org/entity/Q38981;matched_scaled_official
+15;Tyrol;Austria;990662;2020-01-01;http://www.wikidata.org/entity/Q42880;matched_scaled_official
+16;Salzburg;Austria;730162;2020-01-01;http://www.wikidata.org/entity/Q43325;matched_scaled_official
+17;Carinthia;Austria;733932;2020-01-01;http://www.wikidata.org/entity/Q37985;matched_scaled_official
+18;Styria;Austria;1629752;2020-01-01;http://www.wikidata.org/entity/Q41358;matched_scaled_official
+19;West Flanders;Belgium;1264786;2023-01-01;;imputed_scaled_official
+20;Hainaut;Belgium;1534374;2023-01-01;;imputed_scaled_official
+21;Namur;Belgium;1434371;2023-01-01;;imputed_scaled_official
+22;Luxembourg;Belgium;1709854;2023-01-01;;imputed_scaled_official
+23;Liège;Belgium;1444328;2023-01-01;;imputed_scaled_official
+24;East Flanders;Belgium;1148168;2023-01-01;;imputed_scaled_official
+25;Antwerp;Belgium;1067136;2023-01-01;;imputed_scaled_official
+26;Limburg;Belgium;911287;2023-01-01;;imputed_scaled_official
+27;Flemish Brabant;Belgium;881870;2023-01-01;;imputed_scaled_official
+28;Walloon Brabant;Belgium;423826;2023-01-01;;imputed_scaled_official
+29;Burgas;Bulgaria;487147;2024-12-31;http://www.wikidata.org/entity/Q369220;matched_scaled_official
+30;Yambol;Bulgaria;132058;2024-12-31;http://www.wikidata.org/entity/Q220736;matched_scaled_official
+31;Haskovo;Bulgaria;259728;2024-12-31;http://www.wikidata.org/entity/Q182809;matched_scaled_official
+32;Vidin;Bulgaria;88359;2024-12-31;http://www.wikidata.org/entity/Q2012772;matched_scaled_official
+33;Pernik;Bulgaria;137640;2024-12-31;http://www.wikidata.org/entity/Q2012234;matched_scaled_official
+34;Sofia;Bulgaria;281454;2024-12-31;http://www.wikidata.org/entity/Q202904;matched_scaled_official
+35;Montana;Bulgaria;141211;2024-12-31;http://www.wikidata.org/entity/Q2012057;matched_scaled_official
+36;Kyustendil;Bulgaria;132937;2024-12-31;http://www.wikidata.org/entity/Q1112985;matched_scaled_official
+37;Blagoevgrad;Bulgaria;358652;2024-12-31;http://www.wikidata.org/entity/Q804311;matched_scaled_official
+38;Silistra;Bulgaria;117177;2024-12-31;http://www.wikidata.org/entity/Q2012423;matched_scaled_official
+39;Ruse;Bulgaria;233094;2024-12-31;http://www.wikidata.org/entity/Q1251933;matched_scaled_official
+40;Dobrich;Bulgaria;181882;2024-12-31;http://www.wikidata.org/entity/Q907395;matched_scaled_official
+41;Vratsa;Bulgaria;182878;2024-12-31;http://www.wikidata.org/entity/Q2012785;matched_scaled_official
+42;Pleven;Bulgaria;269711;2024-12-31;http://www.wikidata.org/entity/Q2012242;matched_scaled_official
+43;Veliko Tarnovo;Bulgaria;251031;2024-12-31;http://www.wikidata.org/entity/Q2012621;matched_scaled_official
+44;Kardzhali;Bulgaria;187232;2024-12-31;http://www.wikidata.org/entity/Q1104675;matched_scaled_official
+45;Smolyan;Bulgaria;113401;2024-12-31;http://www.wikidata.org/entity/Q2012430;matched_scaled_official
+46;Varna;Bulgaria;548024;2024-12-31;http://www.wikidata.org/entity/Q183487;matched_scaled_official
+47;Plovdiv;Bulgaria;796169;2024-12-31;http://www.wikidata.org/entity/Q187874;matched_scaled_official
+48;Stara Zagora;Bulgaria;361661;2024-12-31;http://www.wikidata.org/entity/Q2012583;matched_scaled_official
+49;Sliven;Bulgaria;212059;2024-12-31;http://www.wikidata.org/entity/Q113120;matched_scaled_official
+50;Shumen;Bulgaria;186983;2024-12-31;http://www.wikidata.org/entity/Q184981;matched_scaled_official
+51;Razgrad;Bulgaria;124580;2024-12-31;http://www.wikidata.org/entity/Q2790675;matched_scaled_official
+52;Targovishte;Bulgaria;118663;2024-12-31;http://www.wikidata.org/entity/Q2012589;matched_scaled_official
+53;Gabrovo;Bulgaria;117513;2024-12-31;http://www.wikidata.org/entity/Q1007272;matched_scaled_official
+54;Pazardzhik;Bulgaria;279942;2024-12-31;http://www.wikidata.org/entity/Q2012227;matched_scaled_official
+55;Lovech;Bulgaria;138814;2024-12-31;http://www.wikidata.org/entity/Q6587068;matched_scaled_official
+56;Herzegovina-Neretva Canton;Bosnia and Herzegovina;77315;2023-01-01;;imputed_scaled_official
+57;Trebinje;Bosnia and Herzegovina;296437;2023-01-01;;imputed_scaled_official
+58;Foča;Bosnia and Herzegovina;198692;2023-01-01;;imputed_scaled_official
+59;Banja Luka;Bosnia and Herzegovina;206705;2023-01-01;;imputed_scaled_official
+60;Una-Sana Canton;Bosnia and Herzegovina;552251;2023-01-01;;imputed_scaled_official
+61;Doboj;Bosnia and Herzegovina;300208;2023-01-01;;imputed_scaled_official
+62;Bijeljina;Bosnia and Herzegovina;144744;2023-01-01;;imputed_scaled_official
+63;Livno;Bosnia and Herzegovina;126313;2023-01-01;;imputed_scaled_official
+64;West Herzegovina Canton;Bosnia and Herzegovina;326931;2023-01-01;;imputed_scaled_official
+65;Vlasenica;Bosnia and Herzegovina;93773;2023-01-01;;imputed_scaled_official
+66;Central Bosnia Canton;Bosnia and Herzegovina;137049;2023-01-01;;imputed_scaled_official
+67;Zenica-Doboj Canton;Bosnia and Herzegovina;212306;2013-01-01;http://www.wikidata.org/entity/Q11198;matched_scaled_official
+68;Tuzla Canton;Bosnia and Herzegovina;212787;2023-01-01;;imputed_scaled_official
+69;Sarajevo-Romanija;Bosnia and Herzegovina;189701;2023-01-01;;imputed_scaled_official
+70;Sarajevo Canton;Bosnia and Herzegovina;134788;2023-01-01;;imputed_scaled_official
+71;Gomel;Belarus;1708382;2025-01-01;http://www.wikidata.org/entity/Q188732;matched_scaled_official
+72;Brest;Belarus;1672283;2025-01-01;http://www.wikidata.org/entity/Q173822;matched_scaled_official
+73;Vitebsk;Belarus;1379165;2025-01-01;http://www.wikidata.org/entity/Q185700;matched_scaled_official
+74;Grodno;Belarus;1267007;2025-01-01;http://www.wikidata.org/entity/Q191061;matched_scaled_official
+75;Mahilioŭ;Belarus;1249621;2025-01-01;http://www.wikidata.org/entity/Q189822;matched_scaled_official
+76;Minsk;Belarus;1873542;2025-01-01;http://www.wikidata.org/entity/Q192959;matched_scaled_official
+77;Valais;Switzerland;519530;2018-12-31;http://www.wikidata.org/entity/Q834;matched_scaled_official
+78;Ticino;Switzerland;533710;2018-12-31;http://www.wikidata.org/entity/Q12724;matched_scaled_official
+79;Grisons;Switzerland;299644;2018-12-31;http://www.wikidata.org/entity/Q11925;matched_scaled_official
+80;Thurgau;Switzerland;417600;2018-12-31;http://www.wikidata.org/entity/Q12713;matched_scaled_official
+81;Zürich;Switzerland;2297354;2018-12-31;http://www.wikidata.org/entity/Q11943;matched_scaled_official
+82;Aargau;Switzerland;1024402;2018-12-31;http://www.wikidata.org/entity/Q11972;matched_scaled_official
+83;St. Gallen;Switzerland;766854;2018-12-31;http://www.wikidata.org/entity/Q12746;matched_scaled_official
+84;Solothurn;Switzerland;412648;2018-12-31;http://www.wikidata.org/entity/Q11929;matched_scaled_official
+85;Vaud;Switzerland;1207073;2018-12-31;http://www.wikidata.org/entity/Q12771;matched_scaled_official
+86;Bern;Switzerland;326132;2023-01-01;;imputed_scaled_official
+87;Lucerne;Switzerland;618618;2018-12-31;http://www.wikidata.org/entity/Q12121;matched_scaled_official
+88;Uri;Switzerland;55031;2018-12-31;http://www.wikidata.org/entity/Q12404;matched_scaled_official
+89;Fribourg;Switzerland;481404;2018-12-31;http://www.wikidata.org/entity/Q12640;matched_scaled_official
+90;Famagusta;Cyprus;84268;2011-01-01;http://www.wikidata.org/entity/Q59148;matched_scaled_official
+91;Nicosia;Cyprus;590914;2011-01-01;http://www.wikidata.org/entity/Q59147;matched_scaled_official
+92;Limassol;Cyprus;425286;2011-01-01;http://www.wikidata.org/entity/Q59150;matched_scaled_official
+93;Paphos;Cyprus;159532;2011-01-01;http://www.wikidata.org/entity/Q59133;matched_scaled_official
+94;Ústí nad Labem;Czech Republic;926708;2025-01-01;http://www.wikidata.org/entity/Q192702;matched_scaled_official
+95;Liberec;Czech Republic;515305;2025-01-01;http://www.wikidata.org/entity/Q193266;matched_scaled_official
+96;Karlovy Vary;Czech Republic;336122;2025-01-01;http://www.wikidata.org/entity/Q191091;matched_scaled_official
+97;Plzeň-;Czech Republic;704630;2025-01-01;http://www.wikidata.org/entity/Q46070;matched_scaled_official
+98;South Bohemian;Czech Republic;748867;2025-01-01;http://www.wikidata.org/entity/Q188373;matched_scaled_official
+99;Hradec Králové;Czech Republic;637316;2025-01-01;http://www.wikidata.org/entity/Q193295;matched_scaled_official
+100;Olomouc;Czech Republic;723959;2025-01-01;http://www.wikidata.org/entity/Q193307;matched_scaled_official
+101;Pardubice;Czech Republic;608136;2025-01-01;http://www.wikidata.org/entity/Q193317;matched_scaled_official
+102;Moravian-Silesian;Czech Republic;1363316;2024-01-01;http://www.wikidata.org/entity/Q190550;matched_scaled_official
+103;South Moravian;Czech Republic;1409331;2025-01-01;http://www.wikidata.org/entity/Q192697;matched_scaled_official
+104;Zlín;Czech Republic;663770;2025-01-01;http://www.wikidata.org/entity/Q192536;matched_scaled_official
+105;Vysočina;Czech Republic;593436;2025-01-01;http://www.wikidata.org/entity/Q190930;matched_scaled_official
+106;Central Bohemian;Czech Republic;1669104;2024-01-01;http://www.wikidata.org/entity/Q188399;matched_scaled_official
+107;Saxony;Germany;4532040;2023-12-31;http://www.wikidata.org/entity/Q1202;matched_scaled_official
+108;Bavaria;Germany;14545128;2022-01-01;http://www.wikidata.org/entity/Q980;matched_scaled_official
+109;Rhineland-Palatinate;Germany;4537251;2022-01-01;http://www.wikidata.org/entity/Q1200;matched_scaled_official
+110;Saarland;Germany;1127691;2022-01-01;http://www.wikidata.org/entity/Q1201;matched_scaled_official
+111;Schleswig-Holstein;Germany;3272881;2022-12-31;http://www.wikidata.org/entity/Q1194;matched_scaled_official
+112;Lower Saxony;Germany;8869571;2022-01-01;http://www.wikidata.org/entity/Q1197;matched_scaled_official
+113;North Rhine-Westphalia;Germany;19873365;2022-01-01;http://www.wikidata.org/entity/Q1198;matched_scaled_official
+114;Baden-Württemberg;Germany;12305746;2022-01-01;http://www.wikidata.org/entity/Q985;matched_scaled_official
+115;Brandenburg;Germany;2808320;2022-01-01;http://www.wikidata.org/entity/Q1208;matched_scaled_official
+116;Mecklenburg-Western Pomerania;Germany;1740815;2022-01-01;http://www.wikidata.org/entity/Q1196;matched_scaled_official
+117;Hesse;Germany;6103842;2022-01-01;http://www.wikidata.org/entity/Q1199;matched_scaled_official
+118;Thuringia;Germany;2394869;2022-01-01;http://www.wikidata.org/entity/Q1205;matched_scaled_official
+119;Saxony-Anhalt;Germany;2488481;2022-01-01;http://www.wikidata.org/entity/Q1206;matched_scaled_official
+120;Southern Denmark;Denmark;1150305;2019-10-01;http://www.wikidata.org/entity/Q26061;matched_scaled_official
+121;Central Denmark;Denmark;1247129;2019-10-01;http://www.wikidata.org/entity/Q26586;matched_scaled_official
+122;North Denmark;Denmark;1037997;2023-01-01;;imputed_scaled_official
+123;Zealand;Denmark;786755;2019-10-01;http://www.wikidata.org/entity/Q26589;matched_scaled_official
+124;Denmark;Denmark;1737814;2019-10-01;http://www.wikidata.org/entity/Q26073;matched_scaled_official
+125;Navarre;Spain;306201;2024-01-01;http://www.wikidata.org/entity/Q4018;region_scaled_official
+126;Gipuzkoa;Spain;992691;2023-01-01;;region_scaled_official
+127;Huesca;Spain;178007;2023-01-01;;region_scaled_official
+128;Lleida;Spain;3073810;2023-01-01;;region_scaled_official
+129;Girona;Spain;2483163;2023-01-01;;region_scaled_official
+130;Badajoz;Spain;555888;2023-01-01;;region_scaled_official
+131;Cádiz;Spain;2091233;2023-01-01;;region_scaled_official
+132;Ourense;Spain;618730;2023-01-01;;region_scaled_official
+133;Cáceres;Spain;675611;2023-01-01;;region_scaled_official
+134;Salamanca;Spain;1783903;2023-01-01;;region_scaled_official
+135;Zamora;Spain;1196930;2023-01-01;;region_scaled_official
+136;Pontevedra;Spain;836638;2023-01-01;;region_scaled_official
+137;Huelva;Spain;534377;2023-01-01;;region_scaled_official
+138;Barcelona;Spain;2138451;2023-01-01;;region_scaled_official
+139;Tarragona;Spain;1703184;2023-01-01;;region_scaled_official
+140;Castellón;Spain;661874;2023-01-01;;region_scaled_official
+141;Valencia;Spain;699661;2023-01-01;;region_scaled_official
+142;Alicante;Spain;1048998;2023-01-01;;region_scaled_official
+143;Murcia;Spain;620601;2024-01-01;http://www.wikidata.org/entity/Q5772;region_scaled_official
+144;Almería;Spain;1188330;2023-01-01;;region_scaled_official
+145;Granada;Spain;957440;2023-01-01;;region_scaled_official
+146;Málaga;Spain;1309822;2023-01-01;;region_scaled_official
+147;Seville;Spain;823742;2023-01-01;;region_scaled_official
+148;A Coruña;Spain;1055591;2023-01-01;;region_scaled_official
+149;Lugo;Spain;651280;2023-01-01;;region_scaled_official
+150;Asturias;Spain;1179137;2024-01-01;http://www.wikidata.org/entity/Q3934;region_scaled_official
+151;Cantabria;Spain;691979;2024-01-01;http://www.wikidata.org/entity/Q3946;region_scaled_official
+152;Biscay;Spain;578522;2023-01-01;;region_scaled_official
+153;Santa Cruz de Tenerife;Spain;273253;2023-01-01;;region_scaled_official
+154;Las Palmas;Spain;392339;2023-01-01;;region_scaled_official
+155;Balearic Islands;Spain;456672;2022-01-01;http://www.wikidata.org/entity/Q107356467;region_scaled_official
+156;Zaragoza;Spain;401503;2023-01-01;;region_scaled_official
+157;La Rioja;Spain;379465;2024-01-01;http://www.wikidata.org/entity/Q5727;region_scaled_official
+158;Araba / Álava;Spain;577060;2023-01-01;;region_scaled_official
+159;Albacete;Spain;168835;2023-01-01;;region_scaled_official
+160;Teruel;Spain;997116;2023-01-01;;region_scaled_official
+161;Cuenca;Spain;623679;2023-01-01;;region_scaled_official
+162;Toledo;Spain;707017;2023-01-01;;region_scaled_official
+163;León;Spain;1418209;2024-01-01;http://www.wikidata.org/entity/Q5739;region_scaled_official
+164;Soria;Spain;1441927;2023-01-01;;region_scaled_official
+165;Burgos;Spain;1007198;2023-01-01;;region_scaled_official
+166;Ávila;Spain;1351305;2023-01-01;;region_scaled_official
+167;Palencia;Spain;823071;2023-01-01;;region_scaled_official
+168;Ciudad Real;Spain;370297;2023-01-01;;region_scaled_official
+169;Córdoba;Spain;1906979;2023-01-01;;region_scaled_official
+170;Guadalajara;Spain;585301;2023-01-01;;region_scaled_official
+171;Jaén;Spain;1270842;2023-01-01;;region_scaled_official
+172;Community of Madrid;Spain;1279173;2024-01-01;http://www.wikidata.org/entity/Q5756;region_scaled_official
+173;Segovia;Spain;814785;2023-01-01;;region_scaled_official
+174;Valladolid;Spain;718180;2023-01-01;;region_scaled_official
+175;Viljandi;Estonia;45516;2023-01-01;http://www.wikidata.org/entity/Q192061;matched_scaled_official
+176;Pärnu;Estonia;87186;2023-01-01;http://www.wikidata.org/entity/Q185036;matched_scaled_official
+177;Valga;Estonia;27851;2024-01-01;http://www.wikidata.org/entity/Q192362;matched_scaled_official
+178;Võru;Estonia;33959;2024-01-01;http://www.wikidata.org/entity/Q188076;matched_scaled_official
+179;Ida-Viru;Estonia;133003;2023-01-01;http://www.wikidata.org/entity/Q189963;matched_scaled_official
+180;Põlva;Estonia;23973;2023-01-01;http://www.wikidata.org/entity/Q191813;matched_scaled_official
+181;Tartu;Estonia;161958;2023-01-01;http://www.wikidata.org/entity/Q192370;matched_scaled_official
+182;Jõgeva;Estonia;27666;2023-01-01;http://www.wikidata.org/entity/Q189974;matched_scaled_official
+183;Lääne;Estonia;20571;2024-01-01;http://www.wikidata.org/entity/Q189968;matched_scaled_official
+184;Harju;Estonia;644592;2024-01-01;http://www.wikidata.org/entity/Q180200;matched_scaled_official
+185;Lääne-Viru;Estonia;59450;2023-01-01;http://www.wikidata.org/entity/Q189952;matched_scaled_official
+186;Saare;Estonia;31937;2024-01-01;http://www.wikidata.org/entity/Q203272;matched_scaled_official
+187;Hiiu;Estonia;8397;2024-01-01;http://www.wikidata.org/entity/Q1466462;matched_scaled_official
+188;Rapla;Estonia;33948;2023-01-01;http://www.wikidata.org/entity/Q192352;matched_scaled_official
+189;Järva;Estonia;29993;2023-01-01;http://www.wikidata.org/entity/Q188068;matched_scaled_official
+190;Lapland;Finland;126468;2021-01-01;http://www.wikidata.org/entity/Q5700;matched_scaled_official
+191;Northern Ostrobothnia;Finland;1672552;2023-01-01;;imputed_scaled_official
+192;Kainuu;Finland;51302;2021-01-01;http://www.wikidata.org/entity/Q5694;matched_scaled_official
+193;North Karelia;Finland;117063;2021-01-01;http://www.wikidata.org/entity/Q5703;matched_scaled_official
+194;South Karelia;Finland;90252;2021-12-31;http://www.wikidata.org/entity/Q5691;matched_scaled_official
+195;Kymenlaakso;Finland;116541;2021-01-01;http://www.wikidata.org/entity/Q5698;matched_scaled_official
+196;Uusimaa;Finland;1219937;2021-01-01;http://www.wikidata.org/entity/Q5711;matched_scaled_official
+197;Finland Proper;Finland;153811;2023-01-01;;imputed_scaled_official
+198;Satakunta;Finland;154121;2021-01-01;http://www.wikidata.org/entity/Q5709;matched_scaled_official
+199;Ostrobothnia;Finland;125831;2021-01-01;http://www.wikidata.org/entity/Q5702;matched_scaled_official
+200;Central Ostrobothnia;Finland;48649;2021-01-01;http://www.wikidata.org/entity/Q5696;matched_scaled_official
+201;Northern Savonia;Finland;90692;2023-01-01;;imputed_scaled_official
+202;Southern Savonia;Finland;339435;2023-01-01;;imputed_scaled_official
+203;Central Finland;Finland;195056;2021-01-01;http://www.wikidata.org/entity/Q5697;matched_scaled_official
+204;Southern Ostrobothnia;Finland;330078;2023-01-01;;imputed_scaled_official
+205;Pirkanmaa;Finland;374725;2021-01-01;http://www.wikidata.org/entity/Q5701;matched_scaled_official
+206;Tavastia Proper;Finland;256157;2023-01-01;;imputed_scaled_official
+207;Päijänne Tavastia;Finland;147330;2021-01-01;http://www.wikidata.org/entity/Q5708;matched_scaled_official
+208;Nord;France;1156394;2013-01-01;http://www.wikidata.org/entity/Q16987;region_scaled_official
+209;Ardennes;France;589216;2023-01-01;;region_scaled_official
+210;Aisne;France;1017896;2023-01-01;;region_scaled_official
+211;Meuse;France;756452;2023-01-01;;region_scaled_official
+212;Meurthe-et-Moselle;France;647027;2023-01-01;;region_scaled_official
+213;Moselle;France;558410;2023-01-01;;region_scaled_official
+214;Alpes-Maritimes;France;932219;2023-01-01;;region_scaled_official
+215;Alpes-de-Haute-Provence;France;672237;2023-01-01;;region_scaled_official
+216;Hautes-Alpes;France;1041796;2023-01-01;;region_scaled_official
+217;Savoie;France;623863;2013-01-01;http://www.wikidata.org/entity/Q463;region_scaled_official
+218;Haute-Savoie;France;683017;2023-01-01;;region_scaled_official
+219;Pyrenees-Atlantics;France;391078;2023-01-01;;region_scaled_official
+220;Haute-Garonne;France;628112;2023-01-01;;region_scaled_official
+221;Hautes-Pyrénées;France;520246;2023-01-01;;region_scaled_official
+222;Ariège;France;390051;2023-01-01;;region_scaled_official
+223;Pyrénées-Orientales;France;421948;2023-01-01;;region_scaled_official
+224;Bas-Rhin;France;468277;2023-01-01;;region_scaled_official
+225;Haut-Rhin;France;504504;2023-01-01;;region_scaled_official
+226;Doubs;France;267605;2023-01-01;;region_scaled_official
+227;Ain;France;654669;2023-01-01;;region_scaled_official
+228;Jura;France;412035;2023-01-01;;region_scaled_official
+229;Var;France;778998;2023-01-01;;region_scaled_official
+230;Bouches-du-Rhône;France;920518;2023-01-01;;region_scaled_official
+231;Gard;France;436367;2023-01-01;;region_scaled_official
+232;Hérault;France;485509;2023-01-01;;region_scaled_official
+233;Aude;France;506895;2023-01-01;;region_scaled_official
+234;Landes;France;506290;2023-01-01;;region_scaled_official
+235;Gironde;France;705781;2023-01-01;;region_scaled_official
+236;Charente-Maritime;France;753575;2023-01-01;;region_scaled_official
+237;Vendée;France;860166;2023-01-01;;region_scaled_official
+238;Loire-Atlantique;France;837855;2023-01-01;;region_scaled_official
+239;Morbihan;France;832404;2023-01-01;;region_scaled_official
+240;Finistère;France;830998;2023-01-01;;region_scaled_official
+241;Côtes-d'Armor;France;833155;2023-01-01;;region_scaled_official
+242;Ille-et-Vilaine;France;871014;2023-01-01;;region_scaled_official
+243;Manche;France;745459;2023-01-01;;region_scaled_official
+244;Calvados;France;679728;2023-01-01;;region_scaled_official
+245;Eure;France;643397;2023-01-01;;region_scaled_official
+246;Seine-Maritime;France;680281;2023-01-01;;region_scaled_official
+247;Somme;France;1185171;2023-01-01;;region_scaled_official
+248;Pas-de-Calais;France;1189510;2023-01-01;;region_scaled_official
+249;Haute-Corse;France;835512;2023-01-01;;region_scaled_official
+250;Corse-du-Sud;France;611347;2023-01-01;;region_scaled_official
+251;Gers;France;348167;2023-01-01;;region_scaled_official
+252;Haute-Vienne;France;501782;2023-01-01;;region_scaled_official
+253;Corrèze;France;448066;2023-01-01;;region_scaled_official
+254;Tarn-et-Garonne;France;488012;2023-01-01;;region_scaled_official
+255;Tarn;France;327969;2023-01-01;;region_scaled_official
+256;Isère;France;652469;2023-01-01;;region_scaled_official
+257;Drôme;France;845524;2023-01-01;;region_scaled_official
+258;Aveyron;France;539710;2023-01-01;;region_scaled_official
+259;Lot;France;685615;2023-01-01;;region_scaled_official
+260;Indre-et-Loire;France;360481;2023-01-01;;region_scaled_official
+261;Indre;France;421906;2023-01-01;;region_scaled_official
+262;Loir-et-Cher;France;468393;2023-01-01;;region_scaled_official
+263;Creuse;France;506619;2023-01-01;;region_scaled_official
+264;Mayenne;France;730937;2023-01-01;;region_scaled_official
+265;Sarthe;France;691514;2023-01-01;;region_scaled_official
+266;Vaucluse;France;950605;2023-01-01;;region_scaled_official
+267;Haute-Marne;France;394629;2023-01-01;;region_scaled_official
+268;Marne;France;657909;2023-01-01;;region_scaled_official
+269;Dordogne;France;621879;2023-01-01;;region_scaled_official
+270;Rhône;France;967330;2022-01-01;http://www.wikidata.org/entity/Q18338206;region_scaled_official
+271;Vosges;France;375575;2023-01-01;;region_scaled_official
+272;Ardèche;France;666797;2023-01-01;;region_scaled_official
+273;Loire;France;635285;2022-01-01;http://www.wikidata.org/entity/Q13947;region_scaled_official
+274;Puy-de-Dôme;France;561149;2023-01-01;;region_scaled_official
+275;Allier;France;846423;2023-01-01;;region_scaled_official
+276;Loiret;France;492119;2023-01-01;;region_scaled_official
+277;Maine-et-Loire;France;853325;2023-01-01;;region_scaled_official
+278;Aube;France;743646;2023-01-01;;region_scaled_official
+279;Val-d'Oise;France;4507130;2023-01-01;;region_scaled_official
+280;Yvelines;France;1236128;2023-01-01;;region_scaled_official
+281;Charente;France;210232;2023-01-01;;region_scaled_official
+282;Cher;France;412081;2023-01-01;;region_scaled_official
+283;Eure-et-Loir;France;489565;2023-01-01;;region_scaled_official
+284;Haute-Loire;France;654270;2023-01-01;;region_scaled_official
+285;Cantal;France;572140;2023-01-01;;region_scaled_official
+286;Lot-et-Garonne;France;467715;2023-01-01;;region_scaled_official
+287;Lozère;France;450393;2023-01-01;;region_scaled_official
+288;Nièvre;France;381787;2023-01-01;;region_scaled_official
+289;Côte-d’Or;France;486084;2023-01-01;;region_scaled_official
+290;Oise;France;1596206;2023-01-01;;region_scaled_official
+291;Orne;France;671623;2023-01-01;;region_scaled_official
+292;Haute-Saône;France;443249;2023-01-01;;region_scaled_official
+293;Saône-et-Loire;France;389443;2023-01-01;;region_scaled_official
+294;Deux-Sèvres;France;660257;2023-01-01;;region_scaled_official
+295;Vienne;France;489171;2023-01-01;;region_scaled_official
+296;Yonne;France;492144;2023-01-01;;region_scaled_official
+297;Essonne;France;5325856;2023-01-01;;region_scaled_official
+298;Seine-et-Marne;France;1613709;2023-01-01;;region_scaled_official
+299;Strabane;United Kingdom;741466;2023-01-01;;region_scaled_official
+300;Fermanagh;United Kingdom;944882;2023-01-01;;region_scaled_official
+301;Wrexham;United Kingdom;550519;2023-01-01;;region_scaled_official
+302;Shropshire;United Kingdom;983035;2023-01-01;;region_scaled_official
+303;Powys;United Kingdom;806617;2023-01-01;;region_scaled_official
+304;Herefordshire;United Kingdom;2233424;2023-01-01;;region_scaled_official
+305;Gloucestershire;United Kingdom;2448448;2023-01-01;;region_scaled_official
+306;Scottish Borders;United Kingdom;289795;2023-01-01;;region_scaled_official
+307;Northumberland;United Kingdom;3490895;2023-01-01;;region_scaled_official
+308;Cumbria;United Kingdom;2235913;2023-01-01;;region_scaled_official
+309;Dumfries and Galloway;United Kingdom;480976;2023-01-01;;region_scaled_official
+310;Stirling;United Kingdom;455546;2023-01-01;;region_scaled_official
+311;Durham;United Kingdom;1280376;2023-01-01;;region_scaled_official
+312;North Yorkshire;United Kingdom;1653463;2023-01-01;;region_scaled_official
+313;East Riding of Yorkshire;United Kingdom;4184324;2023-01-01;;region_scaled_official
+314;North East Lincolnshire;United Kingdom;1221988;2023-01-01;;region_scaled_official
+315;Lincolnshire;United Kingdom;1154059;2023-01-01;;region_scaled_official
+316;Norfolk;United Kingdom;2807732;2023-01-01;;region_scaled_official
+317;Suffolk;United Kingdom;2353315;2023-01-01;;region_scaled_official
+318;Essex;United Kingdom;1728303;2023-01-01;;region_scaled_official
+319;Kent;United Kingdom;2007648;2023-01-01;;region_scaled_official
+320;East Sussex;United Kingdom;1946975;2023-01-01;;region_scaled_official
+321;West Sussex;United Kingdom;905446;2023-01-01;;region_scaled_official
+322;Hampshire;United Kingdom;996842;2023-01-01;;region_scaled_official
+323;Dorset;United Kingdom;2344910;2023-01-01;;region_scaled_official
+324;Devon;United Kingdom;1271385;2023-01-01;;region_scaled_official
+325;Cornwall;United Kingdom;2841051;2023-01-01;;region_scaled_official
+326;Somerset;United Kingdom;1634850;2023-01-01;;region_scaled_official
+327;Carmarthenshire;United Kingdom;516680;2023-01-01;;region_scaled_official
+328;Pembrokeshire;United Kingdom;336324;2023-01-01;;region_scaled_official
+329;Ceredigion;United Kingdom;235322;2023-01-01;;region_scaled_official
+330;Gwynedd;United Kingdom;275157;2023-01-01;;region_scaled_official
+331;Conwy;United Kingdom;445986;2023-01-01;;region_scaled_official
+332;Lancashire;United Kingdom;622038;2023-01-01;;region_scaled_official
+333;South Ayrshire;United Kingdom;242936;2023-01-01;;region_scaled_official
+334;Argyll and Bute;United Kingdom;114199;2023-01-01;;region_scaled_official
+335;Highland;United Kingdom;526353;2023-01-01;;region_scaled_official
+336;Moray;United Kingdom;1535226;2023-01-01;;region_scaled_official
+337;Aberdeenshire;United Kingdom;186176;2023-01-01;;region_scaled_official
+338;Angus;United Kingdom;465420;2023-01-01;;region_scaled_official
+339;Perth and Kinross;United Kingdom;177716;2023-01-01;;region_scaled_official
+340;Fife;United Kingdom;401297;2023-01-01;;region_scaled_official
+341;Outer Hebrides;United Kingdom;119244;2023-01-01;;region_scaled_official
+342;Shetland Islands;United Kingdom;231716;2023-01-01;;region_scaled_official
+343;East Ayrshire;United Kingdom;122197;2023-01-01;;region_scaled_official
+344;South Lanarkshire;United Kingdom;116249;2023-01-01;;region_scaled_official
+345;Omagh;United Kingdom;238099;2023-01-01;;region_scaled_official
+346;Hertfordshire;United Kingdom;636362;2023-01-01;;region_scaled_official
+347;Cambridgeshire;United Kingdom;849661;2023-01-01;;region_scaled_official
+348;Buckinghamshire;United Kingdom;1750642;2023-01-01;;region_scaled_official
+349;Nottinghamshire;United Kingdom;1013022;2023-01-01;;region_scaled_official
+350;Northamptonshire;United Kingdom;1078856;2023-01-01;;region_scaled_official
+351;Leicestershire;United Kingdom;1327673;2023-01-01;;region_scaled_official
+352;Cheshire East;United Kingdom;1061001;2023-01-01;;region_scaled_official
+353;Derbyshire;United Kingdom;667697;2023-01-01;;region_scaled_official
+354;Staffordshire;United Kingdom;1334641;2023-01-01;;region_scaled_official
+355;Worcestershire;United Kingdom;1517698;2023-01-01;;region_scaled_official
+356;Warwickshire;United Kingdom;916793;2023-01-01;;region_scaled_official
+357;Oxfordshire;United Kingdom;1103175;2023-01-01;;region_scaled_official
+358;Surrey;United Kingdom;1268598;2023-01-01;;region_scaled_official
+359;Wiltshire;United Kingdom;871663;2023-01-01;;region_scaled_official
+360;Abkhazia;Georgia;284202;2023-01-01;;imputed_scaled_official
+361;Samegrelo-Zemo Svaneti;Georgia;661452;2021-01-01;http://www.wikidata.org/entity/Q200309;matched_scaled_official
+362;Shida Kartli;Georgia;544981;2021-01-01;http://www.wikidata.org/entity/Q200047;matched_scaled_official
+363;Racha-Lechkhumi and Kvemo Svaneti;Georgia;68824;2021-01-01;http://www.wikidata.org/entity/Q38893;matched_scaled_official
+364;Samtskhe–Javakheti;Georgia;324072;2021-01-01;http://www.wikidata.org/entity/Q19039;matched_scaled_official
+365;Adjara;Georgia;584070;2023-01-01;;imputed_scaled_official
+366;Guria;Georgia;229703;2021-01-01;http://www.wikidata.org/entity/Q19038;matched_scaled_official
+367;Imereti;Georgia;1032696;2021-01-01;http://www.wikidata.org/entity/Q200045;matched_scaled_official
+368;West Macedonia;Greece;471719;2023-01-01;;imputed_scaled_official
+369;Epirus;Greece;310618;2021-01-01;http://www.wikidata.org/entity/Q180484;matched_scaled_official
+370;Centre Macedonia;Greece;1743066;2021-01-01;http://www.wikidata.org/entity/Q17152;matched_scaled_official
+371;East Macedonia and Thrace;Greece;545733;2021-01-01;http://www.wikidata.org/entity/Q171314;matched_scaled_official
+372;Thessalia;Greece;668094;2021-01-01;http://www.wikidata.org/entity/Q22807284;matched_scaled_official
+373;Central Greece;Greece;493366;2021-01-01;http://www.wikidata.org/entity/Q199580;matched_scaled_official
+374;Attica;Greece;3702333;2021-01-01;http://www.wikidata.org/entity/Q758056;matched_scaled_official
+375;Peloponnese;Greece;523730;2021-01-01;http://www.wikidata.org/entity/Q202484;matched_scaled_official
+376;West Greece;Greece;629232;2021-01-01;http://www.wikidata.org/entity/Q170291;matched_scaled_official
+377;Crete;Greece;606117;2021-01-01;http://www.wikidata.org/entity/Q1267522;matched_scaled_official
+378;South Aegean;Greece;318218;2021-01-01;http://www.wikidata.org/entity/Q173616;matched_scaled_official
+379;North Aegean;Greece;189233;2021-01-01;http://www.wikidata.org/entity/Q173620;matched_scaled_official
+380;Ionian Islands;Greece;198541;2021-01-01;http://www.wikidata.org/entity/Q1147674;matched_scaled_official
+381;Virovitica-Podravina;Croatia;99951;2011-01-01;http://www.wikidata.org/entity/Q58092;matched_scaled_official
+382;Koprivnica-Križevci;Croatia;136178;2011-01-01;http://www.wikidata.org/entity/Q58026;matched_scaled_official
+383;Osijek-Baranja;Croatia;359378;2011-01-01;http://www.wikidata.org/entity/Q58159;matched_scaled_official
+384;Istria;Croatia;230021;2021-08-31;http://www.wikidata.org/entity/Q58268;matched_scaled_official
+385;Dubrovnik-Neretva;Croatia;136505;2021-01-01;http://www.wikidata.org/entity/Q58289;matched_scaled_official
+386;Sisak-Moslavina;Croatia;218417;2001-03-31;http://www.wikidata.org/entity/Q57060;matched_scaled_official
+387;Brod-Posavina;Croatia;186828;2011-01-01;http://www.wikidata.org/entity/Q58129;matched_scaled_official
+388;Karlovac;Croatia;151865;2011-01-01;http://www.wikidata.org/entity/Q57071;matched_scaled_official
+389;Zadar;Croatia;188231;2021-08-31;http://www.wikidata.org/entity/Q58146;matched_scaled_official
+390;Vukovar-Syrmia;Croatia;211506;2011-01-01;http://www.wikidata.org/entity/Q58225;matched_scaled_official
+391;Split-Dalmatia;Croatia;498842;2021-08-31;http://www.wikidata.org/entity/Q58253;matched_scaled_official
+392;Varaždin;Croatia;207299;2011-01-01;http://www.wikidata.org/entity/Q57967;matched_scaled_official
+393;Krapina-Zagorje;Croatia;142207;2021-08-31;http://www.wikidata.org/entity/Q57056;matched_scaled_official
+394;Zagreb;Croatia;374234;2011-01-01;http://www.wikidata.org/entity/Q27038;matched_scaled_official
+395;Primorje-Gorski;Croatia;312707;2021-08-31;http://www.wikidata.org/entity/Q58071;matched_scaled_official
+396;Šibenik-Knin;Croatia;128862;2011-01-01;http://www.wikidata.org/entity/Q58194;matched_scaled_official
+397;Lika-Senj;Croatia;50365;2021-08-31;http://www.wikidata.org/entity/Q58081;matched_scaled_official
+398;Bjelovar-Bilogora;Croatia;141102;2011-01-01;http://www.wikidata.org/entity/Q58060;matched_scaled_official
+399;Požega-Slavonia;Croatia;75502;2021-08-31;http://www.wikidata.org/entity/Q58111;matched_scaled_official
+400;Szabolcs-Szatmár-Bereg;Hungary;663974;2022-10-01;http://www.wikidata.org/entity/Q190518;matched_scaled_official
+401;Békés;Hungary;395367;2022-10-01;http://www.wikidata.org/entity/Q191616;matched_scaled_official
+402;Hajdú-Bihar;Hungary;651131;2022-10-01;http://www.wikidata.org/entity/Q185368;matched_scaled_official
+403;Csongrád-Csanád;Hungary;490641;2022-10-01;http://www.wikidata.org/entity/Q193031;matched_scaled_official
+404;Győr-Moson-Sopron;Hungary;584410;2022-10-01;http://www.wikidata.org/entity/Q187753;matched_scaled_official
+405;Vas;Hungary;312951;2022-10-01;http://www.wikidata.org/entity/Q187677;matched_scaled_official
+406;Bács-Kiskun;Hungary;621251;2022-10-01;http://www.wikidata.org/entity/Q181018;matched_scaled_official
+407;Zala;Hungary;327108;2022-10-01;http://www.wikidata.org/entity/Q185374;matched_scaled_official
+408;Somogy;Hungary;368084;2022-10-01;http://www.wikidata.org/entity/Q190522;matched_scaled_official
+409;Baranya;Hungary;444031;2022-10-01;http://www.wikidata.org/entity/Q186195;matched_scaled_official
+410;Borsod-Abaúj-Zemplén;Hungary;781425;2022-10-01;http://www.wikidata.org/entity/Q188895;matched_scaled_official
+411;Nógrád;Hungary;228849;2022-10-01;http://www.wikidata.org/entity/Q194273;matched_scaled_official
+412;Komárom-Esztergom;Hungary;377066;2022-10-01;http://www.wikidata.org/entity/Q190018;matched_scaled_official
+413;Pest;Hungary;1672577;2022-10-01;http://www.wikidata.org/entity/Q188612;matched_scaled_official
+414;Jász-Nagykun-Szolnok;Hungary;446273;2022-10-01;http://www.wikidata.org/entity/Q189655;matched_scaled_official
+415;Fejér;Hungary;526352;2022-10-01;http://www.wikidata.org/entity/Q187693;matched_scaled_official
+416;Veszprém;Hungary;69133;2025-01-01;http://www.wikidata.org/entity/Q146317;matched_scaled_official
+417;Tolna;Hungary;260797;2022-10-01;http://www.wikidata.org/entity/Q191625;matched_scaled_official
+418;Heves;Hungary;358580;2022-10-01;http://www.wikidata.org/entity/Q191604;matched_scaled_official
+419;Donegal;Ireland;261011;2023-01-01;;imputed_scaled_official
+420;Leitrim;Ireland;373518;2023-01-01;;imputed_scaled_official
+421;Cavan;Ireland;126134;2023-01-01;;imputed_scaled_official
+422;Monaghan;Ireland;147521;2023-01-01;;imputed_scaled_official
+423;Wicklow;Ireland;160704;2023-01-01;;imputed_scaled_official
+424;Wexford;Ireland;225666;2023-01-01;;imputed_scaled_official
+425;Kilkenny;Ireland;253024;2023-01-01;;imputed_scaled_official
+426;Waterford;Ireland;98292;2016-01-01;http://www.wikidata.org/entity/Q183551;matched_scaled_official
+427;Cork;Ireland;451807;2022-01-01;http://www.wikidata.org/entity/Q36647;matched_scaled_official
+428;Kerry;Ireland;565872;2023-01-01;;imputed_scaled_official
+429;Limerick;Ireland;127419;2022-04-03;http://www.wikidata.org/entity/Q133315;matched_scaled_official
+430;Clare;Ireland;211866;2023-01-01;;imputed_scaled_official
+431;Galway;Ireland;252297;2023-01-01;;imputed_scaled_official
+432;Mayo;Ireland;474332;2023-01-01;;imputed_scaled_official
+433;Sligo;Ireland;432884;2023-01-01;;imputed_scaled_official
+434;Meath;Ireland;142986;2023-01-01;;imputed_scaled_official
+435;Kildare;Ireland;182804;2023-01-01;;imputed_scaled_official
+436;Laois;Ireland;134128;2023-01-01;;imputed_scaled_official
+437;Offaly;Ireland;132844;2023-01-01;;imputed_scaled_official
+438;Westmeath;Ireland;157978;2023-01-01;;imputed_scaled_official
+439;Longford;Ireland;145177;2023-01-01;;imputed_scaled_official
+440;Roscommon;Ireland;86549;2023-01-01;;imputed_scaled_official
+441;Tipperary;Ireland;195187;2023-01-01;;imputed_scaled_official
+442;Austurland;Iceland;11533;2023-01-01;;imputed_scaled_official
+443;Southern;Iceland;114686;2020-01-01;http://www.wikidata.org/entity/Q204796;matched_scaled_official
+444;Western;Iceland;70837;2023-01-01;http://www.wikidata.org/entity/Q221791;matched_scaled_official
+445;Westfjords;Iceland;29800;2023-01-01;http://www.wikidata.org/entity/Q727267;matched_scaled_official
+446;Northwestern;Iceland;29570;2020-01-01;http://www.wikidata.org/entity/Q210866;matched_scaled_official
+447;Northeastern;Iceland;123574;2020-01-01;http://www.wikidata.org/entity/Q241551;matched_scaled_official
+448;Aosta;Italy;49443;2019-01-01;http://www.wikidata.org/entity/Q1222;matched_scaled_official
+449;Verbano-Cusio-Ossola;Italy;4110276;2023-01-01;;imputed_scaled_official
+450;Varese;Italy;777034;2023-01-01;;imputed_scaled_official
+451;Como;Italy;417697;2023-01-01;;imputed_scaled_official
+452;Sondrio;Italy;206689;2023-01-01;;imputed_scaled_official
+453;Trentino-South Tyrol;Italy;421877;2019-01-01;http://www.wikidata.org/entity/Q1237;matched_scaled_official
+454;Imperia;Italy;595798;2023-01-01;;imputed_scaled_official
+455;Cuneo;Italy;1360046;2023-01-01;;imputed_scaled_official
+456;Turin;Italy;226750;2023-01-01;;imputed_scaled_official
+457;Pesaro and Urbino;Italy;1273312;2023-01-01;;imputed_scaled_official
+458;Belluno;Italy;1282697;2023-01-01;;imputed_scaled_official
+459;Udine;Italy;636573;2023-01-01;;imputed_scaled_official
+460;Venice;Italy;679780;2023-01-01;;imputed_scaled_official
+461;Padua;Italy;948665;2023-01-01;;imputed_scaled_official
+462;Rovigo;Italy;391564;2023-01-01;;imputed_scaled_official
+463;Ferrara;Italy;380765;2023-01-01;;imputed_scaled_official
+464;Ravenna;Italy;331442;2023-01-01;;imputed_scaled_official
+465;Forlì-Cesena;Italy;493297;2023-01-01;;imputed_scaled_official
+466;Ancona;Italy;342375;2023-01-01;;imputed_scaled_official
+467;Macerata;Italy;433313;2023-01-01;;imputed_scaled_official
+468;Ascoli Piceno;Italy;370215;2023-01-01;;imputed_scaled_official
+469;Teramo;Italy;510557;2023-01-01;;imputed_scaled_official
+470;Pescara;Italy;382481;2023-01-01;;imputed_scaled_official
+471;Chieti;Italy;366407;2023-01-01;;imputed_scaled_official
+472;Campobasso;Italy;225158;2023-01-01;;imputed_scaled_official
+473;Foggia;Italy;474867;2023-01-01;;imputed_scaled_official
+474;Barletta-Andria-Trani;Italy;547242;2023-01-01;;imputed_scaled_official
+475;Bari;Italy;1274416;2023-01-01;;imputed_scaled_official
+476;Brindisi;Italy;295191;2023-01-01;;imputed_scaled_official
+477;Lecce;Italy;714641;2023-01-01;;imputed_scaled_official
+478;Taranto;Italy;340956;2023-01-01;;imputed_scaled_official
+479;Matera;Italy;510897;2023-01-01;;imputed_scaled_official
+480;Cosenza;Italy;442829;2023-01-01;;imputed_scaled_official
+481;Crotone;Italy;632045;2023-01-01;;imputed_scaled_official
+482;Catanzaro;Italy;1235338;2023-01-01;;imputed_scaled_official
+483;Reggio Calabria;Italy;319715;2023-01-01;;imputed_scaled_official
+484;Vibo Valentia;Italy;434913;2023-01-01;;imputed_scaled_official
+485;Potenza;Italy;579187;2023-01-01;;imputed_scaled_official
+486;Salerno;Italy;212777;2023-01-01;;imputed_scaled_official
+487;Naples;Italy;1221220;2023-01-01;;imputed_scaled_official
+488;Caserta;Italy;896970;2023-01-01;;imputed_scaled_official
+489;Latina;Italy;211275;2023-01-01;;imputed_scaled_official
+490;Rome;Italy;489185;2023-01-01;;imputed_scaled_official
+491;Viterbo;Italy;402641;2023-01-01;;imputed_scaled_official
+492;Grosseto;Italy;985349;2023-01-01;;imputed_scaled_official
+493;Livorno;Italy;667602;2023-01-01;;imputed_scaled_official
+494;Pisa;Italy;825721;2023-01-01;;imputed_scaled_official
+495;Lucca;Italy;224073;2023-01-01;;imputed_scaled_official
+496;Massa-Carrara;Italy;447634;2023-01-01;;imputed_scaled_official
+497;Liguria;Italy;610084;2019-01-01;http://www.wikidata.org/entity/Q1256;matched_scaled_official
+498;Savona;Italy;368265;2023-01-01;;imputed_scaled_official
+499;Trapani;Italy;341252;2023-01-01;;imputed_scaled_official
+500;Messina;Italy;289835;2023-01-01;;imputed_scaled_official
+501;Palermo;Italy;457099;2023-01-01;;imputed_scaled_official
+502;Agrigento;Italy;606279;2023-01-01;;imputed_scaled_official
+503;Caltanissetta;Italy;937686;2023-01-01;;imputed_scaled_official
+504;Ragusa;Italy;554159;2023-01-01;;imputed_scaled_official
+505;Syracuse;Italy;389427;2023-01-01;;imputed_scaled_official
+506;Catania;Italy;296948;2023-01-01;;imputed_scaled_official
+507;Carbonia-Iglesias;Italy;398208;2023-01-01;;imputed_scaled_official
+508;Sassari;Italy;655094;2023-01-01;;imputed_scaled_official
+509;Nuoro;Italy;274873;2023-01-01;;imputed_scaled_official
+510;Olbia-Tempio;Italy;794762;2023-01-01;;imputed_scaled_official
+511;Oristano;Italy;724431;2023-01-01;;imputed_scaled_official
+512;Medio Campidano;Italy;623192;2023-01-01;;imputed_scaled_official
+513;Cagliari;Italy;561146;2023-01-01;;imputed_scaled_official
+514;Ogliastra;Italy;282735;2023-01-01;;imputed_scaled_official
+515;Enna;Italy;831111;2023-01-01;;imputed_scaled_official
+516;Benevento;Italy;344213;2023-01-01;;imputed_scaled_official
+517;Asti;Italy;470423;2023-01-01;;imputed_scaled_official
+518;Bergamo;Italy;383626;2023-01-01;;imputed_scaled_official
+519;Brescia;Italy;280880;2023-01-01;;imputed_scaled_official
+520;Cremona;Italy;503202;2023-01-01;;imputed_scaled_official
+521;Mantua;Italy;896179;2023-01-01;;imputed_scaled_official
+522;Milan;Italy;327151;2023-01-01;;imputed_scaled_official
+523;Siena;Italy;425537;2023-01-01;;imputed_scaled_official
+524;Arezzo;Italy;284748;2023-01-01;;imputed_scaled_official
+525;Florence;Italy;699246;2023-01-01;;imputed_scaled_official
+526;Vercelli;Italy;594766;2023-01-01;;imputed_scaled_official
+527;Pavia;Italy;651661;2023-01-01;;imputed_scaled_official
+528;Rieti;Italy;383014;2023-01-01;;imputed_scaled_official
+529;Novara;Italy;558859;2023-01-01;;imputed_scaled_official
+530;Alessandria;Italy;492227;2023-01-01;;imputed_scaled_official
+531;Trentino;Italy;243881;2023-01-01;;imputed_scaled_official
+532;Vicenza;Italy;642830;2023-01-01;;imputed_scaled_official
+533;Verona;Italy;1126883;2023-01-01;;imputed_scaled_official
+534;Treviso;Italy;505052;2023-01-01;;imputed_scaled_official
+535;Piacenza;Italy;567808;2023-01-01;;imputed_scaled_official
+536;Parma;Italy;462108;2023-01-01;;imputed_scaled_official
+537;Reggio Emilia;Italy;625945;2023-01-01;;imputed_scaled_official
+538;Modena;Italy;641221;2023-01-01;;imputed_scaled_official
+539;Bologna;Italy;425480;2023-01-01;;imputed_scaled_official
+540;Terni;Italy;493487;2023-01-01;;imputed_scaled_official
+541;Perugia;Italy;676677;2023-01-01;;imputed_scaled_official
+542;Frosinone;Italy;389956;2023-01-01;;imputed_scaled_official
+543;Avellino;Italy;1173811;2023-01-01;;imputed_scaled_official
+544;L'Aquila;Italy;587145;2023-01-01;;imputed_scaled_official
+545;Pordenone;Italy;507052;2023-01-01;;imputed_scaled_official
+546;Isernia;Italy;937451;2023-01-01;;imputed_scaled_official
+547;Plužine;Kosovo;358362;2023-01-01;http://www.wikidata.org/entity/Q1048331;matched_scaled_official
+548;Kačanik;Kosovo;254308;2023-01-01;;imputed_scaled_official
+549;Podujevo/Podujeva;Kosovo;952426;2023-01-01;;imputed_scaled_official
+550;Kosovo-Pomoravlje;Kosovo;194904;2023-01-01;;imputed_scaled_official
+551;Utena;Lithuania;202061;2023-01-01;http://www.wikidata.org/entity/Q2089798;matched_scaled_official
+552;Vilnius;Lithuania;548492;2023-01-01;http://www.wikidata.org/entity/Q118903;matched_scaled_official
+553;Alytus;Lithuania;136426;2023-01-01;http://www.wikidata.org/entity/Q769940;matched_scaled_official
+554;Panevėžys;Lithuania;189525;2023-01-01;http://www.wikidata.org/entity/Q1351758;matched_scaled_official
+555;Telšiai;Lithuania;210594;2023-01-01;http://www.wikidata.org/entity/Q588916;matched_scaled_official
+556;Klaipėda;Lithuania;343602;2023-01-01;http://www.wikidata.org/entity/Q141132;matched_scaled_official
+557;Šiauliai;Lithuania;218649;2023-01-01;http://www.wikidata.org/entity/Q1417346;matched_scaled_official
+558;Marijampolė;Lithuania;294361;2023-01-01;http://www.wikidata.org/entity/Q1931377;matched_scaled_official
+559;Tauragė;Lithuania;202206;2023-01-01;http://www.wikidata.org/entity/Q2071640;matched_scaled_official
+560;Kaunas;Lithuania;534084;2023-01-01;http://www.wikidata.org/entity/Q1351722;matched_scaled_official
+561;Diekirch;Luxembourg;670000;2015-01-01;http://www.wikidata.org/entity/Q208747;matched_scaled_official
+562;Valka;Latvia;13439;2025-01-01;http://www.wikidata.org/entity/Q1945263;matched_scaled_official
+563;Alūksne;Latvia;23122;2025-01-01;http://www.wikidata.org/entity/Q3393445;matched_scaled_official
+564;Kārsava;Latvia;9013;2021-01-01;http://www.wikidata.org/entity/Q2395952;matched_scaled_official
+565;Vecumnieki;Latvia;13703;2021-01-01;http://www.wikidata.org/entity/Q2299436;matched_scaled_official
+566;Saldus;Latvia;46812;2025-01-01;http://www.wikidata.org/entity/Q97232673;matched_scaled_official
+567;Vaiņode;Latvia;3896;2021-01-01;http://www.wikidata.org/entity/Q511151;matched_scaled_official
+568;Jelgava;Latvia;56265;2025-01-01;http://www.wikidata.org/entity/Q97231093;matched_scaled_official
+569;Daugavpils;Latvia;137327;2025-01-01;http://www.wikidata.org/entity/Q80021;matched_scaled_official
+570;Krāslava;Latvia;34286;2025-01-01;http://www.wikidata.org/entity/Q97231555;matched_scaled_official
+571;Ventspils;Latvia;18097;2025-01-01;http://www.wikidata.org/entity/Q1345325;matched_scaled_official
+572;Talsi;Latvia;61173;2025-01-01;http://www.wikidata.org/entity/Q97232890;matched_scaled_official
+573;Riga;Latvia;1045958;2025-01-01;http://www.wikidata.org/entity/Q1773;matched_scaled_official
+574;Limbaži;Latvia;48538;2025-01-01;http://www.wikidata.org/entity/Q97231916;matched_scaled_official
+575;Rēzekne;Latvia;48707;2025-01-01;http://www.wikidata.org/entity/Q97232589;matched_scaled_official
+576;Gulbene;Latvia;32514;2025-01-01;http://www.wikidata.org/entity/Q209187;matched_scaled_official
+577;Madona;Latvia;52554;2025-07-01;http://www.wikidata.org/entity/Q97231990;matched_scaled_official
+578;Ogre;Latvia;101367;2025-01-01;http://www.wikidata.org/entity/Q97232220;matched_scaled_official
+579;Kuldīga;Latvia;46873;2025-01-01;http://www.wikidata.org/entity/Q97231583;matched_scaled_official
+580;Tukums;Latvia;76356;2025-01-01;http://www.wikidata.org/entity/Q97232977;matched_scaled_official
+581;Edineț;Moldova;185610;2024-04-08;http://www.wikidata.org/entity/Q878290;matched_scaled_official
+582;Rîșcani;Moldova;160666;2024-04-08;http://www.wikidata.org/entity/Q611656;matched_scaled_official
+583;Fălești;Moldova;206258;2024-04-08;http://www.wikidata.org/entity/Q878375;matched_scaled_official
+584;Ungheni;Moldova;279005;2024-04-08;http://www.wikidata.org/entity/Q854443;matched_scaled_official
+585;Hîncești;Moldova;255663;2024-04-08;http://www.wikidata.org/entity/Q878297;matched_scaled_official
+586;Cantemir;Moldova;122127;2024-04-08;http://www.wikidata.org/entity/Q684183;matched_scaled_official
+587;Cahul;Moldova;267857;2024-04-08;http://www.wikidata.org/entity/Q2128882;matched_scaled_official
+588;Ștefan Vodă;Moldova;155635;2024-04-08;http://www.wikidata.org/entity/Q2129061;matched_scaled_official
+589;Căușeni;Moldova;210756;2024-04-08;http://www.wikidata.org/entity/Q2128869;matched_scaled_official
+590;Cimișlia;Moldova;114048;2024-04-08;http://www.wikidata.org/entity/Q286646;matched_scaled_official
+591;Taraclia;Moldova;97298;2024-04-08;http://www.wikidata.org/entity/Q865884;matched_scaled_official
+592;Comrat;Moldova;73418;2024-04-08;http://www.wikidata.org/entity/Q241122;matched_scaled_official
+593;Orhei;Moldova;291659;2024-04-08;http://www.wikidata.org/entity/Q2112462;matched_scaled_official
+594;Mavrovo and Rostuša;Macedonia;93854;2023-01-01;;imputed_scaled_official
+595;Debarca;Macedonia;128878;2023-01-01;;imputed_scaled_official
+596;Bogdanci;Macedonia;80930;2023-01-01;;imputed_scaled_official
+597;Kavadarci;Macedonia;989292;2023-01-01;;imputed_scaled_official
+598;Prilep;Macedonia;134489;2023-01-01;;imputed_scaled_official
+599;Bitola;Macedonia;94953;2023-01-01;;imputed_scaled_official
+600;Tearce;Macedonia;108128;2023-01-01;;imputed_scaled_official
+601;Staro Nagoričane;Macedonia;87655;2023-01-01;;imputed_scaled_official
+602;Berovo;Macedonia;111821;2023-01-01;;imputed_scaled_official
+603;Berane;Montenegro;60222;2017-01-01;http://www.wikidata.org/entity/Q4853794;matched_scaled_official
+604;Pljevlja;Montenegro;62140;2017-01-01;http://www.wikidata.org/entity/Q3299950;matched_scaled_official
+605;Nikšić;Montenegro;160060;2011-01-01;http://www.wikidata.org/entity/Q4865016;matched_scaled_official
+606;Podgorica;Montenegro;333578;2011-01-01;http://www.wikidata.org/entity/Q23564;matched_scaled_official
+607;Groningen;Netherlands;624820;2013-12-31;http://www.wikidata.org/entity/Q752;matched_scaled_official
+608;Drenthe;Netherlands;527316;2017-01-01;http://www.wikidata.org/entity/Q772;matched_scaled_official
+609;Overijssel;Netherlands;1224876;2015-08-01;http://www.wikidata.org/entity/Q773;matched_scaled_official
+610;Gelderland;Netherlands;2165579;2013-12-31;http://www.wikidata.org/entity/Q775;matched_scaled_official
+611;Limburg;Netherlands;1200907;2013-12-31;http://www.wikidata.org/entity/Q1093;matched_scaled_official
+612;Zeeland;Netherlands;414641;2022-01-01;http://www.wikidata.org/entity/Q705;matched_scaled_official
+613;North Brabant;Netherlands;2419865;2015-01-01;http://www.wikidata.org/entity/Q1101;matched_scaled_official
+614;South Holland;Netherlands;3835408;2013-12-31;http://www.wikidata.org/entity/Q694;matched_scaled_official
+615;North Holland;Netherlands;3016689;2017-01-01;http://www.wikidata.org/entity/Q701;matched_scaled_official
+616;Friesland;Netherlands;696892;2021-01-01;http://www.wikidata.org/entity/Q770;matched_scaled_official
+617;Flevoland;Netherlands;428779;2013-12-31;http://www.wikidata.org/entity/Q707;matched_scaled_official
+618;Utrecht;Netherlands;1344228;2013-12-31;http://www.wikidata.org/entity/Q776;matched_scaled_official
+619;Troms;Norway;195635;2019-01-01;http://www.wikidata.org/entity/Q50631;matched_scaled_official
+620;Nordland;Norway;284764;2019-01-01;http://www.wikidata.org/entity/Q50630;matched_scaled_official
+621;Nord-Trøndelag;Norway;159589;2016-01-01;http://www.wikidata.org/entity/Q50629;matched_scaled_official
+622;Sør-Trøndelag;Norway;372485;2017-06-30;http://www.wikidata.org/entity/Q50628;matched_scaled_official
+623;Hedmark;Norway;230968;2019-01-01;http://www.wikidata.org/entity/Q50616;matched_scaled_official
+624;Akershus;Norway;837752;2023-01-01;http://www.wikidata.org/entity/Q50615;matched_scaled_official
+625;Østfold;Norway;348103;2019-01-01;http://www.wikidata.org/entity/Q50614;matched_scaled_official
+626;Finnmark;Norway;88639;2016-01-01;http://www.wikidata.org/entity/Q50632;matched_scaled_official
+627;Buskerud;Norway;316539;2024-08-01;http://www.wikidata.org/entity/Q50618;matched_scaled_official
+628;Vestfold;Norway;293765;2019-01-01;http://www.wikidata.org/entity/Q50619;matched_scaled_official
+629;Telemark;Norway;202785;2019-01-01;http://www.wikidata.org/entity/Q2254;matched_scaled_official
+630;Aust-Agder;Norway;137659;2019-01-01;http://www.wikidata.org/entity/Q50621;matched_scaled_official
+631;Vest-Agder;Norway;219482;2019-01-01;http://www.wikidata.org/entity/Q50623;matched_scaled_official
+632;Rogaland;Norway;584324;2024-01-01;http://www.wikidata.org/entity/Q50624;matched_scaled_official
+633;Hordaland;Norway;613666;2019-01-01;http://www.wikidata.org/entity/Q50625;matched_scaled_official
+634;Sogn og Fjordane;Norway;128438;2019-01-01;http://www.wikidata.org/entity/Q50626;matched_scaled_official
+635;Møre og Romsdal;Norway;310513;2019-01-01;http://www.wikidata.org/entity/Q50627;matched_scaled_official
+636;Svalbard;Norway;3123;2023-01-01;http://www.wikidata.org/entity/Q25231;matched_scaled_official
+637;Oppland;Norway;221771;2019-01-01;http://www.wikidata.org/entity/Q50617;matched_scaled_official
+638;Silesian Voivodeship;Poland;4380148;2023-01-01;http://www.wikidata.org/entity/Q54181;matched_scaled_official
+639;Lesser Poland Voivodeship;Poland;3188184;2013-01-01;http://www.wikidata.org/entity/Q54159;matched_scaled_official
+640;Podkarpackie Voivodeship;Poland;2012411;2020-01-01;http://www.wikidata.org/entity/Q54175;matched_scaled_official
+641;Lower Silesian Voivodeship;Poland;2765694;2012-12-31;http://www.wikidata.org/entity/Q54150;matched_scaled_official
+642;Opole Voivodeship;Poland;958380;2017-01-01;http://www.wikidata.org/entity/Q54171;matched_scaled_official
+643;Podlaskie Voivodeship;Poland;1132130;2014-06-30;http://www.wikidata.org/entity/Q54177;matched_scaled_official
+644;Warmian-Masurian Voivodeship;Poland;1364053;2016-06-30;http://www.wikidata.org/entity/Q54184;matched_scaled_official
+645;Lubusz Voivodeship;Poland;968402;2014-01-01;http://www.wikidata.org/entity/Q54157;matched_scaled_official
+646;West Pomeranian Voivodeship;Poland;1539513;2024-12-31;http://www.wikidata.org/entity/Q54188;matched_scaled_official
+647;Lublin Voivodeship;Poland;2041447;2014-01-01;http://www.wikidata.org/entity/Q54155;matched_scaled_official
+648;Pomeranian Voivodeship;Poland;2182011;2019-01-01;http://www.wikidata.org/entity/Q54180;matched_scaled_official
+649;Masovian Voivodeship;Poland;5210261;2011-03-31;http://www.wikidata.org/entity/Q54169;matched_scaled_official
+650;Łódź Voivodeship;Poland;2379780;2014-01-01;http://www.wikidata.org/entity/Q54158;matched_scaled_official
+651;Kuyavian-Pomeranian Voivodeship;Poland;1983577;2014-01-01;http://www.wikidata.org/entity/Q54153;matched_scaled_official
+652;Greater Poland Voivodeship;Poland;3316153;2019-01-01;http://www.wikidata.org/entity/Q54187;matched_scaled_official
+653;Świętokrzyskie Voivodeship;Poland;1177856;2018-01-01;http://www.wikidata.org/entity/Q54183;matched_scaled_official
+654;Évora;Portugal;89203;2018-01-01;http://www.wikidata.org/entity/Q274118;matched_scaled_official
+655;Portalegre;Portugal;38024;2018-01-01;http://www.wikidata.org/entity/Q225189;matched_scaled_official
+656;Viana do Castelo;Portugal;143930;2018-01-01;http://www.wikidata.org/entity/Q326214;matched_scaled_official
+657;Castelo Branco;Portugal;88757;2018-01-01;http://www.wikidata.org/entity/Q273529;matched_scaled_official
+658;Guarda;Portugal;66498;2018-01-01;http://www.wikidata.org/entity/Q273533;matched_scaled_official
+659;Bragança;Portugal;57116;2018-01-01;http://www.wikidata.org/entity/Q373528;matched_scaled_official
+660;Vila Real;Portugal;84805;2018-01-01;http://www.wikidata.org/entity/Q379372;matched_scaled_official
+661;Braga;Portugal;309367;2018-01-01;http://www.wikidata.org/entity/Q326203;matched_scaled_official
+662;Faro;Portugal;103692;2018-01-01;http://www.wikidata.org/entity/Q244521;matched_scaled_official
+663;Beja;Portugal;318272;2023-01-01;;imputed_scaled_official
+664;Setúbal;Portugal;1340830;2018-01-01;http://www.wikidata.org/entity/Q274109;matched_scaled_official
+665;Lisbon;Portugal;3632403;2023-01-01;http://www.wikidata.org/entity/Q207199;matched_scaled_official
+666;Santarém;Portugal;97610;2018-01-01;http://www.wikidata.org/entity/Q244510;matched_scaled_official
+667;Leiria;Portugal;212329;2018-01-01;http://www.wikidata.org/entity/Q244512;matched_scaled_official
+668;Coimbra;Portugal;227408;2018-01-01;http://www.wikidata.org/entity/Q244517;matched_scaled_official
+669;Aveiro;Portugal;132503;2018-01-01;http://www.wikidata.org/entity/Q210527;matched_scaled_official
+670;Porto;Portugal;3090228;2023-01-01;http://www.wikidata.org/entity/Q322792;matched_scaled_official
+671;Azores;Portugal;402084;2021-01-01;http://www.wikidata.org/entity/Q25263;matched_scaled_official
+672;Viseu;Portugal;164941;2018-01-01;http://www.wikidata.org/entity/Q273525;matched_scaled_official
+673;Satu Mare;Romania;362390;2021-12-01;http://www.wikidata.org/entity/Q165459;matched_scaled_official
+674;Arad;Romania;449489;2021-12-01;http://www.wikidata.org/entity/Q179559;matched_scaled_official
+675;Bihor;Romania;604183;2021-12-01;http://www.wikidata.org/entity/Q179588;matched_scaled_official
+676;Timiș;Romania;712939;2021-12-01;http://www.wikidata.org/entity/Q185586;matched_scaled_official
+677;Mehedinți;Romania;256820;2021-12-01;http://www.wikidata.org/entity/Q191717;matched_scaled_official
+678;Dolj;Romania;656947;2021-12-01;http://www.wikidata.org/entity/Q191065;matched_scaled_official
+679;Călărași;Romania;310651;2021-12-01;http://www.wikidata.org/entity/Q188948;matched_scaled_official
+680;Teleorman;Romania;354582;2021-12-01;http://www.wikidata.org/entity/Q191653;matched_scaled_official
+681;Giurgiu;Romania;287207;2021-12-01;http://www.wikidata.org/entity/Q193055;matched_scaled_official
+682;Constanța;Romania;718927;2021-12-01;http://www.wikidata.org/entity/Q188505;matched_scaled_official
+683;Olt;Romania;420049;2021-12-01;http://www.wikidata.org/entity/Q188945;matched_scaled_official
+684;Caraș-Severin;Romania;270244;2021-12-01;http://www.wikidata.org/entity/Q187925;matched_scaled_official
+685;Botoșani;Romania;430505;2021-12-01;http://www.wikidata.org/entity/Q178861;matched_scaled_official
+686;Iași;Romania;833755;2021-12-01;http://www.wikidata.org/entity/Q182888;matched_scaled_official
+687;Vaslui;Romania;410646;2021-12-01;http://www.wikidata.org/entity/Q167199;matched_scaled_official
+688;Galați;Romania;544559;2021-12-01;http://www.wikidata.org/entity/Q188796;matched_scaled_official
+689;Suceava;Romania;704191;2021-12-01;http://www.wikidata.org/entity/Q181209;matched_scaled_official
+690;Maramureș;Romania;495881;2021-12-01;http://www.wikidata.org/entity/Q188813;matched_scaled_official
+691;Tulcea;Romania;211904;2021-12-01;http://www.wikidata.org/entity/Q191078;matched_scaled_official
+692;Cluj;Romania;744291;2021-12-01;http://www.wikidata.org/entity/Q182624;matched_scaled_official
+693;Bistrița-Năsăud;Romania;324383;2021-12-01;http://www.wikidata.org/entity/Q181513;matched_scaled_official
+694;Sălaj;Romania;232583;2021-12-01;http://www.wikidata.org/entity/Q190690;matched_scaled_official
+695;Dâmbovița;Romania;525394;2021-12-01;http://www.wikidata.org/entity/Q188797;matched_scaled_official
+696;Ilfov;Romania;594766;2021-12-01;http://www.wikidata.org/entity/Q191670;matched_scaled_official
+697;Argeș;Romania;624606;2021-12-01;http://www.wikidata.org/entity/Q179567;matched_scaled_official
+698;Gorj;Romania;344873;2021-12-01;http://www.wikidata.org/entity/Q190406;matched_scaled_official
+699;Hunedoara;Romania;396351;2021-12-01;http://www.wikidata.org/entity/Q191071;matched_scaled_official
+700;Vâlcea;Romania;374656;2021-12-01;http://www.wikidata.org/entity/Q186838;matched_scaled_official
+701;Prahova;Romania;761802;2021-12-01;http://www.wikidata.org/entity/Q188665;matched_scaled_official
+702;Covasna;Romania;219233;2021-12-01;http://www.wikidata.org/entity/Q188959;matched_scaled_official
+703;Vrancea;Romania;367479;2021-12-01;http://www.wikidata.org/entity/Q182778;matched_scaled_official
+704;Buzău;Romania;443829;2021-12-01;http://www.wikidata.org/entity/Q185309;matched_scaled_official
+705;Brașov;Romania;599052;2021-12-01;http://www.wikidata.org/entity/Q182614;matched_scaled_official
+706;Sibiu;Romania;425579;2021-12-01;http://www.wikidata.org/entity/Q184797;matched_scaled_official
+707;Mureș;Romania;567904;2021-12-01;http://www.wikidata.org/entity/Q190711;matched_scaled_official
+708;Harghita;Romania;319958;2021-12-01;http://www.wikidata.org/entity/Q190702;matched_scaled_official
+709;Neamț;Romania;497775;2021-12-01;http://www.wikidata.org/entity/Q188661;matched_scaled_official
+710;Bacău;Romania;659078;2021-12-01;http://www.wikidata.org/entity/Q179779;matched_scaled_official
+711;Alba;Romania;357209;2021-12-01;http://www.wikidata.org/entity/Q45868;matched_scaled_official
+712;Brăila;Romania;308452;2021-12-01;http://www.wikidata.org/entity/Q188503;matched_scaled_official
+713;Ialomița;Romania;274878;2021-12-01;http://www.wikidata.org/entity/Q193044;matched_scaled_official
+714;Pskov;Russia;874952;2025-01-01;http://www.wikidata.org/entity/Q2218;matched_scaled_official
+715;Karachay-Cherkess Republic;Russia;713270;2024-01-01;http://www.wikidata.org/entity/Q5328;matched_scaled_official
+716;Kabardino-Balkaria;Russia;1379052;2024-01-01;http://www.wikidata.org/entity/Q5267;matched_scaled_official
+717;Republic of North Ossetia-Alania;Russia;1033956;2024-01-01;http://www.wikidata.org/entity/Q5237;matched_scaled_official
+718;Murmansk;Russia;999777;2024-01-01;http://www.wikidata.org/entity/Q1759;matched_scaled_official
+719;Karelia;Russia;790379;2025-01-01;http://www.wikidata.org/entity/Q1914;matched_scaled_official
+720;Leningrad;Russia;3100532;2024-01-01;http://www.wikidata.org/entity/Q2191;matched_scaled_official
+721;Kaliningrad;Russia;1514807;2023-01-01;http://www.wikidata.org/entity/Q1749;matched_scaled_official
+722;Smolensk;Russia;1315881;2024-01-01;http://www.wikidata.org/entity/Q2347;matched_scaled_official
+723;Bryansk;Russia;1725284;2025-01-01;http://www.wikidata.org/entity/Q2810;matched_scaled_official
+724;Kursk;Russia;1598854;2025-01-01;http://www.wikidata.org/entity/Q3178;matched_scaled_official
+725;Belgorod;Russia;2257173;2025-01-01;http://www.wikidata.org/entity/Q3329;matched_scaled_official
+726;Voronezh;Russia;3442122;2025-01-01;http://www.wikidata.org/entity/Q3447;matched_scaled_official
+727;Rostov;Russia;6301295;2025-01-01;http://www.wikidata.org/entity/Q3573;matched_scaled_official
+728;Orenburg;Russia;2785101;2024-01-01;http://www.wikidata.org/entity/Q5338;matched_scaled_official
+729;Saratov;Russia;3608681;2025-01-01;http://www.wikidata.org/entity/Q5334;matched_scaled_official
+730;Astrakhan;Russia;1441443;2024-01-01;http://www.wikidata.org/entity/Q3941;matched_scaled_official
+731;Volgograd;Russia;3707131;2025-01-01;http://www.wikidata.org/entity/Q3819;matched_scaled_official
+732;Autonomous Republic of Crimea;Russia;2888268;2022-01-01;http://www.wikidata.org/entity/Q15966495;matched_scaled_official
+733;Nenets Autonomous Okrug;Russia;64310;2024-01-01;http://www.wikidata.org/entity/Q2164;matched_scaled_official
+734;Saint Petersburg;Russia;8609582;2025-01-01;http://www.wikidata.org/entity/Q656;matched_scaled_official
+735;Arkhangelsk;Russia;1506941;2025-01-01;http://www.wikidata.org/entity/Q1875;matched_scaled_official
+736;Republic of Kalmykia;Russia;407546;2025-01-01;http://www.wikidata.org/entity/Q3953;matched_scaled_official
+737;Bashkortostan;Russia;6156671;2025-01-01;http://www.wikidata.org/entity/Q5710;matched_scaled_official
+738;Sverdlovsk;Russia;6429408;2025-01-01;http://www.wikidata.org/entity/Q5462;matched_scaled_official
+739;Lipetsk;Russia;1714815;2023-01-01;http://www.wikidata.org/entity/Q3510;matched_scaled_official
+740;Tambov;Russia;1456464;2024-01-01;http://www.wikidata.org/entity/Q3550;matched_scaled_official
+741;Republic of Tatarstan;Russia;6096723;2024-01-01;http://www.wikidata.org/entity/Q5481;matched_scaled_official
+742;Ulyanovsk;Russia;1786186;2024-01-01;http://www.wikidata.org/entity/Q5634;matched_scaled_official
+743;Penza;Russia;1847611;2024-01-01;http://www.wikidata.org/entity/Q5545;matched_scaled_official
+744;Oryol;Russia;1054679;2024-01-01;http://www.wikidata.org/entity/Q3129;matched_scaled_official
+745;Republic of Mordovia;Russia;1186390;2021-01-01;http://www.wikidata.org/entity/Q5340;matched_scaled_official
+746;Kaluga;Russia;1524526;2021-01-01;http://www.wikidata.org/entity/Q2842;matched_scaled_official
+747;Kostroma;Russia;862442;2024-01-01;http://www.wikidata.org/entity/Q2596;matched_scaled_official
+748;Yaroslavl;Russia;1808690;2024-01-01;http://www.wikidata.org/entity/Q2448;matched_scaled_official
+749;Vladimir;Russia;1995085;2024-01-01;http://www.wikidata.org/entity/Q2702;matched_scaled_official
+750;Ryazan;Russia;1588875;2024-01-01;http://www.wikidata.org/entity/Q2753;matched_scaled_official
+751;Ivanovo;Russia;1379716;2024-01-01;http://www.wikidata.org/entity/Q2654;matched_scaled_official
+752;Nizhny Novgorod;Russia;4629137;2025-01-01;http://www.wikidata.org/entity/Q2246;matched_scaled_official
+753;Tula;Russia;2240594;2024-01-01;http://www.wikidata.org/entity/Q2792;matched_scaled_official
+754;Chuvash Republic;Russia;1913347;2023-01-01;;imputed_scaled_official
+755;Vologda;Russia;1767396;2021-01-01;http://www.wikidata.org/entity/Q2015;matched_scaled_official
+756;Novgorod;Russia;863499;2025-01-01;http://www.wikidata.org/entity/Q2240;matched_scaled_official
+757;Tver;Russia;1813283;2025-01-01;http://www.wikidata.org/entity/Q2292;matched_scaled_official
+758;Moscow;Russia;20217163;2025-01-01;http://www.wikidata.org/entity/Q649;matched_scaled_official
+759;Mari El Republic;Russia;1020210;2024-01-01;http://www.wikidata.org/entity/Q5446;matched_scaled_official
+760;Kirov;Russia;1720928;2024-01-01;http://www.wikidata.org/entity/Q5387;matched_scaled_official
+761;Udmurt Republic;Russia;4092383;2023-01-01;;imputed_scaled_official
+762;Komi Republic;Russia;1088641;2025-01-01;http://www.wikidata.org/entity/Q2073;matched_scaled_official
+763;Perm Krai;Russia;3782654;2025-01-01;http://www.wikidata.org/entity/Q5400;matched_scaled_official
+764;Samara;Russia;4740539;2025-01-01;http://www.wikidata.org/entity/Q1727;matched_scaled_official
+765;Stavropol Krai;Russia;4392978;2025-01-01;http://www.wikidata.org/entity/Q5207;matched_scaled_official
+766;Republic of Adygea;Russia;762630;2025-01-01;http://www.wikidata.org/entity/Q3734;matched_scaled_official
+767;North Bačka;Republic of Serbia;3298188;2023-01-01;;imputed_scaled_official
+768;West Bačka;Republic of Serbia;1272214;2023-01-01;;imputed_scaled_official
+769;North Banat;Republic of Serbia;562333;2023-01-01;;imputed_scaled_official
+770;Pčinja;Republic of Serbia;704042;2023-01-01;;imputed_scaled_official
+771;Bor;Republic of Serbia;84475;2023-01-01;;imputed_scaled_official
+772;Zaječar;Republic of Serbia;17531;2023-01-01;;imputed_scaled_official
+773;Pirot;Republic of Serbia;24866;2023-01-01;;imputed_scaled_official
+774;Jablanica;Republic of Serbia;23781;2023-01-01;;imputed_scaled_official
+775;Raška;Republic of Serbia;36455;2023-01-01;;imputed_scaled_official
+776;Rasina;Republic of Serbia;39667;2023-01-01;;imputed_scaled_official
+777;Toplica;Republic of Serbia;37180;2023-01-01;;imputed_scaled_official
+778;Zlatibor;Republic of Serbia;28177;2023-01-01;;imputed_scaled_official
+779;Srem;Republic of Serbia;29191;2023-01-01;;imputed_scaled_official
+780;Mačva;Republic of Serbia;39667;2023-01-01;;imputed_scaled_official
+781;South Bačka;Republic of Serbia;27895;2023-01-01;;imputed_scaled_official
+782;Central Banat;Republic of Serbia;24267;2023-01-01;;imputed_scaled_official
+783;South Banat;Republic of Serbia;64713;2023-01-01;;imputed_scaled_official
+784;Braničevo;Republic of Serbia;36162;2023-01-01;;imputed_scaled_official
+785;Belgrade;Republic of Serbia;33985;2023-01-01;;imputed_scaled_official
+786;Podunavlje;Republic of Serbia;45019;2023-01-01;;imputed_scaled_official
+787;Nišava;Republic of Serbia;32900;2023-01-01;;imputed_scaled_official
+788;Pomoravski;Republic of Serbia;42874;2023-01-01;;imputed_scaled_official
+789;Šumadija;Republic of Serbia;44274;2023-01-01;;imputed_scaled_official
+790;Moravica;Republic of Serbia;35440;2023-01-01;;imputed_scaled_official
+791;Kolubara;Republic of Serbia;14704;2023-01-01;;imputed_scaled_official
+792;Žilina;Slovakia;687398;2024-12-31;http://www.wikidata.org/entity/Q184228;matched_scaled_official
+793;Prešov;Slovakia;811584;2024-12-31;http://www.wikidata.org/entity/Q189001;matched_scaled_official
+794;Košice;Slovakia;780315;2024-12-31;http://www.wikidata.org/entity/Q186295;matched_scaled_official
+795;Bratislava;Slovakia;737818;2024-12-31;http://www.wikidata.org/entity/Q183498;matched_scaled_official
+796;Trnava;Slovakia;567002;2024-12-31;http://www.wikidata.org/entity/Q181342;matched_scaled_official
+797;Trenčín;Slovakia;566673;2024-12-31;http://www.wikidata.org/entity/Q183139;matched_scaled_official
+798;Banská Bystrica;Slovakia;612314;2024-12-31;http://www.wikidata.org/entity/Q183640;matched_scaled_official
+799;Nitra;Slovakia;666896;2024-12-31;http://www.wikidata.org/entity/Q184548;matched_scaled_official
+800;Tolmin;Slovenia;1746209;2020-07-01;http://www.wikidata.org/entity/Q15924;matched_scaled_official
+801;Podvelka;Slovenia;373791;2020-07-01;http://www.wikidata.org/entity/Q1016800;matched_scaled_official
+802;Norrbotten;Sweden;247482;2025-09-30;http://www.wikidata.org/entity/Q103686;matched_scaled_official
+803;Västerbotten;Sweden;278005;2025-09-30;http://www.wikidata.org/entity/Q104877;matched_scaled_official
+804;Jämtland;Sweden;131893;2025-09-30;http://www.wikidata.org/entity/Q103679;matched_scaled_official
+805;Dalarna;Sweden;284540;2025-09-30;http://www.wikidata.org/entity/Q103732;matched_scaled_official
+806;Värmland;Sweden;281748;2025-09-30;http://www.wikidata.org/entity/Q106789;matched_scaled_official
+807;Västra Götaland;Sweden;1768063;2025-09-30;http://www.wikidata.org/entity/Q103093;matched_scaled_official
+808;Västernorrland;Sweden;239792;2025-09-30;http://www.wikidata.org/entity/Q104891;matched_scaled_official
+809;Gävleborg;Sweden;282272;2025-09-30;http://www.wikidata.org/entity/Q103699;matched_scaled_official
+810;Uppsala;Sweden;408300;2025-09-30;http://www.wikidata.org/entity/Q104926;matched_scaled_official
+811;Stockholm;Sweden;2471342;2025-09-30;http://www.wikidata.org/entity/Q104231;matched_scaled_official
+812;Södermanland;Sweden;299303;2025-09-30;http://www.wikidata.org/entity/Q106915;matched_scaled_official
+813;Östergötland;Sweden;470105;2025-09-30;http://www.wikidata.org/entity/Q104940;matched_scaled_official
+814;Kalmar;Sweden;244376;2025-09-30;http://www.wikidata.org/entity/Q103707;matched_scaled_official
+815;Blekinge;Sweden;156001;2025-09-30;http://www.wikidata.org/entity/Q102377;matched_scaled_official
+816;Skåne;Sweden;1425537;2025-09-30;http://www.wikidata.org/entity/Q103659;matched_scaled_official
+817;Halland;Sweden;344126;2025-09-30;http://www.wikidata.org/entity/Q103691;matched_scaled_official
+818;Gotland;Sweden;60691;2025-09-30;http://www.wikidata.org/entity/Q103738;matched_scaled_official
+819;Västmanland;Sweden;279424;2025-09-30;http://www.wikidata.org/entity/Q105075;matched_scaled_official
+820;Jönköping;Sweden;367925;2025-09-30;http://www.wikidata.org/entity/Q103672;matched_scaled_official
+821;Örebro;Sweden;306790;2025-09-30;http://www.wikidata.org/entity/Q104257;matched_scaled_official
+822;Kronoberg;Sweden;202285;2025-09-30;http://www.wikidata.org/entity/Q104746;matched_scaled_official
+823;Ardahan;Turkey;362073;2023-01-01;;imputed_scaled_official
+824;Artvin;Turkey;821147;2023-01-01;;imputed_scaled_official
+825;Kırklareli;Turkey;1307262;2023-01-01;;imputed_scaled_official
+826;Edirne;Turkey;1149855;2023-01-01;;imputed_scaled_official
+827;Kars;Turkey;1095201;2023-01-01;;imputed_scaled_official
+828;Mardin;Turkey;599522;2023-01-01;;imputed_scaled_official
+829;Şanlıurfa;Turkey;914609;2023-01-01;;imputed_scaled_official
+830;Kilis;Turkey;804336;2023-01-01;;imputed_scaled_official
+831;Gaziantep;Turkey;627021;2023-01-01;;imputed_scaled_official
+832;Hatay;Turkey;1227220;2023-01-01;;imputed_scaled_official
+833;Istanbul;Turkey;1178693;2023-01-01;;imputed_scaled_official
+834;Tekirdağ;Turkey;2327492;2023-01-01;;imputed_scaled_official
+835;Çanakkale;Turkey;157885;2023-01-01;;imputed_scaled_official
+836;Rize;Turkey;854813;2023-01-01;;imputed_scaled_official
+837;Trabzon;Turkey;651544;2023-01-01;;imputed_scaled_official
+838;Giresun;Turkey;561372;2023-01-01;;imputed_scaled_official
+839;Ordu;Turkey;816599;2023-01-01;;imputed_scaled_official
+840;Samsun;Turkey;1119470;2023-01-01;;imputed_scaled_official
+841;Sinop;Turkey;441117;2023-01-01;;imputed_scaled_official
+842;Kastamonu;Turkey;584538;2023-01-01;;imputed_scaled_official
+843;Bartın;Turkey;789730;2023-01-01;;imputed_scaled_official
+844;Zonguldak;Turkey;685043;2023-01-01;;imputed_scaled_official
+845;Düzce;Turkey;1105532;2023-01-01;;imputed_scaled_official
+846;Sakarya;Turkey;726797;2023-01-01;;imputed_scaled_official
+847;Kocaeli;Turkey;1533113;2023-01-01;;imputed_scaled_official
+848;Bursa;Turkey;245826;2023-01-01;;imputed_scaled_official
+849;Balıkesir;Turkey;381143;2023-01-01;;imputed_scaled_official
+850;İzmir;Turkey;300248;2023-01-01;;imputed_scaled_official
+851;Aydın;Turkey;497010;2023-01-01;;imputed_scaled_official
+852;Muğla;Turkey;546084;2023-01-01;;imputed_scaled_official
+853;Antalya;Turkey;1273445;2023-01-01;;imputed_scaled_official
+854;Mersin;Turkey;1697954;2023-01-01;;imputed_scaled_official
+855;Adana;Turkey;1505944;2023-01-01;;imputed_scaled_official
+856;Bolu;Turkey;927597;2023-01-01;;imputed_scaled_official
+857;Ankara;Turkey;1501141;2023-01-01;;imputed_scaled_official
+858;Bilecik;Turkey;2475130;2023-01-01;;imputed_scaled_official
+859;Eskişehir;Turkey;1785471;2023-01-01;;imputed_scaled_official
+860;Çankırı;Turkey;1792495;2023-01-01;;imputed_scaled_official
+861;Karabük;Turkey;1001245;2023-01-01;;imputed_scaled_official
+862;Tokat;Turkey;2999055;2023-01-01;;imputed_scaled_official
+863;Sivas;Turkey;617473;2023-01-01;;imputed_scaled_official
+864;Çorum;Turkey;1602799;2023-01-01;;imputed_scaled_official
+865;Amasya;Turkey;896772;2023-01-01;;imputed_scaled_official
+866;Kütahya;Turkey;462993;2023-01-01;;imputed_scaled_official
+867;Konya;Turkey;1099051;2023-01-01;;imputed_scaled_official
+868;Karaman;Turkey;3282874;2023-01-01;;imputed_scaled_official
+869;Niğde;Turkey;1461643;2023-01-01;;imputed_scaled_official
+870;Kayseri;Turkey;727024;2023-01-01;;imputed_scaled_official
+871;Isparta;Turkey;1408390;2023-01-01;;imputed_scaled_official
+872;Manisa;Turkey;4700868;2023-01-01;;imputed_scaled_official
+873;Denizli;Turkey;1049416;2023-01-01;;imputed_scaled_official
+874;Burdur;Turkey;777268;2023-01-01;;imputed_scaled_official
+875;Aksaray;Turkey;2048122;2023-01-01;;imputed_scaled_official
+876;Nevşehir;Turkey;1024323;2023-01-01;;imputed_scaled_official
+877;Yozgat;Turkey;1509982;2023-01-01;;imputed_scaled_official
+878;Kırşehir;Turkey;1297519;2023-01-01;;imputed_scaled_official
+879;Uşak;Turkey;844732;2023-01-01;;imputed_scaled_official
+880;Erzincan;Turkey;905644;2023-01-01;;imputed_scaled_official
+881;Tunceli;Turkey;618423;2023-01-01;;imputed_scaled_official
+882;Afyonkarahisar;Turkey;1607138;2023-01-01;;imputed_scaled_official
+883;Kırıkkale;Turkey;743976;2023-01-01;;imputed_scaled_official
+884;Kahramanmaraş;Turkey;519321;2023-01-01;;imputed_scaled_official
+885;Muş;Turkey;1320985;2023-01-01;;imputed_scaled_official
+886;Erzurum;Turkey;922698;2023-01-01;;imputed_scaled_official
+887;Malatya;Turkey;1723175;2023-01-01;;imputed_scaled_official
+888;Elazığ;Turkey;544695;2023-01-01;;imputed_scaled_official
+889;Bitlis;Turkey;1685940;2023-01-01;;imputed_scaled_official
+890;Bingöl;Turkey;905042;2023-01-01;;imputed_scaled_official
+891;Osmaniye;Turkey;2779390;2023-01-01;;imputed_scaled_official
+892;Adıyaman;Turkey;1381412;2023-01-01;;imputed_scaled_official
+893;Diyarbakır;Turkey;1086327;2023-01-01;;imputed_scaled_official
+894;Batman;Turkey;1049181;2023-01-01;;imputed_scaled_official
+895;Bayburt;Turkey;983786;2023-01-01;;imputed_scaled_official
+896;Gümüşhane;Turkey;339846;2023-01-01;;imputed_scaled_official
+897;Chernihiv;Ukraine;923835;2022-01-01;http://www.wikidata.org/entity/Q167874;matched_scaled_official
+898;Volyn;Ukraine;983581;2022-01-01;http://www.wikidata.org/entity/Q167859;matched_scaled_official
+899;Rivne;Ukraine;1099555;2022-01-01;http://www.wikidata.org/entity/Q174187;matched_scaled_official
+900;Zhytomyr;Ukraine;1135426;2022-01-01;http://www.wikidata.org/entity/Q40637;matched_scaled_official
+901;Kyiv;Ukraine;1728688;2022-01-01;http://www.wikidata.org/entity/Q170036;matched_scaled_official
+902;Zakarpattia;Ukraine;1198449;2022-01-01;http://www.wikidata.org/entity/Q170213;matched_scaled_official
+903;Chernivtsi;Ukraine;857524;2022-01-01;http://www.wikidata.org/entity/Q168856;matched_scaled_official
+904;Ivano-Frankivsk;Ukraine;1301825;2022-01-01;http://www.wikidata.org/entity/Q178269;matched_scaled_official
+905;Odessa;Ukraine;2264425;2022-01-01;http://www.wikidata.org/entity/Q171852;matched_scaled_official
+906;Vinnytsia;Ukraine;1453686;2022-01-01;http://www.wikidata.org/entity/Q166709;matched_scaled_official
+907;Lviv;Ukraine;2386479;2022-01-01;http://www.wikidata.org/entity/Q164193;matched_scaled_official
+908;Sumy;Ukraine;997464;2022-01-01;http://www.wikidata.org/entity/Q170446;matched_scaled_official
+909;Kharkiv;Ukraine;2502838;2022-01-01;http://www.wikidata.org/entity/Q170666;matched_scaled_official
+910;Luhansk;Ukraine;2087625;2018-01-01;http://www.wikidata.org/entity/Q171965;matched_scaled_official
+911;Donetsk;Ukraine;4045105;2018-01-01;http://www.wikidata.org/entity/Q2012050;matched_scaled_official
+912;Kherson;Ukraine;964554;2022-01-01;http://www.wikidata.org/entity/Q163271;matched_scaled_official
+913;Zaporizhzhia;Ukraine;1577863;2022-01-01;http://www.wikidata.org/entity/Q171334;matched_scaled_official
+914;Mykolaiv;Ukraine;1051440;2022-01-01;http://www.wikidata.org/entity/Q181633;matched_scaled_official
+915;Poltava;Ukraine;1302269;2022-01-01;http://www.wikidata.org/entity/Q169501;matched_scaled_official
+916;Khmelnytskyi;Ukraine;1183381;2022-01-01;http://www.wikidata.org/entity/Q171331;matched_scaled_official
+917;Ternopil;Ukraine;983925;2022-01-01;http://www.wikidata.org/entity/Q173407;matched_scaled_official
+918;Dnipropetrovsk;Ukraine;2981960;2022-01-01;http://www.wikidata.org/entity/Q170672;matched_scaled_official
+919;Cherkasy;Ukraine;1117814;2022-01-01;http://www.wikidata.org/entity/Q161808;matched_scaled_official
+920;Kirovohrad;Ukraine;870289;2022-01-01;http://www.wikidata.org/entity/Q180981;matched_scaled_official

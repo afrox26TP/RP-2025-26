@@ -9,6 +9,7 @@
 [ext_resource type="Script" uid="uid://b07wygxmoms6q" path="res://scripts/map_camera.gd" id="6_2lpho"]
 [ext_resource type="Script" uid="uid://c6m733k5b7qxd" path="res://scripts/InfoUI.gd" id="7_nakos"]
 [ext_resource type="Script" uid="uid://bcuk57in5kv32" path="res://scripts/GameUI.gd" id="9_be0no"]
+[ext_resource type="Script" uid="uid://cr0ivmxyc8531" path="res://scripts/TopBar.gd" id="10_blm8a"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_2klcf"]
 shader = ExtResource("2_0cso3")
@@ -105,8 +106,52 @@ layout_mode = 2
 [node name="TotalPopLabel" type="Label" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=1425988809]
 layout_mode = 2
 
+[node name="TotalRecruitsLabel" type="Label" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=1624300046]
+layout_mode = 2
+
 [node name="TotalGdpLabel" type="Label" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=1680951380]
 layout_mode = 2
 
 [node name="GdpPerCapitaLabel" type="Label" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=446696204]
 layout_mode = 2
+
+[node name="TopBar" type="CanvasLayer" parent="." unique_id=1318765703]
+script = ExtResource("10_blm8a")
+
+[node name="Panel" type="Panel" parent="TopBar" unique_id=931572990]
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 300.0
+offset_right = 300.0
+offset_bottom = 35.0
+grow_horizontal = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="TopBar/Panel" unique_id=711533444]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 5.0
+offset_top = -0.5
+offset_right = -315.0
+offset_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MoneyLabel" type="Label" parent="TopBar/Panel/HBoxContainer" unique_id=649901103]
+layout_mode = 2
+theme_override_font_sizes/font_size = 25
+
+[node name="Spacer" type="Control" parent="TopBar/Panel/HBoxContainer" unique_id=119213241]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TurnLabel" type="Label" parent="TopBar/Panel/HBoxContainer" unique_id=1732408545]
+layout_mode = 2
+theme_override_font_sizes/font_size = 25
+
+[node name="NextTurnButton" type="Button" parent="TopBar/Panel/HBoxContainer" unique_id=285170616]
+layout_mode = 2
+theme_override_font_sizes/font_size = 25
+text = "Dalsi tah
+"
