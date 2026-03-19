@@ -10,16 +10,22 @@ extends CanvasLayer
 
 @onready var action_menu = $ActionMenu
 @onready var btn_stavet = $ActionMenu/HBoxContainer/StavetMenuButton 
-# Tady nechávám tvůj původní název, jen to v editoru musí být MenuButton
 @onready var btn_verbovat = $ActionMenu/HBoxContainer/VerbovatButton
 @onready var btn_likvidovat = $ActionMenu/HBoxContainer/LikvidovatButton
 
+# Cesty k plovoucímu oknu (PopupPanel)
+@onready var recruit_popup = $ActionMenu/RecruitPopup
+@onready var recruit_info = $ActionMenu/RecruitPopup/VBoxContainer/RecruitInfo
+@onready var recruit_slider = $ActionMenu/RecruitPopup/VBoxContainer/RecruitSlider
+@onready var btn_potvrdit = $ActionMenu/RecruitPopup/VBoxContainer/HBoxContainer/PotvrditBtn
+@onready var btn_zrusit = $ActionMenu/RecruitPopup/VBoxContainer/HBoxContainer/ZrusitBtn
+
 var aktualni_provincie_id: int = -1
+var cena_za_vojaka: float = 0.05 # 50 mil. za 1000 mužů
 
 func _ready():
 	action_menu.hide()
 	
-	# Menu pro stavění
 	var popup_stavba = btn_stavet.get_popup()
 	popup_stavba.clear()
 	popup_stavba.add_item("Civilní továrna (150 mil.)", 0)
@@ -27,24 +33,20 @@ func _ready():
 	popup_stavba.id_pressed.connect(_on_stavba_vybrana)
 	popup_stavba.about_to_popup.connect(_posun_stavba_menu)
 
-	# Menu pro verbování
-	var popup_verbovani = btn_verbovat.get_popup()
-	popup_verbovani.clear()
-	popup_verbovani.add_item("Pěchota (50 mil. | 1000 rekrutů)", 0)
-	popup_verbovani.id_pressed.connect(_on_verbovat_vybrano)
-	popup_verbovani.about_to_popup.connect(_posun_verbovat_menu)
+	# Napojím tlačítka a slider
+	btn_verbovat.pressed.connect(_on_verbovat_pressed)
+	recruit_slider.value_changed.connect(_on_slider_zmenen)
+	btn_potvrdit.pressed.connect(_on_potvrdit_verbovani)
+	btn_zrusit.pressed.connect(func(): recruit_popup.hide())
 
 func _posun_stavba_menu():
 	var p = btn_stavet.get_popup()
 	p.position.y = btn_stavet.global_position.y - p.size.y - 5
 
-func _posun_verbovat_menu():
-	var p = btn_verbovat.get_popup()
-	p.position.y = btn_verbovat.global_position.y - p.size.y - 5
-
 func schovej_se():
 	$PanelContainer.hide()
 	action_menu.hide()
+	recruit_popup.hide()
 	aktualni_provincie_id = -1
 
 func zobraz_data(data: Dictionary):
@@ -53,6 +55,7 @@ func zobraz_data(data: Dictionary):
 		return
 	
 	$PanelContainer.show()
+	recruit_popup.hide() # Skryju roletku při prokliku jinam
 	aktualni_provincie_id = data.get("id", -1)
 	
 	var owner = str(data.get("owner", "")).strip_edges().to_upper()
@@ -83,7 +86,6 @@ func zobraz_data(data: Dictionary):
 		var gdp = float(data.get("gdp", 0.0))
 		gdp_label.text = "HDP: %.2f mld. USD" % gdp
 		
-		# Kolik tam mám vojáků?
 		var vojaci = int(data.get("soldiers", 0))
 		soldiers_label.text = "Posádka: " + _formatuj_cislo(vojaci) + " mužů"
 		
@@ -110,45 +112,60 @@ func zobraz_data(data: Dictionary):
 
 func _on_stavba_vybrana(id: int):
 	if aktualni_provincie_id == -1: return
-	
 	var cena = 150.0 if id == 0 else 200.0
-	var typ_budovy = "Civilní továrna" if id == 0 else "Zbrojovka"
-		
 	if GameManager.statni_kasa >= cena:
 		GameManager.statni_kasa -= cena
 		GameManager.provincie_cooldowny[aktualni_provincie_id] = {"zbyva": 3, "budova": id}
 		btn_stavet.disabled = true
 		btn_stavet.text = "Staví se (3 kola)"
 		GameManager.kolo_zmeneno.emit()
-	else:
-		print("Nemáš peníze na stavbu!")
 
-func _on_verbovat_vybrano(id: int):
+func _on_verbovat_pressed():
 	if aktualni_provincie_id == -1: return
 	
-	if id == 0: # Pěchota
-		var cena = 50.0
-		var potreba_rekrutu = 1000
+	var prov_data = GameManager.map_data[aktualni_provincie_id]
+	var dostupni_rekruti = int(prov_data.get("recruitable_population", 0))
+	
+	var max_za_penize = int(GameManager.statni_kasa / cena_za_vojaka)
+	var max_mozno = min(dostupni_rekruti, max_za_penize)
+	
+	if max_mozno <= 0:
+		print("Nemáš lidi nebo peníze na vojáky!")
+		return
 		
-		var prov_data = GameManager.map_data[aktualni_provincie_id]
-		var dostupni_rekruti = int(prov_data.get("recruitable_population", 0))
-		
-		# Mám prachy i rekruty?
-		if GameManager.statni_kasa >= cena and dostupni_rekruti >= potreba_rekrutu:
-			GameManager.statni_kasa -= cena
-			
-			# Přesunu rekruty do posádky
-			prov_data["recruitable_population"] -= potreba_rekrutu
-			if not prov_data.has("soldiers"):
-				prov_data["soldiers"] = 0
-			prov_data["soldiers"] += potreba_rekrutu
-			
-			print("Naverbována pěchota! (Provincie %d)" % aktualni_provincie_id)
-			
-			zobraz_data(prov_data)
-			GameManager.kolo_zmeneno.emit()
-		else:
-			print("Nedostatek financí nebo rekrutů!")
+	recruit_slider.min_value = 0
+	recruit_slider.max_value = max_mozno
+	recruit_slider.value = 0
+	_on_slider_zmenen(0) 
+	
+	# Vypočítám pozici pro PopupPanel (těsně nad tlačítko) a ukážu ho
+	var rect = Rect2i()
+	rect.position = Vector2i(btn_verbovat.global_position.x, btn_verbovat.global_position.y - recruit_popup.size.y - 5)
+	rect.size = recruit_popup.size
+	
+	recruit_popup.popup(rect)
+
+func _on_slider_zmenen(hodnota: float):
+	var cena = hodnota * cena_za_vojaka
+	recruit_info.text = "Mužů: %d\nCena: %.2f mil." % [int(hodnota), cena]
+	btn_potvrdit.disabled = (hodnota == 0)
+
+func _on_potvrdit_verbovani():
+	var pocet_vojaku = int(recruit_slider.value)
+	var celkova_cena = pocet_vojaku * cena_za_vojaka
+	var prov_data = GameManager.map_data[aktualni_provincie_id]
+	
+	# Strhnu prachy a přesunu rekruty do posádky
+	GameManager.statni_kasa -= celkova_cena
+	prov_data["recruitable_population"] -= pocet_vojaku
+	
+	if not prov_data.has("soldiers"):
+		prov_data["soldiers"] = 0
+	prov_data["soldiers"] += pocet_vojaku
+	
+	recruit_popup.hide()
+	zobraz_data(prov_data) # Překreslím panel s novými čísly
+	GameManager.kolo_zmeneno.emit()
 
 func _formatuj_cislo(cislo: int) -> String:
 	var text_cisla = str(cislo)

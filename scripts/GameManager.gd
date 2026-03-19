@@ -14,13 +14,26 @@ var map_data: Dictionary = {}
 var provincie_cooldowny: Dictionary = {}
 
 func spocitej_prijem(all_provinces: Dictionary):
-	map_data = all_provinces # Hodím si sem referenci
+	map_data = all_provinces 
 	var celkove_hdp = 0.0
+	var celkem_vojaku = 0
+	
 	for p_id in map_data:
 		var p = map_data[p_id]
 		if str(p.get("owner", "")).strip_edges().to_upper() == hrac_stat:
 			celkove_hdp += float(p.get("gdp", 0.0))
-	celkovy_prijem = celkove_hdp * 0.05
+			celkem_vojaku += int(p.get("soldiers", 0))
+			
+	# Výpočet příjmů (5 % z HDP)
+	var prijem_z_hdp = celkove_hdp * 0.05
+	
+	# Výpočet výdajů na armádu (např. 0.005 mil. za každého vojáka za kolo)
+	var naklady_na_vojaky = celkem_vojaku * 0.005
+	
+	# Celkový příjem je zisk z HDP mínus výdaje
+	celkovy_prijem = prijem_z_hdp - naklady_na_vojaky
+	
+	print("HDP Příjem: %.2f | Výdaje Armáda: %.2f | Čistý zisk: %.2f" % [prijem_z_hdp, naklady_na_vojaky, celkovy_prijem])
 
 func ukonci_kolo():
 	statni_kasa += celkovy_prijem

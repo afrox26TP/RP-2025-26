@@ -194,3 +194,8 @@ func dobyt_provincii(prov_id: int, novy_vlastnik: String):
 		# Aktualizujeme zrovna ten mód, ve kterém se nacházíme (aby to nedělalo brikule)
 		aktualizuj_mapovy_mod("political", root.provinces)
 		print("Provincie ", prov_id, " byla dobyta státem ", novy_vlastnik)
+		# (Tohle dej nakonec funkce dobyt_provincii)
+		var labels_manager = root.get_node_or_null("CountryLabelsManager")
+		var prov_labels = root.get_node_or_null("ProvinceLabels")
+		if labels_manager and prov_labels:
+			labels_manager.aktualizuj_labely_statu(root.provinces, prov_labels)

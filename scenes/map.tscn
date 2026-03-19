@@ -10,6 +10,7 @@
 [ext_resource type="Script" uid="uid://c6m733k5b7qxd" path="res://scripts/InfoUI.gd" id="7_nakos"]
 [ext_resource type="Script" uid="uid://bcuk57in5kv32" path="res://scripts/GameUI.gd" id="9_be0no"]
 [ext_resource type="Script" uid="uid://cr0ivmxyc8531" path="res://scripts/TopBar.gd" id="10_blm8a"]
+[ext_resource type="Script" uid="uid://drb52vlxta7yx" path="res://scripts/CountryLabelsManager.gd" id="11_mlgqr"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_2klcf"]
 shader = ExtResource("2_0cso3")
@@ -38,9 +39,9 @@ script = ExtResource("7_nakos")
 
 [node name="PanelContainer" type="PanelContainer" parent="InfoUI" unique_id=516417990]
 custom_minimum_size = Vector2(231, 0)
-offset_top = 900.0
+offset_top = 895.0
 offset_right = 231.0
-offset_bottom = 1085.0
+offset_bottom = 1080.0
 
 [node name="VBoxContainer" type="VBoxContainer" parent="InfoUI/PanelContainer" unique_id=529708643]
 layout_mode = 2
@@ -78,7 +79,7 @@ grow_vertical = 0
 [node name="HBoxContainer" type="HBoxContainer" parent="InfoUI/ActionMenu" unique_id=1043278302]
 layout_mode = 2
 
-[node name="VerbovatButton" type="MenuButton" parent="InfoUI/ActionMenu/HBoxContainer" unique_id=1173554942]
+[node name="VerbovatButton" type="Button" parent="InfoUI/ActionMenu/HBoxContainer" unique_id=1888448357]
 layout_mode = 2
 text = "Verbovat"
 
@@ -89,6 +90,34 @@ text = "Stavet"
 [node name="LikvidovatButton" type="Button" parent="InfoUI/ActionMenu/HBoxContainer" unique_id=998880142]
 layout_mode = 2
 text = "Likvidovat"
+
+[node name="RecruitPopup" type="PopupPanel" parent="InfoUI/ActionMenu" unique_id=64537540]
+oversampling_override = 1.0
+size = Vector2i(200, 100)
+visible = true
+
+[node name="VBoxContainer" type="VBoxContainer" parent="InfoUI/ActionMenu/RecruitPopup" unique_id=1763753515]
+offset_left = 4.0
+offset_top = 4.0
+offset_right = 196.0
+offset_bottom = 96.0
+
+[node name="RecruitInfo" type="Label" parent="InfoUI/ActionMenu/RecruitPopup/VBoxContainer" unique_id=903825165]
+layout_mode = 2
+
+[node name="RecruitSlider" type="HSlider" parent="InfoUI/ActionMenu/RecruitPopup/VBoxContainer" unique_id=833843014]
+layout_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="InfoUI/ActionMenu/RecruitPopup/VBoxContainer" unique_id=1060543315]
+layout_mode = 2
+
+[node name="PotvrditBtn" type="Button" parent="InfoUI/ActionMenu/RecruitPopup/VBoxContainer/HBoxContainer" unique_id=1088197899]
+layout_mode = 2
+text = "Najmout"
+
+[node name="ZrusitBtn" type="Button" parent="InfoUI/ActionMenu/RecruitPopup/VBoxContainer/HBoxContainer" unique_id=1650903378]
+layout_mode = 2
+text = "Zrusit"
 
 [node name="GameUI" type="CanvasLayer" parent="." unique_id=1271783973]
 script = ExtResource("9_be0no")
@@ -161,3 +190,6 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 25
 text = "Dalsi tah
 "
+
+[node name="CountryLabelsManager" type="Node2D" parent="." unique_id=1947757198]
+script = ExtResource("11_mlgqr")
