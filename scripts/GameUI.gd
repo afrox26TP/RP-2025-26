@@ -6,7 +6,6 @@ extends CanvasLayer
 @onready var pop_label = $OverviewPanel/VBoxContainer/TotalPopLabel
 @onready var recruit_label = $OverviewPanel/VBoxContainer/TotalRecruitsLabel 
 @onready var gdp_label = $OverviewPanel/VBoxContainer/TotalGdpLabel
-# Zpátky přidaný label pro HDP na osobu
 @onready var gdp_pc_label = $OverviewPanel/VBoxContainer/GdpPerCapitaLabel 
 
 func _ready():
@@ -14,7 +13,7 @@ func _ready():
 
 func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 	if data.is_empty():
-		panel.hide()
+		schovej_se()
 		return
 		
 	var owner = str(data.get("owner", "")).strip_edges().to_upper()
@@ -22,14 +21,14 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 	var ideologie = str(data.get("ideology", "Neznámo"))
 	
 	if owner == "SEA" or owner == "":
-		panel.hide()
+		schovej_se()
 		return
 		
 	var total_pop = 0
 	var total_gdp = 0.0
 	var total_recruits = 0
 	
-	# Projedeme mapu a sečteme data pro daný stát
+	# Sečtu si data za celý stát
 	for p_id in all_provinces:
 		var p = all_provinces[p_id]
 		if str(p.get("owner", "")).strip_edges().to_upper() == owner:
@@ -41,7 +40,7 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 	ideo_label.text = "Zřízení: " + ideologie.capitalize()
 	pop_label.text = "Celková populace: " + _formatuj_cislo(total_pop)
 	
-	# Výpočet procenta rekrutů vůči celkové populaci
+	# Spočítám podíl rekrutů
 	var procento = 0.0
 	if total_pop > 0:
 		procento = (float(total_recruits) / float(total_pop)) * 100.0
@@ -49,7 +48,7 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 	recruit_label.text = "Celkoví rekruti: " + _formatuj_cislo(total_recruits) + " (%.2f %%)" % procento
 	gdp_label.text = "Celkové HDP: %.2f mld. USD" % total_gdp
 	
-	# Výpočet průměrného HDP na osobu pro celý stát
+	# Spočítám HDP na hlavu
 	if total_pop > 0:
 		var gdp_per_capita = (total_gdp * 1000000000.0) / float(total_pop)
 		gdp_pc_label.text = "HDP na osobu: $%.0f" % gdp_per_capita
@@ -58,7 +57,8 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 	
 	panel.show()
 
-func zavri_prehled():
+# Zavolá se při kliknutí pravým tlačítkem do mapy
+func schovej_se():
 	panel.hide()
 
 func _formatuj_cislo(cislo: int) -> String:

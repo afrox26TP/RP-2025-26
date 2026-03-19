@@ -47,22 +47,46 @@ func _ready():
 func _unhandled_input(event):
 	if event is InputEventMouseMotion:
 		_zpracuj_interakci(event.position, false)
-	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		_zpracuj_interakci(event.position, true)
+	elif event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			_zpracuj_interakci(event.position, true)
+		elif event.button_index == MOUSE_BUTTON_RIGHT:
+			_odzanc_vse()
 		
-	if event is InputEventKey and event.pressed:
+	# Přidána kontrola is_echo(), ať mi to při podržení neprokliká půlku hry
+	if event is InputEventKey and event.pressed and not event.is_echo():
 		var root = get_parent()
 		if "provinces" in root:
 			if event.keycode == KEY_1: aktualizuj_mapovy_mod("political", root.provinces)
 			elif event.keycode == KEY_2: aktualizuj_mapovy_mod("population", root.provinces)
 			elif event.keycode == KEY_3: aktualizuj_mapovy_mod("gdp", root.provinces)
 			elif event.keycode == KEY_4: aktualizuj_mapovy_mod("ideology", root.provinces) 
-			elif event.keycode == KEY_5: aktualizuj_mapovy_mod("recruitable_population", root.provinces) # NOVÁ KLÁVESA 5
+			elif event.keycode == KEY_5: aktualizuj_mapovy_mod("recruitable_population", root.provinces) 
 			
 			elif event.keycode == KEY_C:
 				var vybrana_provincie = material.get_shader_parameter("selected_id")
 				if vybrana_provincie != null and float(vybrana_provincie) >= 0.0:
 					dobyt_provincii(int(vybrana_provincie), GameManager.hrac_stat)
+					
+			# Mezerník rovnou ukončí kolo
+			elif event.keycode == KEY_SPACE:
+				GameManager.ukonci_kolo()
+
+# Funkce pro kompletní vyčištění výběru a schování UI
+func _odzanc_vse():
+	# Vypne outline na mapě
+	material.set_shader_parameter("has_selected", false)
+	material.set_shader_parameter("selected_id", -1.0)
+	
+	# Skryje detail provincie
+	var info_ui = get_tree().current_scene.find_child("InfoUI", true, false)
+	if info_ui and info_ui.has_method("schovej_se"):
+		info_ui.schovej_se()
+		
+	# Skryje přehled státu
+	var game_ui = get_tree().current_scene.find_child("GameUI", true, false)
+	if game_ui and game_ui.has_method("schovej_se"):
+		game_ui.schovej_se()
 
 func _zpracuj_interakci(mouse_pos: Vector2, je_kliknuti: bool):
 	if map_image == null: return
