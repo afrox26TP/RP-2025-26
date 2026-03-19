@@ -142,16 +142,37 @@ func generuj_nazvy_provincii():
 		
 		label_container.add_child(lbl_inst)
 		
-		var l = lbl_inst.get_node("Label")
+		# --- UPRAVENÁ ČÁST PRO VLAJKY ---
+		# Používáme find_child, aby to našlo uzly bez ohledu na to, jak jsi poskládal HBoxContainer
+		var l = lbl_inst.find_child("Label", true, false)
+		var f = lbl_inst.find_child("Flag", true, false)
+		
 		if l:
 			var zobrazeny_nazev = str(d.province_name).replace(" Voivodeship", "").replace(" County", "")
 			
 			if je_to_capital:
+				# 1. Odstraněna hvězdička, vezmeme čistý název
 				var jmeno_mesta = d.get("capital_name", "")
 				if jmeno_mesta != "":
-					zobrazeny_nazev = "★ " + jmeno_mesta
-				else:
-					zobrazeny_nazev = "★ " + zobrazeny_nazev
+					zobrazeny_nazev = jmeno_mesta
+				
+				# 2. Nahodíme vlajku
+				if f:
+					f.show()
+					var tag = str(d.get("owner", ""))
+					var ideologie = str(d.get("ideology", ""))
+					
+					var ideo_cesta = "res://map_data/FlagsIdeology/%s_%s.svg" % [tag, ideologie]
+					var zaklad_cesta = "res://map_data/Flags/%s.svg" % tag
+					
+					if ideologie != "" and ResourceLoader.exists(ideo_cesta):
+						f.texture = load(ideo_cesta)
+					elif ResourceLoader.exists(zaklad_cesta):
+						f.texture = load(zaklad_cesta)
+			else:
+				# Pokud to není hlavní město, vlajku radši skryjeme
+				if f:
+					f.hide()
 				
 			l.text = zobrazeny_nazev
 			lbl_inst.plny_nazev = zobrazeny_nazev
@@ -160,8 +181,6 @@ func generuj_nazvy_provincii():
 		
 		if not moc_blizko:
 			umistene_pozice.append(pozice)
-
-# (Smazána celá původní funkce generuj_nazvy_statu(), už ji nepotřebujeme)
 
 func get_province_data_by_color(clicked_color: Color):
 	var hex = clicked_color.to_html(false)
@@ -191,11 +210,10 @@ func _na_zmenu_zoomu(aktualni_zoom):
 				lbl.aktualni_zoom = aktualni_zoom
 				lbl.reset_stav()
 				
-	# --- NOVÁ ČÁST PRO STÁTY (Upraveno pro dynamického manažera) ---
 	var labels_manager = get_node_or_null("CountryLabelsManager")
 	if labels_manager:
 		var odzoomovano = aktualni_zoom <= 0.8
-		labels_manager.visible = odzoomovano # Manažer (a jeho potomci) se ukáže jen z dálky
+		labels_manager.visible = odzoomovano
 		
 		if odzoomovano:
 			var zvetseni = clamp(1.0 / aktualni_zoom, 1.0, 4.0)

@@ -5,19 +5,23 @@
 [node name="ProvinceLabel" type="Node2D" unique_id=137938760]
 script = ExtResource("1_cxqrv")
 
-[node name="Label" type="Label" parent="." unique_id=1186857749]
-custom_minimum_size = Vector2(140, 0)
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -40.0
-offset_top = -11.5
-offset_right = 60.0
-offset_bottom = 11.5
-grow_horizontal = 2
-grow_vertical = 2
+[node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=511357858]
+offset_left = -84.0
+offset_top = -20.0
+offset_right = 84.0
+offset_bottom = 20.0
+theme_override_constants/separation = 0
+alignment = 1
+
+[node name="Flag" type="TextureRect" parent="HBoxContainer" unique_id=1656971296]
+custom_minimum_size = Vector2(24, 16)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Label" type="Label" parent="HBoxContainer" unique_id=1186857749]
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
 theme_override_font_sizes/font_size = 12
 text = "test"
 horizontal_alignment = 1

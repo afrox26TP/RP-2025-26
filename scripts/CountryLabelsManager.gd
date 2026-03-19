@@ -1,17 +1,13 @@
 extends Node2D
 
-# Načteme tvou připravenou scénu
 @export var label_scene: PackedScene = preload("res://scenes/CountryLabel.tscn")
-
-# Limit pro zobrazení vlajky místo textu
-@export var min_velikost_pro_text: float = 250.0 
+@export var min_velikost_pro_text: float = 85.0 
 
 var aktivni_labely: Dictionary = {}
 
 func aktualizuj_labely_statu(all_provinces: Dictionary, prov_labels_node: Node2D):
 	var staty_data = {} 
 	
-	# 1. Posbírám pozice všech provincií podle vlastníka
 	for child in prov_labels_node.get_children():
 		var p_id = int(child.get("province_id"))
 		if all_provinces.has(p_id):
@@ -21,11 +17,12 @@ func aktualizuj_labely_statu(all_provinces: Dictionary, prov_labels_node: Node2D
 			if not staty_data.has(owner):
 				staty_data[owner] = {
 					"body": [], 
-					"jmeno": all_provinces[p_id].get("country_name", owner)
+					"jmeno": all_provinces[p_id].get("country_name", owner),
+					# NOVÉ: Vytáhnu si rovnou i ideologii státu z první provincie
+					"ideologie": str(all_provinces[p_id].get("ideology", "")) 
 				}
 			staty_data[owner]["body"].append(child.global_position)
 			
-	# 2. Najdu střed a velikost (Bounding Box)
 	var existujici_vlastnici = []
 	for owner in staty_data.keys():
 		existujici_vlastnici.append(owner)
@@ -33,6 +30,7 @@ func aktualizuj_labely_statu(all_provinces: Dictionary, prov_labels_node: Node2D
 		
 		var min_p = body[0]
 		var max_p = body[0]
+		var sum_pos = Vector2.ZERO # NOVÉ: sem budeme sčítat všechny pozice
 		
 		for pt in body:
 			min_p.x = min(min_p.x, pt.x)
@@ -40,12 +38,16 @@ func aktualizuj_labely_statu(all_provinces: Dictionary, prov_labels_node: Node2D
 			max_p.x = max(max_p.x, pt.x)
 			max_p.y = max(max_p.y, pt.y)
 			
-		var stred = (min_p + max_p) / 2.0
+			sum_pos += pt # NOVÉ: přičtu pozici každé jednotlivé provincie
+			
+		# NOVÉ: Těžiště (průměr). Většina bodů je na pevnině, takže to text stáhne tam!
+		var stred = sum_pos / float(body.size())
+		
+		# Velikost státu (pro schování textu) necháme počítat z extrémů
 		var velikost_statu = min_p.distance_to(max_p) 
 		
-		_vykresli_label(owner, staty_data[owner]["jmeno"], stred, velikost_statu)
+		_vykresli_label(owner, staty_data[owner]["jmeno"], stred, velikost_statu, staty_data[owner]["ideologie"])
 		
-	# 3. Úklid dobytých států
 	var znicene_staty = []
 	for owner in aktivni_labely.keys():
 		if not owner in existujici_vlastnici:
@@ -55,9 +57,9 @@ func aktualizuj_labely_statu(all_provinces: Dictionary, prov_labels_node: Node2D
 	for zniceny in znicene_staty:
 		aktivni_labely.erase(zniceny)
 
-func _vykresli_label(tag: String, jmeno: String, pozice: Vector2, velikost: float):
+# Přidal jsem parametr ideologie
+func _vykresli_label(tag: String, jmeno: String, pozice: Vector2, velikost: float, ideologie: String):
 	var inst
-	# Pokud štítek ještě neexistuje, vytvořím instanci tvé scény
 	if not aktivni_labely.has(tag):
 		inst = label_scene.instantiate()
 		add_child(inst)
@@ -67,22 +69,20 @@ func _vykresli_label(tag: String, jmeno: String, pozice: Vector2, velikost: floa
 
 	inst.global_position = pozice
 	
-	# Sáhnu si pro tvoje uzly uvnitř tvé scény
 	var lbl = inst.get_node("Label")
 	var flag = inst.get_node_or_null("Flag")
 	
 	lbl.text = jmeno
 	
-	# Přepínání Text vs. Vlajka podle velikosti státu
+	# ZMĚNA: Tady to teď celé zjednodušíme
 	if velikost < min_velikost_pro_text:
+		# Je to prcek -> schováme text státu i velkou vlajku.
+		# Zastoupí to hlavní město, které má vlastní malou vlaječku a název.
 		lbl.hide()
 		if flag:
-			flag.show()
-			# Zkusím načíst vlajku (uprav si cestu podle toho, kde máš obrázky vlajek)
-			var cesta = "res://external assets/Flags/%s.svg" % tag
-			if ResourceLoader.exists(cesta):
-				flag.texture = load(cesta)
+			flag.hide()
 	else:
+		# Je to velký stát -> ukážeme jen obří nápis, vlajku schováme
 		lbl.show()
 		if flag: 
 			flag.hide()
