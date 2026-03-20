@@ -3,7 +3,7 @@ extends Control
 @onready var dropdown = $VBoxContainer/OptionButton
 @onready var play_btn = $VBoxContainer/PlayButton
 
-# Seznam států (Zobrazený text : Tag)
+# List of playable countries (Display Name : Tag)
 var hratelne_staty = {
 	"Albánie": "ALB",
 	"Rakousko": "AUT",
@@ -50,22 +50,22 @@ var hratelne_staty = {
 }
 
 func _ready():
-	# Nacpu státy do dropdownu
+	# Populate the dropdown with country names
 	for stat in hratelne_staty.keys():
 		dropdown.add_item(stat)
 		
-	# Napojím tlačítko
+	# Connect UI signals
 	play_btn.pressed.connect(_on_play_pressed)
 
 func _on_play_pressed():
-	# Zjistím, co je vybráno
+	# Retrieve the selected country's name and tag
 	var vybrany_index = dropdown.selected
 	var nazev_statu = dropdown.get_item_text(vybrany_index)
 	var tag_statu = hratelne_staty[nazev_statu]
 	
-	# Uložím tag do GameManageru
+	# Save the selected tag to the GameManager
 	GameManager.hrac_stat = tag_statu
 	print("Hráč si vybral: ", tag_statu)
 	
-	# Spustím hru 
+	# Load the main map scene
 	get_tree().change_scene_to_file("res://scenes/map.tscn")

@@ -13,7 +13,7 @@ extends CanvasLayer
 @onready var btn_verbovat = $ActionMenu/HBoxContainer/VerbovatButton
 @onready var btn_likvidovat = $ActionMenu/HBoxContainer/LikvidovatButton
 
-# Cesty k plovoucímu oknu (PopupPanel)
+# Paths to the recruitment popup panel elements
 @onready var recruit_popup = $ActionMenu/RecruitPopup
 @onready var recruit_info = $ActionMenu/RecruitPopup/VBoxContainer/RecruitInfo
 @onready var recruit_slider = $ActionMenu/RecruitPopup/VBoxContainer/RecruitSlider
@@ -21,11 +21,12 @@ extends CanvasLayer
 @onready var btn_zrusit = $ActionMenu/RecruitPopup/VBoxContainer/HBoxContainer/ZrusitBtn
 
 var aktualni_provincie_id: int = -1
-var cena_za_vojaka: float = 0.05 # 50 mil. za 1000 mužů
+var cena_za_vojaka: float = 0.05 # Cost: 50 mil. per 1000 men
 
 func _ready():
 	action_menu.hide()
 	
+	# Initialize the construction popup menu
 	var popup_stavba = btn_stavet.get_popup()
 	popup_stavba.clear()
 	popup_stavba.add_item("Civilní továrna (150 mil.)", 0)
@@ -33,29 +34,32 @@ func _ready():
 	popup_stavba.id_pressed.connect(_on_stavba_vybrana)
 	popup_stavba.about_to_popup.connect(_posun_stavba_menu)
 
-	# Napojím tlačítka a slider
+	# Connect buttons and slider signals
 	btn_verbovat.pressed.connect(_on_verbovat_pressed)
 	recruit_slider.value_changed.connect(_on_slider_zmenen)
 	btn_potvrdit.pressed.connect(_on_potvrdit_verbovani)
 	btn_zrusit.pressed.connect(func(): recruit_popup.hide())
 
+# Repositions the construction menu slightly above the build button
 func _posun_stavba_menu():
 	var p = btn_stavet.get_popup()
 	p.position.y = btn_stavet.global_position.y - p.size.y - 5
 
+# Hides all UI panels and resets the selected province ID
 func schovej_se():
 	$PanelContainer.hide()
 	action_menu.hide()
 	recruit_popup.hide()
 	aktualni_provincie_id = -1
 
+# Populates the UI with data from the selected province
 func zobraz_data(data: Dictionary):
 	if data.is_empty():
 		schovej_se()
 		return
 	
 	$PanelContainer.show()
-	recruit_popup.hide() # Skryju roletku při prokliku jinam
+	recruit_popup.hide() # Close recruitment popup when clicking elsewhere
 	aktualni_provincie_id = data.get("id", -1)
 	
 	var owner = str(data.get("owner", "")).strip_edges().to_upper()
@@ -66,6 +70,7 @@ func zobraz_data(data: Dictionary):
 	owner_label.text = "Vlastnik: " + owner
 	
 	if je_more:
+		# Hide irrelevant stats for sea tiles
 		pop_label.hide()
 		recruit_label.hide()
 		gdp_label.hide()
@@ -95,6 +100,7 @@ func zobraz_data(data: Dictionary):
 		else:
 			income_label.hide()
 
+	# Handle action menu visibility for player-owned land provinces
 	if je_moje and not je_more:
 		if GameManager.provincie_cooldowny.has(aktualni_provincie_id):
 			var zbyva_kol = GameManager.provincie_cooldowny[aktualni_provincie_id]["zbyva"]
@@ -110,9 +116,11 @@ func zobraz_data(data: Dictionary):
 	else:
 		action_menu.hide()
 
+# Handles building construction logic (deducts money, starts cooldown)
 func _on_stavba_vybrana(id: int):
 	if aktualni_provincie_id == -1: return
 	var cena = 150.0 if id == 0 else 200.0
+	
 	if GameManager.statni_kasa >= cena:
 		GameManager.statni_kasa -= cena
 		GameManager.provincie_cooldowny[aktualni_provincie_id] = {"zbyva": 3, "budova": id}
@@ -120,6 +128,7 @@ func _on_stavba_vybrana(id: int):
 		btn_stavet.text = "Staví se (3 kola)"
 		GameManager.kolo_zmeneno.emit()
 
+# Prepares and shows the recruitment slider popup
 func _on_verbovat_pressed():
 	if aktualni_provincie_id == -1: return
 	
@@ -133,29 +142,32 @@ func _on_verbovat_pressed():
 		print("Nemáš lidi nebo peníze na vojáky!")
 		return
 		
+	# Setup slider limits based on available resources
 	recruit_slider.min_value = 0
 	recruit_slider.max_value = max_mozno
 	recruit_slider.value = 0
 	_on_slider_zmenen(0) 
 	
-	# Vypočítám pozici pro PopupPanel (těsně nad tlačítko) a ukážu ho
+	# Calculate popup position to appear directly above the recruit button
 	var rect = Rect2i()
 	rect.position = Vector2i(btn_verbovat.global_position.x, btn_verbovat.global_position.y - recruit_popup.size.y - 5)
 	rect.size = recruit_popup.size
 	
 	recruit_popup.popup(rect)
 
+# Updates the cost and amount text dynamically as the slider moves
 func _on_slider_zmenen(hodnota: float):
 	var cena = hodnota * cena_za_vojaka
 	recruit_info.text = "Mužů: %d\nCena: %.2f mil." % [int(hodnota), cena]
 	btn_potvrdit.disabled = (hodnota == 0)
 
+# Finalizes the recruitment process
 func _on_potvrdit_verbovani():
 	var pocet_vojaku = int(recruit_slider.value)
 	var celkova_cena = pocet_vojaku * cena_za_vojaka
 	var prov_data = GameManager.map_data[aktualni_provincie_id]
 	
-	# Strhnu prachy a přesunu rekruty do posádky
+	# Deduct cost and transfer recruits into active soldiers
 	GameManager.statni_kasa -= celkova_cena
 	prov_data["recruitable_population"] -= pocet_vojaku
 	
@@ -164,9 +176,10 @@ func _on_potvrdit_verbovani():
 	prov_data["soldiers"] += pocet_vojaku
 	
 	recruit_popup.hide()
-	zobraz_data(prov_data) # Překreslím panel s novými čísly
+	zobraz_data(prov_data) # Redraw panel with updated numbers
 	GameManager.kolo_zmeneno.emit()
 
+# Utility function to format numbers with spaces (e.g., 1000000 -> 1 000 000)
 func _formatuj_cislo(cislo: int) -> String:
 	var text_cisla = str(cislo)
 	var vysledek = ""

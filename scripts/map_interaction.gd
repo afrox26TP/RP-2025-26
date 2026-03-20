@@ -7,6 +7,9 @@ var data_image: Image
 var data_texture: ImageTexture
 var total_provinces: int = 5000
 
+# Variable to track the last hovered province ID for label popping
+var _posledni_hover_id: int = -1
+
 var country_colors = {
 	"ALB": Color("#D13A3A"), "AND": Color("#1A409A"), "AUT": Color("#FFFFFF"),
 	"BLR": Color("#8CA35E"), "BEL": Color("#D4B04C"), "BIH": Color("#456285"),
@@ -53,7 +56,6 @@ func _unhandled_input(event):
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
 			_odzanc_vse()
 		
-	# Přidána kontrola is_echo(), ať mi to při podržení neprokliká půlku hry
 	if event is InputEventKey and event.pressed and not event.is_echo():
 		var root = get_parent()
 		if "provinces" in root:
@@ -68,25 +70,27 @@ func _unhandled_input(event):
 				if vybrana_provincie != null and float(vybrana_provincie) >= 0.0:
 					dobyt_provincii(int(vybrana_provincie), GameManager.hrac_stat)
 					
-			# Mezerník rovnou ukončí kolo
 			elif event.keycode == KEY_SPACE:
 				GameManager.ukonci_kolo()
 
-# Funkce pro kompletní vyčištění výběru a schování UI
+# Completely clears the active selection and hides all contextual UI panels
 func _odzanc_vse():
-	# Vypne outline na mapě
 	material.set_shader_parameter("has_selected", false)
 	material.set_shader_parameter("selected_id", -1.0)
 	
-	# Skryje detail provincie
 	var info_ui = get_tree().current_scene.find_child("InfoUI", true, false)
 	if info_ui and info_ui.has_method("schovej_se"):
 		info_ui.schovej_se()
 		
-	# Skryje přehled státu
 	var game_ui = get_tree().current_scene.find_child("GameUI", true, false)
 	if game_ui and game_ui.has_method("schovej_se"):
 		game_ui.schovej_se()
+
+	var labels = get_parent().get_node_or_null("ProvinceLabels")
+	if labels:
+		for lbl in labels.get_children():
+			if lbl.has_method("reset_stav"):
+				lbl.reset_stav()
 
 func _zpracuj_interakci(mouse_pos: Vector2, je_kliknuti: bool):
 	if map_image == null: return
@@ -108,48 +112,87 @@ func _zpracuj_interakci(mouse_pos: Vector2, je_kliknuti: bool):
 
 	_vymaz_hover()
 
+# Updates selection and hover states
 func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary):
 	if je_kliknuti:
 		material.set_shader_parameter("selected_id", prov_id)
 		material.set_shader_parameter("has_selected", true)
 		
-		# Získáme všechny provincie z hlavního uzlu
 		var root = get_parent()
 		var vsechny_provincie = root.provinces if "provinces" in root else {}
 		
-		# 1. Volání detailu provincie (InfoUI)
 		var info_ui = get_tree().current_scene.find_child("InfoUI", true, false)
 		if info_ui and info_ui.has_method("zobraz_data"):
 			info_ui.zobraz_data(data)
 			
-		# 2. Volání přehledu celého státu (GameUI)
 		var game_ui = get_tree().current_scene.find_child("GameUI", true, false)
 		if game_ui and game_ui.has_method("zobraz_prehled_statu"):
 			game_ui.zobraz_prehled_statu(data, vsechny_provincie)
 			
+		var labels = get_parent().get_node_or_null("ProvinceLabels")
+		if labels:
+			var aktualni_sousede = data.get("neighbors", [])
+			for lbl in labels.get_children():
+				var l_id = int(lbl.get("province_id"))
+				var je_cil = (l_id == int(prov_id))
+				var je_soused = l_id in aktualni_sousede
+				
+				if lbl.has_method("nastav_stav_souseda"):
+					lbl.nastav_stav_souseda(je_cil, je_soused)
+					
 	else:
+		# --- HOVER LOGIC ---
+		if _posledni_hover_id == int(prov_id):
+			return # Already hovering this province, do nothing
+			
+		_vymaz_hover_labely() # Clean up the previously hovered label
+		
 		material.set_shader_parameter("hovered_id", prov_id)
 		material.set_shader_parameter("has_hover", true)
-
-	var labels = get_parent().get_node_or_null("ProvinceLabels")
-	if labels:
-		var aktualni_sousede = data.get("neighbors", [])
 		
-		for lbl in labels.get_children():
-			var l_id = int(lbl.get("province_id"))
-			var je_cil = (l_id == int(prov_id))
-			var je_soused = l_id in aktualni_sousede
-			
-			if lbl.has_method("nastav_stav_souseda"):
-				lbl.nastav_stav_souseda(je_cil, je_soused)
+		# Make the currently hovered label pop up
+		var labels = get_parent().get_node_or_null("ProvinceLabels")
+		if labels:
+			for lbl in labels.get_children():
+				if int(lbl.get("province_id")) == int(prov_id):
+					if lbl.has_method("nastav_stav_souseda"):
+						lbl.nastav_stav_souseda(true, false) # Treat hover as 'target' to show it
+					break # Stop searching once found
+					
+		_posledni_hover_id = int(prov_id)
 
 func _vymaz_hover():
 	material.set_shader_parameter("has_hover", false)
-	var labels = get_parent().get_node_or_null("ProvinceLabels")
-	if labels:
-		for lbl in labels.get_children():
-			if lbl.has_method("reset_stav"):
-				lbl.reset_stav()
+	_vymaz_hover_labely()
+
+# Safely resets the previously hovered label to its correct persistent state
+func _vymaz_hover_labely():
+	if _posledni_hover_id != -1:
+		var sel_id = int(material.get_shader_parameter("selected_id"))
+		
+		# If the hovered province is also the clicked one, leave it alone
+		if _posledni_hover_id == sel_id:
+			_posledni_hover_id = -1
+			return
+			
+		var je_soused = false
+		var root = get_parent()
+		if sel_id != -1 and "provinces" in root and root.provinces.has(sel_id):
+			je_soused = _posledni_hover_id in root.provinces[sel_id].get("neighbors", [])
+			
+		var labels = root.get_node_or_null("ProvinceLabels")
+		if labels:
+			for lbl in labels.get_children():
+				if int(lbl.get("province_id")) == _posledni_hover_id:
+					if lbl.has_method("nastav_stav_souseda"):
+						if je_soused:
+							# Restore neighbor state if it belongs to the active selection
+							lbl.nastav_stav_souseda(false, true)
+						else:
+							# Otherwise, completely hide/reset it
+							lbl.reset_stav()
+					break
+		_posledni_hover_id = -1
 
 func aktualizuj_mapovy_mod(mod: String, province_db: Dictionary):
 	for prov_id in province_db.keys():
@@ -191,10 +234,9 @@ func dobyt_provincii(prov_id: int, novy_vlastnik: String):
 	
 	if root.provinces.has(prov_id):
 		root.provinces[prov_id]["owner"] = novy_vlastnik
-		# Aktualizujeme zrovna ten mód, ve kterém se nacházíme (aby to nedělalo brikule)
 		aktualizuj_mapovy_mod("political", root.provinces)
 		print("Provincie ", prov_id, " byla dobyta státem ", novy_vlastnik)
-		# (Tohle dej nakonec funkce dobyt_provincii)
+		
 		var labels_manager = root.get_node_or_null("CountryLabelsManager")
 		var prov_labels = root.get_node_or_null("ProvinceLabels")
 		if labels_manager and prov_labels:

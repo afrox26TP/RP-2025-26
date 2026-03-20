@@ -11,6 +11,7 @@ var drag_start = Vector2.ZERO
 var dragging = false
 
 func _process(delta):
+	# Handle keyboard movement
 	var input_dir = Vector2.ZERO
 	if Input.is_action_pressed("ui_right") or Input.is_key_pressed(KEY_D): input_dir.x += 1
 	if Input.is_action_pressed("ui_left") or Input.is_key_pressed(KEY_A): input_dir.x -= 1
@@ -20,6 +21,7 @@ func _process(delta):
 	position += input_dir.normalized() * speed * delta * (1.0 / zoom.x)
 
 func _unhandled_input(event):
+	# Handle mouse input for zooming and panning
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			_zoom_camera(1.0 + zoom_speed, event.position)
@@ -46,5 +48,5 @@ func _zoom_camera(factor, mouse_pos):
 	var mouse_world_pos = get_global_mouse_position()
 	var next_mouse_world_pos = get_global_mouse_position()
 	
-	# odesleme informaci o novem zoomu do zbytku hry
+	# Broadcast the new zoom level to other game systems
 	zoom_zmenen.emit(zoom.x)

@@ -2,7 +2,7 @@ extends CanvasLayer
 
 @onready var panel = $OverviewPanel
 
-# ZMĚNA: Tady jsou aktualizované cesty podle nového stromu
+# Updated paths for the new UI tree structure
 @onready var country_flag = $OverviewPanel/VBoxContainer/TitleBox/CountryFlag
 @onready var name_label = $OverviewPanel/VBoxContainer/TitleBox/CountryNameLabel
 
@@ -23,14 +23,14 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 	var owner = str(data.get("owner", "")).strip_edges().to_upper()
 	var plne_jmeno = str(data.get("country_name", owner))
 	
-	# To lower case, abychom se vyhli problémům s názvy souborů (Neznámo -> neznamo atd.)
+	# Force lowercase to prevent file path issues
 	var ideologie = str(data.get("ideology", "")).to_lower() 
 	
 	if owner == "SEA" or owner == "":
 		schovej_se()
 		return
 		
-	# --- NAČTENÍ VLAJKY ---
+	# --- FLAG LOADING ---
 	if country_flag:
 		var ideo_cesta = "res://map_data/FlagsIdeology/%s_%s.svg" % [owner, ideologie]
 		var zaklad_cesta = "res://map_data/Flags/%s.svg" % owner
@@ -41,13 +41,13 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 			country_flag.texture = load(zaklad_cesta)
 		else:
 			country_flag.texture = null
-	# ----------------------
+	# --------------------
 		
 	var total_pop = 0
 	var total_gdp = 0.0
 	var total_recruits = 0
 	
-	# Sečtu si data za celý stát
+	# Calculate total country stats
 	for p_id in all_provinces:
 		var p = all_provinces[p_id]
 		if str(p.get("owner", "")).strip_edges().to_upper() == owner:
@@ -59,7 +59,7 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 	ideo_label.text = "Zřízení: " + ideologie.capitalize()
 	pop_label.text = "Celková populace: " + _formatuj_cislo(total_pop)
 	
-	# Spočítám podíl rekrutů
+	# Calculate recruitable population percentage
 	var procento = 0.0
 	if total_pop > 0:
 		procento = (float(total_recruits) / float(total_pop)) * 100.0
@@ -67,7 +67,7 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 	recruit_label.text = "Celkoví rekruti: " + _formatuj_cislo(total_recruits) + " (%.2f %%)" % procento
 	gdp_label.text = "Celkové HDP: %.2f mld. USD" % total_gdp
 	
-	# Spočítám HDP na hlavu
+	# Calculate GDP per capita
 	if total_pop > 0:
 		var gdp_per_capita = (total_gdp * 1000000000.0) / float(total_pop)
 		gdp_pc_label.text = "HDP na osobu: $%.0f" % gdp_per_capita
@@ -76,7 +76,7 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 	
 	panel.show()
 
-# Zavolá se při kliknutí pravým tlačítkem do mapy
+# Triggered by right-clicking on the map
 func schovej_se():
 	panel.hide()
 

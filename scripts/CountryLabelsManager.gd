@@ -18,7 +18,7 @@ func aktualizuj_labely_statu(all_provinces: Dictionary, prov_labels_node: Node2D
 				staty_data[owner] = {
 					"body": [], 
 					"jmeno": all_provinces[p_id].get("country_name", owner),
-					# NOVÉ: Vytáhnu si rovnou i ideologii státu z první provincie
+					# Extract ideology from the first valid province
 					"ideologie": str(all_provinces[p_id].get("ideology", "")) 
 				}
 			staty_data[owner]["body"].append(child.global_position)
@@ -30,7 +30,7 @@ func aktualizuj_labely_statu(all_provinces: Dictionary, prov_labels_node: Node2D
 		
 		var min_p = body[0]
 		var max_p = body[0]
-		var sum_pos = Vector2.ZERO # NOVÉ: sem budeme sčítat všechny pozice
+		var sum_pos = Vector2.ZERO # Sum of all province positions
 		
 		for pt in body:
 			min_p.x = min(min_p.x, pt.x)
@@ -38,12 +38,12 @@ func aktualizuj_labely_statu(all_provinces: Dictionary, prov_labels_node: Node2D
 			max_p.x = max(max_p.x, pt.x)
 			max_p.y = max(max_p.y, pt.y)
 			
-			sum_pos += pt # NOVÉ: přičtu pozici každé jednotlivé provincie
+			sum_pos += pt
 			
-		# NOVÉ: Těžiště (průměr). Většina bodů je na pevnině, takže to text stáhne tam!
+		# Center of mass (average position). Pulls the label towards the largest landmass.
 		var stred = sum_pos / float(body.size())
 		
-		# Velikost státu (pro schování textu) necháme počítat z extrémů
+		# Country size based on bounding box extremes (used for visibility checks)
 		var velikost_statu = min_p.distance_to(max_p) 
 		
 		_vykresli_label(owner, staty_data[owner]["jmeno"], stred, velikost_statu, staty_data[owner]["ideologie"])
@@ -57,7 +57,6 @@ func aktualizuj_labely_statu(all_provinces: Dictionary, prov_labels_node: Node2D
 	for zniceny in znicene_staty:
 		aktivni_labely.erase(zniceny)
 
-# Přidal jsem parametr ideologie
 func _vykresli_label(tag: String, jmeno: String, pozice: Vector2, velikost: float, ideologie: String):
 	var inst
 	if not aktivni_labely.has(tag):
@@ -74,15 +73,14 @@ func _vykresli_label(tag: String, jmeno: String, pozice: Vector2, velikost: floa
 	
 	lbl.text = jmeno
 	
-	# ZMĚNA: Tady to teď celé zjednodušíme
 	if velikost < min_velikost_pro_text:
-		# Je to prcek -> schováme text státu i velkou vlajku.
-		# Zastoupí to hlavní město, které má vlastní malou vlaječku a název.
+		# Micro-state: Hide the big country name and flag. 
+		# The capital city label will represent it instead to prevent visual clutter.
 		lbl.hide()
 		if flag:
 			flag.hide()
 	else:
-		# Je to velký stát -> ukážeme jen obří nápis, vlajku schováme
+		# Large state: Show country name, hide the flag.
 		lbl.show()
 		if flag: 
 			flag.hide()

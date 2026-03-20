@@ -1,8 +1,9 @@
 extends Node2D
 
-# ZMĚNA: Cesty musí odpovídat nové struktuře přes kontejner
+@onready var hbox = $HBoxContainer # Reference to the container holding text/flag
 @onready var label = $HBoxContainer/Label
 @onready var flag = $HBoxContainer/Flag
+@onready var army_icon = $ArmyIcon # Army icon is now OUTSIDE the HBoxContainer
 
 var province_id: int = -1
 var je_hlavni: bool = true 
@@ -24,22 +25,37 @@ func get_spravny_scale() -> Vector2:
 	else:
 		return Vector2(1.0, 1.0)
 
+# Checks if troops are present and toggles the army icon independently
+func _zkontroluj_armadu() -> bool:
+	if army_icon and province_id != -1 and GameManager.map_data.has(province_id):
+		var troop_count = int(GameManager.map_data[province_id].get("soldiers", 0))
+		if troop_count > 0:
+			army_icon.show()
+			return true
+			
+	if army_icon:
+		army_icon.hide()
+	return false
+
 func nastav_stav_souseda(je_cil: bool, je_soused: bool):
+	var ma_armadu = _zkontroluj_armadu()
+	
 	if is_zoomed_out and not is_capital:
-		visible = false
+		hbox.visible = false # Hide city text
+		visible = ma_armadu # Root node stays visible ONLY if there is an army
 		return
 
 	var cilovy_scale = get_spravny_scale()
 
 	if je_cil:
-		visible = true
-		label.visible = not is_zoomed_out # Z dálky schováme text
+		hbox.visible = true
+		label.visible = not is_zoomed_out
 		label.modulate = Color(1.0, 1.0, 1.0, 1.0)
 		scale = cilovy_scale
 		z_index = 10
 		label.text = plny_nazev
 	elif je_soused:
-		visible = true
+		hbox.visible = true
 		label.visible = not is_zoomed_out
 		label.modulate = Color(0.8, 0.8, 0.8, 1.0)
 		scale = cilovy_scale * 0.8 
@@ -47,22 +63,30 @@ func nastav_stav_souseda(je_cil: bool, je_soused: bool):
 		label.text = plny_nazev
 	else:
 		reset_stav()
+		return
+		
+	visible = true 
 
 func reset_stav():
 	z_index = 0              
 	scale = get_spravny_scale() 
 	
+	var ma_armadu = _zkontroluj_armadu()
+	var ukaz_ui = false
+	
 	if is_zoomed_out:
 		if is_capital:
-			visible = true
-			label.visible = false # Skryje text, zůstane jen vlajka
-		else:
-			visible = false
+			ukaz_ui = true
+			label.visible = false 
 	else:
 		if je_hlavni:
-			visible = true
+			ukaz_ui = true
 			label.visible = true
-			label.text = plny_nazev 
 			label.modulate = Color(1.0, 0.9, 0.5, 1.0) if is_capital else Color(0.6, 0.6, 0.6, 1.0)
-		else:
-			visible = false
+	
+	# Hide or show the text/flag based on zoom and proximity
+	hbox.visible = ukaz_ui
+	
+	# THE CRUCIAL FIX: The entire province label object remains active 
+	# if either the UI is supposed to be shown OR an army is stationed here.
+	visible = (ukaz_ui or ma_armadu)

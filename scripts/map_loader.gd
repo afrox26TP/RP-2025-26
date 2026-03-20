@@ -9,7 +9,7 @@ func _ready():
 	load_provinces()
 	print("Nacteno provincii z TXT: ", provinces.size())
 	
-	# oprava cesty ke kamere 
+	# Fix camera path reference
 	var kamera = $Camera2D 
 	if kamera:
 		kamera.zoom_zmenen.connect(_na_zmenu_zoomu)
@@ -20,18 +20,18 @@ func _ready():
 	if sprite and sprite.has_method("aktualizuj_mapovy_mod"):
 		sprite.aktualizuj_mapovy_mod("political", provinces)
 	
-	# spustime generovani popisku provincií (měst)
+	# Start generating province (city) labels
 	generuj_nazvy_provincii()
 	
-	# --- NOVÉ: Volání dynamického manažera států ---
-	# Tady zavolám ten nový uzel, ať vygeneruje státy hned po načtení mapy
+	# --- NEW: Call dynamic country labels manager ---
+	# Trigger the manager to generate country labels immediately after the map loads
 	var labels_manager = get_node_or_null("CountryLabelsManager")
 	var prov_labels = get_node_or_null("ProvinceLabels")
 	if labels_manager and prov_labels:
 		labels_manager.aktualizuj_labely_statu(provinces, prov_labels)
 	
-	# --- INICIALIZACE EKONOMIKY PRO 1. KOLO ---
-	# Pošleme celou načtenou mapu do GameManageru, aby věděl, z čeho počítat daně
+	# --- INITIALIZE ECONOMY FOR TURN 1 ---
+	# Send the entire loaded map to the GameManager to calculate initial taxes/income
 	if GameManager.has_method("spocitej_prijem"):
 		GameManager.spocitej_prijem(provinces)
 
@@ -41,7 +41,7 @@ func load_provinces():
 		push_error("Chybi soubor Provinces.txt!")
 		return
 		
-	file.get_line() # Přeskočení hlavičky
+	file.get_line() # Skip the header row
 	
 	while not file.eof_reached():
 		var line = file.get_line().strip_edges()
@@ -52,20 +52,20 @@ func load_provinces():
 			
 		var prov_id = int(parts[0])
 		
-		# Bezpečné načtení populace a HDP
+		# Safely parse population and GDP
 		var pop = 0
 		var gdp_val = 0.0
 		if parts[12].strip_edges() != "": pop = int(parts[12])
 		if parts[13].strip_edges() != "": gdp_val = float(parts[13])
 		
-		# Parsování hlavního města (sloupce 15 a 16)
+		# Parse capital city data (columns 15 and 16)
 		var je_to_hlavni = false
 		var nazev_mesta = ""
 		if parts[15].strip_edges() == "1":
 			je_to_hlavni = true
 			nazev_mesta = parts[16].strip_edges()
 			
-		# Parsování sousedů
+		# Parse neighbor connections
 		var neighbors_array = []
 		var n_str = parts[17].strip_edges()
 		if n_str != "":
@@ -73,7 +73,7 @@ func load_provinces():
 				if n.strip_edges() != "":
 					neighbors_array.append(int(n))
 
-		# Načtení ideologie (sloupec 18)
+		# Parse ideology (column 18)
 		var ideologie_statu = parts[18].strip_edges().to_lower()
 		
 		provinces[prov_id] = {
@@ -107,7 +107,7 @@ func generuj_nazvy_provincii():
 	elif sprite:
 		offset = sprite.position
 
-	# 1. VIP ŘAZENÍ: Hlavní města jdou nekompromisně první, pak až zbytek podle populace
+	# 1. VIP SORTING: Capitals strictly go first, followed by the rest sorted by population
 	var serazene_provinci = provinces.values()
 	serazene_provinci.sort_custom(func(a, b): 
 		if a.get("is_capital", false) != b.get("is_capital", false):
@@ -127,7 +127,7 @@ func generuj_nazvy_provincii():
 		var je_to_capital = d.get("is_capital", false)
 		var moc_blizko = false
 		
-		# 2. OCHRANA: Pokud je to hlavní město, kašle na okolí a NIKDY se neschová
+		# 2. PROTECTION: Capital cities ignore proximity checks and are NEVER hidden
 		if not je_to_capital:
 			for p in umistene_pozice:
 				if pozice.distance_to(p) < MIN_VZDALENOST:
@@ -142,8 +142,8 @@ func generuj_nazvy_provincii():
 		
 		label_container.add_child(lbl_inst)
 		
-		# --- UPRAVENÁ ČÁST PRO VLAJKY ---
-		# Používáme find_child, aby to našlo uzly bez ohledu na to, jak jsi poskládal HBoxContainer
+		# --- MODIFIED SECTION FOR FLAGS ---
+		# Use find_child to locate nodes regardless of the specific HBoxContainer hierarchy
 		var l = lbl_inst.find_child("Label", true, false)
 		var f = lbl_inst.find_child("Flag", true, false)
 		
@@ -151,12 +151,12 @@ func generuj_nazvy_provincii():
 			var zobrazeny_nazev = str(d.province_name).replace(" Voivodeship", "").replace(" County", "")
 			
 			if je_to_capital:
-				# 1. Odstraněna hvězdička, vezmeme čistý název
+				# 1. Asterisk removed, use clean name
 				var jmeno_mesta = d.get("capital_name", "")
 				if jmeno_mesta != "":
 					zobrazeny_nazev = jmeno_mesta
 				
-				# 2. Nahodíme vlajku
+				# 2. Apply the flag texture
 				if f:
 					f.show()
 					var tag = str(d.get("owner", ""))
@@ -170,7 +170,7 @@ func generuj_nazvy_provincii():
 					elif ResourceLoader.exists(zaklad_cesta):
 						f.texture = load(zaklad_cesta)
 			else:
-				# Pokud to není hlavní město, vlajku radši skryjeme
+				# If it's not a capital city, keep the flag hidden
 				if f:
 					f.hide()
 				
