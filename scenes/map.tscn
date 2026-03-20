@@ -131,7 +131,16 @@ layout_mode = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="CountryNameLabel" type="Label" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=306217381]
+[node name="TitleBox" type="HBoxContainer" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=1641216667]
+layout_mode = 2
+
+[node name="CountryFlag" type="TextureRect" parent="GameUI/OverviewPanel/VBoxContainer/TitleBox" unique_id=1584160832]
+custom_minimum_size = Vector2(40, 26)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="CountryNameLabel" type="Label" parent="GameUI/OverviewPanel/VBoxContainer/TitleBox" unique_id=306217381]
 layout_mode = 2
 text = "test"
 
@@ -178,6 +187,22 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 25
 
 [node name="Spacer" type="Control" parent="TopBar/Panel/HBoxContainer" unique_id=119213241]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PlayerInfo" type="HBoxContainer" parent="TopBar/Panel/HBoxContainer" unique_id=1157277305]
+layout_mode = 2
+
+[node name="PlayerFlag" type="TextureRect" parent="TopBar/Panel/HBoxContainer/PlayerInfo" unique_id=123600620]
+custom_minimum_size = Vector2(45, 30)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="PlayerName" type="Label" parent="TopBar/Panel/HBoxContainer/PlayerInfo" unique_id=1473529035]
+layout_mode = 2
+
+[node name="Spacer2" type="Control" parent="TopBar/Panel/HBoxContainer" unique_id=1884776843]
 layout_mode = 2
 size_flags_horizontal = 3
 

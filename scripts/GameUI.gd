@@ -1,7 +1,11 @@
 extends CanvasLayer
 
 @onready var panel = $OverviewPanel
-@onready var name_label = $OverviewPanel/VBoxContainer/CountryNameLabel
+
+# ZMĚNA: Tady jsou aktualizované cesty podle nového stromu
+@onready var country_flag = $OverviewPanel/VBoxContainer/TitleBox/CountryFlag
+@onready var name_label = $OverviewPanel/VBoxContainer/TitleBox/CountryNameLabel
+
 @onready var ideo_label = $OverviewPanel/VBoxContainer/IdeologyLabel 
 @onready var pop_label = $OverviewPanel/VBoxContainer/TotalPopLabel
 @onready var recruit_label = $OverviewPanel/VBoxContainer/TotalRecruitsLabel 
@@ -18,11 +22,26 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 		
 	var owner = str(data.get("owner", "")).strip_edges().to_upper()
 	var plne_jmeno = str(data.get("country_name", owner))
-	var ideologie = str(data.get("ideology", "Neznámo"))
+	
+	# To lower case, abychom se vyhli problémům s názvy souborů (Neznámo -> neznamo atd.)
+	var ideologie = str(data.get("ideology", "")).to_lower() 
 	
 	if owner == "SEA" or owner == "":
 		schovej_se()
 		return
+		
+	# --- NAČTENÍ VLAJKY ---
+	if country_flag:
+		var ideo_cesta = "res://map_data/FlagsIdeology/%s_%s.svg" % [owner, ideologie]
+		var zaklad_cesta = "res://map_data/Flags/%s.svg" % owner
+		
+		if ideologie != "" and ideologie != "neznámo" and ResourceLoader.exists(ideo_cesta):
+			country_flag.texture = load(ideo_cesta)
+		elif ResourceLoader.exists(zaklad_cesta):
+			country_flag.texture = load(zaklad_cesta)
+		else:
+			country_flag.texture = null
+	# ----------------------
 		
 	var total_pop = 0
 	var total_gdp = 0.0
@@ -36,7 +55,7 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 			total_gdp += float(p.get("gdp", 0.0))
 			total_recruits += int(p.get("recruitable_population", 0))
 			
-	name_label.text = "Stát: " + plne_jmeno
+	name_label.text = plne_jmeno
 	ideo_label.text = "Zřízení: " + ideologie.capitalize()
 	pop_label.text = "Celková populace: " + _formatuj_cislo(total_pop)
 	
