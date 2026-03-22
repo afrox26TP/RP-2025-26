@@ -78,6 +78,12 @@ func _odzanc_vse():
 	material.set_shader_parameter("has_selected", false)
 	material.set_shader_parameter("selected_id", -1.0)
 	
+	var root = get_parent()
+	if "ceka_na_cil_presunu" in root:
+		root.ceka_na_cil_presunu = false
+	
+	Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+	
 	var info_ui = get_tree().current_scene.find_child("InfoUI", true, false)
 	if info_ui and info_ui.has_method("schovej_se"):
 		info_ui.schovej_se()
@@ -114,11 +120,33 @@ func _zpracuj_interakci(mouse_pos: Vector2, je_kliknuti: bool):
 
 # Updates selection and hover states
 func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary):
+	var root = get_parent()
+	var is_targeting = "ceka_na_cil_presunu" in root and root.ceka_na_cil_presunu
+	
 	if je_kliknuti:
+		# --- TARGET SELECTION MODE FOR ARMY MOVEMENT ---
+		if is_targeting:
+			var from_id = root.vybrana_armada_od
+			var to_id = int(prov_id)
+			
+			if from_id != to_id and "provinces" in root:
+				var is_neighbor = to_id in root.provinces[from_id].get("neighbors", [])
+				
+				if is_neighbor:
+					var info_ui = get_tree().current_scene.find_child("InfoUI", true, false)
+					if info_ui and info_ui.has_method("zobraz_presun_slider"):
+						info_ui.zobraz_presun_slider(from_id, to_id, root.vybrana_armada_max)
+			
+			# Reset state and stop normal click processing
+			root.ceka_na_cil_presunu = false
+			Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+			material.set_shader_parameter("is_target_hover", false)
+			return
+		# -----------------------------------------------
+		
 		material.set_shader_parameter("selected_id", prov_id)
 		material.set_shader_parameter("has_selected", true)
 		
-		var root = get_parent()
 		var vsechny_provincie = root.provinces if "provinces" in root else {}
 		
 		var info_ui = get_tree().current_scene.find_child("InfoUI", true, false)
@@ -142,6 +170,23 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary):
 					
 	else:
 		# --- HOVER LOGIC ---
+		
+		# Limit hovering strictly to neighbors if we are in target mode
+		if is_targeting:
+			var from_id = root.vybrana_armada_od
+			var is_neighbor = int(prov_id) in root.provinces[from_id].get("neighbors", [])
+			
+			if not is_neighbor or int(prov_id) == from_id:
+				_vymaz_hover()
+				Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+				return 
+			else:
+				Input.set_default_cursor_shape(Input.CURSOR_POINTING_HAND)
+				material.set_shader_parameter("is_target_hover", true)
+		else:
+			Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+			material.set_shader_parameter("is_target_hover", false)
+			
 		if _posledni_hover_id == int(prov_id):
 			return # Already hovering this province, do nothing
 			
@@ -163,6 +208,8 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary):
 
 func _vymaz_hover():
 	material.set_shader_parameter("has_hover", false)
+	material.set_shader_parameter("is_target_hover", false)
+	Input.set_default_cursor_shape(Input.CURSOR_ARROW)
 	_vymaz_hover_labely()
 
 # Safely resets the previously hovered label to its correct persistent state

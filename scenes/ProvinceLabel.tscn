@@ -1,19 +1,9 @@
 [gd_scene format=3 uid="uid://rivecx1n1smg"]
 
 [ext_resource type="Script" uid="uid://d2iu745oltt3u" path="res://scripts/ProvinceLabel.gd" id="1_cxqrv"]
-[ext_resource type="Texture2D" uid="uid://cl043531nnvqr" path="res://map_data/army.png" id="2_qspmd"]
 
 [node name="ProvinceLabel" type="Node2D" unique_id=137938760]
 script = ExtResource("1_cxqrv")
-
-[node name="ArmyIcon" type="TextureRect" parent="." unique_id=1418022033]
-visible = false
-custom_minimum_size = Vector2(10, 10)
-offset_left = -10.0
-offset_top = -10.0
-texture = ExtResource("2_qspmd")
-expand_mode = 1
-stretch_mode = 5
 
 [node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=511357858]
 offset_left = -84.0

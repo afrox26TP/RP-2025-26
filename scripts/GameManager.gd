@@ -45,6 +45,17 @@ func spocitej_prijem(all_provinces: Dictionary):
 	kolo_zmeneno.emit()
 
 func ukonci_kolo():
+	# --- NEW: Zpracování pohybu armád hned na začátku tahu ---
+	# Nejdřív přesuneme vojáky (a případně dobyjeme území), 
+	# aby se nám z nových provincií hned spočítaly daně!
+	var map_loader = get_tree().current_scene
+	if not map_loader.has_method("zpracuj_tah_armad"):
+		map_loader = get_tree().current_scene.find_child("Map", true, false)
+		
+	if map_loader and map_loader.has_method("zpracuj_tah_armad"):
+		map_loader.zpracuj_tah_armad()
+	# ---------------------------------------------------------
+
 	statni_kasa += celkovy_prijem
 	aktualni_kolo += 1
 	
@@ -60,7 +71,7 @@ func ukonci_kolo():
 		provincie_cooldowny.erase(prov_id)
 		_aplikuj_bonus(prov_id, typ_budovy)
 
-	# Recalculate income (GDP might have changed due to completed buildings)
+	# Recalculate income (GDP might have changed due to completed buildings or CONQUERED PROVINCES)
 	if not map_data.is_empty():
 		spocitej_prijem(map_data)
 
