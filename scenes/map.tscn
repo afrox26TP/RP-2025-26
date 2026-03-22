@@ -20,6 +20,7 @@ shader_parameter/hovered_id = -1.0
 shader_parameter/selected_id = -1.0
 shader_parameter/has_hover = false
 shader_parameter/has_selected = false
+shader_parameter/is_target_hover = false
 
 [node name="map2D" type="Node2D" unique_id=92782134]
 script = ExtResource("1_4xfga")

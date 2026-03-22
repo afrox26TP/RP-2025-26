@@ -9,6 +9,9 @@ uniform float selected_id = -1.0;
 uniform bool has_hover = false;
 uniform bool has_selected = false;
 
+// --- NEW: Parameter to track if we are picking a target for army movement ---
+uniform bool is_target_hover = false;
+
 void fragment() {
 	vec4 mask_color = texture(id_map, UV);
 	
@@ -24,15 +27,16 @@ void fragment() {
 
 		vec4 base_color = mode_color.a < 0.1 ? texture(TEXTURE, UV) : mode_color;
 
-		// --- OPRAVENÝ HOVER A SELECT ---
+		// --- SELECTION AND HOVER LOGIC ---
 		if (has_selected && abs(prov_id - selected_id) < 0.1) {
-			// Pokud je podklad průhledný, použijeme rovnou čistou azurovou. Jinak mícháme.
+			// Cyan for selected province
 			COLOR.rgb = base_color.a < 0.1 ? vec3(0.0, 1.0, 1.0) : mix(base_color.rgb, vec3(0.0, 1.0, 1.0), 0.5);
-			COLOR.a = 0.8; // Vynucená viditelnost, aby se moře ukázalo!
+			COLOR.a = 0.8; 
 		} else if (has_hover && abs(prov_id - hovered_id) < 0.1) {
-			// Pokud je podklad průhledný, použijeme rovnou čistou žlutou. Jinak mícháme.
-			COLOR.rgb = base_color.a < 0.1 ? vec3(1.0, 1.0, 0.0) : mix(base_color.rgb, vec3(1.0, 1.0, 0.0), 0.4);
-			COLOR.a = 0.6; // Vynucená viditelnost pro hover!
+			// --- MODIFIED: Switch to green color if targeting, otherwise keep yellow ---
+			vec3 hover_color = is_target_hover ? vec3(0.2, 1.0, 0.2) : vec3(1.0, 1.0, 0.0);
+			COLOR.rgb = base_color.a < 0.1 ? hover_color : mix(base_color.rgb, hover_color, 0.4);
+			COLOR.a = 0.6; 
 		} else {
 			COLOR = base_color;
 		}

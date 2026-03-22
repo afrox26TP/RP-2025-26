@@ -96,7 +96,7 @@ func load_provinces():
 			"neighbors": neighbors_array,
 			"ideology": ideologie_statu,
 			"recruitable_population": int(parts[19]),
-			"soldiers": 0 
+			"soldiers": int(parts[20]) if parts.size() > 20 else 0
 		}
 
 func generuj_nazvy_provincii():
@@ -433,22 +433,40 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int):
 	ceka_na_cil_presunu = false
 
 # Process all movements at the end of turn
+# Process all movements and resolve combat at the end of turn
 func zpracuj_tah_armad():
 	for move in cekajici_presuny:
 		var to_id = move["to"]
-		var amount = move["amount"]
+		var utocnici = move["amount"]
 		var owner = move["owner"]
 		
-		# Transfer troops
-		provinces[to_id]["soldiers"] += amount
-		
-		# Determine ownership/combat
 		var target_owner = str(provinces[to_id]["owner"]).strip_edges().to_upper()
-		if target_owner != owner:
-			# For now, auto-conquer. Later add battle logic here.
-			var sprite = $Sprite2D
-			if sprite and sprite.has_method("dobyt_provincii"):
-				sprite.dobyt_provincii(to_id, owner)
+		
+		# 1. Přesun na vlastní území (nebo na prázdné moře)
+		if target_owner == owner or target_owner == "SEA":
+			provinces[to_id]["soldiers"] += utocnici
+			
+		# 2. Útok na cizí území (BITVA!)
+		else:
+			var obranci = int(provinces[to_id].get("soldiers", 0))
+			print("--- BITVA V PROVINCII %d ---" % to_id)
+			print("Útočník (%s): %d vojáků vs Obránce (%s): %d vojáků" % [owner, utocnici, target_owner, obranci])
+			
+			if utocnici > obranci:
+				# Útočník má převahu a vyhrává
+				var prezivsi_utocnici = utocnici - obranci
+				provinces[to_id]["soldiers"] = prezivsi_utocnici
+				
+				var sprite = $Sprite2D
+				if sprite and sprite.has_method("dobyt_provincii"):
+					sprite.dobyt_provincii(to_id, owner)
+				print("Výsledek: ÚTOČNÍK VYHRÁL! Zbylo mu %d mužů a zabírá provincii." % prezivsi_utocnici)
+				
+			else:
+				# Obránce má převahu (nebo je to remíza) a ubrání se
+				var prezivsi_obranci = obranci - utocnici
+				provinces[to_id]["soldiers"] = prezivsi_obranci
+				print("Výsledek: OBRÁNCE SE UBRÁNIL! Útok odražen, obránci zbylo %d mužů." % prezivsi_obranci)
 				
 		# Clean up visual ghost
 		if is_instance_valid(move["visual"]):
@@ -456,4 +474,3 @@ func zpracuj_tah_armad():
 			
 	cekajici_presuny.clear()
 	aktualizuj_ikony_armad()
-# ----------------------------------------
