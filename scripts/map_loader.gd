@@ -7,7 +7,7 @@ var color_cache = {}
 
 var aktivni_armady = {} 
 
-# --- NEW: State variables for army movement targeting ---
+# --- State variables for army movement targeting ---
 var vybrana_armada_od: int = -1
 var vybrana_armada_max: int = 0
 var ceka_na_cil_presunu: bool = false
@@ -362,7 +362,7 @@ func aktualizuj_ikony_armad():
 	if kamera:
 		_aktualizuj_zoom_armad(kamera.zoom.x)
 
-# --- NEW: CORE MOVEMENT LOGIC ---
+# --- CORE MOVEMENT LOGIC ---
 
 # Activates target selection mode
 func aktivuj_rezim_vyberu_cile(from_id: int, max_troops: int):
@@ -375,11 +375,9 @@ func aktivuj_rezim_vyberu_cile(from_id: int, max_troops: int):
 func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int):
 	if amount <= 0: return
 	
-	# 1. Deduct troops from source immediately
 	provinces[from_id]["soldiers"] -= amount
 	aktualizuj_ikony_armad()
 	
-	# 2. Calculate midway point
 	var offset = Vector2.ZERO
 	var sprite = $Sprite2D
 	if sprite and sprite.centered:
@@ -391,7 +389,6 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int):
 	var end_pos = Vector2(provinces[to_id]["x"], provinces[to_id]["y"]) + offset
 	var midway_pos = start_pos.lerp(end_pos, 0.5)
 	
-	# 3. Create the midway visual "ghost" node
 	var container = get_node_or_null("ArmyContainer")
 	var owner_tag = str(provinces[from_id]["owner"]).strip_edges().to_upper()
 	var icon_path = "res://map_data/ArmyIcons/%s.svg" % owner_tag
@@ -401,12 +398,15 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int):
 	var moving_node = Node2D.new()
 	moving_node.position = midway_pos
 	
+	# --- ADD TO GROUP: Easy to delete all ghosts later ---
+	moving_node.add_to_group("duchove_armad") 
+	
 	var icon = Sprite2D.new()
 	icon.texture = target_texture
 	var tex_size = icon.texture.get_size()
 	if tex_size.x > 0 and tex_size.y > 0:
-		icon.scale = Vector2(12.0 / tex_size.x, 12.0 / tex_size.y) # Size slightly smaller to show movement
-	icon.modulate.a = 0.7 # Make the icon slightly transparent (ghostly)
+		icon.scale = Vector2(12.0 / tex_size.x, 12.0 / tex_size.y)
+	icon.modulate.a = 0.7 
 		
 	var lbl = Label.new()
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -414,63 +414,101 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int):
 	lbl.custom_minimum_size = Vector2(100, 20)
 	lbl.add_theme_color_override("font_outline_color", Color.BLACK)
 	lbl.add_theme_constant_override("outline_size", 4)
-	lbl.text = "-> " + _formatuj_cislo(amount) # Show arrow
+	lbl.text = "-> " + _formatuj_cislo(amount)
 	
 	moving_node.add_child(icon)
 	moving_node.add_child(lbl)
-	container.add_child(moving_node)
+	if container:
+		container.add_child(moving_node)
 	
-	# 4. Save to pending array
 	cekajici_presuny.append({
 		"from": from_id,
 		"to": to_id,
 		"amount": amount,
-		"owner": owner_tag,
-		"visual": moving_node
+		"owner": owner_tag
 	})
 	
-	# Reset state
 	ceka_na_cil_presunu = false
+	var root = get_parent()
+	if "ceka_na_cil_presunu" in root:
+		root.ceka_na_cil_presunu = false
 
-# Process all movements at the end of turn
-# Process all movements and resolve combat at the end of turn
+# Process all movements and await player confirmation for their battles
 func zpracuj_tah_armad():
-	for move in cekajici_presuny:
+	var hrac = GameManager.hrac_stat
+	
+	var tahy_k_zpracovani = cekajici_presuny.duplicate()
+	cekajici_presuny.clear()
+	
+	# --- AGGREGATE BATTLE REPORTS ---
+	var celkovy_report = "" 
+	
+	for move in tahy_k_zpracovani:
 		var to_id = move["to"]
 		var utocnici = move["amount"]
 		var owner = move["owner"]
 		
 		var target_owner = str(provinces[to_id]["owner"]).strip_edges().to_upper()
+		var jmeno_provincie = str(provinces[to_id].get("province_name", "Neznámá provincie"))
 		
-		# 1. Přesun na vlastní území (nebo na prázdné moře)
+		var hrac_zapojen = (owner == hrac or target_owner == hrac)
+		
 		if target_owner == owner or target_owner == "SEA":
 			provinces[to_id]["soldiers"] += utocnici
+			continue
 			
-		# 2. Útok na cizí území (BITVA!)
+		var obranci = int(provinces[to_id].get("soldiers", 0))
+		
+		if utocnici > obranci:
+			var prezivsi = utocnici - obranci
+			provinces[to_id]["soldiers"] = prezivsi
+			
+			var sprite = $Sprite2D
+			if sprite and sprite.has_method("dobyt_provincii"):
+				sprite.dobyt_provincii(to_id, owner)
+				
+			if hrac_zapojen:
+				if owner == hrac:
+					celkovy_report += " VÍTĚZSTVÍ: Dobyli jsme %s! Přežilo %d našich vojáků.\n\n" % [jmeno_provincie, prezivsi]
+				else:
+					celkovy_report += " ZTRÁTA ÚZEMÍ: Nepřítel (%s) dobyl provincii %s! Padli všichni obránci.\n\n" % [owner, jmeno_provincie]
+					
 		else:
-			var obranci = int(provinces[to_id].get("soldiers", 0))
-			print("--- BITVA V PROVINCII %d ---" % to_id)
-			print("Útočník (%s): %d vojáků vs Obránce (%s): %d vojáků" % [owner, utocnici, target_owner, obranci])
+			var prezivsi = obranci - utocnici
+			provinces[to_id]["soldiers"] = prezivsi
 			
-			if utocnici > obranci:
-				# Útočník má převahu a vyhrává
-				var prezivsi_utocnici = utocnici - obranci
-				provinces[to_id]["soldiers"] = prezivsi_utocnici
-				
-				var sprite = $Sprite2D
-				if sprite and sprite.has_method("dobyt_provincii"):
-					sprite.dobyt_provincii(to_id, owner)
-				print("Výsledek: ÚTOČNÍK VYHRÁL! Zbylo mu %d mužů a zabírá provincii." % prezivsi_utocnici)
-				
-			else:
-				# Obránce má převahu (nebo je to remíza) a ubrání se
-				var prezivsi_obranci = obranci - utocnici
-				provinces[to_id]["soldiers"] = prezivsi_obranci
-				print("Výsledek: OBRÁNCE SE UBRÁNIL! Útok odražen, obránci zbylo %d mužů." % prezivsi_obranci)
-				
-		# Clean up visual ghost
-		if is_instance_valid(move["visual"]):
-			move["visual"].queue_free()
-			
-	cekajici_presuny.clear()
+			if hrac_zapojen:
+				if target_owner == hrac:
+					celkovy_report += " OBRANA: Ubránili jsme %s! Zbylo nám %d vojáků.\n\n" % [jmeno_provincie, prezivsi]
+				else:
+					celkovy_report += " ÚTOK SELHAL: Naše invaze do %s byla odražena.\n\n" % [jmeno_provincie]
+					
 	aktualizuj_ikony_armad()
+	
+	# Show the consolidated report while ghosts are still visible
+	if celkovy_report != "":
+		await _ukaz_bitevni_popup("Hlášení z fronty", celkovy_report)
+		
+	# --- NUKE ALL GHOSTS ---
+	get_tree().call_group("duchove_armad", "queue_free")
+
+# Helper function to show popup and wait for user interaction safely
+
+func _ukaz_bitevni_popup(titulek: String, text: String):
+	var dialog = AcceptDialog.new()
+	dialog.title = titulek
+	dialog.dialog_text = text
+	dialog.min_size = Vector2i(450, 250) 
+	
+	get_tree().current_scene.add_child(dialog)
+	dialog.popup_centered()
+	
+	# ABSOLUTNĚ BLBUVZDORNÉ ČEKÁNÍ:
+	# Dokud okno existuje a je viditelné (hráč ho nezavřel), čekáme.
+	while is_instance_valid(dialog) and dialog.visible:
+		await get_tree().process_frame
+		
+	# Jakmile hráč klikne na OK nebo křížek, okno se samo schová,
+	# smyčka skončí a my ho bezpečně smažeme z paměti.
+	if is_instance_valid(dialog):
+		dialog.queue_free()
