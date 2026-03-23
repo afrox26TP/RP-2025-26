@@ -375,6 +375,22 @@ func aktivuj_rezim_vyberu_cile(from_id: int, max_troops: int):
 func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int):
 	if amount <= 0: return
 	
+	var owner_tag = str(provinces[from_id]["owner"]).strip_edges().to_upper()
+	var target_owner_tag = str(provinces[to_id]["owner"]).strip_edges().to_upper()
+	
+	# Block illegal attacks
+	if owner_tag != target_owner_tag and target_owner_tag != "SEA":
+		if not GameManager.jsou_ve_valce(owner_tag, target_owner_tag):
+			if owner_tag == GameManager.hrac_stat:
+				_ukaz_bitevni_popup("NEPOVOLENÝ ÚTOK", "Nemůžeš zaútočit! Nejdřív musíš státu %s vyhlásit válku přes State Overview." % target_owner_tag)
+			
+			ceka_na_cil_presunu = false
+			var root = get_parent()
+			if "ceka_na_cil_presunu" in root:
+				root.ceka_na_cil_presunu = false
+				
+			return 
+	
 	provinces[from_id]["soldiers"] -= amount
 	aktualizuj_ikony_armad()
 	
@@ -390,7 +406,6 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int):
 	var midway_pos = start_pos.lerp(end_pos, 0.5)
 	
 	var container = get_node_or_null("ArmyContainer")
-	var owner_tag = str(provinces[from_id]["owner"]).strip_edges().to_upper()
 	var icon_path = "res://map_data/ArmyIcons/%s.svg" % owner_tag
 	var fallback_path = "res://map_data/ArmyIcons/ArmyIconTemplate.svg"
 	var target_texture = load(icon_path) if ResourceLoader.exists(icon_path) else load(fallback_path)
@@ -398,7 +413,7 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int):
 	var moving_node = Node2D.new()
 	moving_node.position = midway_pos
 	
-	# --- ADD TO GROUP: Easy to delete all ghosts later ---
+	# Add to group to easily clear ghosts later
 	moving_node.add_to_group("duchove_armad") 
 	
 	var icon = Sprite2D.new()
@@ -440,10 +455,11 @@ func zpracuj_tah_armad():
 	var tahy_k_zpracovani = cekajici_presuny.duplicate()
 	cekajici_presuny.clear()
 	
-	# --- AGGREGATE BATTLE REPORTS ---
+	# Aggregate battle reports
 	var celkovy_report = "" 
 	
 	for move in tahy_k_zpracovani:
+		var from_id = move["from"]
 		var to_id = move["to"]
 		var utocnici = move["amount"]
 		var owner = move["owner"]
@@ -463,15 +479,48 @@ func zpracuj_tah_armad():
 			var prezivsi = utocnici - obranci
 			provinces[to_id]["soldiers"] = prezivsi
 			
+			# Save capital status before overwriting
+			var was_capital = provinces[to_id].get("is_capital", false)
+			
+			# Update properties for the conquered province
+			provinces[to_id]["owner"] = owner
+			provinces[to_id]["country_name"] = provinces[from_id]["country_name"]
+			provinces[to_id]["ideology"] = provinces[from_id]["ideology"]
+			provinces[to_id]["is_capital"] = false # Zrušíme status hlavního města
+			
+			# --- Smažeme vlajku z mapy ---
+			var labels = get_node_or_null("ProvinceLabels")
+			if labels:
+				for lbl in labels.get_children():
+					if lbl.get("province_id") == to_id:
+						lbl.set("is_capital", false)
+						var f = lbl.find_child("Flag", true, false)
+						if f: f.hide()
+			
 			var sprite = $Sprite2D
 			if sprite and sprite.has_method("dobyt_provincii"):
 				sprite.dobyt_provincii(to_id, owner)
 				
-			if hrac_zapojen:
+			# --- CAPITULATION MECHANIC (Blitzkrieg) ---
+			if was_capital:
+				for p_id in provinces.keys():
+					if str(provinces[p_id].get("owner", "")).strip_edges().to_upper() == target_owner:
+						provinces[p_id]["owner"] = owner
+						provinces[p_id]["country_name"] = provinces[from_id]["country_name"]
+						provinces[p_id]["ideology"] = provinces[from_id]["ideology"]
+						provinces[p_id]["is_capital"] = false
+						if sprite and sprite.has_method("dobyt_provincii"):
+							sprite.dobyt_provincii(p_id, owner)
+							
+				if hrac_zapojen:
+					celkovy_report += "💥 KAPITULACE: Padlo hlavní město! Stát %s se kompletně vzdal a jeho území připadlo státu %s!\n\n" % [target_owner, owner]
+			# -----------------------------
+			
+			if hrac_zapojen and not was_capital:
 				if owner == hrac:
-					celkovy_report += " VÍTĚZSTVÍ: Dobyli jsme %s! Přežilo %d našich vojáků.\n\n" % [jmeno_provincie, prezivsi]
+					celkovy_report += "✅ VÍTĚZSTVÍ: Dobyli jsme %s! Přežilo %d našich vojáků.\n\n" % [jmeno_provincie, prezivsi]
 				else:
-					celkovy_report += " ZTRÁTA ÚZEMÍ: Nepřítel (%s) dobyl provincii %s! Padli všichni obránci.\n\n" % [owner, jmeno_provincie]
+					celkovy_report += "💀 ZTRÁTA ÚZEMÍ: Nepřítel (%s) dobyl provincii %s! Padli všichni obránci.\n\n" % [owner, jmeno_provincie]
 					
 		else:
 			var prezivsi = obranci - utocnici
@@ -479,9 +528,9 @@ func zpracuj_tah_armad():
 			
 			if hrac_zapojen:
 				if target_owner == hrac:
-					celkovy_report += " OBRANA: Ubránili jsme %s! Zbylo nám %d vojáků.\n\n" % [jmeno_provincie, prezivsi]
+					celkovy_report += "🛡️ OBRANA: Ubránili jsme %s! Zbylo nám %d vojáků.\n\n" % [jmeno_provincie, prezivsi]
 				else:
-					celkovy_report += " ÚTOK SELHAL: Naše invaze do %s byla odražena.\n\n" % [jmeno_provincie]
+					celkovy_report += "❌ ÚTOK SELHAL: Naše invaze do %s byla odražena.\n\n" % [jmeno_provincie]
 					
 	aktualizuj_ikony_armad()
 	
@@ -489,11 +538,10 @@ func zpracuj_tah_armad():
 	if celkovy_report != "":
 		await _ukaz_bitevni_popup("Hlášení z fronty", celkovy_report)
 		
-	# --- NUKE ALL GHOSTS ---
+	# Nuke all ghosts
 	get_tree().call_group("duchove_armad", "queue_free")
 
 # Helper function to show popup and wait for user interaction safely
-
 func _ukaz_bitevni_popup(titulek: String, text: String):
 	var dialog = AcceptDialog.new()
 	dialog.title = titulek
@@ -503,12 +551,14 @@ func _ukaz_bitevni_popup(titulek: String, text: String):
 	get_tree().current_scene.add_child(dialog)
 	dialog.popup_centered()
 	
-	# ABSOLUTNĚ BLBUVZDORNÉ ČEKÁNÍ:
-	# Dokud okno existuje a je viditelné (hráč ho nezavřel), čekáme.
+	var zavreno = false
+	var on_close = func(): zavreno = true
+	
+	dialog.confirmed.connect(on_close)
+	dialog.canceled.connect(on_close)
+	
 	while is_instance_valid(dialog) and dialog.visible:
 		await get_tree().process_frame
 		
-	# Jakmile hráč klikne na OK nebo křížek, okno se samo schová,
-	# smyčka skončí a my ho bezpečně smažeme z paměti.
 	if is_instance_valid(dialog):
 		dialog.queue_free()

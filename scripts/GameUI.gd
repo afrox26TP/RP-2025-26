@@ -12,8 +12,19 @@ extends CanvasLayer
 @onready var gdp_label = $OverviewPanel/VBoxContainer/TotalGdpLabel
 @onready var gdp_pc_label = $OverviewPanel/VBoxContainer/GdpPerCapitaLabel 
 
+# --- NEW: Action nodes ---
+@onready var action_separator = $OverviewPanel/VBoxContainer/ActionSeparator
+@onready var declare_war_btn = $OverviewPanel/VBoxContainer/DeclareWarButton
+
+# Store the currently viewed country tag
+var current_viewed_tag: String = ""
+
 func _ready():
 	panel.hide()
+	
+	# Automatically connect the button signal if it exists
+	if declare_war_btn and not declare_war_btn.pressed.is_connected(_on_declare_war_button_pressed):
+		declare_war_btn.pressed.connect(_on_declare_war_button_pressed)
 
 func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 	if data.is_empty():
@@ -21,6 +32,8 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 		return
 		
 	var owner = str(data.get("owner", "")).strip_edges().to_upper()
+	current_viewed_tag = owner # Save the tag for button actions
+	
 	var plne_jmeno = str(data.get("country_name", owner))
 	
 	# Force lowercase to prevent file path issues
@@ -73,6 +86,27 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 		gdp_pc_label.text = "HDP na osobu: $%.0f" % gdp_per_capita
 	else:
 		gdp_pc_label.text = "HDP na osobu: N/A"
+		
+	# --- NEW: DIPLOMACY UI LOGIC ---
+	if action_separator and declare_war_btn:
+		if owner == GameManager.hrac_stat:
+			# Hide actions if looking at our own country
+			action_separator.hide()
+			declare_war_btn.hide()
+		else:
+			# Show actions for other countries
+			action_separator.show()
+			declare_war_btn.show()
+			
+			# Check war status from GameManager
+			if GameManager.jsou_ve_valce(GameManager.hrac_stat, owner):
+				declare_war_btn.text = "VE VÁLCE"
+				declare_war_btn.disabled = true
+				declare_war_btn.modulate = Color(1, 0.5, 0.5) # Red tint
+			else:
+				declare_war_btn.text = "Vyhlásit válku"
+				declare_war_btn.disabled = false
+				declare_war_btn.modulate = Color(1, 1, 1) # Normal color
 	
 	panel.show()
 
@@ -89,3 +123,17 @@ func _formatuj_cislo(cislo: int) -> String:
 			vysledek += " "
 		vysledek += text_cisla[i]
 	return vysledek
+
+# --- DIPLOMACY ACTION ---
+func _on_declare_war_button_pressed():
+	if current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat:
+		return
+		
+	# Declare war via GameManager
+	GameManager.vyhlasit_valku(GameManager.hrac_stat, current_viewed_tag)
+	
+	# Update button visually immediately
+	if declare_war_btn:
+		declare_war_btn.text = "VE VÁLCE"
+		declare_war_btn.disabled = true
+		declare_war_btn.modulate = Color(1, 0.5, 0.5)
