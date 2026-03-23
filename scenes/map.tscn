@@ -34,6 +34,7 @@ logic_map = ExtResource("3_2klcf")
 [node name="Camera2D" type="Camera2D" parent="." unique_id=2038283175]
 zoom = Vector2(0.2, 0.2)
 script = ExtResource("6_2lpho")
+min_zoom = 0.01
 
 [node name="InfoUI" type="CanvasLayer" parent="." unique_id=1192769908]
 script = ExtResource("7_nakos")

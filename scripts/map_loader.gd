@@ -410,31 +410,61 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int):
 	var fallback_path = "res://map_data/ArmyIcons/ArmyIconTemplate.svg"
 	var target_texture = load(icon_path) if ResourceLoader.exists(icon_path) else load(fallback_path)
 	
+	# --- VISUAL ARROW LOGIC (HOI4 STYLE RED/BLUE) ---
 	var moving_node = Node2D.new()
-	moving_node.position = midway_pos
+	moving_node.add_to_group("duchove_armad")
+	moving_node.z_index = 25 
 	
-	# Add to group to easily clear ghosts later
-	moving_node.add_to_group("duchove_armad") 
+	var is_attack = (owner_tag != target_owner_tag)
+	
+	# Red for enemy territory, Blue for friendly territory
+	var arrow_color = Color(0.85, 0.15, 0.15, 0.7) if is_attack else Color(0.2, 0.6, 0.8, 0.7)
+	var head_color = Color(0.9, 0.1, 0.1, 0.9) if is_attack else Color(0.15, 0.5, 0.9, 0.9)
+	
+	# 1. Draw the Line
+	var line = Line2D.new()
+	line.add_point(start_pos)
+	line.add_point(end_pos)
+	line.width = 6.0
+	line.default_color = arrow_color
+	moving_node.add_child(line)
+	
+	# 2. Draw the Arrowhead
+	var dir = (end_pos - start_pos).normalized()
+	var arrow = Polygon2D.new()
+	arrow.polygon = PackedVector2Array([Vector2(-12, -8), Vector2(8, 0), Vector2(-12, 8)])
+	arrow.color = head_color
+	arrow.position = end_pos - (dir * 15.0)
+	arrow.rotation = dir.angle()
+	moving_node.add_child(arrow)
+	
+	# 3. Add the Army Icon and Label in the middle
+	var icon_node = Node2D.new()
+	icon_node.position = midway_pos
 	
 	var icon = Sprite2D.new()
 	icon.texture = target_texture
 	var tex_size = icon.texture.get_size()
 	if tex_size.x > 0 and tex_size.y > 0:
-		icon.scale = Vector2(12.0 / tex_size.x, 12.0 / tex_size.y)
-	icon.modulate.a = 0.7 
-		
+		icon.scale = Vector2(16.0 / tex_size.x, 16.0 / tex_size.y) 
+	icon.modulate.a = 0.95 
+	
 	var lbl = Label.new()
+	lbl.text = _formatuj_cislo(amount)
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl.position = Vector2(-50, 10)
+	lbl.position = Vector2(-50, 12) 
 	lbl.custom_minimum_size = Vector2(100, 20)
 	lbl.add_theme_color_override("font_outline_color", Color.BLACK)
 	lbl.add_theme_constant_override("outline_size", 4)
-	lbl.text = "-> " + _formatuj_cislo(amount)
+	lbl.add_theme_font_size_override("font_size", 14)
 	
-	moving_node.add_child(icon)
-	moving_node.add_child(lbl)
+	icon_node.add_child(icon)
+	icon_node.add_child(lbl)
+	moving_node.add_child(icon_node)
+	
 	if container:
 		container.add_child(moving_node)
+	# -------------------------------
 	
 	cekajici_presuny.append({
 		"from": from_id,
@@ -451,14 +481,57 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int):
 # Process all movements and await player confirmation for their battles
 func zpracuj_tah_armad():
 	var hrac = GameManager.hrac_stat
-	
 	var tahy_k_zpracovani = cekajici_presuny.duplicate()
 	cekajici_presuny.clear()
 	
-	# Aggregate battle reports
 	var celkovy_report = "" 
+
+	# --- NEW: FIELD BATTLES (CROSS-MOVEMENT RESOLUTION) ---
+	# Pokud dvě armády táhnou proti sobě, setkají se na půli cesty
+	for i in range(tahy_k_zpracovani.size()):
+		var utok1 = tahy_k_zpracovani[i]
+		if utok1["amount"] <= 0: continue
+		
+		for j in range(i + 1, tahy_k_zpracovani.size()):
+			var utok2 = tahy_k_zpracovani[j]
+			if utok2["amount"] <= 0: continue
+			
+			# Check if they cross paths (A -> B and B -> A)
+			if utok1["from"] == utok2["to"] and utok1["to"] == utok2["from"]:
+				# Make sure they are enemies
+				if utok1["owner"] != utok2["owner"]:
+					var hrac_zapojen = (utok1["owner"] == hrac or utok2["owner"] == hrac)
+					
+					if utok1["amount"] > utok2["amount"]:
+						utok1["amount"] -= utok2["amount"]
+						utok2["amount"] = 0 # Destroyed
+						if hrac_zapojen:
+							if utok1["owner"] == hrac:
+								celkovy_report += "⚔️ POLNÍ BITVA: Naše armáda smetla nepřátelské síly (%s), které se nás pokusily napadnout během přesunu!\n\n" % utok2["owner"]
+							else:
+								celkovy_report += "💀 POLNÍ BITVA: Naše útočící armáda byla zničena silnějšími jednotkami nepřítele (%s) na půli cesty!\n\n" % utok1["owner"]
+					elif utok2["amount"] > utok1["amount"]:
+						utok2["amount"] -= utok1["amount"]
+						utok1["amount"] = 0 # Destroyed
+						if hrac_zapojen:
+							if utok2["owner"] == hrac:
+								celkovy_report += "⚔️ POLNÍ BITVA: Naše armáda smetla nepřátelské síly (%s), které se nás pokusily napadnout během přesunu!\n\n" % utok1["owner"]
+							else:
+								celkovy_report += "💀 POLNÍ BITVA: Naše útočící armáda byla zničena silnějšími jednotkami nepřítele (%s) na půli cesty!\n\n" % utok2["owner"]
+						break # utok1 is dead, stop checking it
+					else:
+						# Mutual annihilation
+						utok1["amount"] = 0
+						utok2["amount"] = 0
+						if hrac_zapojen:
+							celkovy_report += "⚔️ POLNÍ BITVA: Krvavý masakr! Naše i nepřátelská armáda se při přesunu navzájem kompletně vyhladily.\n\n"
+						break
+	# ----------------------------------------------------
 	
+	# Only process surviving attacks against provinces
 	for move in tahy_k_zpracovani:
+		if move["amount"] <= 0: continue # Skip destroyed armies
+		
 		var from_id = move["from"]
 		var to_id = move["to"]
 		var utocnici = move["amount"]
@@ -479,16 +552,15 @@ func zpracuj_tah_armad():
 			var prezivsi = utocnici - obranci
 			provinces[to_id]["soldiers"] = prezivsi
 			
-			# Save capital status before overwriting
 			var was_capital = provinces[to_id].get("is_capital", false)
 			
 			# Update properties for the conquered province
 			provinces[to_id]["owner"] = owner
 			provinces[to_id]["country_name"] = provinces[from_id]["country_name"]
 			provinces[to_id]["ideology"] = provinces[from_id]["ideology"]
-			provinces[to_id]["is_capital"] = false # Zrušíme status hlavního města
+			provinces[to_id]["is_capital"] = false 
 			
-			# --- Smažeme vlajku z mapy ---
+			# Remove flag from map
 			var labels = get_node_or_null("ProvinceLabels")
 			if labels:
 				for lbl in labels.get_children():
@@ -501,7 +573,7 @@ func zpracuj_tah_armad():
 			if sprite and sprite.has_method("dobyt_provincii"):
 				sprite.dobyt_provincii(to_id, owner)
 				
-			# --- CAPITULATION MECHANIC (Blitzkrieg) ---
+			# CAPITULATION MECHANIC (Blitzkrieg)
 			if was_capital:
 				for p_id in provinces.keys():
 					if str(provinces[p_id].get("owner", "")).strip_edges().to_upper() == target_owner:
@@ -514,7 +586,6 @@ func zpracuj_tah_armad():
 							
 				if hrac_zapojen:
 					celkovy_report += "💥 KAPITULACE: Padlo hlavní město! Stát %s se kompletně vzdal a jeho území připadlo státu %s!\n\n" % [target_owner, owner]
-			# -----------------------------
 			
 			if hrac_zapojen and not was_capital:
 				if owner == hrac:
@@ -534,14 +605,11 @@ func zpracuj_tah_armad():
 					
 	aktualizuj_ikony_armad()
 	
-	# Show the consolidated report while ghosts are still visible
 	if celkovy_report != "":
 		await _ukaz_bitevni_popup("Hlášení z fronty", celkovy_report)
 		
-	# Nuke all ghosts
 	get_tree().call_group("duchove_armad", "queue_free")
 
-# Helper function to show popup and wait for user interaction safely
 func _ukaz_bitevni_popup(titulek: String, text: String):
 	var dialog = AcceptDialog.new()
 	dialog.title = titulek
