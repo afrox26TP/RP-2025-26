@@ -18,6 +18,24 @@ extends CanvasLayer
 
 # Store the currently viewed country tag
 var current_viewed_tag: String = ""
+var flag_texture_cache: Dictionary = {}
+
+func _resolve_flag_texture(owner: String, ideologie: String):
+	var ideo = ideologie.strip_edges().to_lower()
+	var ideo_cesta = "res://map_data/FlagsIdeology/%s_%s.svg" % [owner, ideo]
+	var zaklad_cesta = "res://map_data/Flags/%s.svg" % owner
+
+	if ideo != "" and ideo != "neznámo" and ResourceLoader.exists(ideo_cesta):
+		if not flag_texture_cache.has(ideo_cesta):
+			flag_texture_cache[ideo_cesta] = load(ideo_cesta)
+		return flag_texture_cache[ideo_cesta]
+
+	if ResourceLoader.exists(zaklad_cesta):
+		if not flag_texture_cache.has(zaklad_cesta):
+			flag_texture_cache[zaklad_cesta] = load(zaklad_cesta)
+		return flag_texture_cache[zaklad_cesta]
+
+	return null
 
 func _ready():
 	panel.hide()
@@ -45,15 +63,7 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 		
 	# --- FLAG LOADING ---
 	if country_flag:
-		var ideo_cesta = "res://map_data/FlagsIdeology/%s_%s.svg" % [owner, ideologie]
-		var zaklad_cesta = "res://map_data/Flags/%s.svg" % owner
-		
-		if ideologie != "" and ideologie != "neznámo" and ResourceLoader.exists(ideo_cesta):
-			country_flag.texture = load(ideo_cesta)
-		elif ResourceLoader.exists(zaklad_cesta):
-			country_flag.texture = load(zaklad_cesta)
-		else:
-			country_flag.texture = null
+		country_flag.texture = _resolve_flag_texture(owner, ideologie)
 	# --------------------
 		
 	var total_pop = 0

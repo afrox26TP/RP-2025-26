@@ -24,9 +24,9 @@ func _unhandled_input(event):
 	# Handle mouse input for zooming and panning
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			_zoom_camera(1.0 + zoom_speed, event.position)
+			_zoom_camera(1.0 + zoom_speed)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			_zoom_camera(1.0 - zoom_speed, event.position)
+			_zoom_camera(1.0 - zoom_speed)
 			
 		if event.button_index == MOUSE_BUTTON_RIGHT:
 			if event.pressed:
@@ -41,12 +41,8 @@ func _unhandled_input(event):
 		position += diff
 		drag_start = drag_current
 
-func _zoom_camera(factor, mouse_pos):
-	var prev_zoom = zoom
+func _zoom_camera(factor):
 	zoom = (zoom * factor).clamp(Vector2(min_zoom, min_zoom), Vector2(max_zoom, max_zoom))
-	
-	var mouse_world_pos = get_global_mouse_position()
-	var next_mouse_world_pos = get_global_mouse_position()
 	
 	# Broadcast the new zoom level to other game systems
 	zoom_zmenen.emit(zoom.x)

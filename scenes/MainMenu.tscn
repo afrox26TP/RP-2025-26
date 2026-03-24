@@ -4,36 +4,296 @@
 
 [node name="MainMenu" type="Control" unique_id=1394648690]
 layout_mode = 3
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_yqorp")
 
-[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=1802369220]
+[node name="Background" type="ColorRect" parent="." unique_id=179100001]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.0470588, 0.0901961, 0.172549, 1)
+
+[node name="Backdrop" type="ColorRect" parent="." unique_id=179100002]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -49.0
-offset_top = -41.0
-offset_right = 49.0
-offset_bottom = 41.0
+offset_left = -560.0
+offset_top = -320.0
+offset_right = 560.0
+offset_bottom = 320.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.117647, 0.180392, 0.278431, 0.6)
+
+[node name="CenterPanel" type="PanelContainer" parent="." unique_id=179100003]
+custom_minimum_size = Vector2(760, 560)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -380.0
+offset_top = -280.0
+offset_right = 380.0
+offset_bottom = 280.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Label" type="Label" parent="VBoxContainer" unique_id=340904285]
+[node name="MarginContainer" type="MarginContainer" parent="CenterPanel" unique_id=179100004]
 layout_mode = 2
-text = "vyber si stat:"
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
 
-[node name="OptionButton" type="OptionButton" parent="VBoxContainer" unique_id=1834597632]
+[node name="VBoxContainer" type="VBoxContainer" parent="CenterPanel/MarginContainer" unique_id=1802369220]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="CenterPanel/MarginContainer/VBoxContainer" unique_id=340904285]
+layout_mode = 2
+theme_override_font_sizes/font_size = 44
+text = "EUROPEAN MAP PROJECT"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="CenterPanel/MarginContainer/VBoxContainer" unique_id=340904286]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Grand Strategy, Rocnikovy projekt 2025-26"
+horizontal_alignment = 1
+
+[node name="HeaderSeparator" type="HSeparator" parent="CenterPanel/MarginContainer/VBoxContainer" unique_id=340904287]
 layout_mode = 2
 
-[node name="PlayButton" type="Button" parent="VBoxContainer" unique_id=909067166]
+[node name="SelectedCountryLabel" type="Label" parent="CenterPanel/MarginContainer/VBoxContainer" unique_id=1834597633]
 layout_mode = 2
-text = "hrat!"
+theme_override_colors/font_color = Color(0.694118, 0.831373, 1, 1)
+text = "Vybrany stat:"
+
+[node name="MainButtons" type="VBoxContainer" parent="CenterPanel/MarginContainer/VBoxContainer" unique_id=1834597634]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="NewGameButton" type="Button" parent="CenterPanel/MarginContainer/VBoxContainer/MainButtons" unique_id=909067166]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+text = "Nova hra"
+
+[node name="ContinueButton" type="Button" parent="CenterPanel/MarginContainer/VBoxContainer/MainButtons" unique_id=909067167]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+text = "Pokracovat"
+
+[node name="SecondaryButtons" type="HBoxContainer" parent="CenterPanel/MarginContainer/VBoxContainer" unique_id=1834597635]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SettingsButton" type="Button" parent="CenterPanel/MarginContainer/VBoxContainer/SecondaryButtons" unique_id=909067168]
+custom_minimum_size = Vector2(0, 46)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Nastaveni"
+
+[node name="CreditsButton" type="Button" parent="CenterPanel/MarginContainer/VBoxContainer/SecondaryButtons" unique_id=909067169]
+custom_minimum_size = Vector2(0, 46)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Kredity"
+
+[node name="ExitButton" type="Button" parent="CenterPanel/MarginContainer/VBoxContainer" unique_id=909067170]
+custom_minimum_size = Vector2(0, 46)
+layout_mode = 2
+text = "Konec"
+
+[node name="FooterLabel" type="Label" parent="CenterPanel/MarginContainer/VBoxContainer" unique_id=1834597636]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.713726, 0.756863, 0.847059, 1)
+text = "Tip: Diplomacii a prehled statu najdes kliknutim na provincii ve hre."
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Dialogs" type="Node" parent="." unique_id=179100005]
+
+[node name="SettingsDialog" type="AcceptDialog" parent="Dialogs" unique_id=179100006]
+title = "Nastaveni"
+dialog_text = "Nastaveni budou doplnena v dalsi iteraci.
+
+OVLADANI:
+- Zoom koleckem
+- Posouvat mapu WSAD
+- Ukoncit kolo mezernikem
+- Pravim tlacitkem cancelovat akce a zavirat dialogy
+- DEv simple conquer tool: C"
+
+[node name="CreditsDialog" type="AcceptDialog" parent="Dialogs" unique_id=179100007]
+title = "Kredity"
+dialog_text = "RP-2025-26
+
+Design a gameplay: JA (Afrox26TP)
+Mapa a data: interni dataset (Muj)"
+
+[node name="ExitDialog" type="ConfirmationDialog" parent="Dialogs" unique_id=179100008]
+title = "Potvrzeni"
+dialog_text = "Opravdu chces ukoncit hru?"
+
+[node name="CountryBrowserPanel" type="PanelContainer" parent="." unique_id=179100009]
+visible = false
+custom_minimum_size = Vector2(1160, 680)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -580.0
+offset_top = -340.0
+offset_right = 580.0
+offset_bottom = 340.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="CountryBrowserPanel" unique_id=179100010]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="RootVBox" type="VBoxContainer" parent="CountryBrowserPanel/MarginContainer" unique_id=179100011]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="BrowserTitle" type="Label" parent="CountryBrowserPanel/MarginContainer/RootVBox" unique_id=179100012]
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "Vyber statu"
+horizontal_alignment = 1
+
+[node name="BrowserSubtitle" type="Label" parent="CountryBrowserPanel/MarginContainer/RootVBox" unique_id=179100013]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.694118, 0.831373, 1, 1)
+text = "Seznam vsech statu s vlajkou, statistikami a popisem"
+horizontal_alignment = 1
+
+[node name="Content" type="HSplitContainer" parent="CountryBrowserPanel/MarginContainer/RootVBox" unique_id=179100014]
+layout_mode = 2
+size_flags_vertical = 3
+split_offsets = PackedInt32Array(420)
+split_offset = 420
+
+[node name="ListPanel" type="PanelContainer" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content" unique_id=179100015]
+layout_mode = 2
+
+[node name="ListMargin" type="MarginContainer" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/ListPanel" unique_id=179100016]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="ListVBox" type="VBoxContainer" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/ListPanel/ListMargin" unique_id=179100017]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ListHint" type="Label" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/ListPanel/ListMargin/ListVBox" unique_id=179100018]
+layout_mode = 2
+text = "Klikni na stat pro detail"
+
+[node name="CountryListScroll" type="ScrollContainer" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/ListPanel/ListMargin/ListVBox" unique_id=179100019]
+custom_minimum_size = Vector2(0, 500)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="CountryList" type="VBoxContainer" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/ListPanel/ListMargin/ListVBox/CountryListScroll" unique_id=179100020]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="DetailPanel" type="PanelContainer" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content" unique_id=179100021]
+layout_mode = 2
+
+[node name="DetailMargin" type="MarginContainer" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/DetailPanel" unique_id=179100022]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="DetailVBox" type="VBoxContainer" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/DetailPanel/DetailMargin" unique_id=179100023]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="DetailFlag" type="TextureRect" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/DetailPanel/DetailMargin/DetailVBox" unique_id=179100024]
+custom_minimum_size = Vector2(220, 140)
+layout_mode = 2
+size_flags_horizontal = 4
+stretch_mode = 5
+
+[node name="DetailName" type="Label" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/DetailPanel/DetailMargin/DetailVBox" unique_id=179100025]
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "-"
+
+[node name="DetailTag" type="Label" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/DetailPanel/DetailMargin/DetailVBox" unique_id=179100026]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.694118, 0.831373, 1, 1)
+text = "Tag: -"
+
+[node name="DetailIdeology" type="Label" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/DetailPanel/DetailMargin/DetailVBox" unique_id=179100027]
+layout_mode = 2
+text = "Ideologie: -"
+
+[node name="DetailPopulation" type="Label" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/DetailPanel/DetailMargin/DetailVBox" unique_id=179100028]
+layout_mode = 2
+text = "Populace: -"
+
+[node name="DetailGdp" type="Label" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/DetailPanel/DetailMargin/DetailVBox" unique_id=179100029]
+layout_mode = 2
+text = "HDP: -"
+
+[node name="DetailRecruits" type="Label" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/DetailPanel/DetailMargin/DetailVBox" unique_id=179100030]
+layout_mode = 2
+text = "Rekruti: -"
+
+[node name="DetailSoldiers" type="Label" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/DetailPanel/DetailMargin/DetailVBox" unique_id=179100031]
+layout_mode = 2
+text = "Vojaci: -"
+
+[node name="DetailProvinceCount" type="Label" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/DetailPanel/DetailMargin/DetailVBox" unique_id=179100032]
+layout_mode = 2
+text = "Provincie: -"
+
+[node name="DetailInfo" type="RichTextLabel" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/DetailPanel/DetailMargin/DetailVBox" unique_id=179100033]
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+text = "Vyber stat v levem panelu."
+fit_content = true
+
+[node name="BrowserButtons" type="HBoxContainer" parent="CountryBrowserPanel/MarginContainer/RootVBox" unique_id=179100034]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="ConfirmCountryButton" type="Button" parent="CountryBrowserPanel/MarginContainer/RootVBox/BrowserButtons" unique_id=179100035]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Potvrdit vyber"
+
+[node name="CloseBrowserButton" type="Button" parent="CountryBrowserPanel/MarginContainer/RootVBox/BrowserButtons" unique_id=179100036]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Zavrit"

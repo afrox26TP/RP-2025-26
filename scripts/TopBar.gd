@@ -8,6 +8,15 @@ extends CanvasLayer
 @onready var player_flag = $Panel/HBoxContainer/PlayerInfo/PlayerFlag
 @onready var player_name = $Panel/HBoxContainer/PlayerInfo/PlayerName
 
+var flag_texture_cache: Dictionary = {}
+
+func _cached_texture(path: String):
+	if path == "" or not ResourceLoader.exists(path):
+		return null
+	if not flag_texture_cache.has(path):
+		flag_texture_cache[path] = load(path)
+	return flag_texture_cache[path]
+
 func _ready():
 	# Connect button clicks and GameManager signals
 	next_btn.pressed.connect(_on_next_turn_pressed)
@@ -34,9 +43,14 @@ func nastav_hrace(tag: String, jmeno_statu: String, ideologie: String = ""):
 		var zaklad_cesta = "res://map_data/Flags/%s.svg" % tag
 		
 		# Try loading the ideology-specific flag first, fallback to the base flag
-		if ideologie != "" and ResourceLoader.exists(ideo_cesta):
-			player_flag.texture = load(ideo_cesta)
-		elif ResourceLoader.exists(zaklad_cesta):
-			player_flag.texture = load(zaklad_cesta)
+		if ideologie != "":
+			var ideo_tex = _cached_texture(ideo_cesta)
+			if ideo_tex:
+				player_flag.texture = ideo_tex
+				return
+
+		var base_tex = _cached_texture(zaklad_cesta)
+		if base_tex:
+			player_flag.texture = base_tex
 		else:
 			player_flag.texture = null

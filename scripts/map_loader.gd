@@ -4,6 +4,8 @@ extends Node2D
 
 var provinces = {}
 var color_cache = {}
+var army_icon_texture_cache: Dictionary = {}
+var flag_texture_cache: Dictionary = {}
 
 var aktivni_armady = {} 
 
@@ -13,6 +15,37 @@ var vybrana_armada_max: int = 0
 var ceka_na_cil_presunu: bool = false
 var cekajici_presuny = []
 # --------------------------------------------------------
+
+func _get_cached_texture(path: String, cache: Dictionary):
+	if path == "":
+		return null
+	if cache.has(path):
+		return cache[path]
+	if not ResourceLoader.exists(path):
+		return null
+	var tex = load(path)
+	cache[path] = tex
+	return tex
+
+func _get_flag_texture(tag: String, ideology: String):
+	var ideologie = ideology.strip_edges().to_lower()
+	var ideo_cesta = "res://map_data/FlagsIdeology/%s_%s.svg" % [tag, ideologie]
+	var zaklad_cesta = "res://map_data/Flags/%s.svg" % tag
+
+	if ideologie != "":
+		var ideo_tex = _get_cached_texture(ideo_cesta, flag_texture_cache)
+		if ideo_tex:
+			return ideo_tex
+
+	return _get_cached_texture(zaklad_cesta, flag_texture_cache)
+
+func _get_army_icon_texture(owner_tag: String):
+	var icon_path = "res://map_data/ArmyIcons/%s.svg" % owner_tag
+	var fallback_path = "res://map_data/ArmyIcons/ArmyIconTemplate.svg"
+	var icon_tex = _get_cached_texture(icon_path, army_icon_texture_cache)
+	if icon_tex:
+		return icon_tex
+	return _get_cached_texture(fallback_path, army_icon_texture_cache)
 
 func _ready():
 	load_provinces()
@@ -55,7 +88,7 @@ func load_provinces():
 		if line == "": continue
 			
 		var parts = line.split(";")
-		if parts.size() < 19: continue 
+		if parts.size() < 20: continue 
 			
 		var prov_id = int(parts[0])
 		
@@ -157,14 +190,7 @@ func generuj_nazvy_provincii():
 					f.show()
 					var tag = str(d.get("owner", ""))
 					var ideologie = str(d.get("ideology", ""))
-					
-					var ideo_cesta = "res://map_data/FlagsIdeology/%s_%s.svg" % [tag, ideologie]
-					var zaklad_cesta = "res://map_data/Flags/%s.svg" % tag
-					
-					if ideologie != "" and ResourceLoader.exists(ideo_cesta):
-						f.texture = load(ideo_cesta)
-					elif ResourceLoader.exists(zaklad_cesta):
-						f.texture = load(zaklad_cesta)
+					f.texture = _get_flag_texture(tag, ideologie)
 			else:
 				if f:
 					f.hide()
@@ -227,7 +253,6 @@ func _aktualizuj_zoom_armad(aktualni_zoom: float):
 	if aktivni_armady.is_empty(): return
 	
 	var ZOOM_THRESHOLD_MERGE = 0.6 
-	var BASE_ARMY_SCALE = 12.0
 	var zvetseni = clamp(1.0 / aktualni_zoom, 0.4, 2.5) 
 	var is_merged_mode = aktualni_zoom <= ZOOM_THRESHOLD_MERGE
 
@@ -313,9 +338,7 @@ func aktualizuj_ikony_armad():
 		var owner_tag = str(prov_data.get("owner", "")).strip_edges().to_upper()
 		
 		if vojaci > 0:
-			var icon_path = "res://map_data/ArmyIcons/%s.svg" % owner_tag
-			var fallback_path = "res://map_data/ArmyIcons/ArmyIconTemplate.svg"
-			var target_texture = load(icon_path) if ResourceLoader.exists(icon_path) else load(fallback_path)
+			var target_texture = _get_army_icon_texture(owner_tag)
 			
 			if not aktivni_armady.has(prov_id):
 				var army_node = Node2D.new()
@@ -406,9 +429,7 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int):
 	var midway_pos = start_pos.lerp(end_pos, 0.5)
 	
 	var container = get_node_or_null("ArmyContainer")
-	var icon_path = "res://map_data/ArmyIcons/%s.svg" % owner_tag
-	var fallback_path = "res://map_data/ArmyIcons/ArmyIconTemplate.svg"
-	var target_texture = load(icon_path) if ResourceLoader.exists(icon_path) else load(fallback_path)
+	var target_texture = _get_army_icon_texture(owner_tag)
 	
 	# --- VISUAL ARROW LOGIC (HOI4 STYLE RED/BLUE) ---
 	var moving_node = Node2D.new()
