@@ -6,22 +6,26 @@ var hrac_stat = "ALB"
 var hrac_jmeno = "" 
 var hrac_ideologie = "" 
 
-# Startujes na 1000.00 (zobrazuje se jako mil. USD)
-var statni_kasa: float = 1000.0 
+# Initial treasury is set dynamically from 5% of total state GDP.
+var statni_kasa: float = 0.0 
 var celkovy_prijem: float = 0.0
 var aktualni_kolo: int = 1
 
 var map_data: Dictionary = {}
 var provincie_cooldowny: Dictionary = {}
 var ai_kasy: Dictionary = {} 
+var _hrac_kasa_inicializovana: bool = false
 
-# --- NEW: DIPLOMACIE ---
+const AI_DECLARE_WAR_MIN_BORDER_ADVANTAGE := 1.25
+const AI_DECLARE_WAR_MIN_ATTACK_FORCE := 1800
+
+# Diplomacy
 var valky: Dictionary = {}
 var cekajici_kapitulace: Array = []
 
 var zpracovava_se_tah: bool = false
 
-# --- HELPER FUNCTION: Safely find the map node ---
+# Safely get the map node
 func _get_map_loader():
 	var map_loader = get_tree().current_scene
 	if map_loader and map_loader.has_method("zpracuj_tah_armad"):
@@ -32,7 +36,7 @@ func _get_map_loader():
 			return child_map
 	return null
 
-# --- DIPLOMATICKÉ FUNKCE ---
+# Diplomacy helpers
 func jsou_ve_valce(tag1: String, tag2: String) -> bool:
 	var klic1 = tag1 + "_" + tag2
 	var klic2 = tag2 + "_" + tag1
@@ -47,7 +51,7 @@ func vyhlasit_valku(utocnik: String, obrance: String):
 	var msg = "⚠️ VÁLKA!\n\nStát %s právě vyhlásil válku státu %s!" % [utocnik, obrance]
 	print(msg.replace("\n\n", " "))
 	
-	# Pokud se válka týká hráče, hra se zastaví a ukáže se Popup okno
+	# Pause and show popup if the player is involved
 	if utocnik == hrac_stat or obrance == hrac_stat:
 		var map_loader = _get_map_loader()
 		if map_loader and map_loader.has_method("_ukaz_bitevni_popup"):
@@ -60,7 +64,7 @@ func zaregistruj_obsazeni_hlavniho_mesta(obrance: String, utocnik: String, capit
 	var obr = obrance.strip_edges().to_upper()
 	var uto = utocnik.strip_edges().to_upper()
 
-	# Jeden stát může mít jen jeden aktivní odpočet kapitulace.
+	# Keep only one active surrender timer per defender
 	for i in range(cekajici_kapitulace.size() - 1, -1, -1):
 		if str(cekajici_kapitulace[i].get("obrance", "")).strip_edges().to_upper() == obr:
 			cekajici_kapitulace.remove_at(i)
@@ -84,7 +88,7 @@ func vyhodnot_odlozene_kapitulace() -> Array:
 		var utocnik = str(zaznam.get("utocnik", "")).strip_edges().to_upper()
 		var aktualni_vlastnik = str(map_data[capital_id].get("owner", "")).strip_edges().to_upper()
 
-		# Pokud hlavní město útočník neudržel, kapitulace se ruší.
+		# Cancel surrender if attacker no longer holds the capital
 		if aktualni_vlastnik != utocnik:
 			continue
 
@@ -111,14 +115,28 @@ func spocitej_prijem(all_provinces: Dictionary):
 			
 			celkove_hdp += float(d.get("gdp", 0.0))
 			celkem_vojaku += int(d.get("soldiers", 0))
+
+	if not _hrac_kasa_inicializovana and celkove_hdp > 0.0:
+		statni_kasa = celkove_hdp * 0.05
+		_hrac_kasa_inicializovana = true
 			
-	# Vybalancovany prijem: 10% z HDP minus udrzba armady
+	# Balanced income: 10% GDP minus army upkeep
 	var prijem_z_hdp = celkove_hdp * 0.1
 	var naklady_na_vojaky = celkem_vojaku * 0.001
 	celkovy_prijem = prijem_z_hdp - naklady_na_vojaky
 	
 	print("HDP Prijem: %.2f | Vydaje Armada: %.2f | Cisty zisk: %.2f" % [prijem_z_hdp, naklady_na_vojaky, celkovy_prijem])
 	kolo_zmeneno.emit()
+
+func _spocitej_hdp_statu(tag: String) -> float:
+	if tag == "":
+		return 0.0
+	var hdp := 0.0
+	for p_id in map_data:
+		var d = map_data[p_id]
+		if str(d.get("owner", "")).strip_edges().to_upper() == tag:
+			hdp += float(d.get("gdp", 0.0))
+	return hdp
 
 func ukonci_kolo():
 	if zpracovava_se_tah: return 
@@ -127,12 +145,12 @@ func ukonci_kolo():
 	var map_loader = _get_map_loader()
 	
 	if map_loader:
-		# Vyhodnotime bitvy a smazeme duchy
+		# Resolve battles and remove stale moves
 		await map_loader.zpracuj_tah_armad()
 
 	statni_kasa += celkovy_prijem
 	
-	# BANKROT nastane pri dluhu -100
+	# Bankruptcy at debt below -100
 	if statni_kasa < -100.0:
 		await _vyres_bankrot(hrac_stat)
 
@@ -152,15 +170,15 @@ func ukonci_kolo():
 	if not map_data.is_empty():
 		spocitej_prijem(map_data)
 		
-		# Regenerace populace a rust ekonomiky
+		# Regenerate population and grow economy
 		for p_id in map_data:
 			var d = map_data[p_id]
 			d["recruitable_population"] += 150
 			if d["recruitable_population"] > 15000:
 				d["recruitable_population"] = 15000
-			d["gdp"] += 0.5 # Pasivni rust bohatstvi
+			d["gdp"] += 0.5 # Passive wealth growth
 
-	# AI naplanuje nove utoky a vyhlašuje války (přidán await kvůli vyskakovacím oknům)
+	# AI plans attacks and may declare wars (await for popups)
 	await zpracuj_tah_ai()
 
 	print("--- KOLO %d ---" % aktualni_kolo)
@@ -177,7 +195,7 @@ func _aplikuj_bonus(prov_id: int, typ: int):
 	elif typ == 1: 
 		map_data[prov_id]["recruitable_population"] += 2000 
 
-# --- BANKRUPTCY LOGIC (Vzpoura pri dluhu) ---
+# Bankruptcy logic
 func _vyres_bankrot(tag: String):
 	var celkem_dezertovalo = 0
 	for p_id in map_data:
@@ -198,7 +216,7 @@ func _vyres_bankrot(tag: String):
 		else:
 			print("📉 BANKROT AI (%s): %d vojaku dezertovalo." % [tag, celkem_dezertovalo])
 
-# --- PLAYER ACTIONS ---
+# Player actions
 
 func hrac_verbuje(provincie_id: int, pocet: int) -> bool:
 	var map_loader = _get_map_loader()
@@ -207,7 +225,7 @@ func hrac_verbuje(provincie_id: int, pocet: int) -> bool:
 	var d = map_data[provincie_id]
 	if str(d.get("owner", "")).strip_edges().to_upper() != hrac_stat: return false
 		
-	var cena_za_vojaka = 0.01 # 1000 vojaku stoji 10.00 mil. USD
+	var cena_za_vojaka = 0.01 # 1000 soldiers cost 10.00 mil. USD
 	var celkova_cena = pocet * cena_za_vojaka
 	
 	if statni_kasa >= celkova_cena:
@@ -221,7 +239,7 @@ func hrac_verbuje(provincie_id: int, pocet: int) -> bool:
 			return true
 	return false
 
-# --- AI BRAIN ---
+# AI logic
 
 func zpracuj_tah_ai():
 	print("--- AI THINKING START ---")
@@ -235,7 +253,9 @@ func zpracuj_tah_ai():
 		var owner = str(d.get("owner", "")).strip_edges().to_upper()
 		if owner == hrac_stat or owner == "SEA": continue
 		
-		if not ai_kasy.has(owner): ai_kasy[owner] = 1000.0 
+		if not ai_kasy.has(owner):
+			var ai_hdp = _spocitej_hdp_statu(owner)
+			ai_kasy[owner] = ai_hdp * 0.05
 		
 		var gdp = float(d.get("gdp", 0.0))
 		var vojaci = int(d.get("soldiers", 0))
@@ -249,7 +269,15 @@ func zpracuj_tah_ai():
 		var rekruti = int(d.get("recruitable_population", 0))
 		if rekruti > 300 and ai_kasy[owner] > 50.0:
 			var pocet_k_verbovani = min(rekruti, int(ai_kasy[owner] / cena_za_vojaka))
-			pocet_k_verbovani = min(pocet_k_verbovani, 1200) 
+			var frontline_bonus = 0
+			if _ma_nepratelskeho_souseda(owner, p_id):
+				frontline_bonus += 700
+			if bool(d.get("is_capital", false)):
+				frontline_bonus += 500
+			var hrozba = _spocitej_hrozbu_nepratel_u_provincie(p_id, owner)
+			frontline_bonus += min(900, int(float(hrozba) * 0.15))
+			var limit_verbovani = min(2500, 900 + frontline_bonus)
+			pocet_k_verbovani = min(pocet_k_verbovani, limit_verbovani)
 			d["recruitable_population"] -= pocet_k_verbovani
 			d["soldiers"] += pocet_k_verbovani
 			ai_kasy[owner] -= (pocet_k_verbovani * cena_za_vojaka)
@@ -316,8 +344,11 @@ func _naplanuj_ai_presuny(map_loader):
 				map_loader.zaregistruj_presun_armady(move["from"], move["to"], amount)
 				moved_from[move["from"]] = true
 			else:
-				if randf() < 0.25:
+				if _ma_smyls_vyhlasit_valku(owner, target_owner, int(move["from"]), int(move["to"]), amount):
 					await vyhlasit_valku(owner, target_owner)
+					if jsou_ve_valce(owner, target_owner):
+						map_loader.zaregistruj_presun_armady(move["from"], move["to"], amount)
+						moved_from[move["from"]] = true
 
 func _seradene_ai_provincie(owner: String) -> Array:
 	var ids: Array = []
@@ -342,6 +373,58 @@ func _ma_nepratelskeho_souseda(owner: String, province_id: int) -> bool:
 		if n_owner != owner and n_owner != "SEA":
 			return true
 	return false
+
+func _spocitej_hrozbu_nepratel_u_provincie(province_id: int, owner: String) -> int:
+	if not map_data.has(province_id):
+		return 0
+	var threat := 0
+	for n_id in map_data[province_id].get("neighbors", []):
+		if not map_data.has(n_id):
+			continue
+		var n_owner = str(map_data[n_id].get("owner", "")).strip_edges().to_upper()
+		if n_owner == owner or n_owner == "SEA":
+			continue
+		threat += int(map_data[n_id].get("soldiers", 0))
+	return threat
+
+func _spocitej_silu_na_hranici(owner: String, enemy: String) -> Dictionary:
+	var our_border := 0
+	var enemy_border := 0
+	for p_id in map_data:
+		var d = map_data[p_id]
+		var p_owner = str(d.get("owner", "")).strip_edges().to_upper()
+		if p_owner != owner and p_owner != enemy:
+			continue
+		var soldiers = int(d.get("soldiers", 0))
+		for n_id in d.get("neighbors", []):
+			if not map_data.has(n_id):
+				continue
+			var n_owner = str(map_data[n_id].get("owner", "")).strip_edges().to_upper()
+			if p_owner == owner and n_owner == enemy:
+				our_border += soldiers
+				break
+			if p_owner == enemy and n_owner == owner:
+				enemy_border += soldiers
+				break
+	return {"our": our_border, "enemy": enemy_border}
+
+func _ma_smyls_vyhlasit_valku(owner: String, target_owner: String, from_id: int, to_id: int, amount: int) -> bool:
+	if owner == "" or target_owner == "" or target_owner == "SEA":
+		return false
+	if amount < AI_DECLARE_WAR_MIN_ATTACK_FORCE:
+		return false
+	if not map_data.has(from_id) or not map_data.has(to_id):
+		return false
+
+	var border_strength = _spocitej_silu_na_hranici(owner, target_owner)
+	var our_border = float(int(border_strength.get("our", 0)))
+	var enemy_border = float(max(1, int(border_strength.get("enemy", 0))))
+	var ratio = our_border / enemy_border
+
+	var target_soldiers = int(map_data[to_id].get("soldiers", 0))
+	var local_ratio = float(amount) / float(max(1, target_soldiers))
+
+	return ratio >= AI_DECLARE_WAR_MIN_BORDER_ADVANTAGE and local_ratio >= 1.2
 
 func _navrhni_neutocny_presun(owner: String, from_id: int) -> Dictionary:
 	if not map_data.has(from_id):
@@ -418,19 +501,25 @@ func _navrhni_core_obranu(owner: String, from_id: int) -> Dictionary:
 
 	var core_state = _ziskej_core_state(owner)
 	var best_target = -1
-	var lowest_stack = 999999999
+	var best_score = -INF
 	for n_id in from_data.get("neighbors", []):
 		if not _je_core_provincie(owner, n_id, core_state):
 			continue
 		var n_soldiers = int(map_data[n_id].get("soldiers", 0))
-		if n_soldiers < lowest_stack:
-			lowest_stack = n_soldiers
+		var score = (2600.0 - float(n_soldiers))
+		if bool(map_data[n_id].get("is_capital", false)):
+			score += 2200.0
+		if _ma_nepratelskeho_souseda(owner, n_id):
+			score += 1600.0
+		score += min(1800.0, float(_spocitej_hrozbu_nepratel_u_provincie(n_id, owner)) * 0.25)
+		if score > best_score:
+			best_score = score
 			best_target = n_id
 
 	if best_target == -1:
 		return {}
 
-	if lowest_stack >= 2200:
+	if best_score < 400.0:
 		return {}
 
 	var amount = int(vojaci * 0.35)
@@ -448,9 +537,17 @@ func _navrhni_utok(owner: String, from_id: int) -> Dictionary:
 	var vojaci = int(from_data.get("soldiers", 0))
 	if vojaci <= 1000:
 		return {}
+	if not _ma_nepratelskeho_souseda(owner, from_id):
+		return {}
 
 	var best_target = -1
-	var weakest_defense = 9999999
+	var best_score = -INF
+	var best_amount = 0
+	var reserve = max(650, int(float(vojaci) * 0.25))
+	var max_attack = vojaci - reserve
+	if max_attack < 450:
+		return {}
+
 	for n_id in from_data.get("neighbors", []):
 		if not map_data.has(n_id):
 			continue
@@ -460,15 +557,35 @@ func _navrhni_utok(owner: String, from_id: int) -> Dictionary:
 			continue
 
 		var n_vojaci = int(n_prov.get("soldiers", 0))
-		if (vojaci >= int(n_vojaci * 1.2) or vojaci > 3000) and n_vojaci < weakest_defense:
-			weakest_defense = n_vojaci
+		var threat_after_capture = _spocitej_hrozbu_nepratel_u_provincie(n_id, owner)
+		var needed_for_push = int(float(n_vojaci) * 1.15) + int(float(threat_after_capture) * 0.15)
+		var attack_amount = min(max_attack, int(float(vojaci) * 0.78))
+		if attack_amount < max(550, needed_for_push):
+			continue
+
+		var score = 0.0
+		score += float(attack_amount - n_vojaci) * 1.2
+		score -= float(threat_after_capture) * 0.30
+		score += float(n_prov.get("gdp", 0.0)) * 16.0
+		score += float(int(n_prov.get("recruitable_population", 0))) * 0.02
+		if bool(n_prov.get("is_capital", false)):
+			score += 3600.0
+		var enemy_core = _ziskej_core_state(n_owner)
+		if enemy_core != "" and str(n_prov.get("state", "")) == enemy_core:
+			score += 900.0
+
+		if score > best_score:
+			best_score = score
 			best_target = n_id
+			best_amount = attack_amount
 
 	if best_target == -1:
+		return {}
+	if best_score < 350.0:
 		return {}
 
 	return {
 		"from": from_id,
 		"to": best_target,
-		"amount": int(vojaci * 0.8)
+		"amount": best_amount
 	}

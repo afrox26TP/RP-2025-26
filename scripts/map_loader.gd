@@ -16,6 +16,9 @@ var ceka_na_cil_presunu: bool = false
 var cekajici_presuny = []
 var obsazene_pozice_presunu: Array = []
 var trasy_lane_counter: Dictionary = {}
+var _bitevni_kamera_aktivni: bool = false
+var _bitevni_puvodni_pozice: Vector2 = Vector2.ZERO
+var _bitevni_puvodni_zoom: Vector2 = Vector2.ONE
 # --------------------------------------------------------
 
 func _ziskej_map_offset() -> Vector2:
@@ -537,7 +540,7 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int):
 	var glow_line = Line2D.new()
 	glow_line.add_point(start_pos)
 	glow_line.add_point(end_pos)
-	glow_line.width = 7.0
+	glow_line.width = 4.0
 	glow_line.default_color = glow_color
 	glow_line.antialiased = true
 	moving_node.add_child(glow_line)
@@ -546,7 +549,7 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int):
 	var line = Line2D.new()
 	line.add_point(start_pos)
 	line.add_point(end_pos)
-	line.width = 3.8
+	line.width = 2.1
 	line.default_color = arrow_color
 	line.antialiased = true
 	moving_node.add_child(line)
@@ -556,7 +559,7 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int):
 		var accent = Line2D.new()
 		accent.add_point(start_pos)
 		accent.add_point(end_pos)
-		accent.width = 1.2
+		accent.width = 0.8
 		accent.default_color = Color(1.0, 0.78, 0.7, 0.82)
 		accent.antialiased = true
 		moving_node.add_child(accent)
@@ -564,9 +567,9 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int):
 	# 4) Arrowhead.
 	var dir = (end_pos - start_pos).normalized()
 	var arrow = Polygon2D.new()
-	arrow.polygon = PackedVector2Array([Vector2(-11, -7), Vector2(9, 0), Vector2(-11, 7)])
+	arrow.polygon = PackedVector2Array([Vector2(-8, -5), Vector2(7, 0), Vector2(-8, 5)])
 	arrow.color = head_color
-	arrow.position = end_pos - (dir * 13.0)
+	arrow.position = end_pos - (dir * 10.0)
 	arrow.rotation = dir.angle()
 	moving_node.add_child(arrow)
 	
@@ -623,6 +626,7 @@ func zpracuj_tah_armad():
 	cekajici_presuny.clear()
 	
 	var celkovy_report = "" 
+	var bitevni_udalosti: Array = []
 
 	# --- NEW: FIELD BATTLES (CROSS-MOVEMENT RESOLUTION) ---
 	# Pokud dvě armády táhnou proti sobě, setkají se na půli cesty
@@ -645,24 +649,44 @@ func zpracuj_tah_armad():
 						utok2["amount"] = 0 # Destroyed
 						if hrac_zapojen:
 							if utok1["owner"] == hrac:
-								celkovy_report += "⚔️ POLNÍ BITVA: Naše armáda smetla nepřátelské síly (%s), které se nás pokusily napadnout během přesunu!\n\n" % utok2["owner"]
+								bitevni_udalosti.append({
+									"title": "Polní bitva",
+									"text": "⚔️ Naše armáda smetla nepřátelské síly (%s) během přesunu." % utok2["owner"],
+									"province_id": int(utok1["to"])
+								})
 							else:
-								celkovy_report += "💀 POLNÍ BITVA: Naše útočící armáda byla zničena silnějšími jednotkami nepřítele (%s) na půli cesty!\n\n" % utok1["owner"]
+								bitevni_udalosti.append({
+									"title": "Polní bitva",
+									"text": "💀 Naše útočící armáda byla zničena silnějšími jednotkami nepřítele (%s)." % utok1["owner"],
+									"province_id": int(utok2["to"])
+								})
 					elif utok2["amount"] > utok1["amount"]:
 						utok2["amount"] -= utok1["amount"]
 						utok1["amount"] = 0 # Destroyed
 						if hrac_zapojen:
 							if utok2["owner"] == hrac:
-								celkovy_report += "⚔️ POLNÍ BITVA: Naše armáda smetla nepřátelské síly (%s), které se nás pokusily napadnout během přesunu!\n\n" % utok1["owner"]
+								bitevni_udalosti.append({
+									"title": "Polní bitva",
+									"text": "⚔️ Naše armáda smetla nepřátelské síly (%s) během přesunu." % utok1["owner"],
+									"province_id": int(utok2["to"])
+								})
 							else:
-								celkovy_report += "💀 POLNÍ BITVA: Naše útočící armáda byla zničena silnějšími jednotkami nepřítele (%s) na půli cesty!\n\n" % utok2["owner"]
+								bitevni_udalosti.append({
+									"title": "Polní bitva",
+									"text": "💀 Naše útočící armáda byla zničena silnějšími jednotkami nepřítele (%s)." % utok2["owner"],
+									"province_id": int(utok1["to"])
+								})
 						break # utok1 is dead, stop checking it
 					else:
 						# Mutual annihilation
 						utok1["amount"] = 0
 						utok2["amount"] = 0
 						if hrac_zapojen:
-							celkovy_report += "⚔️ POLNÍ BITVA: Krvavý masakr! Naše i nepřátelská armáda se při přesunu navzájem kompletně vyhladily.\n\n"
+							bitevni_udalosti.append({
+								"title": "Polní bitva",
+								"text": "⚔️ Krvavý masakr: naše i nepřátelská armáda se při přesunu navzájem vyhladily.",
+								"province_id": int(utok1["to"])
+							})
 						break
 	# ----------------------------------------------------
 	
@@ -716,13 +740,25 @@ func zpracuj_tah_armad():
 			if was_capital:
 				GameManager.zaregistruj_obsazeni_hlavniho_mesta(target_owner, owner, to_id)
 				if hrac_zapojen:
-					celkovy_report += "🏛️ HLAVNÍ MĚSTO OBSAZENO: %s dobylo hlavní město státu %s. Kapitulace nastane jen pokud město udrží celé jedno kolo.\n\n" % [owner, target_owner]
+					bitevni_udalosti.append({
+						"title": "Hlavní město obsazeno",
+						"text": "🏛️ %s dobylo hlavní město státu %s. Kapitulace nastane jen pokud město udrží celé jedno kolo." % [owner, target_owner],
+						"province_id": to_id
+					})
 			
 			if hrac_zapojen and not was_capital:
 				if owner == hrac:
-					celkovy_report += "✅ VÍTĚZSTVÍ: Dobyli jsme %s! Přežilo %d našich vojáků.\n\n" % [jmeno_provincie, prezivsi]
+					bitevni_udalosti.append({
+						"title": "Vítězství",
+						"text": "✅ Dobyli jsme %s. Přežilo %d našich vojáků." % [jmeno_provincie, prezivsi],
+						"province_id": to_id
+					})
 				else:
-					celkovy_report += "💀 ZTRÁTA ÚZEMÍ: Nepřítel (%s) dobyl provincii %s! Padli všichni obránci.\n\n" % [owner, jmeno_provincie]
+					bitevni_udalosti.append({
+						"title": "Ztráta území",
+						"text": "💀 Nepřítel (%s) dobyl provincii %s. Padli všichni obránci." % [owner, jmeno_provincie],
+						"province_id": to_id
+					})
 					
 		else:
 			var prezivsi = obranci - utocnici
@@ -730,12 +766,31 @@ func zpracuj_tah_armad():
 			
 			if hrac_zapojen:
 				if target_owner == hrac:
-					celkovy_report += "🛡️ OBRANA: Ubránili jsme %s! Zbylo nám %d vojáků.\n\n" % [jmeno_provincie, prezivsi]
+					bitevni_udalosti.append({
+						"title": "Obrana",
+						"text": "🛡️ Ubránili jsme %s. Zbylo nám %d vojáků." % [jmeno_provincie, prezivsi],
+						"province_id": to_id
+					})
 				else:
-					celkovy_report += "❌ ÚTOK SELHAL: Naše invaze do %s byla odražena.\n\n" % [jmeno_provincie]
+					bitevni_udalosti.append({
+						"title": "Útok selhal",
+						"text": "❌ Naše invaze do %s byla odražena." % [jmeno_provincie],
+						"province_id": to_id
+					})
 					
 	celkovy_report = _zpracuj_odlozene_kapitulace(celkovy_report)
 	aktualizuj_ikony_armad()
+
+	if not bitevni_udalosti.is_empty():
+		_zacni_bitevni_kameru()
+	for udalost in bitevni_udalosti:
+		await _ukaz_bitevni_popup_na_provincii(
+			str(udalost.get("title", "Bitva")),
+			str(udalost.get("text", "")),
+			int(udalost.get("province_id", -1))
+		)
+	if not bitevni_udalosti.is_empty():
+		await _obnov_bitevni_kameru()
 	
 	if celkovy_report != "":
 		await _ukaz_bitevni_popup("Hlášení z fronty", celkovy_report)
@@ -748,10 +803,25 @@ func _ukaz_bitevni_popup(titulek: String, text: String):
 	var dialog = AcceptDialog.new()
 	dialog.title = titulek
 	dialog.dialog_text = text
-	dialog.min_size = Vector2i(450, 250) 
+	dialog.min_size = Vector2i(360, 170)
+	dialog.size = Vector2i(360, 170)
+	dialog.unresizable = true
 	
 	get_tree().current_scene.add_child(dialog)
-	dialog.popup_centered()
+	dialog.popup()
+
+	# Place compact battle popups at top-center, just below TopBar.
+	var viewport_size = get_viewport_rect().size
+	var top_margin = 10
+	var topbar = get_tree().current_scene.find_child("TopBar", true, false)
+	if topbar and topbar is Control:
+		top_margin = int((topbar as Control).size.y) + 8
+
+	var popup_pos = Vector2i(
+		int((viewport_size.x - dialog.size.x) * 0.5),
+		top_margin
+	)
+	dialog.position = popup_pos
 	
 	var zavreno = false
 	var on_close = func(): zavreno = true
@@ -764,6 +834,54 @@ func _ukaz_bitevni_popup(titulek: String, text: String):
 		
 	if is_instance_valid(dialog):
 		dialog.queue_free()
+
+func _zacni_bitevni_kameru():
+	var kamera = $Camera2D
+	if not kamera:
+		return
+	if _bitevni_kamera_aktivni:
+		return
+	_bitevni_puvodni_pozice = kamera.position
+	_bitevni_puvodni_zoom = kamera.zoom
+	_bitevni_kamera_aktivni = true
+
+func _obnov_bitevni_kameru():
+	if not _bitevni_kamera_aktivni:
+		return
+	var kamera = $Camera2D
+	if not kamera:
+		_bitevni_kamera_aktivni = false
+		return
+
+	var t = create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	t.tween_property(kamera, "position", _bitevni_puvodni_pozice, 0.38)
+	t.parallel().tween_property(kamera, "zoom", _bitevni_puvodni_zoom, 0.38)
+	await t.finished
+	if kamera.has_signal("zoom_zmenen"):
+		kamera.emit_signal("zoom_zmenen", kamera.zoom.x)
+	_bitevni_kamera_aktivni = false
+
+func _ukaz_bitevni_popup_na_provincii(titulek: String, text: String, province_id: int):
+	var kamera = $Camera2D
+	if not kamera or not provinces.has(province_id):
+		await _ukaz_bitevni_popup(titulek, text)
+		return
+
+	var cilova_pozice = Vector2(provinces[province_id]["x"], provinces[province_id]["y"]) + _ziskej_map_offset()
+	var current_zoom_hod = kamera.zoom.x
+	var cilovy_zoom_hod = clamp(lerpf(current_zoom_hod, 0.72, 0.45), 0.62, current_zoom_hod)
+	var cilovy_zoom = Vector2(cilovy_zoom_hod, cilovy_zoom_hod)
+	var vzdalenost = kamera.position.distance_to(cilova_pozice)
+	var delka_preletu = clamp(vzdalenost / 1600.0, 0.18, 0.55)
+
+	var t1 = create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	t1.tween_property(kamera, "position", cilova_pozice, delka_preletu)
+	t1.parallel().tween_property(kamera, "zoom", cilovy_zoom, delka_preletu)
+	await t1.finished
+	if kamera.has_signal("zoom_zmenen"):
+		kamera.emit_signal("zoom_zmenen", kamera.zoom.x)
+
+	await _ukaz_bitevni_popup(titulek, text)
 
 func _zpracuj_odlozene_kapitulace(celkovy_report: String) -> String:
 	var hotove_kapitulace = GameManager.vyhodnot_odlozene_kapitulace()
@@ -791,12 +909,24 @@ func _zpracuj_odlozene_kapitulace(celkovy_report: String) -> String:
 		for p_id in provinces.keys():
 			if str(provinces[p_id].get("owner", "")).strip_edges().to_upper() == target_owner:
 				provinces[p_id]["owner"] = owner
+				provinces[p_id]["core_owner"] = owner
 				provinces[p_id]["country_name"] = source_country_name
 				provinces[p_id]["ideology"] = source_ideology
 				provinces[p_id]["is_capital"] = false
 				if sprite and sprite.has_method("dobyt_provincii"):
 					sprite.dobyt_provincii(p_id, owner)
 				prevedeno += 1
+
+		# Remove occupation hatching only on the capitulated country's former core,
+		# and only for the winner that forced capitulation.
+		for p_id in provinces.keys():
+			var p_core_owner = str(provinces[p_id].get("core_owner", "")).strip_edges().to_upper()
+			var p_owner = str(provinces[p_id].get("owner", "")).strip_edges().to_upper()
+			if p_core_owner == target_owner and p_owner == owner:
+				provinces[p_id]["core_owner"] = owner
+
+		if sprite and sprite.has_method("aktualizuj_mapovy_mod"):
+			sprite.aktualizuj_mapovy_mod("political", provinces)
 
 		if prevedeno > 0 and (owner == hrac or target_owner == hrac):
 			celkovy_report += "💥 KAPITULACE: %s udrželo hlavní město státu %s celé jedno kolo. Stát %s kapituloval.\n\n" % [owner, target_owner, target_owner]
