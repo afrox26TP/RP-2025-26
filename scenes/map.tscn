@@ -193,9 +193,21 @@ layout_mode = 2
 [node name="GdpPerCapitaLabel" type="Label" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=446696204]
 layout_mode = 2
 
+[node name="RelationshipLabel" type="Label" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=1756128001]
+layout_mode = 2
+text = "Nas vztah: 0.0"
+
 [node name="ActionSeparator" type="HSeparator" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=1733721634]
 layout_mode = 2
 theme_override_constants/separation = 15
+
+[node name="ImproveRelationButton" type="Button" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=798541221]
+layout_mode = 2
+text = "Zlepsit vztah (+10)"
+
+[node name="WorsenRelationButton" type="Button" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=798541222]
+layout_mode = 2
+text = "Zhorsit vztah (-10)"
 
 [node name="DeclareWarButton" type="Button" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=1283108261]
 layout_mode = 2

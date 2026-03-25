@@ -24,7 +24,27 @@ const AI_MARKER_ATTACK_SPEED := 170.0
 const AI_MARKER_MOVE_SPEED := 130.0
 var _bitevni_kamera_aktivni: bool = false
 var _bitevni_puvodni_pozice: Vector2 = Vector2.ZERO
+var aktualni_mapovy_mod: String = "political"
 # --------------------------------------------------------
+
+func nastav_mapovy_mod(mod: String):
+	aktualni_mapovy_mod = mod
+	_aplikuj_viditelnost_ukazatelu_jednotek()
+
+func _jsou_ukazatele_jednotek_povolene() -> bool:
+	return aktualni_mapovy_mod == "political"
+
+func _aplikuj_viditelnost_ukazatelu_jednotek():
+	var ukazovat = _jsou_ukazatele_jednotek_povolene()
+	var army_container = get_node_or_null("ArmyContainer")
+	if army_container:
+		army_container.visible = ukazovat
+
+	if not ukazovat:
+		for prov_id in aktivni_armady.keys():
+			var army_node = aktivni_armady[prov_id]
+			if army_node:
+				army_node.hide()
 
 func _ziskej_map_offset() -> Vector2:
 	var sprite = $Sprite2D
@@ -184,6 +204,7 @@ func _ready():
 	var sprite = $Sprite2D
 	if sprite and sprite.has_method("aktualizuj_mapovy_mod"):
 		sprite.aktualizuj_mapovy_mod("political", provinces)
+	nastav_mapovy_mod("political")
 	
 	generuj_nazvy_provincii()
 	
@@ -435,6 +456,12 @@ func _formatuj_cislo(cislo: int) -> String:
 
 func _aktualizuj_zoom_armad(aktualni_zoom: float):
 	if aktivni_armady.is_empty(): return
+	if not _jsou_ukazatele_jednotek_povolene():
+		for prov_id in aktivni_armady.keys():
+			var hidden_node = aktivni_armady[prov_id]
+			if hidden_node:
+				hidden_node.hide()
+		return
 	
 	var ZOOM_THRESHOLD_MERGE = 0.6 
 	var zvetseni = clamp(1.0 / aktualni_zoom, 0.4, 2.5) 
@@ -568,6 +595,7 @@ func aktualizuj_ikony_armad():
 	var kamera = $Camera2D
 	if kamera:
 		_aktualizuj_zoom_armad(kamera.zoom.x)
+	_aplikuj_viditelnost_ukazatelu_jednotek()
 	_aktualizuj_indikatory_kapitulace()
 
 # --- CORE MOVEMENT LOGIC ---

@@ -78,11 +78,30 @@ func _unhandled_input(event):
 	if event is InputEventKey and event.pressed and not event.is_echo():
 		var root = get_parent()
 		if "provinces" in root:
-			if event.keycode == KEY_1: aktualizuj_mapovy_mod("political", root.provinces)
-			elif event.keycode == KEY_2: aktualizuj_mapovy_mod("population", root.provinces)
-			elif event.keycode == KEY_3: aktualizuj_mapovy_mod("gdp", root.provinces)
-			elif event.keycode == KEY_4: aktualizuj_mapovy_mod("ideology", root.provinces) 
-			elif event.keycode == KEY_5: aktualizuj_mapovy_mod("recruitable_population", root.provinces) 
+			if event.keycode == KEY_1:
+				aktualizuj_mapovy_mod("political", root.provinces)
+				if root.has_method("nastav_mapovy_mod"):
+					root.nastav_mapovy_mod("political")
+			elif event.keycode == KEY_2:
+				aktualizuj_mapovy_mod("population", root.provinces)
+				if root.has_method("nastav_mapovy_mod"):
+					root.nastav_mapovy_mod("population")
+			elif event.keycode == KEY_3:
+				aktualizuj_mapovy_mod("gdp", root.provinces)
+				if root.has_method("nastav_mapovy_mod"):
+					root.nastav_mapovy_mod("gdp")
+			elif event.keycode == KEY_4:
+				aktualizuj_mapovy_mod("ideology", root.provinces)
+				if root.has_method("nastav_mapovy_mod"):
+					root.nastav_mapovy_mod("ideology")
+			elif event.keycode == KEY_5:
+				aktualizuj_mapovy_mod("recruitable_population", root.provinces)
+				if root.has_method("nastav_mapovy_mod"):
+					root.nastav_mapovy_mod("recruitable_population")
+			elif event.keycode == KEY_6:
+				aktualizuj_mapovy_mod("relationships", root.provinces)
+				if root.has_method("nastav_mapovy_mod"):
+					root.nastav_mapovy_mod("relationships")
 			
 			elif event.keycode == KEY_C:
 				var vybrana_provincie = material.get_shader_parameter("selected_id")
@@ -292,6 +311,16 @@ func aktualizuj_mapovy_mod(mod: String, province_db: Dictionary):
 				"recruitable_population": 
 					var s = clamp(float(d.get("recruitable_population", 0)) / 500000.0, 0.0, 1.0)
 					barva = Color(s, 0.8 * s, 0.1, 1.0)
+				"relationships":
+					var rel = 0.0
+					if GameManager.has_method("ziskej_vztah_statu"):
+						rel = GameManager.ziskej_vztah_statu(GameManager.hrac_stat, owner)
+					if rel >= 0.0:
+						var s_pos = clamp(rel / 100.0, 0.0, 1.0)
+						barva = Color(1.0 - (0.9 * s_pos), 1.0, 0.15, 1.0)
+					else:
+						var s_neg = clamp(absf(rel) / 100.0, 0.0, 1.0)
+						barva = Color(1.0, 1.0 - (0.9 * s_neg), 0.15, 1.0)
 				
 		data_image.set_pixel(prov_id, 0, barva)
 	data_texture.update(data_image)

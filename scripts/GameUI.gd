@@ -11,9 +11,12 @@ extends CanvasLayer
 @onready var recruit_label = $OverviewPanel/VBoxContainer/TotalRecruitsLabel 
 @onready var gdp_label = $OverviewPanel/VBoxContainer/TotalGdpLabel
 @onready var gdp_pc_label = $OverviewPanel/VBoxContainer/GdpPerCapitaLabel 
+@onready var relationship_label = $OverviewPanel/VBoxContainer/RelationshipLabel
 
 # --- NEW: Action nodes ---
 @onready var action_separator = $OverviewPanel/VBoxContainer/ActionSeparator
+@onready var improve_rel_btn = $OverviewPanel/VBoxContainer/ImproveRelationButton
+@onready var worsen_rel_btn = $OverviewPanel/VBoxContainer/WorsenRelationButton
 @onready var declare_war_btn = $OverviewPanel/VBoxContainer/DeclareWarButton
 @onready var propose_peace_btn = $OverviewPanel/VBoxContainer/ProposePeaceButton
 
@@ -46,6 +49,12 @@ func _ready():
 		declare_war_btn.pressed.connect(_on_declare_war_button_pressed)
 	if propose_peace_btn and not propose_peace_btn.pressed.is_connected(_on_propose_peace_button_pressed):
 		propose_peace_btn.pressed.connect(_on_propose_peace_button_pressed)
+	if improve_rel_btn and not improve_rel_btn.pressed.is_connected(_on_improve_relationship_pressed):
+		improve_rel_btn.pressed.connect(_on_improve_relationship_pressed)
+	if worsen_rel_btn and not worsen_rel_btn.pressed.is_connected(_on_worsen_relationship_pressed):
+		worsen_rel_btn.pressed.connect(_on_worsen_relationship_pressed)
+	if GameManager.has_signal("kolo_zmeneno") and not GameManager.kolo_zmeneno.is_connected(_on_kolo_zmeneno):
+		GameManager.kolo_zmeneno.connect(_on_kolo_zmeneno)
 
 func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 	if data.is_empty():
@@ -63,6 +72,9 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 	if owner == "SEA" or owner == "":
 		schovej_se()
 		return
+
+	if relationship_label:
+		relationship_label.hide()
 		
 	# --- FLAG LOADING ---
 	if country_flag:
@@ -104,12 +116,19 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 	if action_separator and declare_war_btn and propose_peace_btn:
 		if owner == GameManager.hrac_stat:
 			# Hide actions if looking at our own country
+			if relationship_label:
+				relationship_label.hide()
 			action_separator.hide()
+			if improve_rel_btn: improve_rel_btn.hide()
+			if worsen_rel_btn: worsen_rel_btn.hide()
 			declare_war_btn.hide()
 			propose_peace_btn.hide()
 		else:
+			_aktualizuj_vztah_ui(owner)
 			# Show actions for other countries
 			action_separator.show()
+			if improve_rel_btn: improve_rel_btn.show()
+			if worsen_rel_btn: worsen_rel_btn.show()
 			_aktualizuj_diplomacii_tlacitka(owner)
 	
 	panel.show()
@@ -143,6 +162,43 @@ func _on_propose_peace_button_pressed():
 
 	GameManager.nabidnout_mir(GameManager.hrac_stat, current_viewed_tag)
 	_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
+
+func _on_improve_relationship_pressed():
+	if current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat:
+		return
+	if GameManager.has_method("zlepsi_vztah_statu"):
+		GameManager.zlepsi_vztah_statu(GameManager.hrac_stat, current_viewed_tag)
+	_aktualizuj_vztah_ui(current_viewed_tag)
+
+func _on_worsen_relationship_pressed():
+	if current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat:
+		return
+	if GameManager.has_method("zhorsi_vztah_statu"):
+		GameManager.zhorsi_vztah_statu(GameManager.hrac_stat, current_viewed_tag)
+	_aktualizuj_vztah_ui(current_viewed_tag)
+
+func _on_kolo_zmeneno():
+	if current_viewed_tag == "" or not panel.visible:
+		return
+	_aktualizuj_vztah_ui(current_viewed_tag)
+
+func _aktualizuj_vztah_ui(owner: String):
+	if not relationship_label or not GameManager.has_method("ziskej_vztah_statu"):
+		return
+	var vztah = GameManager.ziskej_vztah_statu(GameManager.hrac_stat, owner)
+	relationship_label.text = "Nas vztah: %.1f" % vztah
+	relationship_label.show()
+	var zbyle_kola := 0
+	if GameManager.has_method("zbyva_kol_do_upravy_vztahu"):
+		zbyle_kola = int(GameManager.zbyva_kol_do_upravy_vztahu(GameManager.hrac_stat, owner))
+	var je_cooldown = zbyle_kola > 0
+
+	if improve_rel_btn:
+		improve_rel_btn.text = "Zlepsit vztah (%d kol)" % zbyle_kola if je_cooldown else "Zlepsit vztah (+10)"
+		improve_rel_btn.disabled = je_cooldown or vztah >= 100.0
+	if worsen_rel_btn:
+		worsen_rel_btn.text = "Zhorsit vztah (%d kol)" % zbyle_kola if je_cooldown else "Zhorsit vztah (-10)"
+		worsen_rel_btn.disabled = je_cooldown or vztah <= -100.0
 
 func _aktualizuj_diplomacii_tlacitka(owner: String):
 	if not declare_war_btn or not propose_peace_btn:
