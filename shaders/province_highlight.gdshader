@@ -2,6 +2,7 @@ shader_type canvas_item;
 
 uniform sampler2D id_map : filter_nearest;
 uniform sampler2D data_texture : filter_nearest; 
+uniform sampler2D occupation_texture : filter_nearest;
 uniform float total_provinces = 5000.0;
 
 uniform float hovered_id = -1.0;
@@ -24,8 +25,19 @@ void fragment() {
 
 		float data_x = (prov_id + 0.5) / total_provinces;
 		vec4 mode_color = texture(data_texture, vec2(data_x, 0.5));
+		vec4 occupation_flag = texture(occupation_texture, vec2(data_x, 0.5));
 
 		vec4 base_color = mode_color.a < 0.1 ? texture(TEXTURE, UV) : mode_color;
+
+		if (occupation_flag.a > 0.5) {
+			float px = UV.x / TEXTURE_PIXEL_SIZE.x;
+			float py = UV.y / TEXTURE_PIXEL_SIZE.y;
+			float hatch_step = 9.0;
+			float hatch_width = 1.2;
+			float hatch_diag = mod(px + py, hatch_step);
+			float hatch = step(hatch_diag, hatch_width);
+			base_color.rgb = mix(base_color.rgb, base_color.rgb * 0.72, hatch * 0.20);
+		}
 
 		// --- SELECTION AND HOVER LOGIC ---
 		if (has_selected && abs(prov_id - selected_id) < 0.1) {

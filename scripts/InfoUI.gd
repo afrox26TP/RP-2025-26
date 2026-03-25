@@ -79,12 +79,16 @@ func zobraz_data(data: Dictionary):
 	aktualni_provincie_id = data.get("id", -1)
 	
 	var owner = str(data.get("owner", "")).strip_edges().to_upper()
+	var core_owner = str(data.get("core_owner", owner)).strip_edges().to_upper()
 	var je_more = (owner == "SEA")
 	var je_moje = (owner == GameManager.hrac_stat)
 	var vojaci = int(data.get("soldiers", 0))
 	
 	id_label.text = "Provincie: " + str(data.get("province_name", "Neznamo"))
-	owner_label.text = "Vlastnik: " + owner
+	if core_owner != "" and core_owner != owner:
+		owner_label.text = "Vlastnik: %s (okupace, core: %s)" % [owner, core_owner]
+	else:
+		owner_label.text = "Vlastnik: " + owner
 	
 	if je_more:
 		pop_label.hide()

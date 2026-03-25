@@ -5,6 +5,8 @@ var map_image: Image
 
 var data_image: Image
 var data_texture: ImageTexture
+var occupation_image: Image
+var occupation_texture: ImageTexture
 var total_provinces: int = 5000
 
 # Variable to track the last hovered province ID for label popping
@@ -29,6 +31,18 @@ var country_colors = {
 	"UKR": Color("#DEC243"), "GBR": Color("#9E2633"), "SEA": Color("5b556fff")
 }
 
+func _barva_politickeho_vlastnictvi(d: Dictionary) -> Color:
+	var owner = str(d.get("owner", "")).strip_edges().to_upper()
+	var base = country_colors.get(owner, Color.from_hsv(owner.hash() / float(0x7FFFFFFF), 0.7, 0.8))
+	base.a = 1.0
+
+	# Occupied (non-core) territory is visually muted to separate it from core land.
+	var core_owner = str(d.get("core_owner", owner)).strip_edges().to_upper()
+	if core_owner != "" and owner != core_owner:
+		base = base.lerp(Color(0.92, 0.92, 0.92, 1.0), 0.08)
+
+	return base
+
 func _ready():
 	if logic_map:
 		map_image = logic_map.get_image()
@@ -38,8 +52,13 @@ func _ready():
 	data_image = Image.create_empty(total_provinces, 1, false, Image.FORMAT_RGBA8)
 	data_image.fill(Color.TRANSPARENT)
 	data_texture = ImageTexture.create_from_image(data_image)
+
+	occupation_image = Image.create_empty(total_provinces, 1, false, Image.FORMAT_RGBA8)
+	occupation_image.fill(Color(0, 0, 0, 0))
+	occupation_texture = ImageTexture.create_from_image(occupation_image)
 	
 	material.set_shader_parameter("data_texture", data_texture)
+	material.set_shader_parameter("occupation_texture", occupation_texture)
 	material.set_shader_parameter("total_provinces", float(total_provinces))
 	
 	material.set_shader_parameter("has_hover", false)
@@ -246,12 +265,14 @@ func aktualizuj_mapovy_mod(mod: String, province_db: Dictionary):
 		var d = province_db[prov_id]
 		var barva = Color.TRANSPARENT
 		var owner = str(d.get("owner", "")).strip_edges().to_upper()
+		var core_owner = str(d.get("core_owner", owner)).strip_edges().to_upper()
+		var je_okupace = (core_owner != "" and owner != core_owner)
+		occupation_image.set_pixel(prov_id, 0, Color(1, 1, 1, 1) if je_okupace else Color(0, 0, 0, 0))
 		
 		if owner != "SEA" and str(d.get("type", "")) != "sea":
 			match mod:
 				"political":
-					barva = country_colors.get(owner, Color.from_hsv(owner.hash() / float(0x7FFFFFFF), 0.7, 0.8))
-					barva.a = 1.0
+					barva = _barva_politickeho_vlastnictvi(d)
 				"population":
 					var s = clamp(float(d.get("population", 0)) / 3000000.0, 0.0, 1.0)
 					barva = Color(s, 0.2, 0.2, 1.0)
@@ -274,6 +295,7 @@ func aktualizuj_mapovy_mod(mod: String, province_db: Dictionary):
 				
 		data_image.set_pixel(prov_id, 0, barva)
 	data_texture.update(data_image)
+	occupation_texture.update(occupation_image)
 
 func dobyt_provincii(prov_id: int, novy_vlastnik: String):
 	var root = get_parent()

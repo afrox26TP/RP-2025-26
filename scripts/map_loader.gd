@@ -14,7 +14,96 @@ var vybrana_armada_od: int = -1
 var vybrana_armada_max: int = 0
 var ceka_na_cil_presunu: bool = false
 var cekajici_presuny = []
+var obsazene_pozice_presunu: Array = []
+var trasy_lane_counter: Dictionary = {}
 # --------------------------------------------------------
+
+func _ziskej_map_offset() -> Vector2:
+	var sprite = $Sprite2D
+	if sprite and sprite.centered:
+		return sprite.position - (sprite.texture.get_size() / 2.0)
+	if sprite:
+		return sprite.position
+	return Vector2.ZERO
+
+func _ziskej_lane_index(slot: int) -> int:
+	if slot <= 0:
+		return 0
+	var magnitude = int((slot + 1) / 2)
+	return magnitude if slot % 2 == 1 else -magnitude
+
+func _vypocitej_ofset_trasy(from_id: int, to_id: int, start_pos: Vector2, end_pos: Vector2) -> Vector2:
+	var a = min(from_id, to_id)
+	var b = max(from_id, to_id)
+	var key = "%d_%d" % [a, b]
+	var slot = int(trasy_lane_counter.get(key, 0))
+	trasy_lane_counter[key] = slot + 1
+
+	if slot == 0:
+		return Vector2.ZERO
+
+	var dir = end_pos - start_pos
+	if dir.length() < 0.001:
+		return Vector2.ZERO
+
+	var lane_index = _ziskej_lane_index(slot)
+	return dir.normalized().orthogonal() * (12.0 * float(lane_index))
+
+func _najdi_volnou_pozici(base_pos: Vector2, occupied_positions: Array, min_distance: float) -> Vector2:
+	if occupied_positions.is_empty():
+		return base_pos
+
+	var offsets = [
+		Vector2.ZERO,
+		Vector2(18, 0), Vector2(-18, 0), Vector2(0, 18), Vector2(0, -18),
+		Vector2(14, 14), Vector2(-14, 14), Vector2(14, -14), Vector2(-14, -14),
+		Vector2(28, 0), Vector2(-28, 0), Vector2(0, 28), Vector2(0, -28),
+		Vector2(24, 16), Vector2(-24, 16), Vector2(24, -16), Vector2(-24, -16),
+		Vector2(36, 0), Vector2(-36, 0), Vector2(0, 36), Vector2(0, -36)
+	]
+
+	for off in offsets:
+		var candidate = base_pos + off
+		var blocked = false
+		for p in occupied_positions:
+			if candidate.distance_to(p) < min_distance:
+				blocked = true
+				break
+		if not blocked:
+			return candidate
+
+	return base_pos + Vector2(42, 0)
+
+func _ziskej_obsazene_pozice_armad() -> Array:
+	var occupied: Array = []
+	for prov_id in aktivni_armady.keys():
+		var army_node = aktivni_armady[prov_id]
+		if army_node and army_node.visible:
+			occupied.append(army_node.position)
+	return occupied
+
+func _rozmisti_armady_bez_overlapu():
+	if aktivni_armady.is_empty():
+		return
+
+	var occupied: Array = []
+	var sorted_ids: Array = aktivni_armady.keys()
+	sorted_ids.sort_custom(func(a, b):
+		return int(provinces[a].get("soldiers", 0)) > int(provinces[b].get("soldiers", 0))
+	)
+
+	for prov_id in sorted_ids:
+		var army_node = aktivni_armady[prov_id]
+		if not army_node or not army_node.visible:
+			continue
+
+		if not army_node.has_meta("base_pos"):
+			continue
+
+		var base_pos = army_node.get_meta("base_pos") as Vector2
+		var final_pos = _najdi_volnou_pozici(base_pos, occupied, 24.0)
+		army_node.position = final_pos
+		occupied.append(final_pos)
 
 func _get_cached_texture(path: String, cache: Dictionary):
 	if path == "":
@@ -118,6 +207,7 @@ func load_provinces():
 			"type": parts[4],
 			"state": parts[5],
 			"owner": parts[6],
+			"core_owner": parts[6],
 			"x": float(parts[8]), 
 			"y": float(parts[9]), 
 			"province_name": parts[10],
@@ -241,6 +331,7 @@ func _na_zmenu_zoomu(aktualni_zoom):
 				c_lbl.scale = Vector2(zvetseni, zvetseni)
 
 	_aktualizuj_zoom_armad(aktualni_zoom)
+	_aktualizuj_indikatory_kapitulace()
 
 func _formatuj_cislo(cislo: int) -> String:
 	if cislo >= 1000000:
@@ -265,6 +356,7 @@ func _aktualizuj_zoom_armad(aktualni_zoom: float):
 			var lbl = army_node.get_node_or_null("TroopCount")
 			if lbl:
 				lbl.text = _formatuj_cislo(int(provinces[prov_id].get("soldiers", 0)))
+		_rozmisti_armady_bez_overlapu()
 	else:
 		var zkontrolovane = {}
 		var clustery = []
@@ -325,24 +417,21 @@ func aktualizuj_ikony_armad():
 		container.z_index = 20
 		add_child(container)
 		
-	var offset = Vector2.ZERO
-	var sprite = $Sprite2D
-	if sprite and sprite.centered:
-		offset = sprite.position - (sprite.texture.get_size() / 2.0)
-	elif sprite:
-		offset = sprite.position
+	var offset = _ziskej_map_offset()
 
 	for prov_id in provinces.keys():
 		var prov_data = provinces[prov_id]
 		var vojaci = int(prov_data.get("soldiers", 0))
 		var owner_tag = str(prov_data.get("owner", "")).strip_edges().to_upper()
+		var base_pos = Vector2(prov_data["x"], prov_data["y"]) + offset
 		
 		if vojaci > 0:
 			var target_texture = _get_army_icon_texture(owner_tag)
 			
 			if not aktivni_armady.has(prov_id):
 				var army_node = Node2D.new()
-				army_node.position = Vector2(prov_data["x"], prov_data["y"]) + offset
+				army_node.position = base_pos
+				army_node.set_meta("base_pos", base_pos)
 				
 				var icon = Sprite2D.new()
 				icon.name = "Icon"
@@ -369,6 +458,8 @@ func aktualizuj_ikony_armad():
 				aktivni_armady[prov_id] = army_node
 			else:
 				var army_node = aktivni_armady[prov_id]
+				army_node.set_meta("base_pos", base_pos)
+				army_node.position = base_pos
 				var icon = army_node.get_node_or_null("Icon")
 				if icon and icon.texture != target_texture:
 					icon.texture = target_texture
@@ -384,6 +475,7 @@ func aktualizuj_ikony_armad():
 	var kamera = $Camera2D
 	if kamera:
 		_aktualizuj_zoom_armad(kamera.zoom.x)
+	_aktualizuj_indikatory_kapitulace()
 
 # --- CORE MOVEMENT LOGIC ---
 
@@ -417,67 +509,92 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int):
 	provinces[from_id]["soldiers"] -= amount
 	aktualizuj_ikony_armad()
 	
-	var offset = Vector2.ZERO
-	var sprite = $Sprite2D
-	if sprite and sprite.centered:
-		offset = sprite.position - (sprite.texture.get_size() / 2.0)
-	elif sprite:
-		offset = sprite.position
+	var offset = _ziskej_map_offset()
 		
 	var start_pos = Vector2(provinces[from_id]["x"], provinces[from_id]["y"]) + offset
 	var end_pos = Vector2(provinces[to_id]["x"], provinces[to_id]["y"]) + offset
+	var lane_offset = _vypocitej_ofset_trasy(from_id, to_id, start_pos, end_pos)
+	start_pos += lane_offset
+	end_pos += lane_offset
 	var midway_pos = start_pos.lerp(end_pos, 0.5)
 	
 	var container = get_node_or_null("ArmyContainer")
 	var target_texture = _get_army_icon_texture(owner_tag)
 	
-	# --- VISUAL ARROW LOGIC (HOI4 STYLE RED/BLUE) ---
+	# --- VISUAL ARROW LOGIC (enhanced readability) ---
 	var moving_node = Node2D.new()
 	moving_node.add_to_group("duchove_armad")
 	moving_node.z_index = 25 
 	
 	var is_attack = (owner_tag != target_owner_tag)
 	
-	# Red for enemy territory, Blue for friendly territory
-	var arrow_color = Color(0.85, 0.15, 0.15, 0.7) if is_attack else Color(0.2, 0.6, 0.8, 0.7)
-	var head_color = Color(0.9, 0.1, 0.1, 0.9) if is_attack else Color(0.15, 0.5, 0.9, 0.9)
+	# Clean contrast: warm red for attacks, cool blue for non-attack moves.
+	var arrow_color = Color(0.88, 0.25, 0.22, 0.9) if is_attack else Color(0.16, 0.68, 0.92, 0.9)
+	var glow_color = Color(0.96, 0.38, 0.32, 0.22) if is_attack else Color(0.35, 0.85, 0.98, 0.22)
+	var head_color = Color(0.95, 0.15, 0.12, 0.98) if is_attack else Color(0.07, 0.56, 0.95, 0.98)
 	
-	# 1. Draw the Line
+	# 1) Thin glow underlay.
+	var glow_line = Line2D.new()
+	glow_line.add_point(start_pos)
+	glow_line.add_point(end_pos)
+	glow_line.width = 7.0
+	glow_line.default_color = glow_color
+	glow_line.antialiased = true
+	moving_node.add_child(glow_line)
+
+	# 2) Main line.
 	var line = Line2D.new()
 	line.add_point(start_pos)
 	line.add_point(end_pos)
-	line.width = 6.0
+	line.width = 3.8
 	line.default_color = arrow_color
+	line.antialiased = true
 	moving_node.add_child(line)
+
+	# 3) Subtle center accent only for attacks.
+	if is_attack:
+		var accent = Line2D.new()
+		accent.add_point(start_pos)
+		accent.add_point(end_pos)
+		accent.width = 1.2
+		accent.default_color = Color(1.0, 0.78, 0.7, 0.82)
+		accent.antialiased = true
+		moving_node.add_child(accent)
 	
-	# 2. Draw the Arrowhead
+	# 4) Arrowhead.
 	var dir = (end_pos - start_pos).normalized()
 	var arrow = Polygon2D.new()
-	arrow.polygon = PackedVector2Array([Vector2(-12, -8), Vector2(8, 0), Vector2(-12, 8)])
+	arrow.polygon = PackedVector2Array([Vector2(-11, -7), Vector2(9, 0), Vector2(-11, 7)])
 	arrow.color = head_color
-	arrow.position = end_pos - (dir * 15.0)
+	arrow.position = end_pos - (dir * 13.0)
 	arrow.rotation = dir.angle()
 	moving_node.add_child(arrow)
 	
-	# 3. Add the Army Icon and Label in the middle
+	# 5) Army icon + amount at midpoint.
 	var icon_node = Node2D.new()
-	icon_node.position = midway_pos
-	
+	var occupied_positions = _ziskej_obsazene_pozice_armad()
+	for p in obsazene_pozice_presunu:
+		occupied_positions.append(p)
+	icon_node.position = _najdi_volnou_pozici(midway_pos, occupied_positions, 30.0)
+	obsazene_pozice_presunu.append(icon_node.position)
+
 	var icon = Sprite2D.new()
 	icon.texture = target_texture
 	var tex_size = icon.texture.get_size()
 	if tex_size.x > 0 and tex_size.y > 0:
-		icon.scale = Vector2(16.0 / tex_size.x, 16.0 / tex_size.y) 
-	icon.modulate.a = 0.95 
+		icon.scale = Vector2(15.0 / tex_size.x, 15.0 / tex_size.y)
+	icon.position = Vector2(0, -6)
+	icon.modulate.a = 0.95
 	
 	var lbl = Label.new()
 	lbl.text = _formatuj_cislo(amount)
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl.position = Vector2(-50, 12) 
-	lbl.custom_minimum_size = Vector2(100, 20)
-	lbl.add_theme_color_override("font_outline_color", Color.BLACK)
-	lbl.add_theme_constant_override("outline_size", 4)
-	lbl.add_theme_font_size_override("font_size", 14)
+	lbl.position = Vector2(-36, 4)
+	lbl.custom_minimum_size = Vector2(72, 18)
+	lbl.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 0.98))
+	lbl.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.95))
+	lbl.add_theme_constant_override("outline_size", 3)
+	lbl.add_theme_font_size_override("font_size", 12)
 	
 	icon_node.add_child(icon)
 	icon_node.add_child(lbl)
@@ -577,6 +694,7 @@ func zpracuj_tah_armad():
 			
 			# Update properties for the conquered province
 			provinces[to_id]["owner"] = owner
+			# core_owner remains unchanged so occupied territory can be distinguished from core territory.
 			provinces[to_id]["country_name"] = provinces[from_id]["country_name"]
 			provinces[to_id]["ideology"] = provinces[from_id]["ideology"]
 			provinces[to_id]["is_capital"] = false 
@@ -594,19 +712,11 @@ func zpracuj_tah_armad():
 			if sprite and sprite.has_method("dobyt_provincii"):
 				sprite.dobyt_provincii(to_id, owner)
 				
-			# CAPITULATION MECHANIC (Blitzkrieg)
+			# Delayed capitulation: state capitulates only if attacker keeps capital for a full turn.
 			if was_capital:
-				for p_id in provinces.keys():
-					if str(provinces[p_id].get("owner", "")).strip_edges().to_upper() == target_owner:
-						provinces[p_id]["owner"] = owner
-						provinces[p_id]["country_name"] = provinces[from_id]["country_name"]
-						provinces[p_id]["ideology"] = provinces[from_id]["ideology"]
-						provinces[p_id]["is_capital"] = false
-						if sprite and sprite.has_method("dobyt_provincii"):
-							sprite.dobyt_provincii(p_id, owner)
-							
+				GameManager.zaregistruj_obsazeni_hlavniho_mesta(target_owner, owner, to_id)
 				if hrac_zapojen:
-					celkovy_report += "💥 KAPITULACE: Padlo hlavní město! Stát %s se kompletně vzdal a jeho území připadlo státu %s!\n\n" % [target_owner, owner]
+					celkovy_report += "🏛️ HLAVNÍ MĚSTO OBSAZENO: %s dobylo hlavní město státu %s. Kapitulace nastane jen pokud město udrží celé jedno kolo.\n\n" % [owner, target_owner]
 			
 			if hrac_zapojen and not was_capital:
 				if owner == hrac:
@@ -624,12 +734,15 @@ func zpracuj_tah_armad():
 				else:
 					celkovy_report += "❌ ÚTOK SELHAL: Naše invaze do %s byla odražena.\n\n" % [jmeno_provincie]
 					
+	celkovy_report = _zpracuj_odlozene_kapitulace(celkovy_report)
 	aktualizuj_ikony_armad()
 	
 	if celkovy_report != "":
 		await _ukaz_bitevni_popup("Hlášení z fronty", celkovy_report)
 		
 	get_tree().call_group("duchove_armad", "queue_free")
+	obsazene_pozice_presunu.clear()
+	trasy_lane_counter.clear()
 
 func _ukaz_bitevni_popup(titulek: String, text: String):
 	var dialog = AcceptDialog.new()
@@ -651,3 +764,97 @@ func _ukaz_bitevni_popup(titulek: String, text: String):
 		
 	if is_instance_valid(dialog):
 		dialog.queue_free()
+
+func _zpracuj_odlozene_kapitulace(celkovy_report: String) -> String:
+	var hotove_kapitulace = GameManager.vyhodnot_odlozene_kapitulace()
+	if hotove_kapitulace.is_empty():
+		return celkovy_report
+
+	var hrac = GameManager.hrac_stat
+	var sprite = $Sprite2D
+
+	for zaznam in hotove_kapitulace:
+		var target_owner = str(zaznam.get("obrance", "")).strip_edges().to_upper()
+		var owner = str(zaznam.get("utocnik", "")).strip_edges().to_upper()
+		if target_owner == "" or owner == "" or target_owner == owner:
+			continue
+
+		var source_country_name = owner
+		var source_ideology = ""
+		for p_id in provinces.keys():
+			if str(provinces[p_id].get("owner", "")).strip_edges().to_upper() == owner:
+				source_country_name = str(provinces[p_id].get("country_name", owner))
+				source_ideology = str(provinces[p_id].get("ideology", ""))
+				break
+
+		var prevedeno = 0
+		for p_id in provinces.keys():
+			if str(provinces[p_id].get("owner", "")).strip_edges().to_upper() == target_owner:
+				provinces[p_id]["owner"] = owner
+				provinces[p_id]["country_name"] = source_country_name
+				provinces[p_id]["ideology"] = source_ideology
+				provinces[p_id]["is_capital"] = false
+				if sprite and sprite.has_method("dobyt_provincii"):
+					sprite.dobyt_provincii(p_id, owner)
+				prevedeno += 1
+
+		if prevedeno > 0 and (owner == hrac or target_owner == hrac):
+			celkovy_report += "💥 KAPITULACE: %s udrželo hlavní město státu %s celé jedno kolo. Stát %s kapituloval.\n\n" % [owner, target_owner, target_owner]
+
+	return celkovy_report
+
+func _aktualizuj_indikatory_kapitulace():
+	var container = get_node_or_null("CapitulationIndicators")
+	if not container:
+		container = Node2D.new()
+		container.name = "CapitulationIndicators"
+		container.z_index = 30
+		add_child(container)
+
+	for child in container.get_children():
+		child.queue_free()
+
+	if not GameManager.has_method("vyhodnot_odlozene_kapitulace"):
+		return
+	if not ("cekajici_kapitulace" in GameManager):
+		return
+
+	var offset = _ziskej_map_offset()
+	for zaznam in GameManager.cekajici_kapitulace:
+		var capital_id = int(zaznam.get("capital_id", -1))
+		if not provinces.has(capital_id):
+			continue
+
+		var utocnik = str(zaznam.get("utocnik", "")).strip_edges().to_upper()
+		var obrance = str(zaznam.get("obrance", "")).strip_edges().to_upper()
+		if utocnik == "" or obrance == "":
+			continue
+
+		var owner_now = str(provinces[capital_id].get("owner", "")).strip_edges().to_upper()
+		if owner_now != utocnik:
+			continue
+
+		var capture_turn = int(zaznam.get("capture_turn", GameManager.aktualni_kolo))
+		var remain = max(0, (capture_turn + 1) - int(GameManager.aktualni_kolo))
+
+		var node = Node2D.new()
+		node.position = Vector2(provinces[capital_id]["x"], provinces[capital_id]["y"]) + offset + Vector2(0, -44)
+
+		var bg = ColorRect.new()
+		bg.size = Vector2(170, 30)
+		bg.position = Vector2(-85, -15)
+		bg.color = Color(0.38, 0.08, 0.08, 0.72)
+		node.add_child(bg)
+
+		var lbl = Label.new()
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl.custom_minimum_size = Vector2(170, 26)
+		lbl.position = Vector2(-85, -13)
+		lbl.add_theme_color_override("font_color", Color(1.0, 0.92, 0.88, 1.0))
+		lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1.0))
+		lbl.add_theme_constant_override("outline_size", 3)
+		lbl.add_theme_font_size_override("font_size", 12)
+		lbl.text = "%s drzi cap (%s): %d kolo" % [utocnik, obrance, max(1, remain)]
+		node.add_child(lbl)
+
+		container.add_child(node)

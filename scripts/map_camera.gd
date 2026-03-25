@@ -5,7 +5,7 @@ signal zoom_zmenen(aktualni_zoom)
 @export var speed = 1000.0
 @export var zoom_speed = 0.1
 @export var min_zoom = 0.05
-@export var max_zoom = 2.0
+@export var max_zoom = 4.0
 
 var drag_start = Vector2.ZERO
 var dragging = false
