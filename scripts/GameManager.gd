@@ -24,6 +24,7 @@ var valky: Dictionary = {}
 var cekajici_kapitulace: Array = []
 
 var zpracovava_se_tah: bool = false
+var _core_state_cache: Dictionary = {}
 
 # Safely get the map node
 func _get_map_loader():
@@ -245,6 +246,7 @@ func zpracuj_tah_ai():
 	print("--- AI THINKING START ---")
 	var map_loader = _get_map_loader()
 	if not map_loader or map_data.is_empty(): return
+	_core_state_cache.clear()
 		
 	var cena_za_vojaka = 0.01
 
@@ -299,11 +301,16 @@ func _naplanuj_ai_presuny(map_loader):
 		if not ai_staty.has(owner):
 			ai_staty[owner] = true
 
+	if map_loader.has_method("zacni_davkovy_presun"):
+		map_loader.zacni_davkovy_presun()
+
 	for owner in ai_staty.keys():
 		var moved_from: Dictionary = {}
+		var serazene: Array = _seradene_ai_provincie(owner)
+		var core_state: String = _ziskej_core_state_cached(owner)
 
 		# 1) Internal non-attacking relocation (rear to frontline by adjacent friendly move).
-		for p_id in _seradene_ai_provincie(owner):
+		for p_id in serazene:
 			if moved_from.has(p_id):
 				continue
 			var move = _navrhni_neutocny_presun(owner, p_id)
@@ -312,24 +319,24 @@ func _naplanuj_ai_presuny(map_loader):
 			var amount = int(move.get("amount", 0))
 			if amount <= 0:
 				continue
-			map_loader.zaregistruj_presun_armady(move["from"], move["to"], amount)
+			map_loader.zaregistruj_presun_armady(move["from"], move["to"], amount, false)
 			moved_from[move["from"]] = true
 
 		# 2) Defense of core provinces (capital and provinces in the capital's state).
-		for p_id in _seradene_ai_provincie(owner):
+		for p_id in serazene:
 			if moved_from.has(p_id):
 				continue
-			var move = _navrhni_core_obranu(owner, p_id)
+			var move = _navrhni_core_obranu(owner, p_id, core_state)
 			if move.is_empty():
 				continue
 			var amount = int(move.get("amount", 0))
 			if amount <= 0:
 				continue
-			map_loader.zaregistruj_presun_armady(move["from"], move["to"], amount)
+			map_loader.zaregistruj_presun_armady(move["from"], move["to"], amount, false)
 			moved_from[move["from"]] = true
 
 		# 3) Offensive attacks.
-		for p_id in _seradene_ai_provincie(owner):
+		for p_id in serazene:
 			if moved_from.has(p_id):
 				continue
 			var move = _navrhni_utok(owner, p_id)
@@ -341,14 +348,17 @@ func _naplanuj_ai_presuny(map_loader):
 
 			var target_owner = str(map_data[move["to"]].get("owner", "")).strip_edges().to_upper()
 			if jsou_ve_valce(owner, target_owner):
-				map_loader.zaregistruj_presun_armady(move["from"], move["to"], amount)
+				map_loader.zaregistruj_presun_armady(move["from"], move["to"], amount, false)
 				moved_from[move["from"]] = true
 			else:
 				if _ma_smyls_vyhlasit_valku(owner, target_owner, int(move["from"]), int(move["to"]), amount):
 					await vyhlasit_valku(owner, target_owner)
 					if jsou_ve_valce(owner, target_owner):
-						map_loader.zaregistruj_presun_armady(move["from"], move["to"], amount)
+						map_loader.zaregistruj_presun_armady(move["from"], move["to"], amount, false)
 						moved_from[move["from"]] = true
+
+	if map_loader.has_method("ukonci_davkovy_presun"):
+		map_loader.ukonci_davkovy_presun()
 
 func _seradene_ai_provincie(owner: String) -> Array:
 	var ids: Array = []
@@ -479,6 +489,15 @@ func _ziskej_core_state(owner: String) -> String:
 			return str(d.get("state", ""))
 	return ""
 
+func _ziskej_core_state_cached(owner: String) -> String:
+	if owner == "":
+		return ""
+	if _core_state_cache.has(owner):
+		return str(_core_state_cache[owner])
+	var core_state = _ziskej_core_state(owner)
+	_core_state_cache[owner] = core_state
+	return core_state
+
 func _je_core_provincie(owner: String, province_id: int, core_state: String) -> bool:
 	if not map_data.has(province_id):
 		return false
@@ -491,7 +510,7 @@ func _je_core_provincie(owner: String, province_id: int, core_state: String) -> 
 		return true
 	return false
 
-func _navrhni_core_obranu(owner: String, from_id: int) -> Dictionary:
+func _navrhni_core_obranu(owner: String, from_id: int, core_state: String = "") -> Dictionary:
 	if not map_data.has(from_id):
 		return {}
 	var from_data = map_data[from_id]
@@ -499,7 +518,8 @@ func _navrhni_core_obranu(owner: String, from_id: int) -> Dictionary:
 	if vojaci < 1100:
 		return {}
 
-	var core_state = _ziskej_core_state(owner)
+	if core_state == "":
+		core_state = _ziskej_core_state_cached(owner)
 	var best_target = -1
 	var best_score = -INF
 	for n_id in from_data.get("neighbors", []):
@@ -570,7 +590,7 @@ func _navrhni_utok(owner: String, from_id: int) -> Dictionary:
 		score += float(int(n_prov.get("recruitable_population", 0))) * 0.02
 		if bool(n_prov.get("is_capital", false)):
 			score += 3600.0
-		var enemy_core = _ziskej_core_state(n_owner)
+		var enemy_core = _ziskej_core_state_cached(n_owner)
 		if enemy_core != "" and str(n_prov.get("state", "")) == enemy_core:
 			score += 900.0
 

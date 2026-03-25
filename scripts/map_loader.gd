@@ -16,9 +16,14 @@ var ceka_na_cil_presunu: bool = false
 var cekajici_presuny = []
 var obsazene_pozice_presunu: Array = []
 var trasy_lane_counter: Dictionary = {}
+var _pozastavit_aktualizaci_ikon: bool = false
+var _minimalni_ai_tahy: Dictionary = {}
+var _ai_anim_markery: Array = []
+const MAX_MINIMALNI_AI_CAR := 90
+const AI_MARKER_ATTACK_SPEED := 170.0
+const AI_MARKER_MOVE_SPEED := 130.0
 var _bitevni_kamera_aktivni: bool = false
 var _bitevni_puvodni_pozice: Vector2 = Vector2.ZERO
-var _bitevni_puvodni_zoom: Vector2 = Vector2.ONE
 # --------------------------------------------------------
 
 func _ziskej_map_offset() -> Vector2:
@@ -139,6 +144,33 @@ func _get_army_icon_texture(owner_tag: String):
 		return icon_tex
 	return _get_cached_texture(fallback_path, army_icon_texture_cache)
 
+func _ziskej_zakladni_barvu_statu(tag: String) -> Color:
+	if tag == "":
+		return Color(0.62, 0.62, 0.66, 1.0)
+
+	var sprite = $Sprite2D
+	if sprite and ("country_colors" in sprite):
+		var country_cols = sprite.country_colors
+		if country_cols is Dictionary and country_cols.has(tag):
+			var c = country_cols[tag]
+			return Color(c.r, c.g, c.b, 1.0)
+
+	var hue = float(abs(tag.hash()) % 360) / 360.0
+	return Color.from_hsv(hue, 0.62, 0.86, 1.0)
+
+func _ziskej_barvu_overlay_statu(tag: String, is_attack: bool) -> Color:
+	var base = _ziskej_zakladni_barvu_statu(tag)
+	var out_col: Color
+	if is_attack:
+		# Attack overlay is always a lighter variant of the country's color.
+		out_col = base.lerp(Color(1.0, 1.0, 1.0, 1.0), 0.42)
+		out_col.a = 0.94
+	else:
+		# Regular moves stay close to country color but brighter than base.
+		out_col = base.lerp(Color(1.0, 1.0, 1.0, 1.0), 0.24)
+		out_col.a = 0.86
+	return out_col
+
 func _ready():
 	load_provinces()
 	print("Nacteno provincii z TXT: ", provinces.size())
@@ -166,6 +198,64 @@ func _ready():
 	aktualizuj_ikony_armad()
 	if GameManager.has_signal("kolo_zmeneno"):
 		GameManager.kolo_zmeneno.connect(aktualizuj_ikony_armad)
+	set_process(false)
+
+func _process(delta: float):
+	if _ai_anim_markery.is_empty():
+		return
+
+	for i in range(_ai_anim_markery.size() - 1, -1, -1):
+		var m = _ai_anim_markery[i]
+		var node = m.get("node", null)
+		if not is_instance_valid(node):
+			_ai_anim_markery.remove_at(i)
+			continue
+
+		var length = max(1.0, float(m.get("length", 1.0)))
+		var speed = float(m.get("speed", AI_MARKER_MOVE_SPEED))
+		var speed_scale = float(m.get("speed_scale", 1.0))
+		var progress = float(m.get("progress", 0.0)) + (((speed * speed_scale) * delta) / length)
+		progress = fposmod(progress, 1.0)
+		m["progress"] = progress
+
+		var start_pos = m.get("start", Vector2.ZERO) as Vector2
+		var dir = m.get("dir", Vector2.RIGHT) as Vector2
+		node.position = start_pos + (dir * progress)
+		_ai_anim_markery[i] = m
+
+func _pridej_animovany_marker(container: Node2D, start_pos: Vector2, end_pos: Vector2, color: Color, speed: float, phase: float, width: float):
+	var dir = end_pos - start_pos
+	var length = dir.length()
+	if length < 0.001:
+		return
+
+	var marker = Polygon2D.new()
+	var s = clamp(width * 0.40, 0.75, 1.65)
+	marker.polygon = PackedVector2Array([
+		Vector2(-5.2, -2.2) * s,
+		Vector2(1.4, -2.2) * s,
+		Vector2(1.4, -4.3) * s,
+		Vector2(7.2, 0.0) * s,
+		Vector2(1.4, 4.3) * s,
+		Vector2(1.4, 2.2) * s,
+		Vector2(-5.2, 2.2) * s
+	])
+	marker.color = color
+	marker.rotation = dir.angle()
+	container.add_child(marker)
+
+	# Slow down markers on short paths so they do not look too frantic.
+	var speed_scale = clamp(length / 220.0, 0.35, 1.0)
+
+	_ai_anim_markery.append({
+		"node": marker,
+		"start": start_pos,
+		"dir": dir,
+		"length": length,
+		"speed": speed,
+		"speed_scale": speed_scale,
+		"progress": fposmod(phase, 1.0)
+	})
 
 func load_provinces():
 	var file = FileAccess.open("res://map_data/Provinces.txt", FileAccess.READ)
@@ -489,8 +579,143 @@ func aktivuj_rezim_vyberu_cile(from_id: int, max_troops: int):
 	ceka_na_cil_presunu = true
 	print("Klikni na mapu pro vyber cile presunu.")
 
+func zacni_davkovy_presun():
+	_pozastavit_aktualizaci_ikon = true
+	_minimalni_ai_tahy.clear()
+
+func ukonci_davkovy_presun():
+	_pozastavit_aktualizaci_ikon = false
+	_vykresli_minimalni_ai_presuny()
+	aktualizuj_ikony_armad()
+
+func _vymaz_minimalni_ai_presuny():
+	_ai_anim_markery.clear()
+	set_process(false)
+	var container = get_node_or_null("AIMoveOverlay")
+	if not container:
+		return
+	for child in container.get_children():
+		child.queue_free()
+
+func _zaregistruj_minimalni_ai_tah_s_mnozstvim(from_id: int, to_id: int, owner_tag: String, is_attack: bool, amount: int):
+	var key = "%d_%d_%s_%d" % [from_id, to_id, owner_tag, 1 if is_attack else 0]
+	if not _minimalni_ai_tahy.has(key):
+		_minimalni_ai_tahy[key] = {
+			"from": from_id,
+			"to": to_id,
+			"owner": owner_tag,
+			"is_attack": is_attack,
+			"count": 0,
+			"total_amount": 0
+		}
+	_minimalni_ai_tahy[key]["count"] = int(_minimalni_ai_tahy[key].get("count", 0)) + 1
+	_minimalni_ai_tahy[key]["total_amount"] = int(_minimalni_ai_tahy[key].get("total_amount", 0)) + max(0, amount)
+
+func _zobraz_minimalni_presun(from_id: int, to_id: int, owner_tag: String, is_attack: bool, total_amount: int, count: int = 1):
+	if not provinces.has(from_id) or not provinces.has(to_id):
+		return
+
+	var container = get_node_or_null("AIMoveOverlay")
+	if not container:
+		container = Node2D.new()
+		container.name = "AIMoveOverlay"
+		container.z_index = 24
+		add_child(container)
+
+	var offset = _ziskej_map_offset()
+	var start_pos = Vector2(provinces[from_id]["x"], provinces[from_id]["y"]) + offset
+	var end_pos = Vector2(provinces[to_id]["x"], provinces[to_id]["y"]) + offset
+	var dir = end_pos - start_pos
+	if dir.length() < 0.001:
+		return
+
+	var col = _ziskej_barvu_overlay_statu(owner_tag, is_attack)
+	var width = (2.9 if is_attack else 2.2) + min(1.8, float(max(1, count) - 1) * 0.20)
+	var speed = AI_MARKER_ATTACK_SPEED if is_attack else AI_MARKER_MOVE_SPEED
+	var marker_count = 2 if is_attack else 1
+	if count >= 3:
+		marker_count += 1
+	marker_count = min(marker_count, 3)
+
+	var trail = Line2D.new()
+	trail.width = max(1.8, width - 0.2)
+	trail.default_color = Color(col.r, col.g, col.b, 0.38 if is_attack else 0.30)
+	trail.antialiased = false
+	trail.add_point(start_pos)
+	trail.add_point(end_pos)
+	container.add_child(trail)
+
+	for m in range(marker_count):
+		var phase = (float(m) / float(marker_count)) + 0.12
+		_pridej_animovany_marker(container, start_pos, end_pos, col, speed, phase, width)
+
+	if is_attack and count > 1:
+		var cnt = Label.new()
+		cnt.text = "x%d" % count
+		var cnt_pos = start_pos.lerp(end_pos, 0.55) + Vector2(3, -10)
+		cnt.position = Vector2(round(cnt_pos.x), round(cnt_pos.y))
+		cnt.add_theme_font_size_override("font_size", 11)
+		cnt.add_theme_color_override("font_color", Color(col.r, col.g, col.b, 0.98))
+		cnt.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+		cnt.add_theme_constant_override("outline_size", 3)
+		container.add_child(cnt)
+
+	if total_amount > 0:
+		var amount_lbl = Label.new()
+		amount_lbl.text = _formatuj_cislo(total_amount)
+		var amount_pos = start_pos.lerp(end_pos, 0.45) + Vector2(5, 6)
+		amount_lbl.position = Vector2(round(amount_pos.x), round(amount_pos.y))
+		amount_lbl.add_theme_font_size_override("font_size", 12)
+		amount_lbl.add_theme_color_override("font_color", Color(col.r, col.g, col.b, 0.98))
+		amount_lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+		amount_lbl.add_theme_constant_override("outline_size", 3)
+		container.add_child(amount_lbl)
+
+	if not _ai_anim_markery.is_empty():
+		set_process(true)
+
+func _vykresli_minimalni_ai_presuny():
+	_vymaz_minimalni_ai_presuny()
+	if _minimalni_ai_tahy.is_empty():
+		return
+
+	var container = get_node_or_null("AIMoveOverlay")
+	if not container:
+		container = Node2D.new()
+		container.name = "AIMoveOverlay"
+		container.z_index = 24
+		add_child(container)
+
+	var entries: Array = _minimalni_ai_tahy.values()
+	entries.sort_custom(func(a, b):
+		var a_attack = bool(a.get("is_attack", false))
+		var b_attack = bool(b.get("is_attack", false))
+		if a_attack != b_attack:
+			return a_attack
+		return int(a.get("count", 0)) > int(b.get("count", 0))
+	)
+
+	var limit = min(entries.size(), MAX_MINIMALNI_AI_CAR)
+	var offset = _ziskej_map_offset()
+
+	for i in range(limit):
+		var e = entries[i]
+		var from_id = int(e.get("from", -1))
+		var to_id = int(e.get("to", -1))
+		var owner_tag = str(e.get("owner", "")).strip_edges().to_upper()
+		if not provinces.has(from_id) or not provinces.has(to_id):
+			continue
+
+		var is_attack = bool(e.get("is_attack", false))
+		var count = int(e.get("count", 1))
+		var total_amount = int(e.get("total_amount", 0))
+		_zobraz_minimalni_presun(from_id, to_id, owner_tag, is_attack, total_amount, count)
+
+	if not _ai_anim_markery.is_empty():
+		set_process(true)
+
 # Registers the move, deducts troops from source, and shows visual midway "ghost"
-func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int):
+func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int, vykreslit_trajektorii: bool = true):
 	if amount <= 0: return
 	
 	var owner_tag = str(provinces[from_id]["owner"]).strip_edges().to_upper()
@@ -510,102 +735,29 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int):
 			return 
 	
 	provinces[from_id]["soldiers"] -= amount
-	aktualizuj_ikony_armad()
+	if not _pozastavit_aktualizaci_ikon:
+		aktualizuj_ikony_armad()
 	
-	var offset = _ziskej_map_offset()
+	if not vykreslit_trajektorii:
+		if _pozastavit_aktualizaci_ikon:
+			var is_attack = (owner_tag != target_owner_tag and target_owner_tag != "SEA")
+			_zaregistruj_minimalni_ai_tah_s_mnozstvim(from_id, to_id, owner_tag, is_attack, amount)
+
+		cekajici_presuny.append({
+			"from": from_id,
+			"to": to_id,
+			"amount": amount,
+			"owner": owner_tag
+		})
 		
-	var start_pos = Vector2(provinces[from_id]["x"], provinces[from_id]["y"]) + offset
-	var end_pos = Vector2(provinces[to_id]["x"], provinces[to_id]["y"]) + offset
-	var lane_offset = _vypocitej_ofset_trasy(from_id, to_id, start_pos, end_pos)
-	start_pos += lane_offset
-	end_pos += lane_offset
-	var midway_pos = start_pos.lerp(end_pos, 0.5)
-	
-	var container = get_node_or_null("ArmyContainer")
-	var target_texture = _get_army_icon_texture(owner_tag)
-	
-	# --- VISUAL ARROW LOGIC (enhanced readability) ---
-	var moving_node = Node2D.new()
-	moving_node.add_to_group("duchove_armad")
-	moving_node.z_index = 25 
-	
-	var is_attack = (owner_tag != target_owner_tag)
-	
-	# Clean contrast: warm red for attacks, cool blue for non-attack moves.
-	var arrow_color = Color(0.88, 0.25, 0.22, 0.9) if is_attack else Color(0.16, 0.68, 0.92, 0.9)
-	var glow_color = Color(0.96, 0.38, 0.32, 0.22) if is_attack else Color(0.35, 0.85, 0.98, 0.22)
-	var head_color = Color(0.95, 0.15, 0.12, 0.98) if is_attack else Color(0.07, 0.56, 0.95, 0.98)
-	
-	# 1) Thin glow underlay.
-	var glow_line = Line2D.new()
-	glow_line.add_point(start_pos)
-	glow_line.add_point(end_pos)
-	glow_line.width = 4.0
-	glow_line.default_color = glow_color
-	glow_line.antialiased = true
-	moving_node.add_child(glow_line)
+		ceka_na_cil_presunu = false
+		var root2 = get_parent()
+		if "ceka_na_cil_presunu" in root2:
+			root2.ceka_na_cil_presunu = false
+		return
 
-	# 2) Main line.
-	var line = Line2D.new()
-	line.add_point(start_pos)
-	line.add_point(end_pos)
-	line.width = 2.1
-	line.default_color = arrow_color
-	line.antialiased = true
-	moving_node.add_child(line)
-
-	# 3) Subtle center accent only for attacks.
-	if is_attack:
-		var accent = Line2D.new()
-		accent.add_point(start_pos)
-		accent.add_point(end_pos)
-		accent.width = 0.8
-		accent.default_color = Color(1.0, 0.78, 0.7, 0.82)
-		accent.antialiased = true
-		moving_node.add_child(accent)
-	
-	# 4) Arrowhead.
-	var dir = (end_pos - start_pos).normalized()
-	var arrow = Polygon2D.new()
-	arrow.polygon = PackedVector2Array([Vector2(-8, -5), Vector2(7, 0), Vector2(-8, 5)])
-	arrow.color = head_color
-	arrow.position = end_pos - (dir * 10.0)
-	arrow.rotation = dir.angle()
-	moving_node.add_child(arrow)
-	
-	# 5) Army icon + amount at midpoint.
-	var icon_node = Node2D.new()
-	var occupied_positions = _ziskej_obsazene_pozice_armad()
-	for p in obsazene_pozice_presunu:
-		occupied_positions.append(p)
-	icon_node.position = _najdi_volnou_pozici(midway_pos, occupied_positions, 30.0)
-	obsazene_pozice_presunu.append(icon_node.position)
-
-	var icon = Sprite2D.new()
-	icon.texture = target_texture
-	var tex_size = icon.texture.get_size()
-	if tex_size.x > 0 and tex_size.y > 0:
-		icon.scale = Vector2(15.0 / tex_size.x, 15.0 / tex_size.y)
-	icon.position = Vector2(0, -6)
-	icon.modulate.a = 0.95
-	
-	var lbl = Label.new()
-	lbl.text = _formatuj_cislo(amount)
-	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl.position = Vector2(-36, 4)
-	lbl.custom_minimum_size = Vector2(72, 18)
-	lbl.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 0.98))
-	lbl.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.95))
-	lbl.add_theme_constant_override("outline_size", 3)
-	lbl.add_theme_font_size_override("font_size", 12)
-	
-	icon_node.add_child(icon)
-	icon_node.add_child(lbl)
-	moving_node.add_child(icon_node)
-	
-	if container:
-		container.add_child(moving_node)
-	# -------------------------------
+	var is_attack_player = (owner_tag != target_owner_tag and target_owner_tag != "SEA")
+	_zobraz_minimalni_presun(from_id, to_id, owner_tag, is_attack_player, amount, 1)
 	
 	cekajici_presuny.append({
 		"from": from_id,
@@ -796,6 +948,8 @@ func zpracuj_tah_armad():
 		await _ukaz_bitevni_popup("Hlášení z fronty", celkovy_report)
 		
 	get_tree().call_group("duchove_armad", "queue_free")
+	_vymaz_minimalni_ai_presuny()
+	_minimalni_ai_tahy.clear()
 	obsazene_pozice_presunu.clear()
 	trasy_lane_counter.clear()
 
@@ -842,7 +996,6 @@ func _zacni_bitevni_kameru():
 	if _bitevni_kamera_aktivni:
 		return
 	_bitevni_puvodni_pozice = kamera.position
-	_bitevni_puvodni_zoom = kamera.zoom
 	_bitevni_kamera_aktivni = true
 
 func _obnov_bitevni_kameru():
@@ -855,10 +1008,7 @@ func _obnov_bitevni_kameru():
 
 	var t = create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 	t.tween_property(kamera, "position", _bitevni_puvodni_pozice, 0.38)
-	t.parallel().tween_property(kamera, "zoom", _bitevni_puvodni_zoom, 0.38)
 	await t.finished
-	if kamera.has_signal("zoom_zmenen"):
-		kamera.emit_signal("zoom_zmenen", kamera.zoom.x)
 	_bitevni_kamera_aktivni = false
 
 func _ukaz_bitevni_popup_na_provincii(titulek: String, text: String, province_id: int):
@@ -868,18 +1018,12 @@ func _ukaz_bitevni_popup_na_provincii(titulek: String, text: String, province_id
 		return
 
 	var cilova_pozice = Vector2(provinces[province_id]["x"], provinces[province_id]["y"]) + _ziskej_map_offset()
-	var current_zoom_hod = kamera.zoom.x
-	var cilovy_zoom_hod = clamp(lerpf(current_zoom_hod, 0.72, 0.45), 0.62, current_zoom_hod)
-	var cilovy_zoom = Vector2(cilovy_zoom_hod, cilovy_zoom_hod)
 	var vzdalenost = kamera.position.distance_to(cilova_pozice)
 	var delka_preletu = clamp(vzdalenost / 1600.0, 0.18, 0.55)
 
 	var t1 = create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	t1.tween_property(kamera, "position", cilova_pozice, delka_preletu)
-	t1.parallel().tween_property(kamera, "zoom", cilovy_zoom, delka_preletu)
 	await t1.finished
-	if kamera.has_signal("zoom_zmenen"):
-		kamera.emit_signal("zoom_zmenen", kamera.zoom.x)
 
 	await _ukaz_bitevni_popup(titulek, text)
 
