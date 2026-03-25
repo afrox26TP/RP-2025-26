@@ -22,6 +22,7 @@ const AI_DECLARE_WAR_MIN_ATTACK_FORCE := 1800
 # Diplomacy
 var valky: Dictionary = {}
 var cekajici_kapitulace: Array = []
+var cekajici_mirove_nabidky: Array = []
 
 var zpracovava_se_tah: bool = false
 var _core_state_cache: Dictionary = {}
@@ -43,6 +44,32 @@ func jsou_ve_valce(tag1: String, tag2: String) -> bool:
 	var klic2 = tag2 + "_" + tag1
 	return valky.has(klic1) or valky.has(klic2)
 
+func vycisti_stat_po_kapitulaci(tag: String):
+	var target = tag.strip_edges().to_upper()
+	if target == "":
+		return
+
+	var valky_klice = valky.keys().duplicate()
+	for klic in valky_klice:
+		var txt = str(klic)
+		if txt.begins_with(target + "_") or txt.ends_with("_" + target):
+			valky.erase(klic)
+
+	for i in range(cekajici_kapitulace.size() - 1, -1, -1):
+		var obr = str(cekajici_kapitulace[i].get("obrance", "")).strip_edges().to_upper()
+		var uto = str(cekajici_kapitulace[i].get("utocnik", "")).strip_edges().to_upper()
+		if obr == target or uto == target:
+			cekajici_kapitulace.remove_at(i)
+
+	for i in range(cekajici_mirove_nabidky.size() - 1, -1, -1):
+		var from_tag = str(cekajici_mirove_nabidky[i].get("from", "")).strip_edges().to_upper()
+		var to_tag = str(cekajici_mirove_nabidky[i].get("to", "")).strip_edges().to_upper()
+		if from_tag == target or to_tag == target:
+			cekajici_mirove_nabidky.remove_at(i)
+
+	ai_kasy.erase(target)
+	_core_state_cache.erase(target)
+
 func vyhlasit_valku(utocnik: String, obrance: String):
 	if jsou_ve_valce(utocnik, obrance): return
 	
@@ -57,6 +84,124 @@ func vyhlasit_valku(utocnik: String, obrance: String):
 		var map_loader = _get_map_loader()
 		if map_loader and map_loader.has_method("_ukaz_bitevni_popup"):
 			await map_loader._ukaz_bitevni_popup("DIPLOMACIE", msg)
+
+func nabidnout_mir(tag1: String, tag2: String):
+	var cisty_tag1 = tag1.strip_edges().to_upper()
+	var cisty_tag2 = tag2.strip_edges().to_upper()
+
+	if cisty_tag1 == "" or cisty_tag2 == "" or cisty_tag1 == cisty_tag2:
+		return
+	if not jsou_ve_valce(cisty_tag1, cisty_tag2):
+		return
+	if je_mirova_nabidka_cekajici(cisty_tag1, cisty_tag2):
+		return
+
+	cekajici_mirove_nabidky.append({
+		"from": cisty_tag1,
+		"to": cisty_tag2,
+		"turn": aktualni_kolo
+	})
+
+	print("Mirova nabidka odeslana: %s -> %s" % [cisty_tag1, cisty_tag2])
+
+func je_mirova_nabidka_cekajici(odesilatel: String, prijemce: String) -> bool:
+	var from_tag = odesilatel.strip_edges().to_upper()
+	var to_tag = prijemce.strip_edges().to_upper()
+	for nabidka in cekajici_mirove_nabidky:
+		if str(nabidka.get("from", "")).strip_edges().to_upper() == from_tag and str(nabidka.get("to", "")).strip_edges().to_upper() == to_tag:
+			return true
+	return false
+
+func _uzavri_mir_mezi(tag1: String, tag2: String):
+	var cisty_tag1 = tag1.strip_edges().to_upper()
+	var cisty_tag2 = tag2.strip_edges().to_upper()
+	var klic1 = cisty_tag1 + "_" + cisty_tag2
+	var klic2 = cisty_tag2 + "_" + cisty_tag1
+
+	valky.erase(klic1)
+	valky.erase(klic2)
+
+	for i in range(cekajici_kapitulace.size() - 1, -1, -1):
+		var obr = str(cekajici_kapitulace[i].get("obrance", "")).strip_edges().to_upper()
+		var uto = str(cekajici_kapitulace[i].get("utocnik", "")).strip_edges().to_upper()
+		var stejna_dvojice = (obr == cisty_tag1 and uto == cisty_tag2) or (obr == cisty_tag2 and uto == cisty_tag1)
+		if stejna_dvojice:
+			cekajici_kapitulace.remove_at(i)
+
+func _ma_aktivni_tlak_na_kapitulaci(obrance: String, utocnik: String) -> bool:
+	var obr_tag = obrance.strip_edges().to_upper()
+	var uto_tag = utocnik.strip_edges().to_upper()
+	for zaznam in cekajici_kapitulace:
+		if str(zaznam.get("obrance", "")).strip_edges().to_upper() == obr_tag and str(zaznam.get("utocnik", "")).strip_edges().to_upper() == uto_tag:
+			return true
+	return false
+
+func _spocitej_silu_statu(tag: String) -> int:
+	var hledany = tag.strip_edges().to_upper()
+	if hledany == "":
+		return 0
+	var sila := 0
+	for p_id in map_data:
+		var d = map_data[p_id]
+		if str(d.get("owner", "")).strip_edges().to_upper() == hledany:
+			sila += int(d.get("soldiers", 0))
+	return sila
+
+func _ma_ai_prijmout_mir(prijemce: String, odesilatel: String) -> bool:
+	var prij = prijemce.strip_edges().to_upper()
+	var ode = odesilatel.strip_edges().to_upper()
+
+	var sila_prijemce = float(max(1, _spocitej_silu_statu(prij)))
+	var sila_odesilatele = float(max(1, _spocitej_silu_statu(ode)))
+	var pomer = sila_prijemce / sila_odesilatele
+
+	var chance := 0.45
+	if pomer < 0.8:
+		chance += 0.35
+	elif pomer < 1.0:
+		chance += 0.15
+	elif pomer > 1.4:
+		chance -= 0.20
+
+	if _ma_aktivni_tlak_na_kapitulaci(prij, ode):
+		chance += 0.30
+	if _ma_aktivni_tlak_na_kapitulaci(ode, prij):
+		chance -= 0.20
+
+	chance = clamp(chance, 0.05, 0.95)
+	return randf() < chance
+
+func _vyhodnot_mirove_nabidky_pred_ai():
+	if cekajici_mirove_nabidky.is_empty():
+		return
+
+	var map_loader = _get_map_loader()
+	var nabidky = cekajici_mirove_nabidky.duplicate()
+	cekajici_mirove_nabidky.clear()
+
+	for nabidka in nabidky:
+		var odesilatel = str(nabidka.get("from", "")).strip_edges().to_upper()
+		var prijemce = str(nabidka.get("to", "")).strip_edges().to_upper()
+		if odesilatel == "" or prijemce == "":
+			continue
+		if not jsou_ve_valce(odesilatel, prijemce):
+			continue
+
+		# This evaluation runs in AI phase, so only AI recipients are resolved now.
+		if prijemce == hrac_stat or prijemce == "SEA":
+			continue
+
+		if _ma_ai_prijmout_mir(prijemce, odesilatel):
+			_uzavri_mir_mezi(odesilatel, prijemce)
+			var ok_msg = "Mirova nabidka prijata: %s a %s uzavrely mir." % [odesilatel, prijemce]
+			print(ok_msg)
+			if (odesilatel == hrac_stat or prijemce == hrac_stat) and map_loader and map_loader.has_method("_ukaz_bitevni_popup"):
+				await map_loader._ukaz_bitevni_popup("DIPLOMACIE", ok_msg)
+		else:
+			var no_msg = "Mirova nabidka odmitnuta: %s odmitlo mir se statem %s." % [prijemce, odesilatel]
+			print(no_msg)
+			if (odesilatel == hrac_stat or prijemce == hrac_stat) and map_loader and map_loader.has_method("_ukaz_bitevni_popup"):
+				await map_loader._ukaz_bitevni_popup("DIPLOMACIE", no_msg)
 
 func zaregistruj_obsazeni_hlavniho_mesta(obrance: String, utocnik: String, capital_province_id: int):
 	if obrance == "" or utocnik == "" or obrance == utocnik:
@@ -247,6 +392,9 @@ func zpracuj_tah_ai():
 	var map_loader = _get_map_loader()
 	if not map_loader or map_data.is_empty(): return
 	_core_state_cache.clear()
+
+	# Evaluate pending peace offers before AI plans any attacks.
+	await _vyhodnot_mirove_nabidky_pred_ai()
 		
 	var cena_za_vojaka = 0.01
 

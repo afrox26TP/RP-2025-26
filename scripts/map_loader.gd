@@ -930,6 +930,7 @@ func zpracuj_tah_armad():
 						"province_id": to_id
 					})
 					
+	celkovy_report = _zpracuj_automaticke_kapitulace(celkovy_report)
 	celkovy_report = _zpracuj_odlozene_kapitulace(celkovy_report)
 	aktualizuj_ikony_armad()
 
@@ -1027,13 +1028,128 @@ func _ukaz_bitevni_popup_na_provincii(titulek: String, text: String, province_id
 
 	await _ukaz_bitevni_popup(titulek, text)
 
+func _ziskej_reprezentaci_statu(tag: String) -> Dictionary:
+	var hledany = tag.strip_edges().to_upper()
+	for p_id in provinces.keys():
+		if str(provinces[p_id].get("owner", "")).strip_edges().to_upper() == hledany:
+			return {
+				"country_name": str(provinces[p_id].get("country_name", hledany)),
+				"ideology": str(provinces[p_id].get("ideology", ""))
+			}
+	return {
+		"country_name": hledany,
+		"ideology": ""
+	}
+
+func _kapituluj_stat_rozdelenim(cilovy_stat: String, fallback_vitez: String = "") -> Dictionary:
+	var target_owner = cilovy_stat.strip_edges().to_upper()
+	var winner = fallback_vitez.strip_edges().to_upper()
+	if target_owner == "":
+		return {"provedeno": false, "okupanti": {}}
+
+	var source_data := {}
+	if winner != "":
+		source_data = _ziskej_reprezentaci_statu(winner)
+
+	var sprite = $Sprite2D
+	var prevedeno = 0
+	var okupanti: Dictionary = {}
+	var ma_core = false
+
+	for p_id in provinces.keys():
+		var p = provinces[p_id]
+		var core_owner = str(p.get("core_owner", "")).strip_edges().to_upper()
+		if core_owner != target_owner:
+			continue
+		ma_core = true
+
+		var current_owner = str(p.get("owner", "")).strip_edges().to_upper()
+		if current_owner == target_owner:
+			if winner == "":
+				return {"provedeno": false, "okupanti": {}}
+			current_owner = winner
+			p["owner"] = winner
+			p["country_name"] = str(source_data.get("country_name", winner))
+			p["ideology"] = str(source_data.get("ideology", ""))
+			prevedeno += 1
+			if sprite and sprite.has_method("dobyt_provincii"):
+				sprite.dobyt_provincii(p_id, winner)
+
+		if current_owner != "" and current_owner != "SEA":
+			p["core_owner"] = current_owner
+			okupanti[current_owner] = int(okupanti.get(current_owner, 0)) + 1
+
+		if bool(p.get("is_capital", false)):
+			p["is_capital"] = false
+			var labels = get_node_or_null("ProvinceLabels")
+			if labels:
+				for lbl in labels.get_children():
+					if lbl.get("province_id") == p_id:
+						lbl.set("is_capital", false)
+						var f = lbl.find_child("Flag", true, false)
+						if f:
+							f.hide()
+
+	if not ma_core:
+		return {"provedeno": false, "okupanti": {}}
+
+	if sprite and sprite.has_method("aktualizuj_mapovy_mod"):
+		sprite.aktualizuj_mapovy_mod("political", provinces)
+
+	return {
+		"provedeno": true,
+		"prevedeno": prevedeno,
+		"okupanti": okupanti
+	}
+
+func _zpracuj_automaticke_kapitulace(celkovy_report: String) -> String:
+	var kandidati: Dictionary = {}
+	for p_id in provinces.keys():
+		var core_owner = str(provinces[p_id].get("core_owner", "")).strip_edges().to_upper()
+		if core_owner == "" or core_owner == "SEA":
+			continue
+		kandidati[core_owner] = true
+
+	for target_owner in kandidati.keys():
+		var ma_vlastni_uzemi = false
+		var ma_okupovane_core = false
+		for p_id in provinces.keys():
+			var p = provinces[p_id]
+			if str(p.get("core_owner", "")).strip_edges().to_upper() != target_owner:
+				continue
+			var p_owner = str(p.get("owner", "")).strip_edges().to_upper()
+			if p_owner == target_owner:
+				ma_vlastni_uzemi = true
+			else:
+				ma_okupovane_core = true
+
+		if ma_vlastni_uzemi or not ma_okupovane_core:
+			continue
+
+		var vysledek = _kapituluj_stat_rozdelenim(target_owner, "")
+		if not bool(vysledek.get("provedeno", false)):
+			continue
+
+		if GameManager.has_method("vycisti_stat_po_kapitulaci"):
+			GameManager.vycisti_stat_po_kapitulaci(target_owner)
+
+		var okupanti: Dictionary = vysledek.get("okupanti", {})
+		var hrac = GameManager.hrac_stat
+		var hrac_zapojen = (target_owner == hrac) or okupanti.has(hrac)
+		if hrac_zapojen:
+			var casti: Array = []
+			for okupant in okupanti.keys():
+				casti.append("%s: %d" % [okupant, int(okupanti[okupant])])
+			celkovy_report += "💥 AUTOMATICKÁ KAPITULACE: %s ztratilo všechna neokupovaná území. Rozdělení dle okupace: %s.\n\n" % [target_owner, ", ".join(casti)]
+
+	return celkovy_report
+
 func _zpracuj_odlozene_kapitulace(celkovy_report: String) -> String:
 	var hotove_kapitulace = GameManager.vyhodnot_odlozene_kapitulace()
 	if hotove_kapitulace.is_empty():
 		return celkovy_report
 
 	var hrac = GameManager.hrac_stat
-	var sprite = $Sprite2D
 
 	for zaznam in hotove_kapitulace:
 		var target_owner = str(zaznam.get("obrance", "")).strip_edges().to_upper()
@@ -1041,39 +1157,19 @@ func _zpracuj_odlozene_kapitulace(celkovy_report: String) -> String:
 		if target_owner == "" or owner == "" or target_owner == owner:
 			continue
 
-		var source_country_name = owner
-		var source_ideology = ""
-		for p_id in provinces.keys():
-			if str(provinces[p_id].get("owner", "")).strip_edges().to_upper() == owner:
-				source_country_name = str(provinces[p_id].get("country_name", owner))
-				source_ideology = str(provinces[p_id].get("ideology", ""))
-				break
+		var vysledek = _kapituluj_stat_rozdelenim(target_owner, owner)
+		if not bool(vysledek.get("provedeno", false)):
+			continue
 
-		var prevedeno = 0
-		for p_id in provinces.keys():
-			if str(provinces[p_id].get("owner", "")).strip_edges().to_upper() == target_owner:
-				provinces[p_id]["owner"] = owner
-				provinces[p_id]["core_owner"] = owner
-				provinces[p_id]["country_name"] = source_country_name
-				provinces[p_id]["ideology"] = source_ideology
-				provinces[p_id]["is_capital"] = false
-				if sprite and sprite.has_method("dobyt_provincii"):
-					sprite.dobyt_provincii(p_id, owner)
-				prevedeno += 1
+		if GameManager.has_method("vycisti_stat_po_kapitulaci"):
+			GameManager.vycisti_stat_po_kapitulaci(target_owner)
 
-		# Remove occupation hatching only on the capitulated country's former core,
-		# and only for the winner that forced capitulation.
-		for p_id in provinces.keys():
-			var p_core_owner = str(provinces[p_id].get("core_owner", "")).strip_edges().to_upper()
-			var p_owner = str(provinces[p_id].get("owner", "")).strip_edges().to_upper()
-			if p_core_owner == target_owner and p_owner == owner:
-				provinces[p_id]["core_owner"] = owner
-
-		if sprite and sprite.has_method("aktualizuj_mapovy_mod"):
-			sprite.aktualizuj_mapovy_mod("political", provinces)
-
-		if prevedeno > 0 and (owner == hrac or target_owner == hrac):
-			celkovy_report += "💥 KAPITULACE: %s udrželo hlavní město státu %s celé jedno kolo. Stát %s kapituloval.\n\n" % [owner, target_owner, target_owner]
+		if owner == hrac or target_owner == hrac:
+			var okupanti: Dictionary = vysledek.get("okupanti", {})
+			var casti: Array = []
+			for okupant in okupanti.keys():
+				casti.append("%s: %d" % [okupant, int(okupanti[okupant])])
+			celkovy_report += "💥 KAPITULACE: %s udrželo hlavní město státu %s celé jedno kolo. Rozdělení dle okupace: %s.\n\n" % [owner, target_owner, ", ".join(casti)]
 
 	return celkovy_report
 

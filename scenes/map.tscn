@@ -201,6 +201,10 @@ theme_override_constants/separation = 15
 layout_mode = 2
 text = "Vyhlasit valku"
 
+[node name="ProposePeaceButton" type="Button" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=119482377]
+layout_mode = 2
+text = "Nabidnout mir"
+
 [node name="TopBar" type="CanvasLayer" parent="." unique_id=1318765703]
 script = ExtResource("10_blm8a")
 

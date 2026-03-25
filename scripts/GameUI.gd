@@ -15,6 +15,7 @@ extends CanvasLayer
 # --- NEW: Action nodes ---
 @onready var action_separator = $OverviewPanel/VBoxContainer/ActionSeparator
 @onready var declare_war_btn = $OverviewPanel/VBoxContainer/DeclareWarButton
+@onready var propose_peace_btn = $OverviewPanel/VBoxContainer/ProposePeaceButton
 
 # Store the currently viewed country tag
 var current_viewed_tag: String = ""
@@ -43,6 +44,8 @@ func _ready():
 	# Automatically connect the button signal if it exists
 	if declare_war_btn and not declare_war_btn.pressed.is_connected(_on_declare_war_button_pressed):
 		declare_war_btn.pressed.connect(_on_declare_war_button_pressed)
+	if propose_peace_btn and not propose_peace_btn.pressed.is_connected(_on_propose_peace_button_pressed):
+		propose_peace_btn.pressed.connect(_on_propose_peace_button_pressed)
 
 func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 	if data.is_empty():
@@ -98,25 +101,16 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 		gdp_pc_label.text = "HDP na osobu: N/A"
 		
 	# --- NEW: DIPLOMACY UI LOGIC ---
-	if action_separator and declare_war_btn:
+	if action_separator and declare_war_btn and propose_peace_btn:
 		if owner == GameManager.hrac_stat:
 			# Hide actions if looking at our own country
 			action_separator.hide()
 			declare_war_btn.hide()
+			propose_peace_btn.hide()
 		else:
 			# Show actions for other countries
 			action_separator.show()
-			declare_war_btn.show()
-			
-			# Check war status from GameManager
-			if GameManager.jsou_ve_valce(GameManager.hrac_stat, owner):
-				declare_war_btn.text = "VE VÁLCE"
-				declare_war_btn.disabled = true
-				declare_war_btn.modulate = Color(1, 0.5, 0.5) # Red tint
-			else:
-				declare_war_btn.text = "Vyhlásit válku"
-				declare_war_btn.disabled = false
-				declare_war_btn.modulate = Color(1, 1, 1) # Normal color
+			_aktualizuj_diplomacii_tlacitka(owner)
 	
 	panel.show()
 
@@ -141,9 +135,34 @@ func _on_declare_war_button_pressed():
 		
 	# Declare war via GameManager
 	GameManager.vyhlasit_valku(GameManager.hrac_stat, current_viewed_tag)
-	
-	# Update button visually immediately
-	if declare_war_btn:
-		declare_war_btn.text = "VE VÁLCE"
+	_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
+
+func _on_propose_peace_button_pressed():
+	if current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat:
+		return
+
+	GameManager.nabidnout_mir(GameManager.hrac_stat, current_viewed_tag)
+	_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
+
+func _aktualizuj_diplomacii_tlacitka(owner: String):
+	if not declare_war_btn or not propose_peace_btn:
+		return
+
+	if GameManager.jsou_ve_valce(GameManager.hrac_stat, owner):
+		declare_war_btn.text = "VE VALCE"
 		declare_war_btn.disabled = true
 		declare_war_btn.modulate = Color(1, 0.5, 0.5)
+		declare_war_btn.show()
+
+		var ceka_na_odpoved = GameManager.je_mirova_nabidka_cekajici(GameManager.hrac_stat, owner)
+		propose_peace_btn.text = "Nabidka odeslana" if ceka_na_odpoved else "Nabidnout mir"
+		propose_peace_btn.disabled = ceka_na_odpoved
+		propose_peace_btn.modulate = Color(1, 1, 1)
+		propose_peace_btn.show()
+	else:
+		declare_war_btn.text = "Vyhlasit valku"
+		declare_war_btn.disabled = false
+		declare_war_btn.modulate = Color(1, 1, 1)
+		declare_war_btn.show()
+
+		propose_peace_btn.hide()
