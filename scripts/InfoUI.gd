@@ -43,6 +43,7 @@ func _ready():
 	popup_stavba.clear()
 	popup_stavba.add_item("Civilní továrna (150 mil.)", 0)
 	popup_stavba.add_item("Zbrojovka (200 mil.)", 1)
+	popup_stavba.add_item("Přístav (250 mil.)", 2)
 	popup_stavba.id_pressed.connect(_on_stavba_vybrana)
 	popup_stavba.about_to_popup.connect(_posun_stavba_menu)
 
@@ -79,13 +80,17 @@ func zobraz_data(data: Dictionary):
 	aktualni_provincie_id = data.get("id", -1)
 	
 	var owner = str(data.get("owner", "")).strip_edges().to_upper()
+	var armada_owner = str(data.get("army_owner", "")).strip_edges().to_upper()
 	var core_owner = str(data.get("core_owner", owner)).strip_edges().to_upper()
 	var je_more = (owner == "SEA")
 	var je_moje = (owner == GameManager.hrac_stat)
+	var je_moje_armada_na_mori = (je_more and armada_owner == GameManager.hrac_stat and int(data.get("soldiers", 0)) > 0)
 	var vojaci = int(data.get("soldiers", 0))
 	
 	id_label.text = "Provincie: " + str(data.get("province_name", "Neznamo"))
-	if core_owner != "" and core_owner != owner:
+	if je_more and armada_owner != "":
+		owner_label.text = "Vlastnik: SEA (námořní armáda: %s)" % armada_owner
+	elif core_owner != "" and core_owner != owner:
 		owner_label.text = "Vlastnik: %s (okupace, core: %s)" % [owner, core_owner]
 	else:
 		owner_label.text = "Vlastnik: " + owner
@@ -95,7 +100,14 @@ func zobraz_data(data: Dictionary):
 		recruit_label.hide()
 		gdp_label.hide()
 		income_label.hide()
-		soldiers_label.hide()
+		if vojaci > 0:
+			soldiers_label.show()
+			if armada_owner != "":
+				soldiers_label.text = "Flotila (%s): %s mužů" % [armada_owner, _formatuj_cislo(vojaci)]
+			else:
+				soldiers_label.text = "Flotila: " + _formatuj_cislo(vojaci) + " mužů"
+		else:
+			soldiers_label.hide()
 	else:
 		pop_label.show()
 		recruit_label.show()
@@ -119,20 +131,36 @@ func zobraz_data(data: Dictionary):
 		else:
 			income_label.hide()
 
-	if je_moje and not je_more:
-		if GameManager.provincie_cooldowny.has(aktualni_provincie_id):
-			var zbyva_kol = GameManager.provincie_cooldowny[aktualni_provincie_id]["zbyva"]
+	if (je_moje and not je_more) or je_moje_armada_na_mori:
+		var muze_stavet = (je_moje and not je_more)
+		btn_stavet.visible = muze_stavet
+		btn_verbovat.visible = muze_stavet
+		btn_likvidovat.visible = muze_stavet
+
+		if not muze_stavet:
 			btn_stavet.disabled = true
-			btn_stavet.text = "Staví se (%d kol)" % zbyva_kol
-		else:
-			btn_stavet.disabled = false
 			btn_stavet.text = "Stavět"
+			btn_verbovat.disabled = true
+			btn_likvidovat.disabled = true
+
+		if muze_stavet:
+			if GameManager.provincie_cooldowny.has(aktualni_provincie_id):
+				var zbyva_kol = GameManager.provincie_cooldowny[aktualni_provincie_id]["zbyva"]
+				btn_stavet.disabled = true
+				btn_stavet.text = "Staví se (%d kol)" % zbyva_kol
+			elif GameManager.provincie_ma_pristav(aktualni_provincie_id):
+				btn_stavet.disabled = false
+				btn_stavet.text = "Stavět (Přístav postaven)"
+			else:
+				btn_stavet.disabled = false
+				btn_stavet.text = "Stavět"
 			
 		if btn_presunout:
 			btn_presunout.visible = (vojaci > 0)
 			
-		btn_verbovat.disabled = false
-		btn_likvidovat.disabled = false
+		if muze_stavet:
+			btn_verbovat.disabled = false
+			btn_likvidovat.disabled = false
 		action_menu.show()
 	else:
 		action_menu.hide()
@@ -188,7 +216,16 @@ func _on_potvrdit_presun():
 
 func _on_stavba_vybrana(id: int):
 	if aktualni_provincie_id == -1: return
-	var cena = 150.0 if id == 0 else 200.0
+	var cena = 150.0
+	if id == 1:
+		cena = 200.0
+	elif id == 2:
+		cena = 250.0
+
+	if id == 2:
+		if not GameManager.muze_postavit_pristav(aktualni_provincie_id):
+			_ukaz_stavbu_info("PŘÍSTAV", "Přístav lze stavět pouze ve vlastní pobřežní provincii sousedící s mořem a jen jednou.")
+			return
 	
 	if GameManager.statni_kasa >= cena:
 		GameManager.statni_kasa -= cena
@@ -196,6 +233,16 @@ func _on_stavba_vybrana(id: int):
 		btn_stavet.disabled = true
 		btn_stavet.text = "Staví se (3 kola)"
 		GameManager.kolo_zmeneno.emit()
+	else:
+		_ukaz_stavbu_info("NEDOSTATEK PENĚZ", "Na tuto stavbu nemáš dost peněz.")
+
+func _ukaz_stavbu_info(title: String, text: String):
+	var map_loader = get_tree().current_scene.find_child("Map", true, false)
+	if not map_loader and get_parent().has_method("_ukaz_bitevni_popup"):
+		map_loader = get_parent()
+
+	if map_loader and map_loader.has_method("_ukaz_bitevni_popup"):
+		map_loader._ukaz_bitevni_popup(title, text)
 
 func _on_verbovat_pressed():
 	if aktualni_provincie_id == -1: return

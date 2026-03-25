@@ -55,6 +55,41 @@ func _get_map_loader():
 func _normalizuj_tag(tag: String) -> String:
 	return tag.strip_edges().to_upper()
 
+func _je_more_provincie(prov_id: int) -> bool:
+	if not map_data.has(prov_id):
+		return false
+	var d = map_data[prov_id]
+	var owner = str(d.get("owner", "")).strip_edges().to_upper()
+	var typ = str(d.get("type", "")).strip_edges().to_lower()
+	return owner == "SEA" or typ == "sea"
+
+func je_pobrezni_provincie(prov_id: int) -> bool:
+	if not map_data.has(prov_id):
+		return false
+	if _je_more_provincie(prov_id):
+		return false
+	for n_id in map_data[prov_id].get("neighbors", []):
+		if _je_more_provincie(int(n_id)):
+			return true
+	return false
+
+func provincie_ma_pristav(prov_id: int) -> bool:
+	if not map_data.has(prov_id):
+		return false
+	return bool(map_data[prov_id].get("has_port", false))
+
+func muze_postavit_pristav(prov_id: int) -> bool:
+	if not map_data.has(prov_id):
+		return false
+	var owner = str(map_data[prov_id].get("owner", "")).strip_edges().to_upper()
+	if owner != hrac_stat:
+		return false
+	if provincie_cooldowny.has(prov_id):
+		return false
+	if provincie_ma_pristav(prov_id):
+		return false
+	return je_pobrezni_provincie(prov_id)
+
 func _klic_vztahu(tag_a: String, tag_b: String) -> String:
 	return "%s|%s" % [_normalizuj_tag(tag_a), _normalizuj_tag(tag_b)]
 
@@ -602,6 +637,8 @@ func _aplikuj_bonus(prov_id: int, typ: int):
 		map_data[prov_id]["gdp"] += 10.0 
 	elif typ == 1: 
 		map_data[prov_id]["recruitable_population"] += 2000 
+	elif typ == 2:
+		map_data[prov_id]["has_port"] = true
 
 # Bankruptcy logic
 func _vyres_bankrot(tag: String):

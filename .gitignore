@@ -11,6 +11,4 @@
 .godot/
 
 # Exporty map
-map_data/*.png.import
-map_data/*.png
 opengs_export/

@@ -166,19 +166,20 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary):
 		if is_targeting:
 			var from_id = root.vybrana_armada_od
 			var to_id = int(prov_id)
+			var cil_vybran = false
 			
-			if from_id != to_id and "provinces" in root:
-				var is_neighbor = to_id in root.provinces[from_id].get("neighbors", [])
-				
-				if is_neighbor:
+			if from_id != to_id and root.has_method("je_platny_cil_presunu"):
+				if root.je_platny_cil_presunu(from_id, to_id):
 					var info_ui = get_tree().current_scene.find_child("InfoUI", true, false)
 					if info_ui and info_ui.has_method("zobraz_presun_slider"):
 						info_ui.zobraz_presun_slider(from_id, to_id, root.vybrana_armada_max)
+						cil_vybran = true
 			
-			# Reset state and stop normal click processing
-			root.ceka_na_cil_presunu = false
-			Input.set_default_cursor_shape(Input.CURSOR_ARROW)
-			material.set_shader_parameter("is_target_hover", false)
+			# Reset state only when a valid target is chosen.
+			if cil_vybran:
+				root.ceka_na_cil_presunu = false
+				Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+				material.set_shader_parameter("is_target_hover", false)
 			return
 		# -----------------------------------------------
 		
@@ -212,9 +213,11 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary):
 		# Limit hovering strictly to neighbors if we are in target mode
 		if is_targeting:
 			var from_id = root.vybrana_armada_od
-			var is_neighbor = int(prov_id) in root.provinces[from_id].get("neighbors", [])
+			var is_valid_target = false
+			if root.has_method("je_platny_cil_presunu"):
+				is_valid_target = root.je_platny_cil_presunu(from_id, int(prov_id))
 			
-			if not is_neighbor or int(prov_id) == from_id:
+			if not is_valid_target or int(prov_id) == from_id:
 				_vymaz_hover()
 				Input.set_default_cursor_shape(Input.CURSOR_ARROW)
 				return 
