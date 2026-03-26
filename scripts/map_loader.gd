@@ -35,7 +35,13 @@ var _naval_reachable_cache: Dictionary = {}
 
 func nastav_mapovy_mod(mod: String):
 	aktualni_mapovy_mod = mod
+	_aktualizuj_aktivni_mapovy_mod()
 	_aplikuj_viditelnost_ukazatelu_jednotek()
+
+func _aktualizuj_aktivni_mapovy_mod() -> void:
+	var sprite = $Sprite2D
+	if sprite and sprite.has_method("aktualizuj_mapovy_mod"):
+		sprite.aktualizuj_mapovy_mod(aktualni_mapovy_mod, provinces)
 
 func _jsou_ukazatele_jednotek_povolene() -> bool:
 	return aktualni_mapovy_mod == "political"
@@ -63,6 +69,17 @@ func _ziskej_map_offset() -> Vector2:
 		return sprite.position
 	return Vector2.ZERO
 
+func _je_validni_lokalni_pozice(pos: Vector2) -> bool:
+	if pos == Vector2.ZERO:
+		return false
+	var sprite = $Sprite2D
+	if not sprite or not sprite.texture:
+		return true
+	var size = sprite.texture.get_size()
+	if size.x <= 0.0 or size.y <= 0.0:
+		return true
+	return pos.x >= 0.0 and pos.y >= 0.0 and pos.x <= size.x and pos.y <= size.y
+
 func _ziskej_lokalni_pozici_provincie(prov_id: int) -> Vector2:
 	if not provinces.has(prov_id):
 		return Vector2.ZERO
@@ -70,11 +87,19 @@ func _ziskej_lokalni_pozici_provincie(prov_id: int) -> Vector2:
 	var d = provinces[prov_id]
 	var x = float(d.get("x", 0.0))
 	var y = float(d.get("y", 0.0))
-	if x != 0.0 or y != 0.0:
-		return Vector2(x, y)
+	var data_pos = Vector2(x, y)
+	if _je_validni_lokalni_pozice(data_pos):
+		return data_pos
+
+	# Fallback to mask centroid if province coordinates are missing/invalid in source data.
+	var mask_pos = _ziskej_lokalni_pozici_z_masky_provincie(prov_id)
+	if mask_pos != Vector2.ZERO:
+		if _je_more_provincie(prov_id):
+			_sea_position_cache[prov_id] = mask_pos
+		return mask_pos
 
 	if not _je_more_provincie(prov_id):
-		return Vector2(x, y)
+		return data_pos
 
 	# Sea provinces usually do not have explicit x/y in data, so use mask centroid first.
 	var sea_mask_pos = _ziskej_lokalni_pozici_z_masky_provincie(prov_id)
@@ -750,6 +775,7 @@ func aktualizuj_ikony_armad():
 	_aplikuj_viditelnost_ukazatelu_jednotek()
 	if _port_icons_dirty:
 		aktualizuj_ikony_pristavu()
+	_aktualizuj_aktivni_mapovy_mod()
 	_aktualizuj_indikatory_kapitulace()
 
 # --- CORE MOVEMENT LOGIC ---
@@ -866,6 +892,16 @@ func _ziskej_profil_statu(owner_tag: String) -> Dictionary:
 		if _je_more_provincie(p_id):
 			continue
 		var d = provinces[p_id]
+		if str(d.get("owner", "")).strip_edges().to_upper() == owner_tag and str(d.get("core_owner", "")).strip_edges().to_upper() == owner_tag:
+			return {
+				"country_name": str(d.get("country_name", owner_tag)),
+				"ideology": str(d.get("ideology", ""))
+			}
+
+	for p_id in provinces.keys():
+		if _je_more_provincie(p_id):
+			continue
+		var d = provinces[p_id]
 		if str(d.get("owner", "")).strip_edges().to_upper() == owner_tag:
 			return {
 				"country_name": str(d.get("country_name", owner_tag)),
@@ -892,14 +928,15 @@ func je_platny_cil_presunu(from_id: int, to_id: int) -> bool:
 		var reachable_sea_from_land = _ziskej_dostupna_moreni_pole(from_id)
 		return reachable_sea_from_land.has(to_id)
 
-	# 2) Move/attack from sea: fleet can travel through connected sea area and disembark on connected coast.
+	# 2) Move/attack from sea: fleet can travel through connected sea area.
+	# Disembark remains strict: only to land directly adjacent to the current sea tile.
 	if from_is_sea:
 		var reachable_sea = _ziskej_dostupna_moreni_pole(from_id)
 		if to_is_sea:
 			return reachable_sea.has(to_id)
 		if not _je_pobrezni_provincie(to_id):
 			return false
-		return _ma_pobrezni_pristup_k_dostupnemu_mori(to_id, reachable_sea)
+		return is_adjacent
 
 	# 3) Land-to-land move remains local (adjacent only).
 	return is_adjacent
@@ -1175,7 +1212,6 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int, vykreslit_
 
 # Process all movements and await player confirmation for their battles
 func zpracuj_tah_armad():
-	var hrac = GameManager.hrac_stat
 	var tahy_k_zpracovani = cekajici_presuny.duplicate()
 	cekajici_presuny.clear()
 	
@@ -1196,40 +1232,26 @@ func zpracuj_tah_armad():
 			if utok1["from"] == utok2["to"] and utok1["to"] == utok2["from"]:
 				# Make sure they are enemies
 				if utok1["owner"] != utok2["owner"]:
-					var hrac_zapojen = (utok1["owner"] == hrac or utok2["owner"] == hrac)
+					var hrac_zapojen = GameManager.je_lidsky_stat(str(utok1["owner"])) or GameManager.je_lidsky_stat(str(utok2["owner"]))
 					
 					if utok1["amount"] > utok2["amount"]:
 						utok1["amount"] -= utok2["amount"]
 						utok2["amount"] = 0 # Destroyed
 						if hrac_zapojen:
-							if utok1["owner"] == hrac:
-								bitevni_udalosti.append({
-									"title": "Polní bitva",
-									"text": "⚔️ Naše armáda smetla nepřátelské síly (%s) během přesunu." % utok2["owner"],
-									"province_id": int(utok1["to"])
-								})
-							else:
-								bitevni_udalosti.append({
-									"title": "Polní bitva",
-									"text": "💀 Naše útočící armáda byla zničena silnějšími jednotkami nepřítele (%s)." % utok1["owner"],
-									"province_id": int(utok2["to"])
-								})
+							bitevni_udalosti.append({
+								"title": "Polní bitva",
+								"text": "⚔️ Armáda %s smetla při přesunu armádu %s." % [str(utok1["owner"]), str(utok2["owner"])],
+								"province_id": int(utok1["to"])
+							})
 					elif utok2["amount"] > utok1["amount"]:
 						utok2["amount"] -= utok1["amount"]
 						utok1["amount"] = 0 # Destroyed
 						if hrac_zapojen:
-							if utok2["owner"] == hrac:
-								bitevni_udalosti.append({
-									"title": "Polní bitva",
-									"text": "⚔️ Naše armáda smetla nepřátelské síly (%s) během přesunu." % utok1["owner"],
-									"province_id": int(utok2["to"])
-								})
-							else:
-								bitevni_udalosti.append({
-									"title": "Polní bitva",
-									"text": "💀 Naše útočící armáda byla zničena silnějšími jednotkami nepřítele (%s)." % utok2["owner"],
-									"province_id": int(utok1["to"])
-								})
+							bitevni_udalosti.append({
+								"title": "Polní bitva",
+								"text": "⚔️ Armáda %s smetla při přesunu armádu %s." % [str(utok2["owner"]), str(utok1["owner"])],
+								"province_id": int(utok2["to"])
+							})
 						break # utok1 is dead, stop checking it
 					else:
 						# Mutual annihilation
@@ -1261,7 +1283,7 @@ func zpracuj_tah_armad():
 			target_owner = str(provinces[to_id]["owner"]).strip_edges().to_upper()
 		var jmeno_provincie = str(provinces[to_id].get("province_name", "Neznámá provincie"))
 		
-		var hrac_zapojen = (attacker_tag == hrac or target_owner == hrac)
+		var hrac_zapojen = GameManager.je_lidsky_stat(attacker_tag) or GameManager.je_lidsky_stat(target_owner)
 
 		if target_is_sea:
 			var obranci_more = int(provinces[to_id].get("soldiers", 0))
@@ -1294,6 +1316,9 @@ func zpracuj_tah_armad():
 			provinces[to_id]["soldiers"] = prezivsi
 			
 			var was_capital = provinces[to_id].get("is_capital", false)
+			var capital_core_owner = str(provinces[to_id].get("core_owner", "")).strip_edges().to_upper()
+			if capital_core_owner == "" or capital_core_owner == "SEA":
+				capital_core_owner = target_owner
 			
 			# Update properties for the conquered province
 			provinces[to_id]["owner"] = attacker_tag
@@ -1301,17 +1326,7 @@ func zpracuj_tah_armad():
 			var profil_utocnika = _ziskej_profil_statu(attacker_tag)
 			provinces[to_id]["country_name"] = str(profil_utocnika.get("country_name", attacker_tag))
 			provinces[to_id]["ideology"] = str(profil_utocnika.get("ideology", ""))
-			provinces[to_id]["is_capital"] = false 
 			provinces[to_id]["army_owner"] = attacker_tag
-			
-			# Remove flag from map
-			var labels = get_node_or_null("ProvinceLabels")
-			if labels:
-				for lbl in labels.get_children():
-					if lbl.get("province_id") == to_id:
-						lbl.set("is_capital", false)
-						var f = lbl.find_child("Flag", true, false)
-						if f: f.hide()
 			
 			var sprite = $Sprite2D
 			if sprite and sprite.has_method("dobyt_provincii"):
@@ -1319,27 +1334,29 @@ func zpracuj_tah_armad():
 				
 			# Delayed capitulation: state capitulates only if attacker keeps capital for a full turn.
 			if was_capital:
-				GameManager.zaregistruj_obsazeni_hlavniho_mesta(target_owner, attacker_tag, to_id)
+				# Register only when attacker occupies a foreign capital, not when owner recaptures own capital.
+				if attacker_tag != capital_core_owner and capital_core_owner != "" and capital_core_owner != "SEA":
+					GameManager.zaregistruj_obsazeni_hlavniho_mesta(capital_core_owner, attacker_tag, to_id)
 				if hrac_zapojen:
-					bitevni_udalosti.append({
-						"title": "Hlavní město obsazeno",
-						"text": "🏛️ %s dobylo hlavní město státu %s. Kapitulace nastane jen pokud město udrží celé jedno kolo." % [attacker_tag, target_owner],
-						"province_id": to_id
-					})
+					if attacker_tag == capital_core_owner:
+						bitevni_udalosti.append({
+							"title": "Hlavní město znovudobyto",
+							"text": "🏛️ %s znovu dobylo své hlavní město." % attacker_tag,
+							"province_id": to_id
+						})
+					else:
+						bitevni_udalosti.append({
+							"title": "Hlavní město obsazeno",
+							"text": "🏛️ %s dobylo hlavní město státu %s. Kapitulace nastane jen pokud město udrží celé jedno kolo." % [attacker_tag, capital_core_owner],
+							"province_id": to_id
+						})
 			
 			if hrac_zapojen and not was_capital:
-				if attacker_tag == hrac:
-					bitevni_udalosti.append({
-						"title": "Vítězství",
-						"text": "✅ Dobyli jsme %s. Přežilo %d našich vojáků." % [jmeno_provincie, prezivsi],
-						"province_id": to_id
-					})
-				else:
-					bitevni_udalosti.append({
-						"title": "Ztráta území",
-						"text": "💀 Nepřítel (%s) dobyl provincii %s. Padli všichni obránci." % [attacker_tag, jmeno_provincie],
-						"province_id": to_id
-					})
+				bitevni_udalosti.append({
+					"title": "Změna fronty",
+					"text": "⚔️ %s dobylo provincii %s. Přežilo %d útočníků." % [attacker_tag, jmeno_provincie, prezivsi],
+					"province_id": to_id
+				})
 					
 		else:
 			var prezivsi = obranci - utocnici
@@ -1347,18 +1364,11 @@ func zpracuj_tah_armad():
 			provinces[to_id]["army_owner"] = target_owner
 			
 			if hrac_zapojen:
-				if target_owner == hrac:
-					bitevni_udalosti.append({
-						"title": "Obrana",
-						"text": "🛡️ Ubránili jsme %s. Zbylo nám %d vojáků." % [jmeno_provincie, prezivsi],
-						"province_id": to_id
-					})
-				else:
-					bitevni_udalosti.append({
-						"title": "Útok selhal",
-						"text": "❌ Naše invaze do %s byla odražena." % [jmeno_provincie],
-						"province_id": to_id
-					})
+				bitevni_udalosti.append({
+					"title": "Obrana",
+					"text": "🛡️ Obrana provincie %s uspěla. %s udrželo území s %d vojáky." % [jmeno_provincie, target_owner, prezivsi],
+					"province_id": to_id
+				})
 					
 	celkovy_report = _zpracuj_automaticke_kapitulace(celkovy_report)
 	celkovy_report = _zpracuj_odlozene_kapitulace(celkovy_report)
@@ -1458,6 +1468,13 @@ func _ukaz_bitevni_popup_na_provincii(titulek: String, text: String, province_id
 func _ziskej_reprezentaci_statu(tag: String) -> Dictionary:
 	var hledany = tag.strip_edges().to_upper()
 	for p_id in provinces.keys():
+		if str(provinces[p_id].get("owner", "")).strip_edges().to_upper() == hledany and str(provinces[p_id].get("core_owner", "")).strip_edges().to_upper() == hledany:
+			return {
+				"country_name": str(provinces[p_id].get("country_name", hledany)),
+				"ideology": str(provinces[p_id].get("ideology", ""))
+			}
+
+	for p_id in provinces.keys():
 		if str(provinces[p_id].get("owner", "")).strip_edges().to_upper() == hledany:
 			return {
 				"country_name": str(provinces[p_id].get("country_name", hledany)),
@@ -1474,14 +1491,15 @@ func _kapituluj_stat_rozdelenim(cilovy_stat: String, fallback_vitez: String = ""
 	if target_owner == "":
 		return {"provedeno": false, "okupanti": {}}
 
-	var source_data := {}
-	if winner != "":
-		source_data = _ziskej_reprezentaci_statu(winner)
-
 	var sprite = $Sprite2D
-	var prevedeno = 0
+	var labels = get_node_or_null("ProvinceLabels")
+	var prevedeno := 0
 	var okupanti: Dictionary = {}
 	var ma_core = false
+	var profile_cache: Dictionary = {}
+
+	if winner != "":
+		profile_cache[winner] = _ziskej_reprezentaci_statu(winner)
 
 	for p_id in provinces.keys():
 		var p = provinces[p_id]
@@ -1496,19 +1514,29 @@ func _kapituluj_stat_rozdelenim(cilovy_stat: String, fallback_vitez: String = ""
 				return {"provedeno": false, "okupanti": {}}
 			current_owner = winner
 			p["owner"] = winner
-			p["country_name"] = str(source_data.get("country_name", winner))
-			p["ideology"] = str(source_data.get("ideology", ""))
 			prevedeno += 1
-			if sprite and sprite.has_method("dobyt_provincii"):
-				sprite.dobyt_provincii(p_id, winner)
+
+		if current_owner == "" or current_owner == "SEA":
+			if winner != "":
+				current_owner = winner
+				p["owner"] = winner
+				prevedeno += 1
 
 		if current_owner != "" and current_owner != "SEA":
+			if not profile_cache.has(current_owner):
+				profile_cache[current_owner] = _ziskej_reprezentaci_statu(current_owner)
+			var profile = profile_cache[current_owner]
+			p["country_name"] = str(profile.get("country_name", current_owner))
+			p["ideology"] = str(profile.get("ideology", ""))
 			p["core_owner"] = current_owner
+			p["army_owner"] = current_owner if int(p.get("soldiers", 0)) > 0 else ""
 			okupanti[current_owner] = int(okupanti.get(current_owner, 0)) + 1
+		else:
+			p["soldiers"] = 0
+			p["army_owner"] = ""
 
 		if bool(p.get("is_capital", false)):
 			p["is_capital"] = false
-			var labels = get_node_or_null("ProvinceLabels")
 			if labels:
 				for lbl in labels.get_children():
 					if lbl.get("province_id") == p_id:
@@ -1517,11 +1545,59 @@ func _kapituluj_stat_rozdelenim(cilovy_stat: String, fallback_vitez: String = ""
 						if f:
 							f.hide()
 
+	# If defeated state controls foreign cores, immediately return those provinces.
+	for p_id in provinces.keys():
+		var p = provinces[p_id]
+		var owner_now = str(p.get("owner", "")).strip_edges().to_upper()
+		if owner_now != target_owner:
+			continue
+
+		var core_owner = str(p.get("core_owner", "")).strip_edges().to_upper()
+		var reclaim_owner = ""
+		if core_owner != "" and core_owner != "SEA" and core_owner != target_owner:
+			reclaim_owner = core_owner
+		elif winner != "":
+			reclaim_owner = winner
+
+		if reclaim_owner == "":
+			if _je_more_provincie(p_id):
+				p["owner"] = "SEA"
+			p["soldiers"] = 0
+			p["army_owner"] = ""
+			continue
+
+		p["owner"] = reclaim_owner
+		if not profile_cache.has(reclaim_owner):
+			profile_cache[reclaim_owner] = _ziskej_reprezentaci_statu(reclaim_owner)
+		var reclaim_profile = profile_cache[reclaim_owner]
+		p["country_name"] = str(reclaim_profile.get("country_name", reclaim_owner))
+		p["ideology"] = str(reclaim_profile.get("ideology", ""))
+		p["army_owner"] = reclaim_owner if int(p.get("soldiers", 0)) > 0 else ""
+		okupanti[reclaim_owner] = int(okupanti.get(reclaim_owner, 0)) + 1
+		prevedeno += 1
+
+	# Final safety cleanup so defeated state cannot keep ghost armies.
+	for p_id in provinces.keys():
+		var p = provinces[p_id]
+		if _je_more_provincie(p_id):
+			if str(p.get("army_owner", "")).strip_edges().to_upper() == target_owner:
+				p["soldiers"] = 0
+				p["army_owner"] = ""
+			continue
+
+		var owner_land = str(p.get("owner", "")).strip_edges().to_upper()
+		var army_owner_land = str(p.get("army_owner", "")).strip_edges().to_upper()
+		if army_owner_land == target_owner:
+			p["army_owner"] = owner_land if int(p.get("soldiers", 0)) > 0 else ""
+		if owner_land == target_owner:
+			p["soldiers"] = 0
+			p["army_owner"] = ""
+
 	if not ma_core:
 		return {"provedeno": false, "okupanti": {}}
 
 	if sprite and sprite.has_method("aktualizuj_mapovy_mod"):
-		sprite.aktualizuj_mapovy_mod("political", provinces)
+		sprite.aktualizuj_mapovy_mod(aktualni_mapovy_mod, provinces)
 
 	return {
 		"provedeno": true,
@@ -1561,8 +1637,12 @@ func _zpracuj_automaticke_kapitulace(celkovy_report: String) -> String:
 			GameManager.vycisti_stat_po_kapitulaci(target_owner)
 
 		var okupanti: Dictionary = vysledek.get("okupanti", {})
-		var hrac = GameManager.hrac_stat
-		var hrac_zapojen = (target_owner == hrac) or okupanti.has(hrac)
+		var hrac_zapojen = GameManager.je_lidsky_stat(target_owner)
+		if not hrac_zapojen:
+			for okupant in okupanti.keys():
+				if GameManager.je_lidsky_stat(str(okupant)):
+					hrac_zapojen = true
+					break
 		if hrac_zapojen:
 			var casti: Array = []
 			for okupant in okupanti.keys():
@@ -1575,8 +1655,6 @@ func _zpracuj_odlozene_kapitulace(celkovy_report: String) -> String:
 	var hotove_kapitulace = GameManager.vyhodnot_odlozene_kapitulace()
 	if hotove_kapitulace.is_empty():
 		return celkovy_report
-
-	var hrac = GameManager.hrac_stat
 
 	for zaznam in hotove_kapitulace:
 		var target_owner = str(zaznam.get("obrance", "")).strip_edges().to_upper()
@@ -1591,7 +1669,7 @@ func _zpracuj_odlozene_kapitulace(celkovy_report: String) -> String:
 		if GameManager.has_method("vycisti_stat_po_kapitulaci"):
 			GameManager.vycisti_stat_po_kapitulaci(target_owner)
 
-		if winner_tag == hrac or target_owner == hrac:
+		if GameManager.je_lidsky_stat(winner_tag) or GameManager.je_lidsky_stat(target_owner):
 			var okupanti: Dictionary = vysledek.get("okupanti", {})
 			var casti: Array = []
 			for okupant in okupanti.keys():

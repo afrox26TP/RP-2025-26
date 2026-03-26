@@ -106,7 +106,7 @@ func _unhandled_input(event):
 			elif event.keycode == KEY_C:
 				var vybrana_provincie = material.get_shader_parameter("selected_id")
 				if vybrana_provincie != null and float(vybrana_provincie) >= 0.0:
-					dobyt_provincii(int(vybrana_provincie), GameManager.hrac_stat)
+					dobyt_provincii(int(vybrana_provincie), GameManager.hrac_stat, true)
 					
 			elif event.keycode == KEY_SPACE:
 				GameManager.ukonci_kolo()
@@ -329,13 +329,35 @@ func aktualizuj_mapovy_mod(mod: String, province_db: Dictionary):
 	data_texture.update(data_image)
 	occupation_texture.update(occupation_image)
 
-func dobyt_provincii(prov_id: int, novy_vlastnik: String):
+func dobyt_provincii(prov_id: int, novy_vlastnik: String, z_dev_nastroje: bool = false):
 	var root = get_parent()
 	if not root or not "provinces" in root: return
 	
 	if root.provinces.has(prov_id):
-		root.provinces[prov_id]["owner"] = novy_vlastnik
-		aktualizuj_mapovy_mod("political", root.provinces)
+		var puvodni_vlastnik = str(root.provinces[prov_id].get("owner", "")).strip_edges().to_upper()
+		var novy = novy_vlastnik.strip_edges().to_upper()
+		var was_capital = bool(root.provinces[prov_id].get("is_capital", false))
+		if novy == "" or puvodni_vlastnik == novy:
+			return
+
+		root.provinces[prov_id]["owner"] = novy
+		if z_dev_nastroje and str(root.provinces[prov_id].get("type", "")).strip_edges().to_lower() != "sea":
+			# Dev capture has no battle resolution, so remove stale garrison ownership.
+			root.provinces[prov_id]["soldiers"] = 0
+			root.provinces[prov_id]["army_owner"] = ""
+
+		if root.has_method("_ziskej_profil_statu"):
+			var profil = root._ziskej_profil_statu(novy)
+			root.provinces[prov_id]["country_name"] = str(profil.get("country_name", novy))
+			root.provinces[prov_id]["ideology"] = str(profil.get("ideology", ""))
+
+		if z_dev_nastroje and was_capital and puvodni_vlastnik != "" and puvodni_vlastnik != "SEA" and novy != "SEA":
+			GameManager.zaregistruj_obsazeni_hlavniho_mesta(puvodni_vlastnik, novy, prov_id)
+
+		var mod = "political"
+		if "aktualni_mapovy_mod" in root:
+			mod = str(root.aktualni_mapovy_mod)
+		aktualizuj_mapovy_mod(mod, root.provinces)
 		print("Provincie ", prov_id, " byla dobyta státem ", novy_vlastnik)
 		
 		var labels_manager = root.get_node_or_null("CountryLabelsManager")
