@@ -37,6 +37,10 @@ extends CanvasLayer
 
 var presun_od_id: int = -1
 var presun_do_id: int = -1
+var presun_path: Array = []
+var hromadny_vyber_ids: Array = []
+var je_hromadny_rezim: bool = false
+var je_hromadne_verbovani: bool = false
 # ---------------------------------------------------
 
 var aktualni_provincie_id: int = -1
@@ -85,6 +89,12 @@ func schovej_se():
 	if move_popup: move_popup.hide()
 	if likvidace_popup: likvidace_popup.hide()
 	aktualni_provincie_id = -1
+	hromadny_vyber_ids.clear()
+	je_hromadny_rezim = false
+	je_hromadne_verbovani = false
+	var map_loader = get_tree().current_scene.find_child("Map", true, false)
+	if map_loader and map_loader.has_method("vycisti_hromadny_vyber_provincii"):
+		map_loader.vycisti_hromadny_vyber_provincii()
 
 func zobraz_data(data: Dictionary):
 	if data.is_empty():
@@ -92,6 +102,9 @@ func zobraz_data(data: Dictionary):
 		return
 	
 	$PanelContainer.show()
+	je_hromadny_rezim = false
+	je_hromadne_verbovani = false
+	hromadny_vyber_ids.clear()
 	recruit_popup.hide() 
 	if move_popup: move_popup.hide()
 	if likvidace_popup: likvidace_popup.hide()
@@ -261,6 +274,17 @@ func _on_potvrdit_likvidaci():
 	GameManager.kolo_zmeneno.emit()
 
 func _on_presunout_pressed():
+	if je_hromadny_rezim:
+		if hromadny_vyber_ids.is_empty():
+			return
+		var map_loader_bulk = get_tree().current_scene.find_child("Map", true, false)
+		if not map_loader_bulk and get_parent().has_method("aktivuj_rezim_hromadneho_presunu"):
+			map_loader_bulk = get_parent()
+		if map_loader_bulk and map_loader_bulk.has_method("aktivuj_rezim_hromadneho_presunu"):
+			if map_loader_bulk.aktivuj_rezim_hromadneho_presunu(hromadny_vyber_ids):
+				schovej_se()
+		return
+
 	if aktualni_provincie_id == -1: return
 	
 	var prov_data = GameManager.map_data.get(aktualni_provincie_id, {})
@@ -277,9 +301,10 @@ func _on_presunout_pressed():
 	schovej_se()
 
 # --- NEW: Zobrazí slider po úspěšném kliknutí na souseda v mapě ---
-func zobraz_presun_slider(from_id: int, to_id: int, max_troops: int):
+func zobraz_presun_slider(from_id: int, to_id: int, max_troops: int, path: Array = []):
 	presun_od_id = from_id
 	presun_do_id = to_id
+	presun_path = path.duplicate()
 	
 	move_slider.min_value = 1
 	move_slider.max_value = max_troops
@@ -306,10 +331,14 @@ func _on_potvrdit_presun():
 		map_loader = get_parent()
 		
 	if map_loader and map_loader.has_method("zaregistruj_presun_armady"):
-		map_loader.zaregistruj_presun_armady(presun_od_id, presun_do_id, amount)
+		map_loader.zaregistruj_presun_armady(presun_od_id, presun_do_id, amount, true, presun_path)
 # ------------------------------------------------------------------
 
 func _on_stavba_vybrana(id: int):
+	if je_hromadny_rezim:
+		_postav_hromadne(id)
+		return
+
 	if aktualni_provincie_id == -1: return
 	var cena = 150.0
 	if id == 1:
@@ -340,6 +369,10 @@ func _ukaz_stavbu_info(title: String, text: String):
 		map_loader._ukaz_bitevni_popup(title, text)
 
 func _on_verbovat_pressed():
+	if je_hromadny_rezim:
+		_otevri_hromadne_verbovani()
+		return
+
 	if aktualni_provincie_id == -1: return
 	
 	var prov_data = GameManager.map_data[aktualni_provincie_id]
@@ -361,10 +394,17 @@ func _on_verbovat_pressed():
 
 func _on_slider_zmenen(hodnota: float):
 	var cena = hodnota * cena_za_vojaka
-	recruit_info.text = "Mužů: %d\nCena: %.2f mil." % [int(hodnota), cena]
+	if je_hromadne_verbovani:
+		recruit_info.text = "Hromadně: %d mužů\nCena: %.2f mil." % [int(hodnota), cena]
+	else:
+		recruit_info.text = "Mužů: %d\nCena: %.2f mil." % [int(hodnota), cena]
 	btn_potvrdit.disabled = (hodnota == 0)
 
 func _on_potvrdit_verbovani():
+	if je_hromadne_verbovani:
+		_potvrd_hromadne_verbovani()
+		return
+
 	var pocet_vojaku = int(recruit_slider.value)
 	var celkova_cena = pocet_vojaku * cena_za_vojaka
 	var prov_data = GameManager.map_data[aktualni_provincie_id]
@@ -380,6 +420,15 @@ func _on_potvrdit_verbovani():
 	GameManager.kolo_zmeneno.emit()
 
 func _on_kolo_zmeneno():
+	if je_hromadny_rezim:
+		var map_loader = get_tree().current_scene.find_child("Map", true, false)
+		if map_loader and map_loader.has_method("ziskej_hromadne_vybrane_provincie"):
+			var ids = map_loader.ziskej_hromadne_vybrane_provincie()
+			if ids.size() > 1:
+				zobraz_hromadna_data(ids, GameManager.map_data)
+				return
+		return
+
 	if aktualni_provincie_id == -1:
 		return
 	if not $PanelContainer.visible:
@@ -396,3 +445,186 @@ func _formatuj_cislo(cislo: int) -> String:
 		if i > 0 and (delka - i) % 3 == 0: vysledek += " "
 		vysledek += text_cisla[i]
 	return vysledek
+
+func zobraz_hromadna_data(ids: Array, all_provinces: Dictionary):
+	if ids.size() <= 1:
+		if ids.size() == 1 and all_provinces.has(int(ids[0])):
+			zobraz_data(all_provinces[int(ids[0])])
+		else:
+			schovej_se()
+		return
+
+	je_hromadny_rezim = true
+	je_hromadne_verbovani = false
+	hromadny_vyber_ids = ids.duplicate()
+	$PanelContainer.show()
+	action_menu.show()
+	recruit_popup.hide()
+	if move_popup: move_popup.hide()
+	if likvidace_popup: likvidace_popup.hide()
+
+	var vlastni_pozemni: Array = []
+	var vlastni_s_armadou: Array = []
+	var total_pop := 0
+	var total_recruits := 0
+	var total_gdp := 0.0
+	var total_soldiers := 0
+	for raw_id in hromadny_vyber_ids:
+		var pid = int(raw_id)
+		if not all_provinces.has(pid):
+			continue
+		var d = all_provinces[pid]
+		var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
+		var je_more = (owner_tag == "SEA")
+		if owner_tag == GameManager.hrac_stat and not je_more:
+			vlastni_pozemni.append(pid)
+			total_pop += int(d.get("population", 0))
+			total_recruits += int(d.get("recruitable_population", 0))
+			total_gdp += float(d.get("gdp", 0.0))
+		var army_owner = str(d.get("army_owner", "")).strip_edges().to_upper()
+		var moje_more_armada = (je_more and army_owner == GameManager.hrac_stat)
+		if (owner_tag == GameManager.hrac_stat and int(d.get("soldiers", 0)) > 0) or moje_more_armada:
+			vlastni_s_armadou.append(pid)
+			total_soldiers += int(d.get("soldiers", 0))
+
+	id_label.text = "Hromadný výběr: %d provincií" % hromadny_vyber_ids.size()
+	owner_label.text = "Akce pro stát: %s" % GameManager.hrac_stat
+	pop_label.show()
+	recruit_label.show()
+	gdp_label.show()
+	income_label.hide()
+	soldiers_label.show()
+	pop_label.text = "Celkem populace: %s" % _formatuj_cislo(total_pop)
+	recruit_label.text = "Celkem rekruti: %s" % _formatuj_cislo(total_recruits)
+	gdp_label.text = "Celkové HDP: %.2f mld. USD" % total_gdp
+	soldiers_label.text = "Celkem vojáků: %s" % _formatuj_cislo(total_soldiers)
+
+	btn_likvidovat.hide()
+	btn_stavet.show()
+	btn_verbovat.show()
+	btn_presunout.show()
+	btn_stavet.disabled = vlastni_pozemni.is_empty()
+	btn_verbovat.disabled = vlastni_pozemni.is_empty()
+	btn_presunout.disabled = vlastni_s_armadou.is_empty()
+	btn_stavet.text = "Stavět"
+
+func _ziskej_hromadne_vlastni_pozemni() -> Array:
+	var out: Array = []
+	for raw_id in hromadny_vyber_ids:
+		var pid = int(raw_id)
+		if not GameManager.map_data.has(pid):
+			continue
+		var d = GameManager.map_data[pid]
+		var owner = str(d.get("owner", "")).strip_edges().to_upper()
+		if owner == GameManager.hrac_stat and owner != "SEA":
+			out.append(pid)
+	return out
+
+func _ziskej_hromadne_zdroje_s_armadou() -> Array:
+	var out: Array = []
+	for raw_id in hromadny_vyber_ids:
+		var pid = int(raw_id)
+		if not GameManager.map_data.has(pid):
+			continue
+		var d = GameManager.map_data[pid]
+		var owner = str(d.get("owner", "")).strip_edges().to_upper()
+		var army_owner = str(d.get("army_owner", "")).strip_edges().to_upper()
+		var je_more = (owner == "SEA")
+		if int(d.get("soldiers", 0)) <= 0:
+			continue
+		if owner == GameManager.hrac_stat or (je_more and army_owner == GameManager.hrac_stat):
+			out.append(pid)
+	return out
+
+func _otevri_hromadne_verbovani():
+	var pozemni = _ziskej_hromadne_vlastni_pozemni()
+	if pozemni.is_empty():
+		_ukaz_stavbu_info("HROMADNÉ VERBOVÁNÍ", "Ve výběru není žádná tvoje pozemní provincie.")
+		return
+
+	var total_recruits := 0
+	for pid in pozemni:
+		total_recruits += int(GameManager.map_data[pid].get("recruitable_population", 0))
+	var max_za_penize = int(GameManager.statni_kasa / cena_za_vojaka)
+	var max_mozno = min(total_recruits, max_za_penize)
+	if max_mozno <= 0:
+		if total_recruits <= 0:
+			_ukaz_stavbu_info("HROMADNÉ VERBOVÁNÍ", "Vybrané provincie nemají dostupné rekruty.")
+		else:
+			_ukaz_stavbu_info("HROMADNÉ VERBOVÁNÍ", "Nedostatek peněz pro hromadné verbování.")
+		return
+
+	je_hromadne_verbovani = true
+	recruit_slider.min_value = 0
+	recruit_slider.max_value = max_mozno
+	recruit_slider.value = max_mozno
+	_on_slider_zmenen(max_mozno)
+
+	var rect = Rect2i()
+	rect.position = Vector2i(btn_verbovat.global_position.x, btn_verbovat.global_position.y - recruit_popup.size.y - 5)
+	rect.size = recruit_popup.size
+	recruit_popup.popup(rect)
+
+func _potvrd_hromadne_verbovani():
+	var remaining = int(recruit_slider.value)
+	if remaining <= 0:
+		recruit_popup.hide()
+		return
+
+	var pozemni = _ziskej_hromadne_vlastni_pozemni()
+	var total_recruited := 0
+	for pid in pozemni:
+		if remaining <= 0:
+			break
+		var d = GameManager.map_data[pid]
+		var free_recruits = int(d.get("recruitable_population", 0))
+		if free_recruits <= 0:
+			continue
+		var add = min(remaining, free_recruits)
+		d["recruitable_population"] = free_recruits - add
+		d["soldiers"] = int(d.get("soldiers", 0)) + add
+		remaining -= add
+		total_recruited += add
+
+	if total_recruited > 0:
+		GameManager.statni_kasa -= float(total_recruited) * cena_za_vojaka
+	else:
+		_ukaz_stavbu_info("HROMADNÉ VERBOVÁNÍ", "Verbování se neprovedlo (0 přijatých vojáků).")
+
+	je_hromadne_verbovani = false
+	recruit_popup.hide()
+	GameManager.kolo_zmeneno.emit()
+
+func _postav_hromadne(building_id: int):
+	var pozemni = _ziskej_hromadne_vlastni_pozemni()
+	if pozemni.is_empty():
+		return
+
+	var cena = 150.0
+	if building_id == 1:
+		cena = 200.0
+	elif building_id == 2:
+		cena = 250.0
+
+	var postaveno := 0
+	var preskoceno := 0
+	for pid in pozemni:
+		if GameManager.statni_kasa < cena:
+			break
+
+		if GameManager.provincie_cooldowny.has(pid):
+			preskoceno += 1
+			continue
+
+		if building_id == 2 and not GameManager.muze_postavit_pristav(pid):
+			preskoceno += 1
+			continue
+
+		GameManager.statni_kasa -= cena
+		GameManager.provincie_cooldowny[pid] = {"zbyva": 3, "budova": building_id}
+		postaveno += 1
+
+	if postaveno > 0:
+		GameManager.kolo_zmeneno.emit()
+
+	_ukaz_stavbu_info("HROMADNÁ STAVBA", "Postaveno: %d | Přeskočeno: %d" % [postaveno, preskoceno])

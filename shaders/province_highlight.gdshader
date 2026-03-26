@@ -3,6 +3,7 @@ shader_type canvas_item;
 uniform sampler2D id_map : filter_nearest;
 uniform sampler2D data_texture : filter_nearest; 
 uniform sampler2D occupation_texture : filter_nearest;
+uniform sampler2D selected_multi_texture : filter_nearest;
 uniform float total_provinces = 5000.0;
 
 uniform float hovered_id = -1.0;
@@ -26,6 +27,7 @@ void fragment() {
 		float data_x = (prov_id + 0.5) / total_provinces;
 		vec4 mode_color = texture(data_texture, vec2(data_x, 0.5));
 		vec4 occupation_flag = texture(occupation_texture, vec2(data_x, 0.5));
+		vec4 multi_selected_flag = texture(selected_multi_texture, vec2(data_x, 0.5));
 
 		vec4 base_color = mode_color.a < 0.1 ? texture(TEXTURE, UV) : mode_color;
 
@@ -40,7 +42,7 @@ void fragment() {
 		}
 
 		// --- SELECTION AND HOVER LOGIC ---
-		if (has_selected && abs(prov_id - selected_id) < 0.1) {
+		if ((has_selected && abs(prov_id - selected_id) < 0.1) || multi_selected_flag.a > 0.5) {
 			// Cyan for selected province
 			COLOR.rgb = base_color.a < 0.1 ? vec3(0.0, 1.0, 1.0) : mix(base_color.rgb, vec3(0.0, 1.0, 1.0), 0.5);
 			COLOR.a = 0.8; 

@@ -16,12 +16,17 @@ var _province_pixel_center_cache: Dictionary = {}
 var vybrana_armada_od: int = -1
 var vybrana_armada_max: int = 0
 var ceka_na_cil_presunu: bool = false
+var ceka_na_hromadny_cil_presunu: bool = false
+var hromadny_presun_zdroje: Array = []
+var hromadne_vybrane_provincie: Array = []
 var cekajici_presuny = []
 var obsazene_pozice_presunu: Array = []
 var trasy_lane_counter: Dictionary = {}
 var _pozastavit_aktualizaci_ikon: bool = false
 var _minimalni_ai_tahy: Dictionary = {}
 var _ai_anim_markery: Array = []
+var _cekajici_anim_markery: Array = []
+var _preview_anim_markery: Array = []
 const MAX_MINIMALNI_AI_CAR := 90
 const AI_MARKER_ATTACK_SPEED := 170.0
 const AI_MARKER_MOVE_SPEED := 130.0
@@ -31,6 +36,8 @@ var aktualni_mapovy_mod: String = "political"
 var _port_icons_dirty: bool = true
 var _naval_reachable_cache_from: int = -1
 var _naval_reachable_cache: Dictionary = {}
+var _preview_path_key: String = ""
+var _hromadny_vyber_overlay_key: String = ""
 # --------------------------------------------------------
 
 func nastav_mapovy_mod(mod: String):
@@ -385,14 +392,24 @@ func _ready():
 	print("[MapInit] done")
 
 func _process(delta: float):
-	if _ai_anim_markery.is_empty():
+	if _ai_anim_markery.is_empty() and _cekajici_anim_markery.is_empty() and _preview_anim_markery.is_empty():
+		set_process(false)
 		return
 
-	for i in range(_ai_anim_markery.size() - 1, -1, -1):
-		var m = _ai_anim_markery[i]
+	_ai_anim_markery = _aktualizuj_anim_markery(_ai_anim_markery, delta)
+	_cekajici_anim_markery = _aktualizuj_anim_markery(_cekajici_anim_markery, delta)
+	_preview_anim_markery = _aktualizuj_anim_markery(_preview_anim_markery, delta)
+
+	if _ai_anim_markery.is_empty() and _cekajici_anim_markery.is_empty() and _preview_anim_markery.is_empty():
+		set_process(false)
+
+func _aktualizuj_anim_markery(markery: Array, delta: float) -> Array:
+	var out = markery
+	for i in range(out.size() - 1, -1, -1):
+		var m = out[i]
 		var node = m.get("node", null)
 		if not is_instance_valid(node):
-			_ai_anim_markery.remove_at(i)
+			out.remove_at(i)
 			continue
 
 		var length = max(1.0, float(m.get("length", 1.0)))
@@ -402,12 +419,59 @@ func _process(delta: float):
 		progress = fposmod(progress, 1.0)
 		m["progress"] = progress
 
-		var start_pos = m.get("start", Vector2.ZERO) as Vector2
-		var dir = m.get("dir", Vector2.RIGHT) as Vector2
-		node.position = start_pos + (dir * progress)
-		_ai_anim_markery[i] = m
+		if m.has("poly_points"):
+			var poly_points: PackedVector2Array = m.get("poly_points", PackedVector2Array())
+			var poly_lengths: PackedFloat32Array = m.get("poly_lengths", PackedFloat32Array())
+			if poly_points.size() < 2 or poly_lengths.size() < 2:
+				out.remove_at(i)
+				node.queue_free()
+				continue
 
-func _pridej_animovany_marker(container: Node2D, start_pos: Vector2, end_pos: Vector2, color: Color, speed: float, phase: float, width: float):
+			var total_len = max(1.0, float(poly_lengths[poly_lengths.size() - 1]))
+			var distance = progress * total_len
+			var sample = _sample_polyline_position(poly_points, poly_lengths, distance)
+			node.position = sample["position"]
+			node.rotation = float(sample["angle"])
+		else:
+			var start_pos = m.get("start", Vector2.ZERO) as Vector2
+			var dir = m.get("dir", Vector2.RIGHT) as Vector2
+			node.position = start_pos + (dir * progress)
+		out[i] = m
+
+	return out
+
+func _sample_polyline_position(points: PackedVector2Array, cumulative_lengths: PackedFloat32Array, distance: float) -> Dictionary:
+	if points.size() < 2 or cumulative_lengths.size() < 2:
+		return {"position": Vector2.ZERO, "angle": 0.0}
+
+	var total_len = float(cumulative_lengths[cumulative_lengths.size() - 1])
+	if total_len <= 0.001:
+		var fallback_dir = points[1] - points[0]
+		return {
+			"position": points[0],
+			"angle": fallback_dir.angle()
+		}
+
+	var d = clamp(distance, 0.0, total_len)
+	var seg_idx = 1
+	while seg_idx < cumulative_lengths.size() and d > float(cumulative_lengths[seg_idx]):
+		seg_idx += 1
+
+	seg_idx = clampi(seg_idx, 1, points.size() - 1)
+	var seg_start = points[seg_idx - 1]
+	var seg_end = points[seg_idx]
+	var seg_from = float(cumulative_lengths[seg_idx - 1])
+	var seg_to = float(cumulative_lengths[seg_idx])
+	var seg_len = max(0.001, seg_to - seg_from)
+	var t = clamp((d - seg_from) / seg_len, 0.0, 1.0)
+	var seg_dir = seg_end - seg_start
+
+	return {
+		"position": seg_start.lerp(seg_end, t),
+		"angle": seg_dir.angle()
+	}
+
+func _pridej_animovany_marker(container: Node2D, marker_store: Array, start_pos: Vector2, end_pos: Vector2, color: Color, speed: float, phase: float, width: float):
 	var dir = end_pos - start_pos
 	var length = dir.length()
 	if length < 0.001:
@@ -431,11 +495,54 @@ func _pridej_animovany_marker(container: Node2D, start_pos: Vector2, end_pos: Ve
 	# Slow down markers on short paths so they do not look too frantic.
 	var speed_scale = clamp(length / 220.0, 0.35, 1.0)
 
-	_ai_anim_markery.append({
+	marker_store.append({
 		"node": marker,
 		"start": start_pos,
 		"dir": dir,
 		"length": length,
+		"speed": speed,
+		"speed_scale": speed_scale,
+		"progress": fposmod(phase, 1.0)
+	})
+
+func _pridej_animovany_marker_po_linii(container: Node2D, marker_store: Array, poly_points: PackedVector2Array, color: Color, speed: float, phase: float, width: float):
+	if poly_points.size() < 2:
+		return
+
+	var cumulative = PackedFloat32Array()
+	cumulative.append(0.0)
+	var total_len := 0.0
+	for i in range(1, poly_points.size()):
+		total_len += poly_points[i - 1].distance_to(poly_points[i])
+		cumulative.append(total_len)
+
+	if total_len < 0.001:
+		return
+
+	var marker = Polygon2D.new()
+	var s = clamp(width * 0.40, 0.75, 1.65)
+	marker.polygon = PackedVector2Array([
+		Vector2(-5.2, -2.2) * s,
+		Vector2(1.4, -2.2) * s,
+		Vector2(1.4, -4.3) * s,
+		Vector2(7.2, 0.0) * s,
+		Vector2(1.4, 4.3) * s,
+		Vector2(1.4, 2.2) * s,
+		Vector2(-5.2, 2.2) * s
+	])
+	marker.color = color
+	container.add_child(marker)
+
+	var speed_scale = clamp(total_len / 220.0, 0.35, 1.0)
+	var sample = _sample_polyline_position(poly_points, cumulative, fposmod(phase, 1.0) * total_len)
+	marker.position = sample["position"]
+	marker.rotation = float(sample["angle"])
+
+	marker_store.append({
+		"node": marker,
+		"poly_points": poly_points,
+		"poly_lengths": cumulative,
+		"length": total_len,
 		"speed": speed,
 		"speed_scale": speed_scale,
 		"progress": fposmod(phase, 1.0)
@@ -592,6 +699,186 @@ func get_province_data_by_color(clicked_color: Color):
 			return provinces[id]
 			
 	return null
+
+func ziskej_hromadne_vybrane_provincie() -> Array:
+	return hromadne_vybrane_provincie.duplicate()
+
+func pridej_hromadny_vyber_provincie(prov_id: int) -> bool:
+	if not je_platna_provincie_pro_hromadny_vyber(prov_id):
+		return false
+	if hromadne_vybrane_provincie.has(prov_id):
+		return false
+	hromadne_vybrane_provincie.append(prov_id)
+	return true
+
+func vycisti_hromadny_vyber_provincii():
+	hromadne_vybrane_provincie.clear()
+	vycisti_hromadny_vyber_overlay()
+
+func vycisti_hromadny_vyber_overlay():
+	_hromadny_vyber_overlay_key = ""
+	var overlay = get_node_or_null("MultiSelectOverlay")
+	if not overlay:
+		return
+	for child in overlay.get_children():
+		child.queue_free()
+
+func vykresli_hromadny_vyber_overlay(ids: Array):
+	if ids.is_empty():
+		vycisti_hromadny_vyber_overlay()
+		return
+
+	var normalized: Array = []
+	for raw_id in ids:
+		var pid = int(raw_id)
+		if provinces.has(pid):
+			normalized.append(pid)
+	if normalized.is_empty():
+		vycisti_hromadny_vyber_overlay()
+		return
+
+	normalized.sort()
+	var key = ""
+	for pid in normalized:
+		key += "%d|" % pid
+	if key == _hromadny_vyber_overlay_key:
+		return
+	_hromadny_vyber_overlay_key = key
+
+	var overlay = get_node_or_null("MultiSelectOverlay")
+	if not overlay:
+		overlay = Node2D.new()
+		overlay.name = "MultiSelectOverlay"
+		overlay.z_index = 27
+		add_child(overlay)
+	else:
+		for child in overlay.get_children():
+			child.queue_free()
+
+	var offset = _ziskej_map_offset()
+	for pid in normalized:
+		var center = _ziskej_map_pozici_provincie(pid, offset)
+
+		var glow = ColorRect.new()
+		glow.size = Vector2(14, 14)
+		glow.pivot_offset = Vector2(7, 7)
+		glow.position = center - Vector2(7, 7)
+		glow.color = Color(1.0, 0.95, 0.55, 0.34)
+		overlay.add_child(glow)
+
+		var ring = Line2D.new()
+		ring.width = 2.0
+		ring.default_color = Color(1.0, 0.98, 0.70, 0.90)
+		ring.antialiased = true
+		var segments = 14
+		var radius = 8.0
+		for i in range(segments + 1):
+			var a = (TAU * float(i)) / float(segments)
+			ring.add_point(center + Vector2(cos(a), sin(a)) * radius)
+		overlay.add_child(ring)
+
+func prepni_hromadny_vyber_provincie(prov_id: int) -> bool:
+	if not je_platna_provincie_pro_hromadny_vyber(prov_id):
+		return false
+
+	if hromadne_vybrane_provincie.has(prov_id):
+		hromadne_vybrane_provincie.erase(prov_id)
+		return false
+
+	hromadne_vybrane_provincie.append(prov_id)
+	return true
+
+func je_platna_provincie_pro_hromadny_vyber(prov_id: int) -> bool:
+	if not provinces.has(prov_id):
+		return false
+
+	var d = provinces[prov_id]
+	var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
+	var armada_owner = str(d.get("army_owner", "")).strip_edges().to_upper()
+	var je_more = _je_more_provincie(prov_id)
+	var je_moje = (owner_tag == GameManager.hrac_stat)
+	var je_moje_more = (je_more and armada_owner == GameManager.hrac_stat)
+	return je_moje or je_moje_more
+
+func aktivuj_rezim_hromadneho_presunu(from_ids: Array) -> bool:
+	hromadny_presun_zdroje.clear()
+	for raw_id in from_ids:
+		var prov_id = int(raw_id)
+		if not provinces.has(prov_id):
+			continue
+		var owner_tag = _ziskej_vlastnika_armady_v_provincii(prov_id)
+		if owner_tag != GameManager.hrac_stat:
+			continue
+		var soldiers = int(provinces[prov_id].get("soldiers", 0))
+		if soldiers <= 0:
+			continue
+		if not hromadny_presun_zdroje.has(prov_id):
+			hromadny_presun_zdroje.append(prov_id)
+
+	if hromadny_presun_zdroje.is_empty():
+		return false
+
+	ceka_na_cil_presunu = false
+	ceka_na_hromadny_cil_presunu = true
+	vycisti_nahled_presunu()
+	return true
+
+func ma_hromadny_platny_cil_presunu(to_id: int) -> bool:
+	if hromadny_presun_zdroje.is_empty():
+		return false
+	for from_id in hromadny_presun_zdroje:
+		var fid = int(from_id)
+		if fid == to_id:
+			continue
+		var path = najdi_nejrychlejsi_cestu_presunu(fid, to_id)
+		if path.size() >= 2:
+			return true
+	return false
+
+func najdi_hromadny_nahled_presunu_k_cili(to_id: int) -> Array:
+	if hromadny_presun_zdroje.is_empty():
+		return []
+
+	var best_path: Array = []
+	var best_len := 1 << 30
+	for from_id in hromadny_presun_zdroje:
+		var fid = int(from_id)
+		if fid == to_id:
+			continue
+		var path = najdi_nejrychlejsi_cestu_presunu(fid, to_id)
+		if path.size() < 2:
+			continue
+		if path.size() < best_len:
+			best_len = path.size()
+			best_path = path
+
+	return best_path
+
+func zaregistruj_hromadny_presun_armad(to_id: int) -> int:
+	if hromadny_presun_zdroje.is_empty():
+		ceka_na_hromadny_cil_presunu = false
+		return 0
+
+	var planned := 0
+	for from_id in hromadny_presun_zdroje:
+		var fid = int(from_id)
+		if fid == to_id:
+			continue
+		if not provinces.has(fid):
+			continue
+		var amount = int(provinces[fid].get("soldiers", 0))
+		if amount <= 0:
+			continue
+		var path = najdi_nejrychlejsi_cestu_presunu(fid, to_id)
+		if path.size() < 2:
+			continue
+		zaregistruj_presun_armady(fid, to_id, amount, true, path)
+		planned += 1
+
+	ceka_na_hromadny_cil_presunu = false
+	hromadny_presun_zdroje.clear()
+	vycisti_nahled_presunu()
+	return planned
 
 func _na_zmenu_zoomu(aktualni_zoom):
 	var labels = get_node_or_null("ProvinceLabels")
@@ -880,12 +1167,181 @@ func _ziskej_pozici_pristavu_v_provincii(prov_id: int) -> Vector2:
 		return center + Vector2(18, 0)
 
 	# Keep port marker placement lightweight and deterministic (no expensive sea centroid lookups).
-	var seed = int(sea_neighbors[0]) * 73 + prov_id * 17
-	var angle = deg_to_rad(float(seed % 360))
+	var seed_value = int(sea_neighbors[0]) * 73 + prov_id * 17
+	var angle = deg_to_rad(float(seed_value % 360))
 	var dir = Vector2(cos(angle), sin(angle))
 	if dir.length() <= 0.001:
 		dir = Vector2.RIGHT
 	return center + dir.normalized() * 12.0
+
+func _ma_nepratelskou_posadku_na_mori(prov_id: int, owner_tag: String) -> bool:
+	if not _je_more_provincie(prov_id):
+		return false
+	var sea_army_owner = str(provinces[prov_id].get("army_owner", "")).strip_edges().to_upper()
+	return sea_army_owner != "" and sea_army_owner != owner_tag
+
+func _je_pruchozi_mezikrok_presunu(prov_id: int, owner_tag: String) -> bool:
+	if not provinces.has(prov_id):
+		return false
+	if _je_more_provincie(prov_id):
+		return not _ma_nepratelskou_posadku_na_mori(prov_id, owner_tag)
+	var prov_owner = str(provinces[prov_id].get("owner", "")).strip_edges().to_upper()
+	return prov_owner == owner_tag
+
+func _ziskej_krokove_sousedy_presunu(from_id: int) -> Array:
+	var sousedi: Array = []
+	if not provinces.has(from_id):
+		return sousedi
+
+	var from_is_sea = _je_more_provincie(from_id)
+	if from_is_sea:
+		var reachable_sea = _ziskej_dostupna_moreni_pole(from_id)
+		for sid in reachable_sea.keys():
+			sousedi.append(int(sid))
+		for n_id in provinces[from_id].get("neighbors", []):
+			var nid = int(n_id)
+			if _je_more_provincie(nid):
+				continue
+			if _je_pobrezni_provincie(nid):
+				sousedi.append(nid)
+	else:
+		for n_id in provinces[from_id].get("neighbors", []):
+			var nid = int(n_id)
+			if not _je_more_provincie(nid):
+				sousedi.append(nid)
+		var reachable_sea_from_land = _ziskej_dostupna_moreni_pole(from_id)
+		for sid in reachable_sea_from_land.keys():
+			sousedi.append(int(sid))
+
+	return sousedi
+
+func najdi_nejrychlejsi_cestu_presunu(from_id: int, to_id: int) -> Array:
+	if from_id == to_id:
+		return []
+	if not provinces.has(from_id) or not provinces.has(to_id):
+		return []
+
+	var owner_tag = _ziskej_vlastnika_armady_v_provincii(from_id)
+	if owner_tag == "":
+		return []
+
+	var queue: Array = [from_id]
+	var visited: Dictionary = {from_id: true}
+	var prev: Dictionary = {}
+	var head := 0
+
+	while head < queue.size():
+		var curr = int(queue[head])
+		head += 1
+
+		for next_id in _ziskej_krokove_sousedy_presunu(curr):
+			var nid = int(next_id)
+			if visited.has(nid):
+				continue
+
+			var je_cil = (nid == to_id)
+			if not je_cil and not _je_pruchozi_mezikrok_presunu(nid, owner_tag):
+				continue
+
+			visited[nid] = true
+			prev[nid] = curr
+
+			if je_cil:
+				var path: Array = [to_id]
+				var step = to_id
+				while prev.has(step):
+					step = int(prev[step])
+					path.push_front(step)
+				if path.size() >= 2 and int(path[0]) == from_id:
+					return path
+				return []
+
+			queue.append(nid)
+
+	return []
+
+func vycisti_nahled_presunu():
+	_preview_path_key = ""
+	_preview_anim_markery.clear()
+	if _ai_anim_markery.is_empty() and _cekajici_anim_markery.is_empty():
+		set_process(false)
+	var overlay = get_node_or_null("MovePathPreviewOverlay")
+	if not overlay:
+		return
+	for child in overlay.get_children():
+		child.queue_free()
+
+func zobraz_nahled_presunu(path: Array):
+	if path.size() < 2:
+		vycisti_nahled_presunu()
+		return
+
+	var key = ""
+	for pid in path:
+		key += "%d>" % int(pid)
+	if key == _preview_path_key:
+		return
+	_preview_path_key = key
+
+	var overlay = get_node_or_null("MovePathPreviewOverlay")
+	if not overlay:
+		overlay = Node2D.new()
+		overlay.name = "MovePathPreviewOverlay"
+		overlay.z_index = 26
+		add_child(overlay)
+	else:
+		for child in overlay.get_children():
+			child.queue_free()
+		_preview_anim_markery.clear()
+
+	var offset = _ziskej_map_offset()
+	var poly_points = PackedVector2Array()
+	for pid in path:
+		var prov_id = int(pid)
+		if not provinces.has(prov_id):
+			continue
+		poly_points.append(_ziskej_map_pozici_provincie(prov_id, offset))
+
+	if poly_points.size() < 2:
+		vycisti_nahled_presunu()
+		return
+
+	var from_id = int(path[0])
+	var to_id = int(path[path.size() - 1])
+	var owner_tag = _ziskej_vlastnika_armady_v_provincii(from_id)
+	var target_owner_tag = ""
+	if provinces.has(to_id):
+		if _je_more_provincie(to_id):
+			target_owner_tag = str(provinces[to_id].get("army_owner", "")).strip_edges().to_upper()
+		else:
+			target_owner_tag = str(provinces[to_id].get("owner", "")).strip_edges().to_upper()
+	var is_attack_preview = (target_owner_tag != "" and owner_tag != "" and owner_tag != target_owner_tag and target_owner_tag != "SEA")
+	var col = _ziskej_barvu_overlay_statu(owner_tag, is_attack_preview)
+	var width = 2.2
+
+	var line = Line2D.new()
+	line.width = max(1.8, width - 0.2)
+	line.default_color = Color(col.r, col.g, col.b, 0.34)
+	line.antialiased = false
+	line.joint_mode = Line2D.LINE_JOINT_ROUND
+	line.begin_cap_mode = Line2D.LINE_CAP_ROUND
+	line.end_cap_mode = Line2D.LINE_CAP_ROUND
+
+	for p in poly_points:
+		line.add_point(p)
+	overlay.add_child(line)
+
+	_pridej_animovany_marker_po_linii(overlay, _preview_anim_markery, poly_points, col, AI_MARKER_MOVE_SPEED, 0.08, width)
+
+	var start_dot = ColorRect.new()
+	start_dot.size = Vector2(6, 6)
+	start_dot.pivot_offset = Vector2(3, 3)
+	start_dot.color = Color(1.0, 1.0, 1.0, 0.95)
+	start_dot.position = poly_points[0] - Vector2(3, 3)
+	overlay.add_child(start_dot)
+
+	if not _preview_anim_markery.is_empty():
+		set_process(true)
 
 func _ziskej_profil_statu(owner_tag: String) -> Dictionary:
 	for p_id in provinces.keys():
@@ -913,33 +1369,7 @@ func _ziskej_profil_statu(owner_tag: String) -> Dictionary:
 	}
 
 func je_platny_cil_presunu(from_id: int, to_id: int) -> bool:
-	if from_id == to_id:
-		return false
-	if not provinces.has(from_id) or not provinces.has(to_id):
-		return false
-
-	var sousede = provinces[from_id].get("neighbors", [])
-	var from_is_sea = _je_more_provincie(from_id)
-	var to_is_sea = _je_more_provincie(to_id)
-	var is_adjacent = (to_id in sousede)
-
-	# 1) Embark: coastal province with port -> adjacent sea.
-	if not from_is_sea and to_is_sea:
-		var reachable_sea_from_land = _ziskej_dostupna_moreni_pole(from_id)
-		return reachable_sea_from_land.has(to_id)
-
-	# 2) Move/attack from sea: fleet can travel through connected sea area.
-	# Disembark remains strict: only to land directly adjacent to the current sea tile.
-	if from_is_sea:
-		var reachable_sea = _ziskej_dostupna_moreni_pole(from_id)
-		if to_is_sea:
-			return reachable_sea.has(to_id)
-		if not _je_pobrezni_provincie(to_id):
-			return false
-		return is_adjacent
-
-	# 3) Land-to-land move remains local (adjacent only).
-	return is_adjacent
+	return najdi_nejrychlejsi_cestu_presunu(from_id, to_id).size() >= 2
 
 func aktualizuj_ikony_pristavu():
 	var container = get_node_or_null("PortContainer")
@@ -1000,6 +1430,7 @@ func aktivuj_rezim_vyberu_cile(from_id: int, max_troops: int):
 	vybrana_armada_max = max_troops
 	ceka_na_cil_presunu = true
 	_invalidate_naval_reachability_cache()
+	vycisti_nahled_presunu()
 	print("Klikni na mapu pro vyber cile presunu.")
 
 func zacni_davkovy_presun():
@@ -1013,8 +1444,19 @@ func ukonci_davkovy_presun():
 
 func _vymaz_minimalni_ai_presuny():
 	_ai_anim_markery.clear()
-	set_process(false)
+	if _cekajici_anim_markery.is_empty():
+		set_process(false)
 	var container = get_node_or_null("AIMoveOverlay")
+	if not container:
+		return
+	for child in container.get_children():
+		child.queue_free()
+
+func _vymaz_indikaci_cekajicich_presunu():
+	_cekajici_anim_markery.clear()
+	if _ai_anim_markery.is_empty():
+		set_process(false)
+	var container = get_node_or_null("QueuedMoveOverlay")
 	if not container:
 		return
 	for child in container.get_children():
@@ -1070,7 +1512,76 @@ func _zobraz_minimalni_presun(from_id: int, to_id: int, owner_tag: String, is_at
 
 	for m in range(marker_count):
 		var phase = (float(m) / float(marker_count)) + 0.12
-		_pridej_animovany_marker(container, start_pos, end_pos, col, speed, phase, width)
+		_pridej_animovany_marker(container, _ai_anim_markery, start_pos, end_pos, col, speed, phase, width)
+
+	if is_attack and count > 1:
+		var cnt = Label.new()
+		cnt.text = "x%d" % count
+		var cnt_pos = start_pos.lerp(end_pos, 0.55) + Vector2(3, -10)
+		cnt.position = Vector2(round(cnt_pos.x), round(cnt_pos.y))
+		cnt.add_theme_font_size_override("font_size", 11)
+		cnt.add_theme_color_override("font_color", Color(col.r, col.g, col.b, 0.98))
+		cnt.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+		cnt.add_theme_constant_override("outline_size", 3)
+		container.add_child(cnt)
+
+	if total_amount > 0:
+		var amount_lbl = Label.new()
+		amount_lbl.text = _formatuj_cislo(total_amount)
+		var amount_pos = start_pos.lerp(end_pos, 0.45) + Vector2(5, 6)
+		amount_lbl.position = Vector2(round(amount_pos.x), round(amount_pos.y))
+		amount_lbl.add_theme_font_size_override("font_size", 12)
+		amount_lbl.add_theme_color_override("font_color", Color(col.r, col.g, col.b, 0.98))
+		amount_lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+		amount_lbl.add_theme_constant_override("outline_size", 3)
+		container.add_child(amount_lbl)
+
+	if not _ai_anim_markery.is_empty():
+		set_process(true)
+
+func _zobraz_minimalni_presun_po_ceste(path: Array, owner_tag: String, is_attack: bool, total_amount: int, count: int = 1):
+	if path.size() < 2:
+		return
+
+	var container = get_node_or_null("AIMoveOverlay")
+	if not container:
+		container = Node2D.new()
+		container.name = "AIMoveOverlay"
+		container.z_index = 24
+		add_child(container)
+
+	var offset = _ziskej_map_offset()
+	var poly_points = PackedVector2Array()
+	for pid in path:
+		var prov_id = int(pid)
+		if not provinces.has(prov_id):
+			continue
+		poly_points.append(_ziskej_map_pozici_provincie(prov_id, offset))
+
+	if poly_points.size() < 2:
+		return
+
+	var start_pos = poly_points[0]
+	var end_pos = poly_points[poly_points.size() - 1]
+	var col = _ziskej_barvu_overlay_statu(owner_tag, is_attack)
+	var width = (2.9 if is_attack else 2.2) + min(1.8, float(max(1, count) - 1) * 0.20)
+	var speed = AI_MARKER_ATTACK_SPEED if is_attack else AI_MARKER_MOVE_SPEED
+	var marker_count = 2 if is_attack else 1
+	if count >= 3:
+		marker_count += 1
+	marker_count = min(marker_count, 3)
+
+	var trail = Line2D.new()
+	trail.width = max(1.8, width - 0.2)
+	trail.default_color = Color(col.r, col.g, col.b, 0.38 if is_attack else 0.30)
+	trail.antialiased = false
+	for p in poly_points:
+		trail.add_point(p)
+	container.add_child(trail)
+
+	for m in range(marker_count):
+		var phase = (float(m) / float(marker_count)) + 0.12
+		_pridej_animovany_marker_po_linii(container, _ai_anim_markery, poly_points, col, speed, phase, width)
 
 	if is_attack and count > 1:
 		var cnt = Label.new()
@@ -1135,13 +1646,151 @@ func _vykresli_minimalni_ai_presuny():
 	if not _ai_anim_markery.is_empty():
 		set_process(true)
 
+func _ziskej_zbyvajici_cestu_presunu(move: Dictionary) -> Array:
+	var path: Array = move.get("path", [])
+	var path_index = int(move.get("path_index", 0))
+	if path.size() < 2:
+		return []
+	if path_index < 0:
+		path_index = 0
+	if path_index >= (path.size() - 1):
+		return []
+
+	var out: Array = []
+	for i in range(path_index, path.size()):
+		out.append(int(path[i]))
+	return out
+
+func _vykresli_indikaci_cekajicich_presunu():
+	_vymaz_indikaci_cekajicich_presunu()
+	if cekajici_presuny.is_empty():
+		return
+
+	var container = get_node_or_null("QueuedMoveOverlay")
+	if not container:
+		container = Node2D.new()
+		container.name = "QueuedMoveOverlay"
+		container.z_index = 25
+		add_child(container)
+
+	for raw_move in cekajici_presuny:
+		var move = raw_move as Dictionary
+		var owner_tag = str(move.get("owner", "")).strip_edges().to_upper()
+		if owner_tag == "":
+			continue
+		if not GameManager.je_lidsky_stat(owner_tag):
+			continue
+
+		var from_id = int(move.get("from", -1))
+		var to_id = int(move.get("to", -1))
+		if not provinces.has(from_id) or not provinces.has(to_id):
+			continue
+
+		var amount = max(0, int(move.get("amount", 0)))
+		var target_owner_tag = ""
+		if _je_more_provincie(to_id):
+			target_owner_tag = str(provinces[to_id].get("army_owner", "")).strip_edges().to_upper()
+		else:
+			target_owner_tag = str(provinces[to_id].get("owner", "")).strip_edges().to_upper()
+		var is_attack = (target_owner_tag != "" and owner_tag != target_owner_tag and target_owner_tag != "SEA")
+
+		var zbyvajici_path = _ziskej_zbyvajici_cestu_presunu(move)
+		if zbyvajici_path.size() >= 3:
+			_zobraz_cekajici_presun_po_ceste(container, zbyvajici_path, owner_tag, is_attack, amount)
+		else:
+			_zobraz_cekajici_presun(container, from_id, to_id, owner_tag, is_attack, amount)
+
+	if not _cekajici_anim_markery.is_empty():
+		set_process(true)
+
+func _zobraz_cekajici_presun(container: Node2D, from_id: int, to_id: int, owner_tag: String, is_attack: bool, amount: int):
+	if not provinces.has(from_id) or not provinces.has(to_id):
+		return
+
+	var offset = _ziskej_map_offset()
+	var start_pos = _ziskej_map_pozici_provincie(from_id, offset)
+	var end_pos = _ziskej_map_pozici_provincie(to_id, offset)
+	if start_pos.distance_to(end_pos) < 0.001:
+		return
+
+	var col = _ziskej_barvu_overlay_statu(owner_tag, is_attack)
+	var width = 2.2
+	var speed = AI_MARKER_ATTACK_SPEED if is_attack else AI_MARKER_MOVE_SPEED
+
+	var trail = Line2D.new()
+	trail.width = max(1.6, width - 0.2)
+	trail.default_color = Color(col.r, col.g, col.b, 0.28)
+	trail.antialiased = false
+	trail.add_point(start_pos)
+	trail.add_point(end_pos)
+	container.add_child(trail)
+
+	_pridej_animovany_marker(container, _cekajici_anim_markery, start_pos, end_pos, col, speed, 0.12, width)
+
+	if amount > 0:
+		var amount_lbl = Label.new()
+		amount_lbl.text = _formatuj_cislo(amount)
+		var amount_pos = start_pos.lerp(end_pos, 0.45) + Vector2(5, 6)
+		amount_lbl.position = Vector2(round(amount_pos.x), round(amount_pos.y))
+		amount_lbl.add_theme_font_size_override("font_size", 11)
+		amount_lbl.add_theme_color_override("font_color", Color(col.r, col.g, col.b, 0.95))
+		amount_lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+		amount_lbl.add_theme_constant_override("outline_size", 3)
+		container.add_child(amount_lbl)
+
+func _zobraz_cekajici_presun_po_ceste(container: Node2D, path: Array, owner_tag: String, is_attack: bool, amount: int):
+	if path.size() < 2:
+		return
+
+	var offset = _ziskej_map_offset()
+	var poly_points = PackedVector2Array()
+	for pid in path:
+		var prov_id = int(pid)
+		if not provinces.has(prov_id):
+			continue
+		poly_points.append(_ziskej_map_pozici_provincie(prov_id, offset))
+
+	if poly_points.size() < 2:
+		return
+
+	var start_pos = poly_points[0]
+	var end_pos = poly_points[poly_points.size() - 1]
+	var col = _ziskej_barvu_overlay_statu(owner_tag, is_attack)
+	var width = 2.2
+	var speed = AI_MARKER_ATTACK_SPEED if is_attack else AI_MARKER_MOVE_SPEED
+
+	var trail = Line2D.new()
+	trail.width = max(1.6, width - 0.2)
+	trail.default_color = Color(col.r, col.g, col.b, 0.28)
+	trail.antialiased = false
+	for p in poly_points:
+		trail.add_point(p)
+	container.add_child(trail)
+
+	_pridej_animovany_marker_po_linii(container, _cekajici_anim_markery, poly_points, col, speed, 0.12, width)
+
+	if amount > 0:
+		var amount_lbl = Label.new()
+		amount_lbl.text = _formatuj_cislo(amount)
+		var amount_pos = start_pos.lerp(end_pos, 0.45) + Vector2(5, 6)
+		amount_lbl.position = Vector2(round(amount_pos.x), round(amount_pos.y))
+		amount_lbl.add_theme_font_size_override("font_size", 11)
+		amount_lbl.add_theme_color_override("font_color", Color(col.r, col.g, col.b, 0.95))
+		amount_lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+		amount_lbl.add_theme_constant_override("outline_size", 3)
+		container.add_child(amount_lbl)
+
 # Registers the move, deducts troops from source, and shows visual midway "ghost"
-func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int, vykreslit_trajektorii: bool = true):
+func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int, vykreslit_trajektorii: bool = true, planned_path: Array = []):
 	if amount <= 0: return
-	if not je_platny_cil_presunu(from_id, to_id):
+	var move_path: Array = planned_path.duplicate()
+	if move_path.size() < 2:
+		move_path = najdi_nejrychlejsi_cestu_presunu(from_id, to_id)
+	if move_path.size() < 2:
 		if _ziskej_vlastnika_armady_v_provincii(from_id) == GameManager.hrac_stat:
-			_ukaz_bitevni_popup("NEPLATNÝ PŘESUN", "Pozemní armáda se může přesouvat jen do sousední provincie. Na moře vstoupíš pouze z pobřežní provincie s přístavem. Flotila se může pohybovat jen v propojené mořské oblasti a vylodit se jen na dosažitelném pobřeží.")
+			_ukaz_bitevni_popup("NEPLATNÝ PŘESUN", "Pro tento cíl nebyla nalezena průchozí trasa. Přesun může vést jen přes vlastní/bezpečná území, dokud nedorazí do cíle.")
 		ceka_na_cil_presunu = false
+		vycisti_nahled_presunu()
 		var invalid_root = get_parent()
 		if "ceka_na_cil_presunu" in invalid_root:
 			invalid_root.ceka_na_cil_presunu = false
@@ -1164,6 +1813,7 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int, vykreslit_
 				_ukaz_bitevni_popup("NEPOVOLENÝ ÚTOK", "Nemůžeš zaútočit! Nejdřív musíš státu %s vyhlásit válku přes State Overview." % target_owner_tag)
 			
 			ceka_na_cil_presunu = false
+			vycisti_nahled_presunu()
 			var root_state = get_parent()
 			if "ceka_na_cil_presunu" in root_state:
 				root_state.ceka_na_cil_presunu = false
@@ -1185,35 +1835,96 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int, vykreslit_
 		cekajici_presuny.append({
 			"from": from_id,
 			"to": to_id,
+			"path": move_path,
+			"path_index": 0,
+			"deduct_on_resolve": false,
 			"amount": amount,
 			"owner": owner_tag
 		})
 		
 		ceka_na_cil_presunu = false
+		vycisti_nahled_presunu()
 		var root2 = get_parent()
 		if "ceka_na_cil_presunu" in root2:
 			root2.ceka_na_cil_presunu = false
 		return
 
 	var is_attack_player = (target_owner_tag != "" and owner_tag != target_owner_tag and target_owner_tag != "SEA")
-	_zobraz_minimalni_presun(from_id, to_id, owner_tag, is_attack_player, amount, 1)
+	if move_path.size() >= 3:
+		_zobraz_minimalni_presun_po_ceste(move_path, owner_tag, is_attack_player, amount, 1)
+	else:
+		_zobraz_minimalni_presun(from_id, to_id, owner_tag, is_attack_player, amount, 1)
 	
 	cekajici_presuny.append({
 		"from": from_id,
 		"to": to_id,
+		"path": move_path,
+		"path_index": 0,
+		"deduct_on_resolve": false,
 		"amount": amount,
 		"owner": owner_tag
 	})
 	
 	ceka_na_cil_presunu = false
+	vycisti_nahled_presunu()
 	var root = get_parent()
 	if "ceka_na_cil_presunu" in root:
 		root.ceka_na_cil_presunu = false
 
 # Process all movements and await player confirmation for their battles
 func zpracuj_tah_armad():
-	var tahy_k_zpracovani = cekajici_presuny.duplicate()
+	var puvodni_tahy = cekajici_presuny.duplicate(true)
 	cekajici_presuny.clear()
+	var tahy_k_zpracovani: Array = []
+	var pokracujici_presuny: Array = []
+
+	for raw_move in puvodni_tahy:
+		var move = raw_move.duplicate(true)
+		var path: Array = move.get("path", [])
+		var from_id = int(move.get("from", -1))
+		var to_id = int(move.get("to", -1))
+		var path_index = int(move.get("path_index", 0))
+
+		if path.size() >= 2:
+			if path_index < 0:
+				path_index = 0
+			if path_index >= (path.size() - 1):
+				path_index = path.size() - 2
+			from_id = int(path[path_index])
+			to_id = int(path[path_index + 1])
+
+		move["from"] = from_id
+		move["to"] = to_id
+		move["path_index"] = path_index
+		tahy_k_zpracovani.append(move)
+
+	# Auto-continued path orders are deducted only when their next turn resolves.
+	for i in range(tahy_k_zpracovani.size()):
+		var move = tahy_k_zpracovani[i]
+		if not bool(move.get("deduct_on_resolve", false)):
+			continue
+
+		var from_id = int(move.get("from", -1))
+		if not provinces.has(from_id):
+			move["amount"] = 0
+			tahy_k_zpracovani[i] = move
+			continue
+
+		var requested = max(0, int(move.get("amount", 0)))
+		var available = max(0, int(provinces[from_id].get("soldiers", 0)))
+		var moved_amount = min(requested, available)
+		if moved_amount <= 0:
+			move["amount"] = 0
+			tahy_k_zpracovani[i] = move
+			continue
+
+		provinces[from_id]["soldiers"] = available - moved_amount
+		if _je_more_provincie(from_id) and int(provinces[from_id]["soldiers"]) <= 0:
+			provinces[from_id]["soldiers"] = 0
+			provinces[from_id]["army_owner"] = ""
+
+		move["amount"] = moved_amount
+		tahy_k_zpracovani[i] = move
 	
 	var celkovy_report = "" 
 	var bitevni_udalosti: Array = []
@@ -1274,6 +1985,10 @@ func zpracuj_tah_armad():
 		var to_id = move["to"]
 		var utocnici = move["amount"]
 		var attacker_tag = move["owner"]
+		var path: Array = move.get("path", [])
+		var path_index = int(move.get("path_index", 0))
+		var ma_dalsi_krok = (path.size() >= 2 and (path_index + 1) < (path.size() - 1))
+		var moved_survivors := 0
 		
 		var target_is_sea = _je_more_provincie(to_id)
 		var target_owner = ""
@@ -1290,23 +2005,50 @@ func zpracuj_tah_armad():
 			if target_owner == "" or obranci_more <= 0:
 				provinces[to_id]["soldiers"] = max(0, obranci_more) + utocnici
 				provinces[to_id]["army_owner"] = attacker_tag
+				moved_survivors = utocnici
 			elif target_owner == attacker_tag:
 				provinces[to_id]["soldiers"] += utocnici
+				moved_survivors = utocnici
 			else:
 				if utocnici > obranci_more:
 					provinces[to_id]["soldiers"] = utocnici - obranci_more
 					provinces[to_id]["army_owner"] = attacker_tag
+					moved_survivors = utocnici - obranci_more
 				elif obranci_more > utocnici:
 					provinces[to_id]["soldiers"] = obranci_more - utocnici
 					provinces[to_id]["army_owner"] = target_owner
+					moved_survivors = 0
 				else:
 					provinces[to_id]["soldiers"] = 0
 					provinces[to_id]["army_owner"] = ""
+					moved_survivors = 0
+
+			if ma_dalsi_krok and moved_survivors > 0:
+				pokracujici_presuny.append({
+					"from": to_id,
+					"to": int(path[path_index + 2]),
+					"path": path,
+					"path_index": path_index + 1,
+					"deduct_on_resolve": true,
+					"amount": moved_survivors,
+					"owner": attacker_tag
+				})
 			continue
 		
 		if target_owner == attacker_tag or target_owner == "SEA":
 			provinces[to_id]["soldiers"] += utocnici
 			provinces[to_id]["army_owner"] = attacker_tag
+			moved_survivors = utocnici
+			if ma_dalsi_krok and moved_survivors > 0:
+				pokracujici_presuny.append({
+					"from": to_id,
+					"to": int(path[path_index + 2]),
+					"path": path,
+					"path_index": path_index + 1,
+					"deduct_on_resolve": true,
+					"amount": moved_survivors,
+					"owner": attacker_tag
+				})
 			continue
 			
 		var obranci = int(provinces[to_id].get("soldiers", 0))
@@ -1314,6 +2056,7 @@ func zpracuj_tah_armad():
 		if utocnici > obranci:
 			var prezivsi = utocnici - obranci
 			provinces[to_id]["soldiers"] = prezivsi
+			moved_survivors = prezivsi
 			
 			var was_capital = provinces[to_id].get("is_capital", false)
 			var capital_core_owner = str(provinces[to_id].get("core_owner", "")).strip_edges().to_upper()
@@ -1362,6 +2105,7 @@ func zpracuj_tah_armad():
 			var prezivsi = obranci - utocnici
 			provinces[to_id]["soldiers"] = prezivsi
 			provinces[to_id]["army_owner"] = target_owner
+			moved_survivors = 0
 			
 			if hrac_zapojen:
 				bitevni_udalosti.append({
@@ -1369,6 +2113,17 @@ func zpracuj_tah_armad():
 					"text": "🛡️ Obrana provincie %s uspěla. %s udrželo území s %d vojáky." % [jmeno_provincie, target_owner, prezivsi],
 					"province_id": to_id
 				})
+
+		if ma_dalsi_krok and moved_survivors > 0:
+			pokracujici_presuny.append({
+				"from": to_id,
+				"to": int(path[path_index + 2]),
+				"path": path,
+				"path_index": path_index + 1,
+				"deduct_on_resolve": true,
+				"amount": moved_survivors,
+				"owner": attacker_tag
+			})
 					
 	celkovy_report = _zpracuj_automaticke_kapitulace(celkovy_report)
 	celkovy_report = _zpracuj_odlozene_kapitulace(celkovy_report)
@@ -1387,9 +2142,13 @@ func zpracuj_tah_armad():
 	
 	if celkovy_report != "":
 		await _ukaz_bitevni_popup("Hlášení z fronty", celkovy_report)
+
+	if not pokracujici_presuny.is_empty():
+		for p_move in pokracujici_presuny:
+			cekajici_presuny.append(p_move)
 		
 	get_tree().call_group("duchove_armad", "queue_free")
-	_vymaz_minimalni_ai_presuny()
+	_vykresli_indikaci_cekajicich_presunu()
 	_minimalni_ai_tahy.clear()
 	obsazene_pozice_presunu.clear()
 	trasy_lane_counter.clear()
