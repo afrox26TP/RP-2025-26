@@ -237,6 +237,9 @@ text = "Zlepsit vztah (+10)"
 layout_mode = 2
 text = "Zhorsit vztah (-10)"
 
+[node name="AllianceLevelOption" type="OptionButton" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=160004522]
+layout_mode = 2
+
 [node name="DeclareWarButton" type="Button" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=1283108261]
 layout_mode = 2
 text = "Vyhlasit valku"
@@ -244,6 +247,100 @@ text = "Vyhlasit valku"
 [node name="ProposePeaceButton" type="Button" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=119482377]
 layout_mode = 2
 text = "Nabidnout mir"
+
+[node name="NonAggressionButton" type="Button" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=1428863001]
+layout_mode = 2
+text = "Neagresivni smlouva (10 kol)"
+
+[node name="IncomingRequestLabel" type="Label" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=1419987804]
+layout_mode = 2
+
+[node name="RespondRequestButtons" type="HBoxContainer" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=372941012]
+layout_mode = 2
+
+[node name="AcceptRequestButton" type="Button" parent="GameUI/OverviewPanel/VBoxContainer/RespondRequestButtons" unique_id=210190771]
+layout_mode = 2
+text = "Prijmout"
+
+[node name="DeclineRequestButton" type="Button" parent="GameUI/OverviewPanel/VBoxContainer/RespondRequestButtons" unique_id=195504409]
+layout_mode = 2
+text = "Odmitnout"
+
+[node name="DiplomacyRequestPopup" type="Panel" parent="GameUI" unique_id=204884301]
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 520.0
+offset_top = 42.0
+offset_right = -520.0
+offset_bottom = 86.0
+grow_horizontal = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="GameUI/DiplomacyRequestPopup" unique_id=204884302]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 6.0
+offset_right = -8.0
+offset_bottom = -6.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="RequestFlag" type="TextureRect" parent="GameUI/DiplomacyRequestPopup/HBoxContainer" unique_id=204884303]
+custom_minimum_size = Vector2(40, 26)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="RequestText" type="Label" parent="GameUI/DiplomacyRequestPopup/HBoxContainer" unique_id=204884304]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Diplomaticka zadost"
+autowrap_mode = 3
+
+[node name="AcceptButton" type="Button" parent="GameUI/DiplomacyRequestPopup/HBoxContainer" unique_id=204884305]
+layout_mode = 2
+text = "Prijmout"
+
+[node name="DeclineButton" type="Button" parent="GameUI/DiplomacyRequestPopup/HBoxContainer" unique_id=204884306]
+layout_mode = 2
+text = "Odmitnout"
+
+[node name="SystemMessagePopup" type="Panel" parent="GameUI" unique_id=204884307]
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 420.0
+offset_top = 94.0
+offset_right = -420.0
+offset_bottom = 182.0
+grow_horizontal = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="GameUI/SystemMessagePopup" unique_id=204884308]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 8.0
+offset_right = -10.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MessageTitle" type="Label" parent="GameUI/SystemMessagePopup/VBoxContainer" unique_id=204884309]
+layout_mode = 2
+text = "Hlaseni"
+
+[node name="MessageText" type="Label" parent="GameUI/SystemMessagePopup/VBoxContainer" unique_id=204884310]
+layout_mode = 2
+size_flags_vertical = 3
+text = "Text hlaseni"
+autowrap_mode = 3
+
+[node name="MessageOkButton" type="Button" parent="GameUI/SystemMessagePopup/VBoxContainer" unique_id=204884311]
+layout_mode = 2
+text = "OK"
 
 [node name="TopBar" type="CanvasLayer" parent="." unique_id=1318765703]
 script = ExtResource("10_blm8a")

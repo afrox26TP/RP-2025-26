@@ -33,11 +33,27 @@ const AI_FRIEND_RELATION_THRESHOLD := 35.0
 const AI_RELATION_STEP := 5.0
 const AI_REL_WORSEN_TRIGGER := -25.0
 const AI_REL_IMPROVE_TRIGGER := 20.0
+const ALLIANCE_NONE := 0
+const ALLIANCE_DEFENSE := 1
+const ALLIANCE_OFFENSE := 2
+const ALLIANCE_FULL := 3
+const ALLIANCE_MIN_REL_DEFENSE := 60.0
+const ALLIANCE_MIN_REL_OFFENSE := 75.0
+const ALLIANCE_MIN_REL_FULL := 90.0
+const ALLIANCE_HARD_REJECT_REL := 45.0
+const AI_ALLIANCE_LEAVE_REL_MARGIN := 8.0
+const AGGRESSION_RELATION_PENALTY := 12.0
+const NON_AGGRESSION_MIN_REL := 10.0
+const NON_AGGRESSION_DURATION_TURNS := 10
 
 # Diplomacy
 var valky: Dictionary = {}
 var cekajici_kapitulace: Array = []
 var cekajici_mirove_nabidky: Array = []
+var aliance_statu: Dictionary = {}
+var neagresivni_smlouvy: Dictionary = {}
+var cekajici_diplomaticke_zadosti: Dictionary = {}
+var cekajici_aliancni_zadosti: Array = []
 
 var zpracovava_se_tah: bool = false
 var _core_state_cache: Dictionary = {}
@@ -309,6 +325,21 @@ func uprav_vztah_statu(tag_a: String, tag_b: String, delta: float) -> float:
 	_vztahy_statu[_klic_vztahu(a, b)] = updated
 	_vztahy_statu[_klic_vztahu(b, a)] = updated
 	_vztah_akce_posledni_kolo[_klic_vztah_pair(a, b)] = aktualni_kolo
+	_synchronizuj_aliance_po_zmene_vztahu(a, b)
+	return updated
+
+func _uprav_vztah_statu_bez_cooldown(tag_a: String, tag_b: String, delta: float) -> float:
+	_nacti_vztahy_statu()
+	var a = _normalizuj_tag(tag_a)
+	var b = _normalizuj_tag(tag_b)
+	if a == "" or b == "" or a == b:
+		return 0.0
+
+	var current = ziskej_vztah_statu(a, b)
+	var updated = clamp(current + delta, RELATION_MIN, RELATION_MAX)
+	_vztahy_statu[_klic_vztahu(a, b)] = updated
+	_vztahy_statu[_klic_vztahu(b, a)] = updated
+	_synchronizuj_aliance_po_zmene_vztahu(a, b)
 	return updated
 
 func zlepsi_vztah_statu(tag_a: String, tag_b: String, amount: float = RELATION_STEP_PLAYER) -> float:
@@ -343,6 +374,349 @@ func zbyva_kol_do_upravy_vztahu(tag_a: String, tag_b: String) -> int:
 	var elapsed = aktualni_kolo - last_turn
 	return max(0, RELATION_ACTION_COOLDOWN_TURNS - elapsed)
 
+func _minimalni_vztah_pro_alianci(level: int) -> float:
+	match level:
+		ALLIANCE_DEFENSE:
+			return ALLIANCE_MIN_REL_DEFENSE
+		ALLIANCE_OFFENSE:
+			return ALLIANCE_MIN_REL_OFFENSE
+		ALLIANCE_FULL:
+			return ALLIANCE_MIN_REL_FULL
+		_:
+			return RELATION_MIN
+
+func nazev_urovne_aliance(level: int) -> String:
+	match level:
+		ALLIANCE_DEFENSE:
+			return "Obranna aliance"
+		ALLIANCE_OFFENSE:
+			return "Utocna aliance"
+		ALLIANCE_FULL:
+			return "Plna aliance"
+		_:
+			return "Bez aliance"
+
+func _ma_stat_prijmout_alianci(tag_a: String, tag_b: String, target_level: int) -> bool:
+	var rel = ziskej_vztah_statu(tag_a, tag_b)
+	if rel < ALLIANCE_HARD_REJECT_REL:
+		return false
+	return rel >= _minimalni_vztah_pro_alianci(target_level)
+
+func ziskej_uroven_aliance(tag_a: String, tag_b: String) -> int:
+	var key = _klic_pair(tag_a, tag_b)
+	if key == "":
+		return ALLIANCE_NONE
+	return int(aliance_statu.get(key, ALLIANCE_NONE))
+
+func _nastav_uroven_aliance_bez_kontroly(tag_a: String, tag_b: String, level: int) -> void:
+	var key = _klic_pair(tag_a, tag_b)
+	if key == "":
+		return
+	if level <= ALLIANCE_NONE:
+		aliance_statu.erase(key)
+		return
+	aliance_statu[key] = clamp(level, ALLIANCE_NONE, ALLIANCE_FULL)
+
+func nastav_uroven_aliance(tag_a: String, tag_b: String, level: int) -> bool:
+	var a = _normalizuj_tag(tag_a)
+	var b = _normalizuj_tag(tag_b)
+	var target_level = clamp(level, ALLIANCE_NONE, ALLIANCE_FULL)
+	if a == "" or b == "" or a == b:
+		return false
+
+	if jsou_ve_valce(a, b):
+		if target_level > ALLIANCE_NONE:
+			if je_lidsky_stat(a) or je_lidsky_stat(b):
+				_pridej_popup_zucastnenym_hracum(a, b, "Diplomacie", "Alianci nelze uzavřít během aktivní války.")
+			return false
+
+	var old_level = ziskej_uroven_aliance(a, b)
+	if target_level > ALLIANCE_NONE:
+		var rel = ziskej_vztah_statu(a, b)
+		var needed_rel = _minimalni_vztah_pro_alianci(target_level)
+		if target_level > old_level and not _ma_stat_prijmout_alianci(a, b, target_level):
+			if je_lidsky_stat(a) or je_lidsky_stat(b):
+				if rel < ALLIANCE_HARD_REJECT_REL:
+					_pridej_popup_zucastnenym_hracum(a, b, "Diplomacie", "%s a %s se nemají rádi (vztah %.1f), aliance odmítnuta." % [a, b, rel])
+				else:
+					_pridej_popup_zucastnenym_hracum(a, b, "Diplomacie", "%s odmítá %s: pro %s je potřeba vztah alespoň %.1f." % [b, a, nazev_urovne_aliance(target_level), needed_rel])
+			return false
+		if rel < needed_rel:
+			if je_lidsky_stat(a) or je_lidsky_stat(b):
+				_pridej_popup_zucastnenym_hracum(a, b, "Diplomacie", "Vztah %.1f je příliš nízký pro %s (potřeba %.1f)." % [rel, nazev_urovne_aliance(target_level), needed_rel])
+			return false
+
+	_nastav_uroven_aliance_bez_kontroly(a, b, target_level)
+
+	if old_level != target_level:
+		if je_lidsky_stat(a) or je_lidsky_stat(b):
+			var title = "Diplomacie"
+			var text = "Aliance mezi %s a %s: %s" % [a, b, nazev_urovne_aliance(target_level)]
+			_pridej_popup_zucastnenym_hracum(a, b, title, text)
+	return true
+
+func _synchronizuj_aliance_po_zmene_vztahu(tag_a: String, tag_b: String) -> void:
+	var a = _normalizuj_tag(tag_a)
+	var b = _normalizuj_tag(tag_b)
+	if a == "" or b == "" or a == b:
+		return
+
+	var current_level = ziskej_uroven_aliance(a, b)
+	if current_level <= ALLIANCE_NONE:
+		return
+
+	if jsou_ve_valce(a, b):
+		_nastav_uroven_aliance_bez_kontroly(a, b, ALLIANCE_NONE)
+		return
+
+	var rel = ziskej_vztah_statu(a, b)
+	var new_level = current_level
+	if rel < ALLIANCE_MIN_REL_DEFENSE:
+		new_level = ALLIANCE_NONE
+	elif rel < ALLIANCE_MIN_REL_OFFENSE:
+		new_level = min(new_level, ALLIANCE_DEFENSE)
+	elif rel < ALLIANCE_MIN_REL_FULL:
+		new_level = min(new_level, ALLIANCE_OFFENSE)
+
+	if new_level != current_level:
+		_nastav_uroven_aliance_bez_kontroly(a, b, new_level)
+		if je_lidsky_stat(a) or je_lidsky_stat(b):
+			var text = "Vztahy oslabily alianci %s-%s: %s" % [a, b, nazev_urovne_aliance(new_level)]
+			_pridej_popup_zucastnenym_hracum(a, b, "Diplomacie", text)
+
+func _ziskej_spojence_s_min_alianci(state_tag: String, min_level: int) -> Array:
+	var out: Array = []
+	var cisty = _normalizuj_tag(state_tag)
+	if cisty == "":
+		return out
+	for other in _ziskej_aktivni_staty():
+		var tag = _normalizuj_tag(str(other))
+		if tag == "" or tag == cisty:
+			continue
+		if ziskej_uroven_aliance(cisty, tag) >= min_level:
+			out.append(tag)
+	return out
+
+func _vycisti_expirovane_neagresivni_smlouvy() -> void:
+	var keys = neagresivni_smlouvy.keys().duplicate()
+	for k in keys:
+		var expiry_turn = int(neagresivni_smlouvy.get(k, -1))
+		if expiry_turn < aktualni_kolo:
+			neagresivni_smlouvy.erase(k)
+
+func ma_neagresivni_smlouvu(tag_a: String, tag_b: String) -> bool:
+	_vycisti_expirovane_neagresivni_smlouvy()
+	var key = _klic_pair(tag_a, tag_b)
+	if key == "":
+		return false
+	return neagresivni_smlouvy.has(key)
+
+func zbyva_kol_neagresivni_smlouvy(tag_a: String, tag_b: String) -> int:
+	_vycisti_expirovane_neagresivni_smlouvy()
+	var key = _klic_pair(tag_a, tag_b)
+	if key == "" or not neagresivni_smlouvy.has(key):
+		return 0
+	var expiry_turn = int(neagresivni_smlouvy[key])
+	return max(0, expiry_turn - aktualni_kolo + 1)
+
+func je_aliancni_zadost_cekajici(odesilatel: String, prijemce: String) -> bool:
+	var from_clean = _normalizuj_tag(odesilatel)
+	var to_clean = _normalizuj_tag(prijemce)
+	if from_clean == "" or to_clean == "" or from_clean == to_clean:
+		return false
+
+	for req in cekajici_aliancni_zadosti:
+		if _normalizuj_tag(str(req.get("from", ""))) != from_clean:
+			continue
+		if _normalizuj_tag(str(req.get("to", ""))) != to_clean:
+			continue
+		return true
+	return false
+
+func odeslat_aliancni_zadost(tag_a: String, tag_b: String, level: int) -> bool:
+	var a = _normalizuj_tag(tag_a)
+	var b = _normalizuj_tag(tag_b)
+	var target_level = clamp(level, ALLIANCE_NONE, ALLIANCE_FULL)
+	if a == "" or b == "" or a == b:
+		return false
+	if target_level <= ALLIANCE_NONE:
+		return false
+	if jsou_ve_valce(a, b):
+		return false
+	if je_aliancni_zadost_cekajici(a, b):
+		if je_lidsky_stat(a):
+			_pridej_popup_hraci(a, "Diplomacie", "Žádost o alianci už byla odeslána. Čeká se na odpověď.")
+		return false
+
+	var rel = ziskej_vztah_statu(a, b)
+	var needed_rel = _minimalni_vztah_pro_alianci(target_level)
+	if rel < needed_rel:
+		if je_lidsky_stat(a):
+			_pridej_popup_hraci(a, "Diplomacie", "Pro %s je potřeba vztah alespoň %.1f." % [nazev_urovne_aliance(target_level), needed_rel])
+		return false
+
+	cekajici_aliancni_zadosti.append({
+		"from": a,
+		"to": b,
+		"level": target_level,
+		"turn": aktualni_kolo
+	})
+	if je_lidsky_stat(a):
+		_pridej_popup_hraci(a, "Diplomacie", "Žádost o %s byla odeslána státu %s." % [nazev_urovne_aliance(target_level), b])
+	return true
+
+func _vyhodnot_aliancni_zadosti_pred_ai() -> void:
+	if cekajici_aliancni_zadosti.is_empty():
+		return
+
+	var pending = cekajici_aliancni_zadosti.duplicate(true)
+	cekajici_aliancni_zadosti.clear()
+
+	for req in pending:
+		var from_tag = _normalizuj_tag(str(req.get("from", "")))
+		var to_tag = _normalizuj_tag(str(req.get("to", "")))
+		var level = int(req.get("level", ALLIANCE_NONE))
+		if from_tag == "" or to_tag == "" or from_tag == to_tag:
+			continue
+		if level <= ALLIANCE_NONE:
+			continue
+		if jsou_ve_valce(from_tag, to_tag):
+			continue
+		if je_lidsky_stat(to_tag):
+			# Human recipient decides manually via diplomacy popup queue.
+			_pridej_diplomatickou_zadost(from_tag, to_tag, "alliance", level)
+			continue
+
+		if _ma_stat_prijmout_alianci(to_tag, from_tag, level):
+			nastav_uroven_aliance(from_tag, to_tag, level)
+		else:
+			if je_lidsky_stat(from_tag):
+				_pridej_popup_hraci(from_tag, "Diplomacie", "Stát %s odmítl tvou žádost o %s." % [to_tag, nazev_urovne_aliance(level)])
+
+func uzavrit_neagresivni_smlouvu(tag_a: String, tag_b: String) -> bool:
+	var a = _normalizuj_tag(tag_a)
+	var b = _normalizuj_tag(tag_b)
+	if a == "" or b == "" or a == b or a == "SEA" or b == "SEA":
+		return false
+	if jsou_ve_valce(a, b):
+		if je_lidsky_stat(a) or je_lidsky_stat(b):
+			_pridej_popup_zucastnenym_hracum(a, b, "Diplomacie", "Neagresivní smlouvu nelze uzavřít během války.")
+		return false
+
+	var rel = ziskej_vztah_statu(a, b)
+	if rel < NON_AGGRESSION_MIN_REL:
+		if je_lidsky_stat(a) or je_lidsky_stat(b):
+			_pridej_popup_zucastnenym_hracum(a, b, "Diplomacie", "Neagresivní smlouva vyžaduje vztah alespoň %.1f." % NON_AGGRESSION_MIN_REL)
+		return false
+
+	var key = _klic_pair(a, b)
+	if key == "":
+		return false
+
+	neagresivni_smlouvy[key] = aktualni_kolo + NON_AGGRESSION_DURATION_TURNS - 1
+	if je_lidsky_stat(a) or je_lidsky_stat(b):
+		_pridej_popup_zucastnenym_hracum(a, b, "Diplomacie", "%s a %s uzavřely neagresivní smlouvu na %d kol." % [a, b, NON_AGGRESSION_DURATION_TURNS])
+	return true
+
+func _pridej_diplomatickou_zadost(from_tag: String, to_tag: String, req_type: String, alliance_level: int = ALLIANCE_NONE) -> bool:
+	var from_clean = _normalizuj_tag(from_tag)
+	var to_clean = _normalizuj_tag(to_tag)
+	if from_clean == "" or to_clean == "" or from_clean == to_clean:
+		return false
+
+	if req_type != "alliance" and req_type != "non_aggression":
+		return false
+
+	if not cekajici_diplomaticke_zadosti.has(to_clean):
+		cekajici_diplomaticke_zadosti[to_clean] = []
+
+	var queue = cekajici_diplomaticke_zadosti[to_clean] as Array
+	for req in queue:
+		if _normalizuj_tag(str(req.get("from", ""))) != from_clean:
+			continue
+		if str(req.get("type", "")) != req_type:
+			continue
+		if req_type == "alliance" and int(req.get("level", ALLIANCE_NONE)) != alliance_level:
+			continue
+		return false
+
+	queue.append({
+		"from": from_clean,
+		"to": to_clean,
+		"type": req_type,
+		"level": alliance_level,
+		"turn": aktualni_kolo
+	})
+	return true
+
+func _odeber_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> Dictionary:
+	var player_clean = _normalizuj_tag(hrac_tag)
+	var from_clean = _normalizuj_tag(from_tag)
+	if player_clean == "" or from_clean == "":
+		return {}
+	if not cekajici_diplomaticke_zadosti.has(player_clean):
+		return {}
+
+	var queue = cekajici_diplomaticke_zadosti[player_clean] as Array
+	for i in range(queue.size() - 1, -1, -1):
+		var req = queue[i]
+		if _normalizuj_tag(str(req.get("from", ""))) != from_clean:
+			continue
+		queue.remove_at(i)
+		return req
+	return {}
+
+func ziskej_cekajici_zadost_od_statu(hrac_tag: String, from_tag: String) -> Dictionary:
+	var player_clean = _normalizuj_tag(hrac_tag)
+	var from_clean = _normalizuj_tag(from_tag)
+	if player_clean == "" or from_clean == "":
+		return {}
+	if not cekajici_diplomaticke_zadosti.has(player_clean):
+		return {}
+
+	for req in (cekajici_diplomaticke_zadosti[player_clean] as Array):
+		if _normalizuj_tag(str(req.get("from", ""))) == from_clean:
+			return req.duplicate(true)
+	return {}
+
+func ziskej_prvni_cekajici_diplomatickou_zadost(hrac_tag: String) -> Dictionary:
+	var player_clean = _normalizuj_tag(hrac_tag)
+	if player_clean == "":
+		return {}
+	if not cekajici_diplomaticke_zadosti.has(player_clean):
+		return {}
+
+	var queue = cekajici_diplomaticke_zadosti[player_clean] as Array
+	if queue.is_empty():
+		return {}
+	return (queue[0] as Dictionary).duplicate(true)
+
+func hrac_prijmi_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> bool:
+	var player_clean = _normalizuj_tag(hrac_tag)
+	var req = _odeber_diplomatickou_zadost(player_clean, from_tag)
+	if req.is_empty():
+		return false
+
+	var sender = _normalizuj_tag(str(req.get("from", "")))
+	var req_type = str(req.get("type", ""))
+	if req_type == "alliance":
+		var level = int(req.get("level", ALLIANCE_NONE))
+		return nastav_uroven_aliance(player_clean, sender, level)
+	if req_type == "non_aggression":
+		return uzavrit_neagresivni_smlouvu(player_clean, sender)
+	return false
+
+func hrac_odmitni_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> bool:
+	var player_clean = _normalizuj_tag(hrac_tag)
+	var req = _odeber_diplomatickou_zadost(player_clean, from_tag)
+	if req.is_empty():
+		return false
+
+	var sender = _normalizuj_tag(str(req.get("from", "")))
+	if je_lidsky_stat(player_clean):
+		_pridej_popup_hraci(player_clean, "Diplomacie", "Odmítl jsi diplomatickou žádost od státu %s." % sender)
+	return true
+
 # Diplomacy helpers
 func jsou_ve_valce(tag1: String, tag2: String) -> bool:
 	var klic1 = tag1 + "_" + tag2
@@ -372,21 +746,191 @@ func vycisti_stat_po_kapitulaci(tag: String):
 		if from_tag == target or to_tag == target:
 			cekajici_mirove_nabidky.remove_at(i)
 
+	var aliance_klice = aliance_statu.keys().duplicate()
+	for klic in aliance_klice:
+		var parts = str(klic).split("|")
+		if parts.size() != 2:
+			continue
+		if parts[0] == target or parts[1] == target:
+			aliance_statu.erase(klic)
+
+	var smlouvy_klice = neagresivni_smlouvy.keys().duplicate()
+	for klic in smlouvy_klice:
+		var parts2 = str(klic).split("|")
+		if parts2.size() != 2:
+			continue
+		if parts2[0] == target or parts2[1] == target:
+			neagresivni_smlouvy.erase(klic)
+
+	var zadosti_klice = cekajici_diplomaticke_zadosti.keys().duplicate()
+	for receiver in zadosti_klice:
+		var receiver_tag = _normalizuj_tag(str(receiver))
+		if receiver_tag == target:
+			cekajici_diplomaticke_zadosti.erase(receiver)
+			continue
+		var queue = cekajici_diplomaticke_zadosti[receiver] as Array
+		for i in range(queue.size() - 1, -1, -1):
+			var from_tag3 = _normalizuj_tag(str(queue[i].get("from", "")))
+			if from_tag3 == target:
+				queue.remove_at(i)
+
+	for i in range(cekajici_aliancni_zadosti.size() - 1, -1, -1):
+		var req = cekajici_aliancni_zadosti[i]
+		var from_tag4 = _normalizuj_tag(str(req.get("from", "")))
+		var to_tag4 = _normalizuj_tag(str(req.get("to", "")))
+		if from_tag4 == target or to_tag4 == target:
+			cekajici_aliancni_zadosti.remove_at(i)
+
 	ai_kasy.erase(target)
 	_core_state_cache.erase(target)
 
-func vyhlasit_valku(utocnik: String, obrance: String):
-	if jsou_ve_valce(utocnik, obrance): return
-	
-	var klic = utocnik + "_" + obrance
+func _vyhlasit_valku_par(utocnik: String, obrance: String, headline: String, details: String) -> bool:
+	var a = _normalizuj_tag(utocnik)
+	var b = _normalizuj_tag(obrance)
+	if a == "" or b == "" or a == b or b == "SEA":
+		return false
+	if jsou_ve_valce(a, b):
+		return false
+
+	var klic = a + "_" + b
 	valky[klic] = true
-	
-	var msg = "⚠️ VÁLKA!\n\nStát %s právě vyhlásil válku státu %s!" % [utocnik, obrance]
+
+	var msg = "%s\n\n%s" % [headline, details]
 	print(msg.replace("\n\n", " "))
-	
-	# Pause and show popup if the player is involved
-	if je_lidsky_stat(utocnik) or je_lidsky_stat(obrance):
-		_pridej_popup_zucastnenym_hracum(utocnik, obrance, "DIPLOMACIE", msg)
+	if je_lidsky_stat(a) or je_lidsky_stat(b):
+		_pridej_popup_zucastnenym_hracum(a, b, "DIPLOMACIE", msg)
+	_aplikuj_diplomatickou_reakci_na_agresi(a, b)
+
+	_synchronizuj_aliance_po_zmene_vztahu(a, b)
+	return true
+
+func _aplikuj_diplomatickou_reakci_na_agresi(utocnik: String, obrance: String) -> void:
+	var attacker = _normalizuj_tag(utocnik)
+	var defender = _normalizuj_tag(obrance)
+	if attacker == "" or defender == "" or attacker == defender:
+		return
+
+	var reakce_na_hrace: Dictionary = {}
+	var reakce_na_utocnika: Array = []
+
+	for stat in _ziskej_aktivni_staty():
+		var observer = _normalizuj_tag(str(stat))
+		if observer == "" or observer == "SEA":
+			continue
+		if observer == attacker or observer == defender:
+			continue
+		if jsou_ve_valce(observer, defender):
+			continue
+
+		var rel_to_defender = ziskej_vztah_statu(observer, defender)
+		if rel_to_defender < AI_FRIEND_RELATION_THRESHOLD:
+			continue
+
+		var old_rel_to_attacker = ziskej_vztah_statu(observer, attacker)
+		var new_rel_to_attacker = _uprav_vztah_statu_bez_cooldown(observer, attacker, -AGGRESSION_RELATION_PENALTY)
+		if new_rel_to_attacker >= old_rel_to_attacker:
+			continue
+
+		if je_lidsky_stat(observer):
+			if not reakce_na_hrace.has(observer):
+				reakce_na_hrace[observer] = []
+			(reakce_na_hrace[observer] as Array).append("Kvůli agresi státu %s vůči %s se tvůj vztah k %s zhoršil na %.1f." % [attacker, defender, attacker, new_rel_to_attacker])
+
+		if je_lidsky_stat(attacker):
+			reakce_na_utocnika.append("%s zhoršilo vztah k tobě (nově %.1f), protože jsi napadl stát %s." % [observer, new_rel_to_attacker, defender])
+
+	for target_tag in reakce_na_hrace.keys():
+		var lines = reakce_na_hrace[target_tag] as Array
+		if lines.is_empty():
+			continue
+		_pridej_popup_hraci(str(target_tag), "Diplomacie", "\n".join(lines))
+
+	if je_lidsky_stat(attacker) and not reakce_na_utocnika.is_empty():
+		_pridej_popup_hraci(attacker, "Diplomacie", "\n".join(reakce_na_utocnika))
+
+func _ma_byt_spojenec_povolan(state_tag: String, ally_tag: String, enemy_tag: String, min_alliance_level: int) -> bool:
+	if state_tag == "" or ally_tag == "" or enemy_tag == "":
+		return false
+	if state_tag == ally_tag or state_tag == enemy_tag or ally_tag == enemy_tag:
+		return false
+	if ally_tag == "SEA":
+		return false
+	if ziskej_uroven_aliance(state_tag, ally_tag) < min_alliance_level:
+		return false
+	if jsou_ve_valce(ally_tag, state_tag):
+		return false
+	if jsou_ve_valce(ally_tag, enemy_tag):
+		return false
+
+	var alliance_vs_enemy = ziskej_uroven_aliance(ally_tag, enemy_tag)
+	var alliance_vs_state = ziskej_uroven_aliance(ally_tag, state_tag)
+	if alliance_vs_enemy > alliance_vs_state:
+		return false
+
+	if ziskej_vztah_statu(ally_tag, enemy_tag) >= AI_FRIEND_RELATION_THRESHOLD:
+		return false
+
+	return true
+
+func _aktivuj_aliance_po_vyhlaseni_valky(utocnik: String, obrance: String) -> void:
+	var attacker = _normalizuj_tag(utocnik)
+	var defender = _normalizuj_tag(obrance)
+	if attacker == "" or defender == "":
+		return
+
+	# Defensive call: defender's defense/full allies join against attacker.
+	for ally in _ziskej_spojence_s_min_alianci(defender, ALLIANCE_DEFENSE):
+		var ally_tag = _normalizuj_tag(str(ally))
+		if not _ma_byt_spojenec_povolan(defender, ally_tag, attacker, ALLIANCE_DEFENSE):
+			continue
+		_vyhlasit_valku_par(
+			ally_tag,
+			attacker,
+			"🛡️ OBRANNÁ ALIANCE",
+			"%s vstoupilo do války na obranu spojence %s proti státu %s." % [ally_tag, defender, attacker]
+		)
+
+	# Offensive call: attacker's offense/full allies join against defender.
+	for ally in _ziskej_spojence_s_min_alianci(attacker, ALLIANCE_OFFENSE):
+		var ally_tag2 = _normalizuj_tag(str(ally))
+		if not _ma_byt_spojenec_povolan(attacker, ally_tag2, defender, ALLIANCE_OFFENSE):
+			continue
+		_vyhlasit_valku_par(
+			ally_tag2,
+			defender,
+			"⚔️ ÚTOČNÁ ALIANCE",
+			"%s vstoupilo do války po boku spojence %s proti státu %s." % [ally_tag2, attacker, defender]
+		)
+
+func vyhlasit_valku(utocnik: String, obrance: String):
+	var a = _normalizuj_tag(utocnik)
+	var b = _normalizuj_tag(obrance)
+	if a == "" or b == "" or a == b or b == "SEA":
+		return false
+	if jsou_ve_valce(a, b):
+		return false
+	if ma_neagresivni_smlouvu(a, b):
+		if je_lidsky_stat(a):
+			var zbyva = zbyva_kol_neagresivni_smlouvy(a, b)
+			_pridej_popup_hraci(a, "Diplomacie", "Nelze vyhlásit válku, dokud běží neagresivní smlouva se státem %s (%d kol)." % [b, zbyva])
+		return false
+
+	if ziskej_uroven_aliance(a, b) > ALLIANCE_NONE:
+		if je_lidsky_stat(a):
+			_pridej_popup_hraci(a, "Diplomacie", "Nelze vyhlásit válku spojenci (%s). Nejprve zruš alianci." % b)
+		return false
+
+	var created = _vyhlasit_valku_par(
+		a,
+		b,
+		"⚠️ VÁLKA!",
+		"Stát %s právě vyhlásil válku státu %s!" % [a, b]
+	)
+	if not created:
+		return false
+
+	_aktivuj_aliance_po_vyhlaseni_valky(a, b)
+	return true
 
 func nabidnout_mir(tag1: String, tag2: String):
 	var cisty_tag1 = tag1.strip_edges().to_upper()
@@ -638,6 +1182,247 @@ func _zpracuj_ai_diplomacii(ai_staty: Array) -> Array:
 				})
 
 	return zmeny_vztahu_k_hraci
+
+func _zpracuj_ai_aliance(ai_staty: Array) -> Array:
+	var zmeny_alianci: Array = []
+	var aktivni_staty = _ziskej_aktivni_staty()
+
+	for ai_tag in ai_staty:
+		var owner_tag = _normalizuj_tag(str(ai_tag))
+		if owner_tag == "":
+			continue
+
+		for other in aktivni_staty:
+			var other_tag = _normalizuj_tag(str(other))
+			if other_tag == "" or other_tag == owner_tag:
+				continue
+			if jsou_ve_valce(owner_tag, other_tag):
+				continue
+
+			var current_level = ziskej_uroven_aliance(owner_tag, other_tag)
+			var rel = ziskej_vztah_statu(owner_tag, other_tag)
+			var border = _ma_spolecnou_hranici(owner_tag, other_tag)
+			var our_power = float(max(1, _spocitej_silu_statu(owner_tag)))
+			var their_power = float(max(1, _spocitej_silu_statu(other_tag)))
+			var ratio = our_power / their_power
+
+			var common_enemy := false
+			for enemy in aktivni_staty:
+				var enemy_tag = _normalizuj_tag(str(enemy))
+				if enemy_tag == "" or enemy_tag == owner_tag or enemy_tag == other_tag:
+					continue
+				if ziskej_vztah_statu(owner_tag, enemy_tag) <= -35.0 and ziskej_vztah_statu(other_tag, enemy_tag) <= -35.0:
+					common_enemy = true
+					break
+
+			var desired_level = current_level
+			if rel >= ALLIANCE_MIN_REL_FULL and (common_enemy or border):
+				desired_level = max(desired_level, ALLIANCE_FULL)
+			elif rel >= ALLIANCE_MIN_REL_OFFENSE and common_enemy:
+				desired_level = max(desired_level, ALLIANCE_OFFENSE)
+			elif rel >= ALLIANCE_MIN_REL_DEFENSE and (border or ratio < 0.95):
+				desired_level = max(desired_level, ALLIANCE_DEFENSE)
+
+			if desired_level != current_level:
+				if je_lidsky_stat(other_tag):
+					if _pridej_diplomatickou_zadost(owner_tag, other_tag, "alliance", desired_level):
+						zmeny_alianci.append({
+							"a": owner_tag,
+							"b": other_tag,
+							"new_level": desired_level,
+							"request": true
+						})
+				else:
+					if nastav_uroven_aliance(owner_tag, other_tag, desired_level):
+						if je_lidsky_stat(owner_tag) or je_lidsky_stat(other_tag):
+							zmeny_alianci.append({
+								"a": owner_tag,
+								"b": other_tag,
+								"new_level": desired_level
+							})
+
+	return zmeny_alianci
+
+func _zpracuj_ai_neagresivni_smlouvy(ai_staty: Array) -> Array:
+	var zmeny: Array = []
+	var aktivni_staty = _ziskej_aktivni_staty()
+
+	for ai_tag in ai_staty:
+		var owner_tag = _normalizuj_tag(str(ai_tag))
+		if owner_tag == "":
+			continue
+
+		var best_target := ""
+		var best_rel := -INF
+		for other in aktivni_staty:
+			var other_tag = _normalizuj_tag(str(other))
+			if other_tag == "" or other_tag == owner_tag:
+				continue
+			if jsou_ve_valce(owner_tag, other_tag):
+				continue
+			if ma_neagresivni_smlouvu(owner_tag, other_tag):
+				continue
+			if ziskej_uroven_aliance(owner_tag, other_tag) > ALLIANCE_NONE:
+				continue
+
+			var rel = ziskej_vztah_statu(owner_tag, other_tag)
+			if rel < NON_AGGRESSION_MIN_REL:
+				continue
+
+			if rel > best_rel:
+				best_rel = rel
+				best_target = other_tag
+
+		if best_target != "":
+			if je_lidsky_stat(best_target):
+				if _pridej_diplomatickou_zadost(owner_tag, best_target, "non_aggression", ALLIANCE_NONE):
+					zmeny.append({
+						"a": owner_tag,
+						"b": best_target,
+						"request": true
+					})
+			else:
+				if uzavrit_neagresivni_smlouvu(owner_tag, best_target):
+					if je_lidsky_stat(owner_tag) or je_lidsky_stat(best_target):
+						zmeny.append({
+							"a": owner_tag,
+							"b": best_target
+						})
+
+	return zmeny
+
+func _zobraz_hlaseni_neagresivnich_smluv_hrace(zmeny: Array) -> void:
+	if zmeny.is_empty():
+		return
+
+	var lines_by_target: Dictionary = {}
+	for z in zmeny:
+		var a = _normalizuj_tag(str(z.get("a", "")))
+		var b = _normalizuj_tag(str(z.get("b", "")))
+		var is_request = bool(z.get("request", false))
+		if a == "" or b == "":
+			continue
+
+		if je_lidsky_stat(a):
+			if not lines_by_target.has(a):
+				lines_by_target[a] = []
+			if is_request:
+				(lines_by_target[a] as Array).append("%s navrhuje neagresivní smlouvu na %d kol. Otevři diplomacii a rozhodni." % [b, NON_AGGRESSION_DURATION_TURNS])
+			else:
+				(lines_by_target[a] as Array).append("Neagresivní smlouva se státem %s (%d kol)." % [b, NON_AGGRESSION_DURATION_TURNS])
+		if je_lidsky_stat(b):
+			if not lines_by_target.has(b):
+				lines_by_target[b] = []
+			if is_request:
+				(lines_by_target[b] as Array).append("%s navrhuje neagresivní smlouvu na %d kol. Otevři diplomacii a rozhodni." % [a, NON_AGGRESSION_DURATION_TURNS])
+			else:
+				(lines_by_target[b] as Array).append("Neagresivní smlouva se státem %s (%d kol)." % [a, NON_AGGRESSION_DURATION_TURNS])
+
+	for target_tag in lines_by_target.keys():
+		var lines = lines_by_target[target_tag] as Array
+		if lines.is_empty():
+			continue
+		_pridej_popup_hraci(str(target_tag), "Diplomacie", "\n".join(lines))
+
+func _zpracuj_ai_opusteni_alianci(ai_staty: Array) -> Array:
+	var zmeny_opusteni: Array = []
+	var processed_pairs: Dictionary = {}
+
+	for ai_tag in ai_staty:
+		var owner_tag = _normalizuj_tag(str(ai_tag))
+		if owner_tag == "":
+			continue
+
+		for other in _ziskej_aktivni_staty():
+			var other_tag = _normalizuj_tag(str(other))
+			if other_tag == "" or other_tag == owner_tag:
+				continue
+
+			var pair_key = _klic_pair(owner_tag, other_tag)
+			if pair_key == "" or processed_pairs.has(pair_key):
+				continue
+			processed_pairs[pair_key] = true
+
+			var level = ziskej_uroven_aliance(owner_tag, other_tag)
+			if level <= ALLIANCE_NONE:
+				continue
+
+			var rel = ziskej_vztah_statu(owner_tag, other_tag)
+			var should_leave = rel < 0.0
+
+			if not should_leave:
+				continue
+
+			_nastav_uroven_aliance_bez_kontroly(owner_tag, other_tag, ALLIANCE_NONE)
+			if je_lidsky_stat(owner_tag) or je_lidsky_stat(other_tag):
+				zmeny_opusteni.append({
+					"a": owner_tag,
+					"b": other_tag,
+					"rel": rel
+				})
+
+	return zmeny_opusteni
+
+func _zobraz_hlaseni_opusteni_alianci_hrace(zmeny: Array) -> void:
+	if zmeny.is_empty():
+		return
+
+	var lines_by_target: Dictionary = {}
+	for z in zmeny:
+		var a = _normalizuj_tag(str(z.get("a", "")))
+		var b = _normalizuj_tag(str(z.get("b", "")))
+		var rel = float(z.get("rel", 0.0))
+		if a == "" or b == "":
+			continue
+
+		if je_lidsky_stat(a):
+			if not lines_by_target.has(a):
+				lines_by_target[a] = []
+			(lines_by_target[a] as Array).append("Stát %s opustil alianci (vztah %.1f)." % [b, rel])
+		if je_lidsky_stat(b):
+			if not lines_by_target.has(b):
+				lines_by_target[b] = []
+			(lines_by_target[b] as Array).append("Stát %s opustil alianci (vztah %.1f)." % [a, rel])
+
+	for target_tag in lines_by_target.keys():
+		var lines = lines_by_target[target_tag] as Array
+		if lines.is_empty():
+			continue
+		_pridej_popup_hraci(str(target_tag), "Aliance", "\n".join(lines))
+
+func _zobraz_hlaseni_alianci_hrace(zmeny: Array) -> void:
+	if zmeny.is_empty():
+		return
+
+	var lines_by_target: Dictionary = {}
+	for z in zmeny:
+		var a = _normalizuj_tag(str(z.get("a", "")))
+		var b = _normalizuj_tag(str(z.get("b", "")))
+		var level = int(z.get("new_level", ALLIANCE_NONE))
+		var is_request = bool(z.get("request", false))
+		if a == "" or b == "":
+			continue
+
+		if je_lidsky_stat(a):
+			if not lines_by_target.has(a):
+				lines_by_target[a] = []
+			if is_request:
+				(lines_by_target[a] as Array).append("%s navrhuje alianci: %s. Otevři diplomacii a rozhodni." % [b, nazev_urovne_aliance(level)])
+			else:
+				(lines_by_target[a] as Array).append("Aliance se statem %s: %s" % [b, nazev_urovne_aliance(level)])
+		if je_lidsky_stat(b):
+			if not lines_by_target.has(b):
+				lines_by_target[b] = []
+			if is_request:
+				(lines_by_target[b] as Array).append("%s navrhuje alianci: %s. Otevři diplomacii a rozhodni." % [a, nazev_urovne_aliance(level)])
+			else:
+				(lines_by_target[b] as Array).append("Aliance se statem %s: %s" % [a, nazev_urovne_aliance(level)])
+
+	for target_tag in lines_by_target.keys():
+		var lines = lines_by_target[target_tag] as Array
+		if lines.is_empty():
+			continue
+		_pridej_popup_hraci(str(target_tag), "Aliance", "\n".join(lines))
 
 func _zobraz_hlaseni_vztahu_hrace(zmeny: Array):
 	if zmeny.is_empty():
@@ -920,12 +1705,15 @@ func ukonci_kolo():
 	if not map_data.is_empty():
 		spocitej_prijem(map_data, false)
 		
-		# Regenerate population and grow economy
+		# Regenerate recruitable population from province baseline (no nerf).
 		for p_id in map_data:
 			var d = map_data[p_id]
-			d["recruitable_population"] += 150
-			if d["recruitable_population"] > 15000:
-				d["recruitable_population"] = 15000
+			var base_recruits = int(d.get("base_recruitable_population", d.get("recruitable_population", 0)))
+			if base_recruits < 0:
+				base_recruits = 0
+			var cap = base_recruits
+			var regen_per_turn = max(1, int(round(float(base_recruits) * 0.10)))
+			d["recruitable_population"] = min(int(d.get("recruitable_population", 0)) + regen_per_turn, cap)
 			d["gdp"] += 0.5 # Passive wealth growth
 
 	# AI plans attacks and may declare wars (await for popups)
@@ -1018,8 +1806,15 @@ func zpracuj_tah_ai():
 
 	# Evaluate pending peace offers before AI plans any attacks.
 	await _vyhodnot_mirove_nabidky_pred_ai()
+	await _vyhodnot_aliancni_zadosti_pred_ai()
+	var zmeny_neagrese_k_hraci = _zpracuj_ai_neagresivni_smlouvy(ai_staty)
+	await _zobraz_hlaseni_neagresivnich_smluv_hrace(zmeny_neagrese_k_hraci)
 	var zmeny_vztahu_k_hraci = _zpracuj_ai_diplomacii(ai_staty)
 	await _zobraz_hlaseni_vztahu_hrace(zmeny_vztahu_k_hraci)
+	var zmeny_opusteni_alianci = _zpracuj_ai_opusteni_alianci(ai_staty)
+	await _zobraz_hlaseni_opusteni_alianci_hrace(zmeny_opusteni_alianci)
+	var zmeny_alianci_k_hraci = _zpracuj_ai_aliance(ai_staty)
+	await _zobraz_hlaseni_alianci_hrace(zmeny_alianci_k_hraci)
 		
 	var cena_za_vojaka = 0.01
 
@@ -1196,6 +1991,8 @@ func _spocitej_silu_na_hranici(state_tag: String, enemy: String) -> Dictionary:
 func _ma_smyls_vyhlasit_valku(state_tag: String, target_owner: String, from_id: int, to_id: int, amount: int) -> bool:
 	if state_tag == "" or target_owner == "" or target_owner == "SEA":
 		return false
+	if ziskej_uroven_aliance(state_tag, target_owner) > ALLIANCE_NONE:
+		return false
 	if _je_pratelsky_vztah(state_tag, target_owner):
 		return false
 	var rel = ziskej_vztah_statu(state_tag, target_owner)
@@ -1216,7 +2013,21 @@ func _ma_smyls_vyhlasit_valku(state_tag: String, target_owner: String, from_id: 
 
 	var relation_factor = clamp((-rel) / 80.0, 0.0, 1.0)
 	var required_local_ratio = 1.25 - (relation_factor * 0.20)
-	return ratio >= AI_DECLARE_WAR_MIN_BORDER_ADVANTAGE and local_ratio >= required_local_ratio
+
+	var defensive_allies_power := 0
+	for ally in _ziskej_spojence_s_min_alianci(target_owner, ALLIANCE_DEFENSE):
+		var ally_tag = _normalizuj_tag(str(ally))
+		if ally_tag == "" or ally_tag == state_tag:
+			continue
+		if ziskej_vztah_statu(ally_tag, state_tag) >= AI_FRIEND_RELATION_THRESHOLD:
+			continue
+		defensive_allies_power += _spocitej_silu_statu(ally_tag)
+
+	var own_total = float(max(1, _spocitej_silu_statu(state_tag)))
+	var target_total = float(max(1, _spocitej_silu_statu(target_owner) + defensive_allies_power))
+	var strategic_ratio = own_total / target_total
+
+	return ratio >= AI_DECLARE_WAR_MIN_BORDER_ADVANTAGE and local_ratio >= required_local_ratio and strategic_ratio >= 0.85
 
 func _navrhni_neutocny_presun(state_tag: String, from_id: int) -> Dictionary:
 	if not map_data.has(from_id):

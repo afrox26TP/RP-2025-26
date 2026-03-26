@@ -603,6 +603,7 @@ func load_provinces():
 			"neighbors": neighbors_array,
 			"ideology": ideologie_statu,
 			"recruitable_population": int(parts[19]),
+			"base_recruitable_population": int(parts[19]),
 			"soldiers": int(parts[20]) if parts.size() > 20 else 0,
 			"army_owner": "" if parts[6].strip_edges().to_upper() == "SEA" else parts[6].strip_edges().to_upper(),
 			"has_port": false
@@ -1195,23 +1196,21 @@ func _ziskej_krokove_sousedy_presunu(from_id: int) -> Array:
 
 	var from_is_sea = _je_more_provincie(from_id)
 	if from_is_sea:
-		var reachable_sea = _ziskej_dostupna_moreni_pole(from_id)
-		for sid in reachable_sea.keys():
-			sousedi.append(int(sid))
 		for n_id in provinces[from_id].get("neighbors", []):
 			var nid = int(n_id)
 			if _je_more_provincie(nid):
-				continue
-			if _je_pobrezni_provincie(nid):
+				sousedi.append(nid)
+			elif _je_pobrezni_provincie(nid):
 				sousedi.append(nid)
 	else:
+		var can_embark = _je_pobrezni_provincie(from_id) and GameManager.provincie_ma_pristav(from_id)
 		for n_id in provinces[from_id].get("neighbors", []):
 			var nid = int(n_id)
-			if not _je_more_provincie(nid):
+			if _je_more_provincie(nid):
+				if can_embark:
+					sousedi.append(nid)
+			else:
 				sousedi.append(nid)
-		var reachable_sea_from_land = _ziskej_dostupna_moreni_pole(from_id)
-		for sid in reachable_sea_from_land.keys():
-			sousedi.append(int(sid))
 
 	return sousedi
 
@@ -2154,6 +2153,11 @@ func zpracuj_tah_armad():
 	trasy_lane_counter.clear()
 
 func _ukaz_bitevni_popup(titulek: String, text: String):
+	var game_ui = get_tree().current_scene.find_child("GameUI", true, false)
+	if game_ui and game_ui.has_method("zobraz_systemove_hlaseni"):
+		await game_ui.zobraz_systemove_hlaseni(titulek, text)
+		return
+
 	var dialog = AcceptDialog.new()
 	dialog.title = titulek
 	dialog.dialog_text = text
