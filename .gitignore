@@ -1,14 +1,25 @@
-# Godot
+# Godot import/cache artifacts (generated automatically)
 .import/
 *.import
+.godot/
 
-# Godot 4 textures
+# Godot generated texture/cache formats
 *.ctex
 *.md5
 *.s3tc.ctex
 
-# Cache a temporary
-.godot/
-
-# Exporty map
+# Export/build outputs
 opengs_export/
+export/
+build/
+
+# Editor/user-local files
+.vscode/
+*.tmp
+*.temp
+*.log
+
+# OS junk
+Thumbs.db
+Desktop.ini
+.DS_Store
