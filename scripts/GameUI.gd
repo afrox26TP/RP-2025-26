@@ -24,10 +24,10 @@ extends CanvasLayer
 var current_viewed_tag: String = ""
 var flag_texture_cache: Dictionary = {}
 
-func _resolve_flag_texture(owner: String, ideologie: String):
+func _resolve_flag_texture(owner_tag: String, ideologie: String):
 	var ideo = ideologie.strip_edges().to_lower()
-	var ideo_cesta = "res://map_data/FlagsIdeology/%s_%s.svg" % [owner, ideo]
-	var zaklad_cesta = "res://map_data/Flags/%s.svg" % owner
+	var ideo_cesta = "res://map_data/FlagsIdeology/%s_%s.svg" % [owner_tag, ideo]
+	var zaklad_cesta = "res://map_data/Flags/%s.svg" % owner_tag
 
 	if ideo != "" and ideo != "neznámo" and ResourceLoader.exists(ideo_cesta):
 		if not flag_texture_cache.has(ideo_cesta):
@@ -61,15 +61,15 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 		schovej_se()
 		return
 		
-	var owner = str(data.get("owner", "")).strip_edges().to_upper()
-	current_viewed_tag = owner # Save the tag for button actions
+	var owner_tag = str(data.get("owner", "")).strip_edges().to_upper()
+	current_viewed_tag = owner_tag # Save the tag for button actions
 	
-	var plne_jmeno = str(data.get("country_name", owner))
+	var plne_jmeno = str(data.get("country_name", owner_tag))
 	
 	# Force lowercase to prevent file path issues
 	var ideologie = str(data.get("ideology", "")).to_lower() 
 	
-	if owner == "SEA" or owner == "":
+	if owner_tag == "SEA" or owner_tag == "":
 		schovej_se()
 		return
 
@@ -78,7 +78,7 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 		
 	# --- FLAG LOADING ---
 	if country_flag:
-		country_flag.texture = _resolve_flag_texture(owner, ideologie)
+		country_flag.texture = _resolve_flag_texture(owner_tag, ideologie)
 	# --------------------
 		
 	var total_pop = 0
@@ -88,7 +88,7 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 	# Calculate total country stats
 	for p_id in all_provinces:
 		var p = all_provinces[p_id]
-		if str(p.get("owner", "")).strip_edges().to_upper() == owner:
+		if str(p.get("owner", "")).strip_edges().to_upper() == owner_tag:
 			total_pop += int(p.get("population", 0))
 			total_gdp += float(p.get("gdp", 0.0))
 			total_recruits += int(p.get("recruitable_population", 0))
@@ -114,7 +114,7 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 		
 	# --- NEW: DIPLOMACY UI LOGIC ---
 	if action_separator and declare_war_btn and propose_peace_btn:
-		if owner == GameManager.hrac_stat:
+		if owner_tag == GameManager.hrac_stat:
 			# Hide actions if looking at our own country
 			if relationship_label:
 				relationship_label.hide()
@@ -124,12 +124,12 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 			declare_war_btn.hide()
 			propose_peace_btn.hide()
 		else:
-			_aktualizuj_vztah_ui(owner)
+			_aktualizuj_vztah_ui(owner_tag)
 			# Show actions for other countries
 			action_separator.show()
 			if improve_rel_btn: improve_rel_btn.show()
 			if worsen_rel_btn: worsen_rel_btn.show()
-			_aktualizuj_diplomacii_tlacitka(owner)
+			_aktualizuj_diplomacii_tlacitka(owner_tag)
 	
 	panel.show()
 
@@ -182,15 +182,15 @@ func _on_kolo_zmeneno():
 		return
 	_aktualizuj_vztah_ui(current_viewed_tag)
 
-func _aktualizuj_vztah_ui(owner: String):
+func _aktualizuj_vztah_ui(target_tag: String):
 	if not relationship_label or not GameManager.has_method("ziskej_vztah_statu"):
 		return
-	var vztah = GameManager.ziskej_vztah_statu(GameManager.hrac_stat, owner)
+	var vztah = GameManager.ziskej_vztah_statu(GameManager.hrac_stat, target_tag)
 	relationship_label.text = "Nas vztah: %.1f" % vztah
 	relationship_label.show()
 	var zbyle_kola := 0
 	if GameManager.has_method("zbyva_kol_do_upravy_vztahu"):
-		zbyle_kola = int(GameManager.zbyva_kol_do_upravy_vztahu(GameManager.hrac_stat, owner))
+		zbyle_kola = int(GameManager.zbyva_kol_do_upravy_vztahu(GameManager.hrac_stat, target_tag))
 	var je_cooldown = zbyle_kola > 0
 
 	if improve_rel_btn:
@@ -200,17 +200,17 @@ func _aktualizuj_vztah_ui(owner: String):
 		worsen_rel_btn.text = "Zhorsit vztah (%d kol)" % zbyle_kola if je_cooldown else "Zhorsit vztah (-10)"
 		worsen_rel_btn.disabled = je_cooldown or vztah <= -100.0
 
-func _aktualizuj_diplomacii_tlacitka(owner: String):
+func _aktualizuj_diplomacii_tlacitka(target_tag: String):
 	if not declare_war_btn or not propose_peace_btn:
 		return
 
-	if GameManager.jsou_ve_valce(GameManager.hrac_stat, owner):
+	if GameManager.jsou_ve_valce(GameManager.hrac_stat, target_tag):
 		declare_war_btn.text = "VE VALCE"
 		declare_war_btn.disabled = true
 		declare_war_btn.modulate = Color(1, 0.5, 0.5)
 		declare_war_btn.show()
 
-		var ceka_na_odpoved = GameManager.je_mirova_nabidka_cekajici(GameManager.hrac_stat, owner)
+		var ceka_na_odpoved = GameManager.je_mirova_nabidka_cekajici(GameManager.hrac_stat, target_tag)
 		propose_peace_btn.text = "Nabidka odeslana" if ceka_na_odpoved else "Nabidnout mir"
 		propose_peace_btn.disabled = ceka_na_odpoved
 		propose_peace_btn.modulate = Color(1, 1, 1)

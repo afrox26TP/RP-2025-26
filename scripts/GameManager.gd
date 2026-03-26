@@ -204,9 +204,9 @@ func _je_more_provincie(prov_id: int) -> bool:
 	if not map_data.has(prov_id):
 		return false
 	var d = map_data[prov_id]
-	var owner = str(d.get("owner", "")).strip_edges().to_upper()
+	var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
 	var typ = str(d.get("type", "")).strip_edges().to_lower()
-	return owner == "SEA" or typ == "sea"
+	return owner_tag == "SEA" or typ == "sea"
 
 func je_pobrezni_provincie(prov_id: int) -> bool:
 	if not map_data.has(prov_id):
@@ -226,8 +226,8 @@ func provincie_ma_pristav(prov_id: int) -> bool:
 func muze_postavit_pristav(prov_id: int) -> bool:
 	if not map_data.has(prov_id):
 		return false
-	var owner = str(map_data[prov_id].get("owner", "")).strip_edges().to_upper()
-	if owner != hrac_stat:
+	var owner_tag = str(map_data[prov_id].get("owner", "")).strip_edges().to_upper()
+	if owner_tag != hrac_stat:
 		return false
 	if provincie_cooldowny.has(prov_id):
 		return false
@@ -482,8 +482,8 @@ func _ma_ai_prijmout_mir(prijemce: String, odesilatel: String) -> bool:
 
 func _ziskej_ai_staty() -> Array:
 	var ai_staty: Dictionary = {}
-	for owner in _ziskej_aktivni_staty():
-		var tag = str(owner)
+	for state_tag in _ziskej_aktivni_staty():
+		var tag = str(state_tag)
 		if tag == "" or je_lidsky_stat(tag):
 			continue
 		ai_staty[tag] = true
@@ -511,21 +511,21 @@ func _rebuild_turn_cache() -> void:
 	var active: Dictionary = {}
 	for p_id in map_data:
 		var d = map_data[p_id]
-		var owner = str(d.get("owner", "")).strip_edges().to_upper()
-		if owner == "" or owner == "SEA":
+		var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
+		if owner_tag == "" or owner_tag == "SEA":
 			continue
 
-		active[owner] = true
-		_turn_state_soldier_power[owner] = int(_turn_state_soldier_power.get(owner, 0)) + int(d.get("soldiers", 0))
-		_turn_state_hdp[owner] = float(_turn_state_hdp.get(owner, 0.0)) + float(d.get("gdp", 0.0))
+		active[owner_tag] = true
+		_turn_state_soldier_power[owner_tag] = int(_turn_state_soldier_power.get(owner_tag, 0)) + int(d.get("soldiers", 0))
+		_turn_state_hdp[owner_tag] = float(_turn_state_hdp.get(owner_tag, 0.0)) + float(d.get("gdp", 0.0))
 
 		for n_id in d.get("neighbors", []):
 			if not map_data.has(n_id):
 				continue
 			var n_owner = str(map_data[n_id].get("owner", "")).strip_edges().to_upper()
-			if n_owner == "" or n_owner == "SEA" or n_owner == owner:
+			if n_owner == "" or n_owner == "SEA" or n_owner == owner_tag:
 				continue
-			var pair_key = _klic_pair(owner, n_owner)
+			var pair_key = _klic_pair(owner_tag, n_owner)
 			if pair_key != "":
 				_turn_border_pairs[pair_key] = true
 
@@ -538,10 +538,10 @@ func _ziskej_aktivni_staty() -> Array:
 
 	var ai_staty: Dictionary = {}
 	for p_id in map_data:
-		var owner = str(map_data[p_id].get("owner", "")).strip_edges().to_upper()
-		if owner == "" or owner == "SEA":
+		var owner_tag = str(map_data[p_id].get("owner", "")).strip_edges().to_upper()
+		if owner_tag == "" or owner_tag == "SEA":
 			continue
-		ai_staty[owner] = true
+		ai_staty[owner_tag] = true
 	return ai_staty.keys()
 
 func _ma_spolecnou_hranici(tag_a: String, tag_b: String) -> bool:
@@ -566,8 +566,8 @@ func _ma_spolecnou_hranici(tag_a: String, tag_b: String) -> bool:
 func _zpracuj_ai_diplomacii(ai_staty: Array) -> Array:
 	var aktivni_staty = _ziskej_aktivni_staty()
 	var zmeny_vztahu_k_hraci: Array = []
-	for owner in ai_staty:
-		var owner_tag = str(owner)
+	for ai_tag in ai_staty:
+		var owner_tag = str(ai_tag)
 		if owner_tag == "":
 			continue
 
@@ -743,9 +743,9 @@ func _je_more_provincie_v_datech(all_provinces: Dictionary, prov_id: int) -> boo
 	if not all_provinces.has(prov_id):
 		return false
 	var d = all_provinces[prov_id]
-	var owner = str(d.get("owner", "")).strip_edges().to_upper()
+	var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
 	var typ = str(d.get("type", "")).strip_edges().to_lower()
-	return owner == "SEA" or typ == "sea"
+	return owner_tag == "SEA" or typ == "sea"
 
 func _je_pobrezni_v_datech(all_provinces: Dictionary, prov_id: int) -> bool:
 	if not all_provinces.has(prov_id):
@@ -786,27 +786,27 @@ func pridej_startovni_pristavy(all_provinces: Dictionary):
 	for p_id in all_provinces.keys():
 		var pid = int(p_id)
 		var d = all_provinces[pid]
-		var owner = str(d.get("owner", "")).strip_edges().to_upper()
-		if owner == "" or owner == "SEA":
+		var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
+		if owner_tag == "" or owner_tag == "SEA":
 			continue
 
-		vsechny_staty[owner] = true
+		vsechny_staty[owner_tag] = true
 
 		if bool(d.get("has_port", false)):
-			stat_ma_pristav[owner] = true
+			stat_ma_pristav[owner_tag] = true
 
 		if _je_pobrezni_v_datech(all_provinces, pid):
-			if not kandidati.has(owner):
-				kandidati[owner] = []
-			(kandidati[owner] as Array).append(pid)
+			if not kandidati.has(owner_tag):
+				kandidati[owner_tag] = []
+			(kandidati[owner_tag] as Array).append(pid)
 
-	for owner in vsechny_staty.keys():
-		if stat_ma_pristav.has(owner):
+	for state_tag in vsechny_staty.keys():
+		if stat_ma_pristav.has(state_tag):
 			continue
-		if not kandidati.has(owner):
+		if not kandidati.has(state_tag):
 			continue
 
-		var vybrany = _vyber_startovni_port_kandidata(all_provinces, kandidati[owner])
+		var vybrany = _vyber_startovni_port_kandidata(all_provinces, kandidati[state_tag])
 		if vybrany != -1 and all_provinces.has(vybrany):
 			all_provinces[vybrany]["has_port"] = true
 
@@ -911,11 +911,11 @@ func ukonci_kolo():
 		_aplikuj_bonus(prov_id, typ_budovy)
 		if typ_budovy == 2 and map_data.has(prov_id):
 			var nazev = str(map_data[prov_id].get("province_name", "Provincie %d" % int(prov_id)))
-			var owner = _normalizuj_tag(str(map_data[prov_id].get("owner", "")))
-			if je_lidsky_stat(owner):
-				if not hlaseni_dokoncene_stavby.has(owner):
-					hlaseni_dokoncene_stavby[owner] = []
-				(hlaseni_dokoncene_stavby[owner] as Array).append("Pristav dokoncen: %s" % nazev)
+			var owner_tag = _normalizuj_tag(str(map_data[prov_id].get("owner", "")))
+			if je_lidsky_stat(owner_tag):
+				if not hlaseni_dokoncene_stavby.has(owner_tag):
+					hlaseni_dokoncene_stavby[owner_tag] = []
+				(hlaseni_dokoncene_stavby[owner_tag] as Array).append("Pristav dokoncen: %s" % nazev)
 
 	if not map_data.is_empty():
 		spocitej_prijem(map_data, false)
@@ -1025,37 +1025,37 @@ func zpracuj_tah_ai():
 
 	for p_id in map_data:
 		var d = map_data[p_id]
-		var owner = str(d.get("owner", "")).strip_edges().to_upper()
-		if je_lidsky_stat(owner) or owner == "SEA": continue
+		var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
+		if je_lidsky_stat(owner_tag) or owner_tag == "SEA": continue
 		
-		if not ai_kasy.has(owner):
-			var ai_hdp = _spocitej_hdp_statu(owner)
-			ai_kasy[owner] = ai_hdp * 0.05
+		if not ai_kasy.has(owner_tag):
+			var ai_hdp = _spocitej_hdp_statu(owner_tag)
+			ai_kasy[owner_tag] = ai_hdp * 0.05
 		
 		var gdp = float(d.get("gdp", 0.0))
 		var vojaci = int(d.get("soldiers", 0))
 		var prijem = (gdp * 0.1) - (vojaci * 0.001)
-		ai_kasy[owner] += prijem
+		ai_kasy[owner_tag] += prijem
 
-		if ai_kasy[owner] < -100.0:
-			_vyres_bankrot(owner)
+		if ai_kasy[owner_tag] < -100.0:
+			_vyres_bankrot(owner_tag)
 
 		# AI Recruitment
 		var rekruti = int(d.get("recruitable_population", 0))
-		if rekruti > 300 and ai_kasy[owner] > 50.0:
-			var pocet_k_verbovani = min(rekruti, int(ai_kasy[owner] / cena_za_vojaka))
+		if rekruti > 300 and ai_kasy[owner_tag] > 50.0:
+			var pocet_k_verbovani = min(rekruti, int(ai_kasy[owner_tag] / cena_za_vojaka))
 			var frontline_bonus = 0
-			if _ma_nepratelskeho_souseda(owner, p_id):
+			if _ma_nepratelskeho_souseda(owner_tag, p_id):
 				frontline_bonus += 700
 			if bool(d.get("is_capital", false)):
 				frontline_bonus += 500
-			var hrozba = _spocitej_hrozbu_nepratel_u_provincie(p_id, owner)
+			var hrozba = _spocitej_hrozbu_nepratel_u_provincie(p_id, owner_tag)
 			frontline_bonus += min(900, int(float(hrozba) * 0.15))
 			var limit_verbovani = min(2500, 900 + frontline_bonus)
 			pocet_k_verbovani = min(pocet_k_verbovani, limit_verbovani)
 			d["recruitable_population"] -= pocet_k_verbovani
 			d["soldiers"] += pocet_k_verbovani
-			ai_kasy[owner] -= (pocet_k_verbovani * cena_za_vojaka)
+			ai_kasy[owner_tag] -= (pocet_k_verbovani * cena_za_vojaka)
 
 	# AI movement phases:
 	# 1) Non-attacking moves inside own provinces.
@@ -1072,9 +1072,9 @@ func _naplanuj_ai_presuny(map_loader):
 	if map_loader.has_method("zacni_davkovy_presun"):
 		map_loader.zacni_davkovy_presun()
 
-	for owner in ai_staty:
+	for owner_tag in ai_staty:
 		var moved_from: Dictionary = {}
-		var owner_tag = str(owner)
+		owner_tag = str(owner_tag)
 		var serazene: Array = _seradene_ai_provincie(owner_tag)
 		var core_state: String = _ziskej_core_state_cached(owner_tag)
 
@@ -1129,11 +1129,11 @@ func _naplanuj_ai_presuny(map_loader):
 	if map_loader.has_method("ukonci_davkovy_presun"):
 		map_loader.ukonci_davkovy_presun()
 
-func _seradene_ai_provincie(owner: String) -> Array:
+func _seradene_ai_provincie(state_tag: String) -> Array:
 	var ids: Array = []
 	for p_id in map_data:
 		var d = map_data[p_id]
-		if str(d.get("owner", "")).strip_edges().to_upper() == owner:
+		if str(d.get("owner", "")).strip_edges().to_upper() == state_tag:
 			if int(d.get("soldiers", 0)) > 0:
 				ids.append(p_id)
 
@@ -1142,22 +1142,22 @@ func _seradene_ai_provincie(owner: String) -> Array:
 	)
 	return ids
 
-func _ma_nepratelskeho_souseda(owner: String, province_id: int) -> bool:
+func _ma_nepratelskeho_souseda(state_tag: String, province_id: int) -> bool:
 	if not map_data.has(province_id):
 		return false
 	for n_id in map_data[province_id].get("neighbors", []):
 		if not map_data.has(n_id):
 			continue
 		var n_owner = str(map_data[n_id].get("owner", "")).strip_edges().to_upper()
-		if n_owner == owner or n_owner == "SEA":
+		if n_owner == state_tag or n_owner == "SEA":
 			continue
-		if jsou_ve_valce(owner, n_owner):
+		if jsou_ve_valce(state_tag, n_owner):
 			return true
-		if not _je_pratelsky_vztah(owner, n_owner):
+		if not _je_pratelsky_vztah(state_tag, n_owner):
 			return true
 	return false
 
-func _spocitej_hrozbu_nepratel_u_provincie(province_id: int, owner: String) -> int:
+func _spocitej_hrozbu_nepratel_u_provincie(province_id: int, state_tag: String) -> int:
 	if not map_data.has(province_id):
 		return 0
 	var threat := 0
@@ -1165,40 +1165,40 @@ func _spocitej_hrozbu_nepratel_u_provincie(province_id: int, owner: String) -> i
 		if not map_data.has(n_id):
 			continue
 		var n_owner = str(map_data[n_id].get("owner", "")).strip_edges().to_upper()
-		if n_owner == owner or n_owner == "SEA":
+		if n_owner == state_tag or n_owner == "SEA":
 			continue
-		if not jsou_ve_valce(owner, n_owner) and _je_pratelsky_vztah(owner, n_owner):
+		if not jsou_ve_valce(state_tag, n_owner) and _je_pratelsky_vztah(state_tag, n_owner):
 			continue
 		threat += int(map_data[n_id].get("soldiers", 0))
 	return threat
 
-func _spocitej_silu_na_hranici(owner: String, enemy: String) -> Dictionary:
+func _spocitej_silu_na_hranici(state_tag: String, enemy: String) -> Dictionary:
 	var our_border := 0
 	var enemy_border := 0
 	for p_id in map_data:
 		var d = map_data[p_id]
 		var p_owner = str(d.get("owner", "")).strip_edges().to_upper()
-		if p_owner != owner and p_owner != enemy:
+		if p_owner != state_tag and p_owner != enemy:
 			continue
 		var soldiers = int(d.get("soldiers", 0))
 		for n_id in d.get("neighbors", []):
 			if not map_data.has(n_id):
 				continue
 			var n_owner = str(map_data[n_id].get("owner", "")).strip_edges().to_upper()
-			if p_owner == owner and n_owner == enemy:
+			if p_owner == state_tag and n_owner == enemy:
 				our_border += soldiers
 				break
-			if p_owner == enemy and n_owner == owner:
+			if p_owner == enemy and n_owner == state_tag:
 				enemy_border += soldiers
 				break
 	return {"our": our_border, "enemy": enemy_border}
 
-func _ma_smyls_vyhlasit_valku(owner: String, target_owner: String, from_id: int, to_id: int, amount: int) -> bool:
-	if owner == "" or target_owner == "" or target_owner == "SEA":
+func _ma_smyls_vyhlasit_valku(state_tag: String, target_owner: String, from_id: int, to_id: int, amount: int) -> bool:
+	if state_tag == "" or target_owner == "" or target_owner == "SEA":
 		return false
-	if _je_pratelsky_vztah(owner, target_owner):
+	if _je_pratelsky_vztah(state_tag, target_owner):
 		return false
-	var rel = ziskej_vztah_statu(owner, target_owner)
+	var rel = ziskej_vztah_statu(state_tag, target_owner)
 	if rel > AI_DECLARE_WAR_MAX_RELATION:
 		return false
 	if amount < AI_DECLARE_WAR_MIN_ATTACK_FORCE:
@@ -1206,7 +1206,7 @@ func _ma_smyls_vyhlasit_valku(owner: String, target_owner: String, from_id: int,
 	if not map_data.has(from_id) or not map_data.has(to_id):
 		return false
 
-	var border_strength = _spocitej_silu_na_hranici(owner, target_owner)
+	var border_strength = _spocitej_silu_na_hranici(state_tag, target_owner)
 	var our_border = float(int(border_strength.get("our", 0)))
 	var enemy_border = float(max(1, int(border_strength.get("enemy", 0))))
 	var ratio = our_border / enemy_border
@@ -1218,7 +1218,7 @@ func _ma_smyls_vyhlasit_valku(owner: String, target_owner: String, from_id: int,
 	var required_local_ratio = 1.25 - (relation_factor * 0.20)
 	return ratio >= AI_DECLARE_WAR_MIN_BORDER_ADVANTAGE and local_ratio >= required_local_ratio
 
-func _navrhni_neutocny_presun(owner: String, from_id: int) -> Dictionary:
+func _navrhni_neutocny_presun(state_tag: String, from_id: int) -> Dictionary:
 	if not map_data.has(from_id):
 		return {}
 	var from_data = map_data[from_id]
@@ -1227,7 +1227,7 @@ func _navrhni_neutocny_presun(owner: String, from_id: int) -> Dictionary:
 		return {}
 
 	# Keep frontline stacks in place for attacks/defense phases.
-	if _ma_nepratelskeho_souseda(owner, from_id):
+	if _ma_nepratelskeho_souseda(state_tag, from_id):
 		return {}
 
 	var best_target = -1
@@ -1237,11 +1237,11 @@ func _navrhni_neutocny_presun(owner: String, from_id: int) -> Dictionary:
 			continue
 		var n_data = map_data[n_id]
 		var n_owner = str(n_data.get("owner", "")).strip_edges().to_upper()
-		if n_owner != owner:
+		if n_owner != state_tag:
 			continue
 
 		var target_soldiers = int(n_data.get("soldiers", 0))
-		var threatened = _ma_nepratelskeho_souseda(owner, n_id)
+		var threatened = _ma_nepratelskeho_souseda(state_tag, n_id)
 		var score = 0.0
 		if threatened:
 			score += 10000.0
@@ -1262,29 +1262,29 @@ func _navrhni_neutocny_presun(owner: String, from_id: int) -> Dictionary:
 
 	return {"from": from_id, "to": best_target, "amount": amount}
 
-func _ziskej_core_state(owner: String) -> String:
+func _ziskej_core_state(state_tag: String) -> String:
 	for p_id in map_data:
 		var d = map_data[p_id]
-		if str(d.get("owner", "")).strip_edges().to_upper() != owner:
+		if str(d.get("owner", "")).strip_edges().to_upper() != state_tag:
 			continue
 		if bool(d.get("is_capital", false)):
 			return str(d.get("state", ""))
 	return ""
 
-func _ziskej_core_state_cached(owner: String) -> String:
-	if owner == "":
+func _ziskej_core_state_cached(state_tag: String) -> String:
+	if state_tag == "":
 		return ""
-	if _core_state_cache.has(owner):
-		return str(_core_state_cache[owner])
-	var core_state = _ziskej_core_state(owner)
-	_core_state_cache[owner] = core_state
+	if _core_state_cache.has(state_tag):
+		return str(_core_state_cache[state_tag])
+	var core_state = _ziskej_core_state(state_tag)
+	_core_state_cache[state_tag] = core_state
 	return core_state
 
-func _je_core_provincie(owner: String, province_id: int, core_state: String) -> bool:
+func _je_core_provincie(state_tag: String, province_id: int, core_state: String) -> bool:
 	if not map_data.has(province_id):
 		return false
 	var d = map_data[province_id]
-	if str(d.get("owner", "")).strip_edges().to_upper() != owner:
+	if str(d.get("owner", "")).strip_edges().to_upper() != state_tag:
 		return false
 	if bool(d.get("is_capital", false)):
 		return true
@@ -1292,7 +1292,7 @@ func _je_core_provincie(owner: String, province_id: int, core_state: String) -> 
 		return true
 	return false
 
-func _navrhni_core_obranu(owner: String, from_id: int, core_state: String = "") -> Dictionary:
+func _navrhni_core_obranu(state_tag: String, from_id: int, core_state: String = "") -> Dictionary:
 	if not map_data.has(from_id):
 		return {}
 	var from_data = map_data[from_id]
@@ -1301,19 +1301,19 @@ func _navrhni_core_obranu(owner: String, from_id: int, core_state: String = "") 
 		return {}
 
 	if core_state == "":
-		core_state = _ziskej_core_state_cached(owner)
+		core_state = _ziskej_core_state_cached(state_tag)
 	var best_target = -1
 	var best_score = -INF
 	for n_id in from_data.get("neighbors", []):
-		if not _je_core_provincie(owner, n_id, core_state):
+		if not _je_core_provincie(state_tag, n_id, core_state):
 			continue
 		var n_soldiers = int(map_data[n_id].get("soldiers", 0))
 		var score = (2600.0 - float(n_soldiers))
 		if bool(map_data[n_id].get("is_capital", false)):
 			score += 2200.0
-		if _ma_nepratelskeho_souseda(owner, n_id):
+		if _ma_nepratelskeho_souseda(state_tag, n_id):
 			score += 1600.0
-		score += min(1800.0, float(_spocitej_hrozbu_nepratel_u_provincie(n_id, owner)) * 0.25)
+		score += min(1800.0, float(_spocitej_hrozbu_nepratel_u_provincie(n_id, state_tag)) * 0.25)
 		if score > best_score:
 			best_score = score
 			best_target = n_id
@@ -1332,14 +1332,14 @@ func _navrhni_core_obranu(owner: String, from_id: int, core_state: String = "") 
 
 	return {"from": from_id, "to": best_target, "amount": amount}
 
-func _navrhni_utok(owner: String, from_id: int) -> Dictionary:
+func _navrhni_utok(state_tag: String, from_id: int) -> Dictionary:
 	if not map_data.has(from_id):
 		return {}
 	var from_data = map_data[from_id]
 	var vojaci = int(from_data.get("soldiers", 0))
 	if vojaci <= 1000:
 		return {}
-	if not _ma_nepratelskeho_souseda(owner, from_id):
+	if not _ma_nepratelskeho_souseda(state_tag, from_id):
 		return {}
 
 	var best_target = -1
@@ -1355,13 +1355,13 @@ func _navrhni_utok(owner: String, from_id: int) -> Dictionary:
 			continue
 		var n_prov = map_data[n_id]
 		var n_owner = str(n_prov.get("owner", "")).strip_edges().to_upper()
-		if n_owner == owner or n_owner == "SEA":
+		if n_owner == state_tag or n_owner == "SEA":
 			continue
-		if not jsou_ve_valce(owner, n_owner) and _je_pratelsky_vztah(owner, n_owner):
+		if not jsou_ve_valce(state_tag, n_owner) and _je_pratelsky_vztah(state_tag, n_owner):
 			continue
 
 		var n_vojaci = int(n_prov.get("soldiers", 0))
-		var threat_after_capture = _spocitej_hrozbu_nepratel_u_provincie(n_id, owner)
+		var threat_after_capture = _spocitej_hrozbu_nepratel_u_provincie(n_id, state_tag)
 		var needed_for_push = int(float(n_vojaci) * 1.15) + int(float(threat_after_capture) * 0.15)
 		var attack_amount = min(max_attack, int(float(vojaci) * 0.78))
 		if attack_amount < max(550, needed_for_push):
@@ -1370,7 +1370,7 @@ func _navrhni_utok(owner: String, from_id: int) -> Dictionary:
 		var score = 0.0
 		score += float(attack_amount - n_vojaci) * 1.2
 		score -= float(threat_after_capture) * 0.30
-		var rel = ziskej_vztah_statu(owner, n_owner)
+		var rel = ziskej_vztah_statu(state_tag, n_owner)
 		score += clamp(-rel, 0.0, 100.0) * 12.0
 		score += float(n_prov.get("gdp", 0.0)) * 16.0
 		score += float(int(n_prov.get("recruitable_population", 0))) * 0.02

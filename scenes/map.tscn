@@ -153,6 +153,34 @@ text = "Presunout"
 layout_mode = 2
 text = "Zrusit"
 
+[node name="LikvidacePopup" type="PopupPanel" parent="InfoUI/ActionMenu" unique_id=204560911]
+oversampling_override = 1.0
+size = Vector2i(210, 100)
+visible = true
+
+[node name="VBoxContainer" type="VBoxContainer" parent="InfoUI/ActionMenu/LikvidacePopup" unique_id=204560912]
+offset_left = 4.0
+offset_top = 4.0
+offset_right = 206.0
+offset_bottom = 96.0
+
+[node name="LikvidaceInfo" type="Label" parent="InfoUI/ActionMenu/LikvidacePopup/VBoxContainer" unique_id=204560913]
+layout_mode = 2
+
+[node name="LikvidaceSlider" type="HSlider" parent="InfoUI/ActionMenu/LikvidacePopup/VBoxContainer" unique_id=204560914]
+layout_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="InfoUI/ActionMenu/LikvidacePopup/VBoxContainer" unique_id=204560915]
+layout_mode = 2
+
+[node name="PotvrditButton" type="Button" parent="InfoUI/ActionMenu/LikvidacePopup/VBoxContainer/HBoxContainer" unique_id=204560916]
+layout_mode = 2
+text = "Likvidovat"
+
+[node name="ZrusitButton" type="Button" parent="InfoUI/ActionMenu/LikvidacePopup/VBoxContainer/HBoxContainer" unique_id=204560917]
+layout_mode = 2
+text = "Zrusit"
+
 [node name="GameUI" type="CanvasLayer" parent="." unique_id=1271783973]
 script = ExtResource("9_be0no")
 

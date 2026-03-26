@@ -98,6 +98,7 @@ var selected_country_tag_in_browser: String = ""
 var selected_country_tag: String = "ALB"
 var new_game_browser_flow: bool = false
 var local_player_tags: Array = []
+var setup_active_player_index: int = 0
 const BROWSER_CONFIRM_DEFAULT_TEXT := "Potvrdit vyber"
 const BROWSER_CONFIRM_ADD_PLAYER_TEXT := "Pridat hrace"
 const BROWSER_CLOSE_DEFAULT_TEXT := "Zavrit"
@@ -128,17 +129,17 @@ func _load_normalized_flag_texture(path: String, width: int, height: int):
 	if src_w <= 0 or src_h <= 0:
 		return base_tex
 
-	var scale = min(float(width) / float(src_w), float(height) / float(src_h))
-	var out_w = max(1, int(round(src_w * scale)))
-	var out_h = max(1, int(round(src_h * scale)))
+	var scale_factor = min(float(width) / float(src_w), float(height) / float(src_h))
+	var out_w = max(1, int(round(src_w * scale_factor)))
+	var out_h = max(1, int(round(src_h * scale_factor)))
 
-	var resized = base_img.duplicate()
-	resized.resize(out_w, out_h, Image.INTERPOLATE_LANCZOS)
+	var resized_img = base_img.duplicate()
+	resized_img.resize(out_w, out_h, Image.INTERPOLATE_LANCZOS)
 
 	var canvas = Image.create_empty(width, height, false, Image.FORMAT_RGBA8)
 	canvas.fill(Color(0, 0, 0, 0))
 	var dst_pos = Vector2i((width - out_w) / 2, (height - out_h) / 2)
-	canvas.blit_rect(resized, Rect2i(Vector2i.ZERO, Vector2i(out_w, out_h)), dst_pos)
+	canvas.blit_rect(resized_img, Rect2i(Vector2i.ZERO, Vector2i(out_w, out_h)), dst_pos)
 
 	var normalized_tex = ImageTexture.create_from_image(canvas)
 	normalized_flag_texture_cache[cache_key] = normalized_tex
@@ -286,6 +287,8 @@ func _sestav_text_radku_statu(tag: String) -> String:
 	if idx != -1:
 		badges.append("OBSAZENO")
 		badges.append("HRAC %d" % (idx + 1))
+		if new_game_browser_flow and idx == setup_active_player_index:
+			badges.append("AKTIVNI")
 
 	var prefix = ""
 	if not badges.is_empty():
@@ -330,7 +333,10 @@ func _aktualizuj_panel_vyberu_hracu() -> void:
 			var lines: Array = []
 			for i in range(local_player_tags.size()):
 				var tag = str(local_player_tags[i])
-				lines.append("%d. %s (%s)" % [i + 1, _zobrazene_jmeno_statu(tag), tag])
+				var prefix = "%d." % (i + 1)
+				if i == setup_active_player_index:
+					prefix = "%d. >" % (i + 1)
+				lines.append("%s %s (%s)" % [prefix, _zobrazene_jmeno_statu(tag), tag])
 			selected_players_list.text = "\n".join(lines)
 	else:
 		selected_players_title.text = "Aktualni vyber"
@@ -432,12 +438,68 @@ func _vytvor_souhrn_statu(jmeno: String, s: Dictionary) -> String:
 	return "%s je %s zeme s %s zakladnou a %s vojenskou pripravenosti. Silne stranky: %s. Rizika: %s." % [jmeno, velikost, vyspelost, vojenska_sila, silne_text, slabiny_text]
 
 func _on_country_row_pressed(tag: String):
-	if new_game_browser_flow and local_player_tags.has(tag):
-		if browser_flow_hint:
-			browser_flow_hint.text = "Stat %s je uz obsazeny jinym hracem." % tag
+	if new_game_browser_flow:
+		_prirad_stat_aktivnimu_hraci(tag)
 		return
 	_nastav_detail_statu(tag)
 	_obnov_texty_radku_statu()
+
+func _ziskej_setup_tag_aktivniho_hrace() -> String:
+	if local_player_tags.is_empty():
+		return ""
+	if setup_active_player_index < 0 or setup_active_player_index >= local_player_tags.size():
+		return ""
+	return str(local_player_tags[setup_active_player_index])
+
+func _najdi_prvni_volny_tag() -> String:
+	var vsechny_tagy = country_stats.keys()
+	vsechny_tagy.sort_custom(func(a, b):
+		return _zobrazene_jmeno_statu(str(a)) < _zobrazene_jmeno_statu(str(b))
+	)
+
+	for raw_tag in vsechny_tagy:
+		var tag = str(raw_tag)
+		if not local_player_tags.has(tag):
+			return tag
+
+	return ""
+
+func _prirad_stat_aktivnimu_hraci(tag: String) -> void:
+	if local_player_tags.is_empty():
+		return
+
+	if setup_active_player_index < 0 or setup_active_player_index >= local_player_tags.size():
+		return
+
+	var idx_obsazeni = local_player_tags.find(tag)
+	if idx_obsazeni != -1 and idx_obsazeni != setup_active_player_index:
+		if browser_flow_hint:
+			browser_flow_hint.text = "Stat %s je uz obsazeny jinym hracem." % tag
+		return
+
+	local_player_tags[setup_active_player_index] = tag
+	selected_country_tag_in_browser = tag
+	selected_country_tag = str(local_player_tags[0])
+	_nastav_detail_statu(tag)
+	_obnov_text_vyberu()
+	_obnov_texty_radku_statu()
+	_aktualizuj_panel_vyberu_hracu()
+	_aktualizuj_browser_napovedu()
+
+func _pridej_dalsiho_hrace_do_setupu() -> void:
+	var novy_tag = _najdi_prvni_volny_tag()
+	if novy_tag == "":
+		if browser_flow_hint:
+			browser_flow_hint.text = "Neni dostupny dalsi volny stat pro noveho hrace."
+		return
+
+	local_player_tags.append(novy_tag)
+	setup_active_player_index = local_player_tags.size() - 1
+	selected_country_tag_in_browser = novy_tag
+	_nastav_detail_statu(novy_tag)
+	_obnov_texty_radku_statu()
+	_aktualizuj_panel_vyberu_hracu()
+	_aktualizuj_browser_napovedu()
 
 func _otevri_browser_statu():
 	if selected_country_tag != "" and country_stats.has(selected_country_tag):
@@ -447,20 +509,7 @@ func _otevri_browser_statu():
 
 func _on_confirm_country_pressed():
 	if new_game_browser_flow:
-		var tag_k_pridani = selected_country_tag_in_browser if selected_country_tag_in_browser != "" else selected_country_tag
-		if tag_k_pridani == "":
-			return
-		tag_k_pridani = tag_k_pridani.strip_edges().to_upper()
-		if local_player_tags.has(tag_k_pridani):
-			if browser_flow_hint:
-				browser_flow_hint.text = "Stat %s je uz obsazeny jinym hracem." % tag_k_pridani
-			return
-		local_player_tags.append(tag_k_pridani)
-		selected_country_tag = str(local_player_tags[0])
-		_obnov_text_vyberu()
-		_obnov_texty_radku_statu()
-		_aktualizuj_panel_vyberu_hracu()
-		_aktualizuj_browser_napovedu()
+		_pridej_dalsiho_hrace_do_setupu()
 		return
 
 	if selected_country_tag_in_browser != "":
@@ -474,6 +523,8 @@ func _on_close_browser_pressed():
 	if new_game_browser_flow:
 		if local_player_tags.is_empty() and selected_country_tag != "":
 			local_player_tags.append(selected_country_tag)
+		selected_country_tag = str(local_player_tags[0]) if not local_player_tags.is_empty() else selected_country_tag
+		setup_active_player_index = 0
 		new_game_browser_flow = false
 		btn_confirm_country.text = BROWSER_CONFIRM_DEFAULT_TEXT
 		btn_close_browser.text = BROWSER_CLOSE_DEFAULT_TEXT
@@ -494,6 +545,7 @@ func _on_close_browser_pressed():
 
 func _on_close_browser_corner_pressed():
 	new_game_browser_flow = false
+	setup_active_player_index = 0
 	btn_confirm_country.text = BROWSER_CONFIRM_DEFAULT_TEXT
 	btn_close_browser.text = BROWSER_CLOSE_DEFAULT_TEXT
 	local_player_tags.clear()
@@ -527,12 +579,14 @@ func _aktualizuj_browser_napovedu():
 		return
 
 	if new_game_browser_flow:
-		browser_subtitle.text = "Pridavej hrace po jednom: vyber stat, klikni Pridat hrace, pak Spustit hru"
-		list_hint.text = "Znacky: [VYBRAN] = detail vpravo, [HRAC X] = uz pridan do partie."
+		browser_subtitle.text = "Hrac 1 je automaticky pridan. Klikanim volis stat aktivnimu hraci."
+		list_hint.text = "Spustit hru = solo nebo start vice hracu. Pridat hrace = dalsi hrac."
 		if local_player_tags.is_empty():
-			browser_flow_hint.text = "Zatim neni vybran zadny hrac."
+			browser_flow_hint.text = "Pripravuje se vyber hracu..."
 		else:
-			browser_flow_hint.text = "Aktualni hraci (%d): %s" % [local_player_tags.size(), ", ".join(local_player_tags)]
+			var cislo_hrace = setup_active_player_index + 1
+			var aktivni_tag = _ziskej_setup_tag_aktivniho_hrace()
+			browser_flow_hint.text = "Vybiras stat pro HRACE %d. Aktualne: %s" % [cislo_hrace, aktivni_tag]
 	else:
 		browser_subtitle.text = "Vyber stat pro solo nebo pridej vice statu pro local multiplayer"
 		list_hint.text = "Klikni na stat pro detail a pak potvrd vyber"
@@ -568,8 +622,23 @@ func _spust_hru_vyberem(player_tags: Array = []):
 func _on_new_game_pressed():
 	local_player_tags.clear()
 	new_game_browser_flow = true
+	setup_active_player_index = 0
+
+	var vychozi_tag = selected_country_tag.strip_edges().to_upper()
+	if vychozi_tag == "" or not country_stats.has(vychozi_tag):
+		vychozi_tag = _najdi_prvni_volny_tag()
+	if vychozi_tag == "":
+		vychozi_tag = selected_country_tag
+
+	if vychozi_tag != "":
+		local_player_tags = [vychozi_tag]
+		selected_country_tag = vychozi_tag
+		selected_country_tag_in_browser = vychozi_tag
+		_nastav_detail_statu(vychozi_tag)
+
 	btn_confirm_country.text = BROWSER_CONFIRM_ADD_PLAYER_TEXT
 	btn_close_browser.text = BROWSER_CLOSE_START_TEXT
+	_obnov_text_vyberu()
 	_obnov_texty_radku_statu()
 	_aktualizuj_panel_vyberu_hracu()
 	_aktualizuj_browser_napovedu()

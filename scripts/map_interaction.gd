@@ -32,13 +32,13 @@ var country_colors = {
 }
 
 func _barva_politickeho_vlastnictvi(d: Dictionary) -> Color:
-	var owner = str(d.get("owner", "")).strip_edges().to_upper()
-	var base = country_colors.get(owner, Color.from_hsv(owner.hash() / float(0x7FFFFFFF), 0.7, 0.8))
+	var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
+	var base = country_colors.get(owner_tag, Color.from_hsv(owner_tag.hash() / float(0x7FFFFFFF), 0.7, 0.8))
 	base.a = 1.0
 
 	# Occupied (non-core) territory is visually muted to separate it from core land.
-	var core_owner = str(d.get("core_owner", owner)).strip_edges().to_upper()
-	if core_owner != "" and owner != core_owner:
+	var core_owner = str(d.get("core_owner", owner_tag)).strip_edges().to_upper()
+	if core_owner != "" and owner_tag != core_owner:
 		base = base.lerp(Color(0.92, 0.92, 0.92, 1.0), 0.08)
 
 	return base
@@ -136,7 +136,7 @@ func _odzanc_vse():
 			if lbl.has_method("reset_stav"):
 				lbl.reset_stav()
 
-func _zpracuj_interakci(mouse_pos: Vector2, je_kliknuti: bool):
+func _zpracuj_interakci(_mouse_pos: Vector2, je_kliknuti: bool):
 	if map_image == null: return
 	
 	var local_pos = to_local(get_global_mouse_position())
@@ -170,9 +170,9 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary):
 			
 			if from_id != to_id and root.has_method("je_platny_cil_presunu"):
 				if root.je_platny_cil_presunu(from_id, to_id):
-					var info_ui = get_tree().current_scene.find_child("InfoUI", true, false)
-					if info_ui and info_ui.has_method("zobraz_presun_slider"):
-						info_ui.zobraz_presun_slider(from_id, to_id, root.vybrana_armada_max)
+					var target_info_ui = get_tree().current_scene.find_child("InfoUI", true, false)
+					if target_info_ui and target_info_ui.has_method("zobraz_presun_slider"):
+						target_info_ui.zobraz_presun_slider(from_id, to_id, root.vybrana_armada_max)
 						cil_vybran = true
 			
 			# Reset state only when a valid target is chosen.
@@ -286,12 +286,12 @@ func aktualizuj_mapovy_mod(mod: String, province_db: Dictionary):
 	for prov_id in province_db.keys():
 		var d = province_db[prov_id]
 		var barva = Color.TRANSPARENT
-		var owner = str(d.get("owner", "")).strip_edges().to_upper()
-		var core_owner = str(d.get("core_owner", owner)).strip_edges().to_upper()
-		var je_okupace = (core_owner != "" and owner != core_owner)
+		var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
+		var core_owner = str(d.get("core_owner", owner_tag)).strip_edges().to_upper()
+		var je_okupace = (core_owner != "" and owner_tag != core_owner)
 		occupation_image.set_pixel(prov_id, 0, Color(1, 1, 1, 1) if je_okupace else Color(0, 0, 0, 0))
 		
-		if owner != "SEA" and str(d.get("type", "")) != "sea":
+		if owner_tag != "SEA" and str(d.get("type", "")) != "sea":
 			match mod:
 				"political":
 					barva = _barva_politickeho_vlastnictvi(d)
@@ -317,7 +317,7 @@ func aktualizuj_mapovy_mod(mod: String, province_db: Dictionary):
 				"relationships":
 					var rel = 0.0
 					if GameManager.has_method("ziskej_vztah_statu"):
-						rel = GameManager.ziskej_vztah_statu(GameManager.hrac_stat, owner)
+						rel = GameManager.ziskej_vztah_statu(GameManager.hrac_stat, owner_tag)
 					if rel >= 0.0:
 						var s_pos = clamp(rel / 100.0, 0.0, 1.0)
 						barva = Color(1.0 - (0.9 * s_pos), 1.0, 0.15, 1.0)

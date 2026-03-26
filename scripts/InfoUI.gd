@@ -28,16 +28,25 @@ extends CanvasLayer
 @onready var btn_move_potvrdit = $ActionMenu/MovePopup/VBoxContainer/HBoxContainer/PotvrditButton
 @onready var btn_move_zrusit = $ActionMenu/MovePopup/VBoxContainer/HBoxContainer/ZrusitButton
 
+# Paths to the liquidation popup panel elements
+@onready var likvidace_popup = $ActionMenu/LikvidacePopup
+@onready var likvidace_info = $ActionMenu/LikvidacePopup/VBoxContainer/LikvidaceInfo
+@onready var likvidace_slider = $ActionMenu/LikvidacePopup/VBoxContainer/LikvidaceSlider
+@onready var btn_likvidace_potvrdit = $ActionMenu/LikvidacePopup/VBoxContainer/HBoxContainer/PotvrditButton
+@onready var btn_likvidace_zrusit = $ActionMenu/LikvidacePopup/VBoxContainer/HBoxContainer/ZrusitButton
+
 var presun_od_id: int = -1
 var presun_do_id: int = -1
 # ---------------------------------------------------
 
 var aktualni_provincie_id: int = -1
 var cena_za_vojaka: float = 0.05 # Cost: 50 mil. per 1000 men
+var likvidace_vynos_za_vojaka: float = 0.01 # Small refund per removed soldier
 
 func _ready():
 	action_menu.hide()
 	if move_popup: move_popup.hide()
+	if likvidace_popup: likvidace_popup.hide()
 	if GameManager.has_signal("kolo_zmeneno") and not GameManager.kolo_zmeneno.is_connected(_on_kolo_zmeneno):
 		GameManager.kolo_zmeneno.connect(_on_kolo_zmeneno)
 	
@@ -51,6 +60,7 @@ func _ready():
 
 	if btn_presunout: btn_presunout.pressed.connect(_on_presunout_pressed)
 	btn_verbovat.pressed.connect(_on_verbovat_pressed)
+	if btn_likvidovat: btn_likvidovat.pressed.connect(_on_likvidovat_pressed)
 	recruit_slider.value_changed.connect(_on_slider_zmenen)
 	btn_potvrdit.pressed.connect(_on_potvrdit_verbovani)
 	btn_zrusit.pressed.connect(func(): recruit_popup.hide())
@@ -59,6 +69,10 @@ func _ready():
 	if move_slider: move_slider.value_changed.connect(_on_move_slider_zmenen)
 	if btn_move_potvrdit: btn_move_potvrdit.pressed.connect(_on_potvrdit_presun)
 	if btn_move_zrusit: btn_move_zrusit.pressed.connect(func(): move_popup.hide())
+
+	if likvidace_slider: likvidace_slider.value_changed.connect(_on_likvidace_slider_zmenen)
+	if btn_likvidace_potvrdit: btn_likvidace_potvrdit.pressed.connect(_on_potvrdit_likvidaci)
+	if btn_likvidace_zrusit: btn_likvidace_zrusit.pressed.connect(func(): likvidace_popup.hide())
 
 func _posun_stavba_menu():
 	var p = btn_stavet.get_popup()
@@ -69,6 +83,7 @@ func schovej_se():
 	action_menu.hide()
 	recruit_popup.hide()
 	if move_popup: move_popup.hide()
+	if likvidace_popup: likvidace_popup.hide()
 	aktualni_provincie_id = -1
 
 func zobraz_data(data: Dictionary):
@@ -79,13 +94,14 @@ func zobraz_data(data: Dictionary):
 	$PanelContainer.show()
 	recruit_popup.hide() 
 	if move_popup: move_popup.hide()
+	if likvidace_popup: likvidace_popup.hide()
 	aktualni_provincie_id = data.get("id", -1)
 	
-	var owner = str(data.get("owner", "")).strip_edges().to_upper()
+	var owner_tag = str(data.get("owner", "")).strip_edges().to_upper()
 	var armada_owner = str(data.get("army_owner", "")).strip_edges().to_upper()
-	var core_owner = str(data.get("core_owner", owner)).strip_edges().to_upper()
-	var je_more = (owner == "SEA")
-	var je_moje = (owner == GameManager.hrac_stat)
+	var core_owner = str(data.get("core_owner", owner_tag)).strip_edges().to_upper()
+	var je_more = (owner_tag == "SEA")
+	var je_moje = (owner_tag == GameManager.hrac_stat)
 	var je_moje_armada_na_mori = (je_more and armada_owner == GameManager.hrac_stat and int(data.get("soldiers", 0)) > 0)
 	var vojaci = int(data.get("soldiers", 0))
 	var ma_pristav = bool(data.get("has_port", false))
@@ -94,10 +110,10 @@ func zobraz_data(data: Dictionary):
 	id_label.text = "Provincie: %s - PORT" % province_name if (not je_more and ma_pristav) else "Provincie: " + province_name
 	if je_more and armada_owner != "":
 		owner_label.text = "Vlastnik: SEA (námořní armáda: %s)" % armada_owner
-	elif core_owner != "" and core_owner != owner:
-		owner_label.text = "Vlastnik: %s (okupace, core: %s)" % [owner, core_owner]
+	elif core_owner != "" and core_owner != owner_tag:
+		owner_label.text = "Vlastnik: %s (okupace, core: %s)" % [owner_tag, core_owner]
 	else:
-		owner_label.text = "Vlastnik: " + owner
+		owner_label.text = "Vlastnik: " + owner_tag
 	
 	if je_more:
 		pop_label.hide()
@@ -137,15 +153,16 @@ func zobraz_data(data: Dictionary):
 
 	if (je_moje and not je_more) or je_moje_armada_na_mori:
 		var muze_stavet = (je_moje and not je_more)
+		var ma_armadu = (vojaci > 0)
 		btn_stavet.visible = muze_stavet
 		btn_verbovat.visible = muze_stavet
-		btn_likvidovat.visible = muze_stavet
+		btn_likvidovat.visible = ma_armadu
 
 		if not muze_stavet:
 			btn_stavet.disabled = true
 			btn_stavet.text = "Stavět"
 			btn_verbovat.disabled = true
-			btn_likvidovat.disabled = true
+			btn_likvidovat.disabled = not ma_armadu
 
 		if muze_stavet:
 			if GameManager.provincie_cooldowny.has(aktualni_provincie_id):
@@ -161,10 +178,87 @@ func zobraz_data(data: Dictionary):
 			
 		if muze_stavet:
 			btn_verbovat.disabled = false
-			btn_likvidovat.disabled = false
+		btn_likvidovat.disabled = not ma_armadu
 		action_menu.show()
 	else:
 		action_menu.hide()
+
+func _on_likvidovat_pressed():
+	if aktualni_provincie_id == -1:
+		return
+	if not GameManager.map_data.has(aktualni_provincie_id):
+		return
+
+	var prov_data = GameManager.map_data[aktualni_provincie_id]
+	var owner_tag = str(prov_data.get("owner", "")).strip_edges().to_upper()
+	var armada_owner = str(prov_data.get("army_owner", "")).strip_edges().to_upper()
+	var je_more = (owner_tag == "SEA")
+	var je_moje = (owner_tag == GameManager.hrac_stat)
+	var je_moje_armada_na_mori = (je_more and armada_owner == GameManager.hrac_stat)
+
+	if not je_moje and not je_moje_armada_na_mori:
+		return
+
+	var pocet_vojaku = int(prov_data.get("soldiers", 0))
+	if pocet_vojaku <= 0:
+		return
+
+	likvidace_slider.min_value = 1
+	likvidace_slider.max_value = pocet_vojaku
+	likvidace_slider.value = pocet_vojaku
+	_on_likvidace_slider_zmenen(float(pocet_vojaku))
+
+	var rect = Rect2i()
+	rect.position = Vector2i(btn_likvidovat.global_position.x, btn_likvidovat.global_position.y - likvidace_popup.size.y - 5)
+	rect.size = likvidace_popup.size
+	likvidace_popup.popup(rect)
+
+func _on_likvidace_slider_zmenen(hodnota: float):
+	if not likvidace_info:
+		return
+	var pocet = int(hodnota)
+	var refundace = float(pocet) * likvidace_vynos_za_vojaka
+	likvidace_info.text = "Likvidovat: %s vojáků\nZisk: +%.2f mil." % [_formatuj_cislo(pocet), refundace]
+	if btn_likvidace_potvrdit:
+		btn_likvidace_potvrdit.disabled = (pocet <= 0)
+
+func _on_potvrdit_likvidaci():
+	if aktualni_provincie_id == -1:
+		return
+	if not GameManager.map_data.has(aktualni_provincie_id):
+		return
+
+	var prov_data = GameManager.map_data[aktualni_provincie_id]
+	var owner_tag = str(prov_data.get("owner", "")).strip_edges().to_upper()
+	var armada_owner = str(prov_data.get("army_owner", "")).strip_edges().to_upper()
+	var je_more = (owner_tag == "SEA")
+	var je_moje = (owner_tag == GameManager.hrac_stat)
+	var je_moje_armada_na_mori = (je_more and armada_owner == GameManager.hrac_stat)
+
+	if not je_moje and not je_moje_armada_na_mori:
+		likvidace_popup.hide()
+		return
+
+	var dostupni_vojaci = int(prov_data.get("soldiers", 0))
+	var pocet_vojaku = clampi(int(likvidace_slider.value), 1, dostupni_vojaci)
+	if dostupni_vojaci <= 0 or pocet_vojaku <= 0:
+		likvidace_popup.hide()
+		return
+
+	var refundace = float(pocet_vojaku) * likvidace_vynos_za_vojaka
+	GameManager.statni_kasa += refundace
+	prov_data["soldiers"] = max(0, dostupni_vojaci - pocet_vojaku)
+
+	if je_more and int(prov_data.get("soldiers", 0)) <= 0:
+		prov_data["army_owner"] = ""
+	elif not je_more:
+		prov_data["army_owner"] = GameManager.hrac_stat
+		prov_data["recruitable_population"] = int(prov_data.get("recruitable_population", 0)) + pocet_vojaku
+
+	likvidace_popup.hide()
+	_ukaz_stavbu_info("LIKVIDACE ARMADY", "Rozpuštěno %s vojáků. Do kasy se vrátilo %.2f mil. USD." % [_formatuj_cislo(pocet_vojaku), refundace])
+	zobraz_data(prov_data)
+	GameManager.kolo_zmeneno.emit()
 
 func _on_presunout_pressed():
 	if aktualni_provincie_id == -1: return
