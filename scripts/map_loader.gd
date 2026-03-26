@@ -27,6 +27,7 @@ const AI_MARKER_MOVE_SPEED := 130.0
 var _bitevni_kamera_aktivni: bool = false
 var _bitevni_puvodni_pozice: Vector2 = Vector2.ZERO
 var aktualni_mapovy_mod: String = "political"
+var _port_icons_dirty: bool = true
 # --------------------------------------------------------
 
 func nastav_mapovy_mod(mod: String):
@@ -280,6 +281,8 @@ func _ready():
 		labels_manager.aktualizuj_labely_statu(provinces, prov_labels)
 	
 	if GameManager.has_method("spocitej_prijem"):
+		if GameManager.has_method("pridej_startovni_pristavy"):
+			GameManager.pridej_startovni_pristavy(provinces)
 		GameManager.spocitej_prijem(provinces)
 		
 	aktualizuj_ikony_armad()
@@ -400,7 +403,8 @@ func load_provinces():
 			"ideology": ideologie_statu,
 			"recruitable_population": int(parts[19]),
 			"soldiers": int(parts[20]) if parts.size() > 20 else 0,
-			"army_owner": "" if parts[6].strip_edges().to_upper() == "SEA" else parts[6].strip_edges().to_upper()
+			"army_owner": "" if parts[6].strip_edges().to_upper() == "SEA" else parts[6].strip_edges().to_upper(),
+			"has_port": false
 		}
 
 	_sea_position_cache.clear()
@@ -673,7 +677,8 @@ func aktualizuj_ikony_armad():
 	if kamera:
 		_aktualizuj_zoom_armad(kamera.zoom.x)
 	_aplikuj_viditelnost_ukazatelu_jednotek()
-	aktualizuj_ikony_pristavu()
+	if _port_icons_dirty:
+		aktualizuj_ikony_pristavu()
 	_aktualizuj_indikatory_kapitulace()
 
 # --- CORE MOVEMENT LOGIC ---
@@ -702,6 +707,39 @@ func _ziskej_vlastnika_armady_v_provincii(prov_id: int) -> String:
 	if _je_more_provincie(prov_id):
 		return str(provinces[prov_id].get("army_owner", "")).strip_edges().to_upper()
 	return str(provinces[prov_id].get("owner", "")).strip_edges().to_upper()
+
+func _ziskej_pozici_pristavu_v_provincii(prov_id: int) -> Vector2:
+	var center = _ziskej_lokalni_pozici_provincie(prov_id)
+	if not provinces.has(prov_id):
+		return center
+
+	var sea_neighbors: Array = []
+	for n_id in provinces[prov_id].get("neighbors", []):
+		var nid = int(n_id)
+		if _je_more_provincie(nid):
+			sea_neighbors.append(nid)
+
+	if sea_neighbors.is_empty():
+		return center + Vector2(18, 0)
+
+	var nearest_pos = center
+	var nearest_dist_sq = INF
+
+	for n_id in sea_neighbors:
+		var sea_pos = _ziskej_lokalni_pozici_provincie(int(n_id))
+		var v = sea_pos - center
+		var d2 = v.length_squared()
+		if d2 < nearest_dist_sq:
+			nearest_dist_sq = d2
+			nearest_pos = sea_pos
+
+	var dir = nearest_pos - center
+	if dir.length() <= 0.001:
+		dir = Vector2.RIGHT
+
+	# Keep the marker close to coast but safely near province center so it stays visually on land.
+	var pull = clamp(sqrt(max(0.0, nearest_dist_sq)) * 0.18, 8.0, 16.0)
+	return center + dir.normalized() * pull
 
 func _ziskej_profil_statu(owner_tag: String) -> Dictionary:
 	for p_id in provinces.keys():
@@ -757,15 +795,26 @@ func aktualizuj_ikony_pristavu():
 		var d = provinces[prov_id]
 		var has_port = bool(d.get("has_port", false))
 		if has_port and not _je_more_provincie(prov_id):
-			var base_pos = Vector2(d["x"], d["y"]) + offset
+			var base_pos = _ziskej_pozici_pristavu_v_provincii(prov_id) + offset
 			if not aktivni_porty.has(prov_id):
 				var port_node = Node2D.new()
 				port_node.position = base_pos
 
+				var marker = Polygon2D.new()
+				marker.name = "PortMarker"
+				marker.polygon = PackedVector2Array([
+					Vector2(0, -5),
+					Vector2(5, 0),
+					Vector2(0, 5),
+					Vector2(-5, 0)
+				])
+				marker.color = Color(0.55, 0.9, 1.0, 1.0)
+				port_node.add_child(marker)
+
 				var lbl = Label.new()
 				lbl.name = "PortLabel"
 				lbl.text = "PORT"
-				lbl.position = Vector2(-16, -28)
+				lbl.position = Vector2(7, -18)
 				lbl.add_theme_font_size_override("font_size", 10)
 				lbl.add_theme_color_override("font_color", Color(0.82, 0.95, 1.0, 1.0))
 				lbl.add_theme_color_override("font_outline_color", Color(0.0, 0.2, 0.35, 1.0))
@@ -780,6 +829,11 @@ func aktualizuj_ikony_pristavu():
 			if aktivni_porty.has(prov_id):
 				aktivni_porty[prov_id].queue_free()
 				aktivni_porty.erase(prov_id)
+
+	_port_icons_dirty = false
+
+func oznac_pristavy_k_aktualizaci():
+	_port_icons_dirty = true
 
 # Activates target selection mode
 func aktivuj_rezim_vyberu_cile(from_id: int, max_troops: int):

@@ -1,6 +1,7 @@
 extends Control
 
 @onready var selected_country_label: Label = $CenterPanel/MarginContainer/VBoxContainer/SelectedCountryLabel
+@onready var menu_hint_label: Label = $CenterPanel/MarginContainer/VBoxContainer/MenuHint
 
 @onready var btn_new_game: Button = $CenterPanel/MarginContainer/VBoxContainer/MainButtons/NewGameButton
 @onready var btn_continue: Button = $CenterPanel/MarginContainer/VBoxContainer/MainButtons/ContinueButton
@@ -9,6 +10,12 @@ extends Control
 @onready var btn_exit: Button = $CenterPanel/MarginContainer/VBoxContainer/ExitButton
 
 @onready var country_browser_panel: PanelContainer = $CountryBrowserPanel
+@onready var btn_close_corner: Button = $CountryBrowserPanel/MarginContainer/RootVBox/HeaderRow/CloseHeaderButton
+@onready var browser_subtitle: Label = $CountryBrowserPanel/MarginContainer/RootVBox/BrowserSubtitle
+@onready var browser_flow_hint: Label = $CountryBrowserPanel/MarginContainer/RootVBox/BrowserFlowHint
+@onready var selected_players_title: Label = $CountryBrowserPanel/MarginContainer/RootVBox/SelectedPlayersPanel/SelectedPlayersMargin/SelectedPlayersVBox/SelectedPlayersTitle
+@onready var selected_players_list: Label = $CountryBrowserPanel/MarginContainer/RootVBox/SelectedPlayersPanel/SelectedPlayersMargin/SelectedPlayersVBox/SelectedPlayersList
+@onready var list_hint: Label = $CountryBrowserPanel/MarginContainer/RootVBox/Content/ListPanel/ListMargin/ListVBox/ListHint
 @onready var country_list: VBoxContainer = $CountryBrowserPanel/MarginContainer/RootVBox/Content/ListPanel/ListMargin/ListVBox/CountryListScroll/CountryList
 @onready var detail_flag: TextureRect = $CountryBrowserPanel/MarginContainer/RootVBox/Content/DetailPanel/DetailMargin/DetailVBox/DetailFlag
 @onready var detail_name: Label = $CountryBrowserPanel/MarginContainer/RootVBox/Content/DetailPanel/DetailMargin/DetailVBox/DetailName
@@ -90,6 +97,11 @@ var country_rows: Dictionary = {}
 var selected_country_tag_in_browser: String = ""
 var selected_country_tag: String = "ALB"
 var new_game_browser_flow: bool = false
+var local_player_tags: Array = []
+const BROWSER_CONFIRM_DEFAULT_TEXT := "Potvrdit vyber"
+const BROWSER_CONFIRM_ADD_PLAYER_TEXT := "Pridat hrace"
+const BROWSER_CLOSE_DEFAULT_TEXT := "Zavrit"
+const BROWSER_CLOSE_START_TEXT := "Spustit hru"
 
 func _load_texture_cached(path: String):
 	if path == "" or not ResourceLoader.exists(path):
@@ -139,6 +151,7 @@ func _ready():
 	_nastav_vychozi_vyber_statu()
 	_obnov_text_vyberu()
 	_nastav_stav_pokracovani()
+	_aktualizuj_browser_napovedu()
 	country_browser_panel.hide()
 
 	# Connect UI signals
@@ -149,6 +162,7 @@ func _ready():
 	btn_exit.pressed.connect(_on_exit_pressed)
 	btn_confirm_country.pressed.connect(_on_confirm_country_pressed)
 	btn_close_browser.pressed.connect(_on_close_browser_pressed)
+	btn_close_corner.pressed.connect(_on_close_browser_corner_pressed)
 	exit_dialog.confirmed.connect(_on_exit_confirmed)
 
 func _nastav_texty_dialogu():
@@ -233,30 +247,97 @@ func _naplni_browser_seznam():
 	if not vsechny_tagy.is_empty():
 		_nastav_detail_statu(str(vsechny_tagy[0]))
 
+	_obnov_texty_radku_statu()
+	_aktualizuj_panel_vyberu_hracu()
+
 func _vytvor_radek_statu(tag: String) -> Button:
 	var stats = country_stats[tag]
 	var row_btn = Button.new()
-	row_btn.custom_minimum_size = Vector2(0, 66)
+	row_btn.custom_minimum_size = Vector2(0, 74)
 	row_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	row_btn.flat = false
 	row_btn.clip_text = true
+	row_btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 	var icon_path = "res://map_data/Flags/%s.svg" % tag
 	var icon_tex = _load_normalized_flag_texture(icon_path, 56, 36)
 	if icon_tex:
 		row_btn.icon = icon_tex
 		row_btn.expand_icon = false
+	row_btn.text = _sestav_text_radku_statu(tag)
+	row_btn.tooltip_text = "%s (%s) | Populace: %s | HDP: %.1f" % [
+		_zobrazene_jmeno_statu(tag), tag, _formatuj_cislo(int(stats["population"])), float(stats["gdp"])
+	]
+	row_btn.pressed.connect(func(): _on_country_row_pressed(tag))
+	return row_btn
 
-	var row_text = "%s (%s)   Pop: %s   HDP: %.1f" % [
+func _sestav_text_radku_statu(tag: String) -> String:
+	if not country_stats.has(tag):
+		return tag
+
+	var stats = country_stats[tag]
+	var badges: Array = []
+
+	if selected_country_tag_in_browser == tag:
+		badges.append("VYBRAN")
+
+	var idx = local_player_tags.find(tag)
+	if idx != -1:
+		badges.append("OBSAZENO")
+		badges.append("HRAC %d" % (idx + 1))
+
+	var prefix = ""
+	if not badges.is_empty():
+		prefix = "[%s] " % " | ".join(badges)
+
+	return "%s%s (%s)\nPop: %s  |  HDP: %.1f" % [
+		prefix,
 		_zobrazene_jmeno_statu(tag),
 		tag,
 		_formatuj_cislo(int(stats["population"])),
 		float(stats["gdp"])
 	]
-	row_btn.text = row_text
-	row_btn.pressed.connect(func(): _on_country_row_pressed(tag))
-	return row_btn
+
+func _obnov_texty_radku_statu() -> void:
+	for tag in country_rows.keys():
+		var row_btn = country_rows[tag]
+		if row_btn:
+			var tag_txt = str(tag)
+			row_btn.text = _sestav_text_radku_statu(tag_txt)
+			var je_obsazeno = new_game_browser_flow and local_player_tags.has(tag_txt)
+			var je_aktivne_vybrany = selected_country_tag_in_browser == tag_txt
+
+			if je_obsazeno:
+				row_btn.disabled = true
+				row_btn.modulate = Color(0.62, 0.62, 0.66, 1.0)
+			elif je_aktivne_vybrany:
+				row_btn.disabled = false
+				row_btn.modulate = Color(0.88, 0.95, 1.0, 1.0)
+			else:
+				row_btn.disabled = false
+				row_btn.modulate = Color(1, 1, 1, 1)
+
+func _aktualizuj_panel_vyberu_hracu() -> void:
+	if not selected_players_title or not selected_players_list:
+		return
+
+	if new_game_browser_flow:
+		selected_players_title.text = "Vybrani hraci pro local multiplayer"
+		if local_player_tags.is_empty():
+			selected_players_list.text = "Zatim nikdo"
+		else:
+			var lines: Array = []
+			for i in range(local_player_tags.size()):
+				var tag = str(local_player_tags[i])
+				lines.append("%d. %s (%s)" % [i + 1, _zobrazene_jmeno_statu(tag), tag])
+			selected_players_list.text = "\n".join(lines)
+	else:
+		selected_players_title.text = "Aktualni vyber"
+		if selected_country_tag == "":
+			selected_players_list.text = "Zatim nikdo"
+		else:
+			selected_players_list.text = "%s (%s)" % [_zobrazene_jmeno_statu(selected_country_tag), selected_country_tag]
 
 func _zobrazene_jmeno_statu(tag: String) -> String:
 	for nazev in hratelne_staty.keys():
@@ -351,41 +432,111 @@ func _vytvor_souhrn_statu(jmeno: String, s: Dictionary) -> String:
 	return "%s je %s zeme s %s zakladnou a %s vojenskou pripravenosti. Silne stranky: %s. Rizika: %s." % [jmeno, velikost, vyspelost, vojenska_sila, silne_text, slabiny_text]
 
 func _on_country_row_pressed(tag: String):
+	if new_game_browser_flow and local_player_tags.has(tag):
+		if browser_flow_hint:
+			browser_flow_hint.text = "Stat %s je uz obsazeny jinym hracem." % tag
+		return
 	_nastav_detail_statu(tag)
+	_obnov_texty_radku_statu()
 
 func _otevri_browser_statu():
 	if selected_country_tag != "" and country_stats.has(selected_country_tag):
 		_nastav_detail_statu(selected_country_tag)
+	_aktualizuj_browser_napovedu()
 	country_browser_panel.show()
 
 func _on_confirm_country_pressed():
+	if new_game_browser_flow:
+		var tag_k_pridani = selected_country_tag_in_browser if selected_country_tag_in_browser != "" else selected_country_tag
+		if tag_k_pridani == "":
+			return
+		tag_k_pridani = tag_k_pridani.strip_edges().to_upper()
+		if local_player_tags.has(tag_k_pridani):
+			if browser_flow_hint:
+				browser_flow_hint.text = "Stat %s je uz obsazeny jinym hracem." % tag_k_pridani
+			return
+		local_player_tags.append(tag_k_pridani)
+		selected_country_tag = str(local_player_tags[0])
+		_obnov_text_vyberu()
+		_obnov_texty_radku_statu()
+		_aktualizuj_panel_vyberu_hracu()
+		_aktualizuj_browser_napovedu()
+		return
+
 	if selected_country_tag_in_browser != "":
 		selected_country_tag = selected_country_tag_in_browser
 		_obnov_text_vyberu()
-
-	if new_game_browser_flow:
-		new_game_browser_flow = false
-		btn_confirm_country.text = "Potvrdit vyber"
-		country_browser_panel.hide()
-		_spust_hru_vyberem()
-		return
+		_aktualizuj_panel_vyberu_hracu()
 
 	country_browser_panel.hide()
 
 func _on_close_browser_pressed():
+	if new_game_browser_flow:
+		if local_player_tags.is_empty() and selected_country_tag != "":
+			local_player_tags.append(selected_country_tag)
+		new_game_browser_flow = false
+		btn_confirm_country.text = BROWSER_CONFIRM_DEFAULT_TEXT
+		btn_close_browser.text = BROWSER_CLOSE_DEFAULT_TEXT
+		_obnov_texty_radku_statu()
+		_aktualizuj_panel_vyberu_hracu()
+		_aktualizuj_browser_napovedu()
+		country_browser_panel.hide()
+		_spust_hru_vyberem(local_player_tags)
+		return
+
 	new_game_browser_flow = false
-	btn_confirm_country.text = "Potvrdit vyber"
+	btn_confirm_country.text = BROWSER_CONFIRM_DEFAULT_TEXT
+	btn_close_browser.text = BROWSER_CLOSE_DEFAULT_TEXT
+	_obnov_texty_radku_statu()
+	_aktualizuj_panel_vyberu_hracu()
+	_aktualizuj_browser_napovedu()
+	country_browser_panel.hide()
+
+func _on_close_browser_corner_pressed():
+	new_game_browser_flow = false
+	btn_confirm_country.text = BROWSER_CONFIRM_DEFAULT_TEXT
+	btn_close_browser.text = BROWSER_CLOSE_DEFAULT_TEXT
+	local_player_tags.clear()
+	_obnov_texty_radku_statu()
+	_aktualizuj_panel_vyberu_hracu()
+	_aktualizuj_browser_napovedu()
 	country_browser_panel.hide()
 
 func _obnov_text_vyberu():
+	if local_player_tags.size() > 1:
+		selected_country_label.text = "Lokalni hraci: %s" % ", ".join(local_player_tags)
+		if menu_hint_label:
+			menu_hint_label.text = "Pripraveno: %d hraci. Klikni Nova hra pro upravu vyberu nebo Pokracovat pro rychly start." % local_player_tags.size()
+		_aktualizuj_panel_vyberu_hracu()
+		return
+
 	if selected_country_tag == "":
 		selected_country_label.text = "Vybrany stat: zadny"
 		return
 
 	var nazev_statu = _zobrazene_jmeno_statu(selected_country_tag)
 	selected_country_label.text = "Vybrany stat: %s (%s)" % [nazev_statu, selected_country_tag]
+	if menu_hint_label:
+		menu_hint_label.text = "Pro multiplayer pridej v Nove hre dalsi staty."
 	if country_stats.has(selected_country_tag):
 		_nastav_detail_statu(selected_country_tag)
+	_aktualizuj_panel_vyberu_hracu()
+
+func _aktualizuj_browser_napovedu():
+	if not browser_flow_hint or not browser_subtitle or not list_hint:
+		return
+
+	if new_game_browser_flow:
+		browser_subtitle.text = "Pridavej hrace po jednom: vyber stat, klikni Pridat hrace, pak Spustit hru"
+		list_hint.text = "Znacky: [VYBRAN] = detail vpravo, [HRAC X] = uz pridan do partie."
+		if local_player_tags.is_empty():
+			browser_flow_hint.text = "Zatim neni vybran zadny hrac."
+		else:
+			browser_flow_hint.text = "Aktualni hraci (%d): %s" % [local_player_tags.size(), ", ".join(local_player_tags)]
+	else:
+		browser_subtitle.text = "Vyber stat pro solo nebo pridej vice statu pro local multiplayer"
+		list_hint.text = "Klikni na stat pro detail a pak potvrd vyber"
+		browser_flow_hint.text = "Rezim solo: vyber stat a potvrd."
 
 func _nastav_stav_pokracovani():
 	var ma_save = FileAccess.file_exists(SAVE_FILE_PATH)
@@ -395,20 +546,33 @@ func _nastav_stav_pokracovani():
 	else:
 		btn_continue.text = "Pokracovat (bez save)"
 
-func _spust_hru_vyberem():
-	if selected_country_tag == "":
+func _spust_hru_vyberem(player_tags: Array = []):
+	var final_tags = player_tags.duplicate()
+	if final_tags.is_empty() and selected_country_tag != "":
+		final_tags = [selected_country_tag]
+	if final_tags.is_empty():
 		return
+	selected_country_tag = str(final_tags[0])
 
-	# Save the selected tag to the GameManager
-	GameManager.hrac_stat = selected_country_tag
-	print("Hráč si vybral: ", selected_country_tag)
+	# Save selected local players to GameManager.
+	if GameManager.has_method("nastav_lokalni_hrace"):
+		GameManager.nastav_lokalni_hrace(final_tags)
+	else:
+		GameManager.hrac_stat = selected_country_tag
+
+	print("Lokalni hraci: ", final_tags)
 	
 	# Load the main map scene
 	get_tree().change_scene_to_file(MAP_SCENE_PATH)
 
 func _on_new_game_pressed():
+	local_player_tags.clear()
 	new_game_browser_flow = true
-	btn_confirm_country.text = "Potvrdit vyber a spustit"
+	btn_confirm_country.text = BROWSER_CONFIRM_ADD_PLAYER_TEXT
+	btn_close_browser.text = BROWSER_CLOSE_START_TEXT
+	_obnov_texty_radku_statu()
+	_aktualizuj_panel_vyberu_hracu()
+	_aktualizuj_browser_napovedu()
 	_otevri_browser_statu()
 
 func _on_continue_pressed():

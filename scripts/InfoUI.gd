@@ -38,6 +38,8 @@ var cena_za_vojaka: float = 0.05 # Cost: 50 mil. per 1000 men
 func _ready():
 	action_menu.hide()
 	if move_popup: move_popup.hide()
+	if GameManager.has_signal("kolo_zmeneno") and not GameManager.kolo_zmeneno.is_connected(_on_kolo_zmeneno):
+		GameManager.kolo_zmeneno.connect(_on_kolo_zmeneno)
 	
 	var popup_stavba = btn_stavet.get_popup()
 	popup_stavba.clear()
@@ -86,8 +88,10 @@ func zobraz_data(data: Dictionary):
 	var je_moje = (owner == GameManager.hrac_stat)
 	var je_moje_armada_na_mori = (je_more and armada_owner == GameManager.hrac_stat and int(data.get("soldiers", 0)) > 0)
 	var vojaci = int(data.get("soldiers", 0))
+	var ma_pristav = bool(data.get("has_port", false))
 	
-	id_label.text = "Provincie: " + str(data.get("province_name", "Neznamo"))
+	var province_name = str(data.get("province_name", "Neznamo"))
+	id_label.text = "Provincie: %s - PORT" % province_name if (not je_more and ma_pristav) else "Provincie: " + province_name
 	if je_more and armada_owner != "":
 		owner_label.text = "Vlastnik: SEA (námořní armáda: %s)" % armada_owner
 	elif core_owner != "" and core_owner != owner:
@@ -148,9 +152,6 @@ func zobraz_data(data: Dictionary):
 				var zbyva_kol = GameManager.provincie_cooldowny[aktualni_provincie_id]["zbyva"]
 				btn_stavet.disabled = true
 				btn_stavet.text = "Staví se (%d kol)" % zbyva_kol
-			elif GameManager.provincie_ma_pristav(aktualni_provincie_id):
-				btn_stavet.disabled = false
-				btn_stavet.text = "Stavět (Přístav postaven)"
 			else:
 				btn_stavet.disabled = false
 				btn_stavet.text = "Stavět"
@@ -283,6 +284,15 @@ func _on_potvrdit_verbovani():
 	recruit_popup.hide()
 	zobraz_data(prov_data) 
 	GameManager.kolo_zmeneno.emit()
+
+func _on_kolo_zmeneno():
+	if aktualni_provincie_id == -1:
+		return
+	if not $PanelContainer.visible:
+		return
+	if not GameManager.map_data.has(aktualni_provincie_id):
+		return
+	zobraz_data(GameManager.map_data[aktualni_provincie_id])
 
 func _formatuj_cislo(cislo: int) -> String:
 	var text_cisla = str(cislo)
