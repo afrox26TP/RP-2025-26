@@ -1,5 +1,7 @@
 extends CanvasLayer
 
+const TooltipUtils = preload("res://scripts/TooltipUtils.gd")
+
 @onready var id_label = $PanelContainer/VBoxContainer/IDLabel
 @onready var owner_label = $PanelContainer/VBoxContainer/OwnerLabel
 @onready var pop_label = $PanelContainer/VBoxContainer/PopLabel
@@ -104,6 +106,33 @@ func _ready():
 	if likvidace_slider: likvidace_slider.value_changed.connect(_on_likvidace_slider_zmenen)
 	if btn_likvidace_potvrdit: btn_likvidace_potvrdit.pressed.connect(_on_potvrdit_likvidaci)
 	if btn_likvidace_zrusit: btn_likvidace_zrusit.pressed.connect(func(): likvidace_popup.hide())
+	_nastav_tooltipy_ui()
+
+func _nastav_tooltipy_ui() -> void:
+	id_label.tooltip_text = "Nazev vybrane provincie."
+	owner_label.tooltip_text = "Aktualni vlastnik provincie."
+	pop_label.tooltip_text = "Pocet obyvatel provincie."
+	recruit_label.tooltip_text = "Dostupni rekruti v provincii."
+	gdp_label.tooltip_text = "Ekonomicka sila provincie."
+	income_label.tooltip_text = "Prijem provincie pro vlastnika."
+	soldiers_label.tooltip_text = "Pocet vojaku nebo flotily."
+	btn_stavet.tooltip_text = "Postavi budovu v teto provincii."
+	btn_presunout.tooltip_text = "Naplanuje presun vojaku do jine provincie."
+	btn_verbovat.tooltip_text = "Naverbuje nove vojaky za penize."
+	btn_likvidovat.tooltip_text = "Sizi armadu v provincii a vrati cast nakladu."
+	recruit_info.tooltip_text = "Kolik vojaku je mozne naverbovat."
+	recruit_slider.tooltip_text = "Nastav pocet rekrutu k naboru."
+	btn_potvrdit.tooltip_text = "Potvrdi nabor vojaku."
+	btn_zrusit.tooltip_text = "Zavre okno naboru bez zmen."
+	move_count_label.tooltip_text = "Kolik vojaku bude presunuto."
+	move_slider.tooltip_text = "Nastav pocet vojaku pro presun."
+	btn_move_potvrdit.tooltip_text = "Potvrdi presun armady."
+	btn_move_zrusit.tooltip_text = "Zrusi presun armady."
+	likvidace_info.tooltip_text = "Kolik vojaku bude odstraneno."
+	likvidace_slider.tooltip_text = "Nastav pocet vojaku k odstraneni."
+	btn_likvidace_potvrdit.tooltip_text = "Potvrdi likvidaci casti armady."
+	btn_likvidace_zrusit.tooltip_text = "Zavre likvidacni okno bez zmen."
+	TooltipUtils.apply_default_tooltips(self)
 
 func _vytvor_preview_label() -> void:
 	if _preview_label and is_instance_valid(_preview_label):

@@ -1,5 +1,7 @@
 extends Control
 
+const TooltipUtils = preload("res://scripts/TooltipUtils.gd")
+
 @onready var selected_country_label: Label = $CenterPanel/MarginContainer/VBoxContainer/SelectedCountryLabel
 @onready var menu_hint_label: Label = $CenterPanel/MarginContainer/VBoxContainer/MenuHint
 
@@ -165,6 +167,28 @@ func _ready():
 	btn_close_browser.pressed.connect(_on_close_browser_pressed)
 	btn_close_corner.pressed.connect(_on_close_browser_corner_pressed)
 	exit_dialog.confirmed.connect(_on_exit_confirmed)
+	_nastav_tooltipy_ui()
+
+func _nastav_tooltipy_ui() -> void:
+	btn_new_game.tooltip_text = "Spusti novou hru a otevre vyber statu."
+	btn_continue.tooltip_text = "Nacte posledni ulozenou hru."
+	btn_settings.tooltip_text = "Otevre nastaveni hry."
+	btn_credits.tooltip_text = "Zobrazi autory a info o projektu."
+	btn_exit.tooltip_text = "Ukonci hru."
+	btn_confirm_country.tooltip_text = "Potvrdi aktualni vyber statu."
+	btn_close_browser.tooltip_text = "Zavre vyber statu, v multiplayer flow spusti hru."
+	btn_close_corner.tooltip_text = "Rychle zavre panel vyberu statu."
+	selected_country_label.tooltip_text = "Aktualne zvoleny stat nebo seznam lokalnich hracu."
+	menu_hint_label.tooltip_text = "Strucna napoveda k dalsimu kroku."
+	browser_subtitle.tooltip_text = "Popisuje logiku vyberu statu."
+	browser_flow_hint.tooltip_text = "Ukazuje, co mas v tomto kroku udelat."
+	selected_players_title.tooltip_text = "Panel se seznamem lokalnich hracu."
+	selected_players_list.tooltip_text = "Aktualne zvolene staty pro hrace."
+	list_hint.tooltip_text = "Napoveda k ovladani seznamu statu."
+	detail_flag.tooltip_text = "Vlajka detailu vybraneho statu."
+	detail_name.tooltip_text = "Nazev vybraneho statu."
+	detail_info.tooltip_text = "Strucny souhrn silnych stran a rizik statu."
+	TooltipUtils.apply_default_tooltips(self)
 
 func _nastav_texty_dialogu():
 	settings_dialog.title = SETTINGS_DIALOG_TITLE

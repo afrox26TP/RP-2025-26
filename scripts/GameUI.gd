@@ -1,5 +1,7 @@
 extends CanvasLayer
 
+const TooltipUtils = preload("res://scripts/TooltipUtils.gd")
+
 @onready var panel = $OverviewPanel
 
 # Updated paths for the new UI tree structure
@@ -57,6 +59,8 @@ var _load_slot_names: Array = []
 var _gift_dialog: PopupPanel
 var _gift_amount_input: LineEdit
 var gift_money_btn: Button
+var _popup_country_link_btn: LinkButton
+var _camera_focus_tween: Tween
 
 const POPUP_TOP_MARGIN := 6
 const POPUP_GAP := 6
@@ -96,6 +100,7 @@ func _ready():
 	panel.hide()
 	_setup_overview_inline_deltas()
 	_zajisti_tlacitko_daru()
+	_setup_popup_country_link()
 	_napln_aliance_option()
 	
 	# Automatically connect the button signal if it exists
@@ -135,6 +140,217 @@ func _ready():
 	_aktualizuj_pozice_popupu()
 	_aktualizuj_popup_diplomatickych_zadosti()
 	_vytvor_darovaci_dialog()
+	_nastav_tooltipy_ui()
+
+func _setup_popup_country_link() -> void:
+	var hbox = get_node_or_null("DiplomacyRequestPopup/HBoxContainer") as HBoxContainer
+	if hbox and _popup_country_link_btn == null:
+		_popup_country_link_btn = LinkButton.new()
+		_popup_country_link_btn.name = "RequestCountryLink"
+		_popup_country_link_btn.text = ""
+		_popup_country_link_btn.focus_mode = Control.FOCUS_NONE
+		_popup_country_link_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		hbox.add_child(_popup_country_link_btn)
+		hbox.move_child(_popup_country_link_btn, 1)
+		_popup_country_link_btn.pressed.connect(_on_popup_country_reference_pressed)
+
+	if popup_request_flag and not popup_request_flag.gui_input.is_connected(_on_popup_flag_gui_input):
+		popup_request_flag.gui_input.connect(_on_popup_flag_gui_input)
+		popup_request_flag.mouse_filter = Control.MOUSE_FILTER_STOP
+		popup_request_flag.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+
+func _nastav_tooltipy_ui() -> void:
+	name_label.tooltip_text = "Nazev vybraneho statu."
+	country_flag.tooltip_text = "Vlajka vybraneho statu."
+	ideo_label.tooltip_text = "Aktualni politicke zrizeni statu."
+	pop_label.tooltip_text = "Celkova populace statu."
+	recruit_label.tooltip_text = "Dostupni rekruti celeho statu."
+	gdp_label.tooltip_text = "Celkove HDP statu."
+	gdp_pc_label.tooltip_text = "HDP prepocitane na jednoho obyvatele."
+	relationship_label.tooltip_text = "Diplomaticky vztah mezi tvym statem a cilem."
+	improve_rel_btn.tooltip_text = "Zlepsi vztah o 10 bodu."
+	worsen_rel_btn.tooltip_text = "Zhorsi vztah o 10 bodu."
+	if gift_money_btn:
+		gift_money_btn.tooltip_text = "Posle cilovemu statu financni dar."
+	declare_war_btn.tooltip_text = "Vyhlasi valku vybranemu statu."
+	propose_peace_btn.tooltip_text = "Posle navrh na uzavreni miru."
+	non_aggression_btn.tooltip_text = "Uzavre neagresivni smlouvu na 10 kol."
+	incoming_request_label.tooltip_text = "Zobrazuje prichozi diplomatickou zadost."
+	accept_request_btn.tooltip_text = "Prijme zobrazenou diplomatickou zadost."
+	decline_request_btn.tooltip_text = "Odmita zobrazenou diplomatickou zadost."
+	popup_request_flag.tooltip_text = "Klikni pro otevreni prehledu tohoto statu."
+	if _popup_country_link_btn:
+		_popup_country_link_btn.tooltip_text = "Klikni pro otevreni prehledu tohoto statu."
+	popup_request_text.tooltip_text = "Strucny popis diplomaticke nabidky."
+	popup_accept_btn.tooltip_text = "Prijme diplomatickou nabidku."
+	popup_decline_btn.tooltip_text = "Odmita diplomatickou nabidku."
+	system_message_title.tooltip_text = "Titulek systemoveho hlaseni."
+	system_message_text.tooltip_text = "Detailni text systemoveho hlaseni."
+	system_message_ok_btn.tooltip_text = "Potvrdi a zavre hlaseni."
+	TooltipUtils.apply_default_tooltips(self)
+
+func _on_popup_flag_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		_on_popup_country_reference_pressed()
+
+func _on_popup_country_reference_pressed() -> void:
+	_otevri_prehled_statu_podle_tagu(_popup_request_from_tag)
+
+func _ziskej_map_loader_node() -> Node:
+	var scene_root = get_tree().current_scene
+	if scene_root and scene_root.has_method("_ziskej_map_pozici_provincie") and scene_root.has_method("_ziskej_map_offset"):
+		return scene_root
+	if scene_root:
+		var by_name = scene_root.find_child("Map", true, false)
+		if by_name and by_name.has_method("_ziskej_map_pozici_provincie") and by_name.has_method("_ziskej_map_offset"):
+			return by_name
+	return null
+
+func _otevri_prehled_statu_podle_tagu(tag: String) -> void:
+	var wanted = tag.strip_edges().to_upper()
+	if wanted == "" or wanted == "SEA":
+		return
+
+	var provinces: Dictionary = {}
+	var map_loader = _ziskej_map_loader_node()
+	if map_loader:
+		var maybe_provinces = map_loader.get("provinces")
+		if maybe_provinces is Dictionary:
+			provinces = maybe_provinces
+	elif GameManager and not GameManager.map_data.is_empty():
+		provinces = GameManager.map_data
+
+	if provinces.is_empty():
+		return
+
+	var preview_data: Dictionary = {}
+	var preview_pid := -1
+	for prov_id in provinces:
+		var prov = provinces[prov_id] as Dictionary
+		var owner_tag = str(prov.get("owner", "")).strip_edges().to_upper()
+		if owner_tag == wanted:
+			preview_data = prov
+			preview_pid = int(prov_id)
+			break
+
+	if preview_data.is_empty():
+		return
+
+	_posun_kameru_na_stat(wanted, true, preview_pid)
+	zobraz_prehled_statu(preview_data, provinces)
+	var info_ui = get_tree().current_scene.find_child("InfoUI", true, false)
+	if info_ui and info_ui.has_method("zobraz_data"):
+		info_ui.zobraz_data(preview_data)
+
+func _ziskej_map_pozici_provincie_bezpecne(map_loader: Node, prov_id: int, prov_data: Dictionary) -> Vector2:
+	var pos := Vector2.ZERO
+	var map_offset := Vector2.ZERO
+	if map_loader.has_method("_ziskej_map_offset"):
+		map_offset = map_loader._ziskej_map_offset()
+
+	if map_loader.has_method("_ziskej_map_pozici_provincie"):
+		pos = map_loader._ziskej_map_pozici_provincie(prov_id, map_offset)
+	elif map_loader.has_method("_ziskej_lokalni_pozici_provincie"):
+		pos = map_loader._ziskej_lokalni_pozici_provincie(prov_id) + map_offset
+	else:
+		pos = Vector2(float(prov_data.get("x", 0.0)), float(prov_data.get("y", 0.0))) + map_offset
+
+	if not is_finite(pos.x) or not is_finite(pos.y):
+		return Vector2.ZERO
+	if pos == Vector2.ZERO:
+		return Vector2.ZERO
+	if absf(pos.x) > 200000.0 or absf(pos.y) > 200000.0:
+		return Vector2.ZERO
+	return pos
+
+func _ziskej_fokus_statu_na_mape(tag: String, preferred_province_id: int = -1) -> Dictionary:
+	var wanted = tag.strip_edges().to_upper()
+	if wanted == "" or wanted == "SEA":
+		return {"ok": false}
+
+	var map_loader = _ziskej_map_loader_node()
+	if map_loader == null:
+		return {"ok": false}
+
+	var maybe_provinces = map_loader.get("provinces")
+	if not (maybe_provinces is Dictionary):
+		return {"ok": false}
+	var provinces: Dictionary = maybe_provinces
+	if provinces.is_empty():
+		return {"ok": false}
+
+	# 1) Prefer explicit capital province of the state.
+	for p_id in provinces:
+		var d = provinces[p_id] as Dictionary
+		if str(d.get("owner", "")).strip_edges().to_upper() != wanted:
+			continue
+		if bool(d.get("is_capital", false)):
+			var cap_pos = _ziskej_map_pozici_provincie_bezpecne(map_loader, int(p_id), d)
+			if cap_pos != Vector2.ZERO:
+				return {"ok": true, "pos": cap_pos}
+
+	# 2) Fallback to the most populated owned province.
+	var best_pop := -1
+	var best_pos := Vector2.ZERO
+	for p_id in provinces:
+		var d = provinces[p_id] as Dictionary
+		if str(d.get("owner", "")).strip_edges().to_upper() != wanted:
+			continue
+		var pos = _ziskej_map_pozici_provincie_bezpecne(map_loader, int(p_id), d)
+		if pos == Vector2.ZERO:
+			continue
+		var pop = int(d.get("population", 0))
+		if pop > best_pop:
+			best_pop = pop
+			best_pos = pos
+	if best_pos != Vector2.ZERO:
+		return {"ok": true, "pos": best_pos}
+
+	# 3) Fallback to the province we used for preview, if available.
+	if preferred_province_id >= 0 and provinces.has(preferred_province_id):
+		var preferred_data = provinces[preferred_province_id] as Dictionary
+		if str(preferred_data.get("owner", "")).strip_edges().to_upper() == wanted:
+			var preferred_pos = _ziskej_map_pozici_provincie_bezpecne(map_loader, preferred_province_id, preferred_data)
+			if preferred_pos != Vector2.ZERO:
+				return {"ok": true, "pos": preferred_pos}
+
+	# 4) Last-resort centroid of owned provinces.
+	var sum := Vector2.ZERO
+	var cnt := 0
+	for p_id in provinces:
+		var d = provinces[p_id] as Dictionary
+		if str(d.get("owner", "")).strip_edges().to_upper() != wanted:
+			continue
+		var pos = _ziskej_map_pozici_provincie_bezpecne(map_loader, int(p_id), d)
+		if pos == Vector2.ZERO:
+			continue
+		sum += pos
+		cnt += 1
+	if cnt > 0:
+		return {"ok": true, "pos": sum / float(cnt)}
+
+	return {"ok": false}
+
+func _posun_kameru_na_stat(tag: String, smooth: bool = true, preferred_province_id: int = -1) -> void:
+	var center = _ziskej_fokus_statu_na_mape(tag, preferred_province_id)
+	if not bool(center.get("ok", false)):
+		return
+
+	var camera = get_tree().current_scene.find_child("Camera2D", true, false) as Camera2D
+	if camera == null:
+		return
+
+	var target_pos: Vector2 = center.get("pos", camera.position)
+	if not is_finite(target_pos.x) or not is_finite(target_pos.y):
+		return
+	if smooth:
+		if _camera_focus_tween and _camera_focus_tween.is_running():
+			_camera_focus_tween.kill()
+		_camera_focus_tween = camera.create_tween()
+		_camera_focus_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		_camera_focus_tween.tween_property(camera, "position", target_pos, 0.65)
+	else:
+		camera.position = target_pos
 
 func _zajisti_tlacitko_daru() -> void:
 	gift_money_btn = get_node_or_null("OverviewPanel/VBoxContainer/GiftMoneyButton") as Button
@@ -808,6 +1024,11 @@ func _aktualizuj_popup_diplomatickych_zadosti():
 		var req_type = str(req.get("type", ""))
 		var country_name = _ziskej_jmeno_statu_podle_tagu(from_tag)
 		var display_name = "%s (%s)" % [country_name, from_tag]
+		if _popup_country_link_btn:
+			_popup_country_link_btn.text = display_name
+			_popup_country_link_btn.tooltip_text = "Klikni pro otevreni prehledu statu %s." % display_name
+		if popup_request_flag:
+			popup_request_flag.tooltip_text = "Klikni pro otevreni prehledu statu %s." % display_name
 		if req_type == "alliance":
 			var level = int(req.get("level", 0))
 			var level_text = "alianci"
@@ -818,11 +1039,11 @@ func _aktualizuj_popup_diplomatickych_zadosti():
 					level_text = "utocnou alianci"
 				3:
 					level_text = "plnou alianci"
-			popup_request_text.text = "%s navrhuje %s" % [display_name, level_text]
+			popup_request_text.text = "navrhuje %s" % level_text
 		elif req_type == "peace":
-			popup_request_text.text = "%s navrhuje uzavrit mir" % display_name
+			popup_request_text.text = "navrhuje uzavrit mir"
 		else:
-			popup_request_text.text = "%s navrhuje neagresivni smlouvu (10 kol)" % display_name
+			popup_request_text.text = "navrhuje neagresivni smlouvu (10 kol)"
 
 	diplomacy_request_popup.show()
 	_aktualizuj_pozice_popupu()
