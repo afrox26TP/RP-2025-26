@@ -492,6 +492,80 @@ func _get_map_loader():
 func _normalizuj_tag(tag: String) -> String:
 	return tag.strip_edges().to_upper()
 
+func _stat_existuje(tag: String) -> bool:
+	var wanted = _normalizuj_tag(tag)
+	if wanted == "" or wanted == "SEA":
+		return false
+	for p_id in map_data:
+		var owner = _normalizuj_tag(str(map_data[p_id].get("owner", "")))
+		if owner == wanted:
+			return true
+	return false
+
+func _ziskej_kasu_statu(tag: String) -> float:
+	var t = _normalizuj_tag(tag)
+	if t == "":
+		return 0.0
+	if je_lidsky_stat(t):
+		if t == _normalizuj_tag(hrac_stat):
+			return statni_kasa
+		return float(hrac_kasy.get(t, 0.0))
+	return float(ai_kasy.get(t, 0.0))
+
+func _nastav_kasu_statu(tag: String, value: float) -> void:
+	var t = _normalizuj_tag(tag)
+	if t == "":
+		return
+	var safe_value = value
+	if je_lidsky_stat(t):
+		hrac_kasy[t] = safe_value
+		if t == _normalizuj_tag(hrac_stat):
+			statni_kasa = safe_value
+	else:
+		ai_kasy[t] = safe_value
+
+func daruj_penize_statu(odesilatel: String, prijemce: String, amount: float) -> Dictionary:
+	var from_tag = _normalizuj_tag(odesilatel)
+	var to_tag = _normalizuj_tag(prijemce)
+	var castka = maxf(0.0, amount)
+
+	if from_tag == "" or to_tag == "" or from_tag == to_tag:
+		return {"ok": false, "reason": "Neplatné státy pro dar."}
+	if from_tag == "SEA" or to_tag == "SEA":
+		return {"ok": false, "reason": "Mořským provinciím nelze posílat dary."}
+	if castka <= 0.0:
+		return {"ok": false, "reason": "Částka daru musí být větší než 0."}
+	if not _stat_existuje(from_tag) or not _stat_existuje(to_tag):
+		return {"ok": false, "reason": "Jeden ze států neexistuje v aktuální mapě."}
+
+	var kasa_odesilatel = _ziskej_kasu_statu(from_tag)
+	if kasa_odesilatel + 0.0001 < castka:
+		return {"ok": false, "reason": "Nedostatek prostředků v kase."}
+
+	var kasa_prijemce = _ziskej_kasu_statu(to_tag)
+	_nastav_kasu_statu(from_tag, kasa_odesilatel - castka)
+	_nastav_kasu_statu(to_tag, kasa_prijemce + castka)
+
+	var rel_delta = clamp(castka / 20.0, 1.0, 15.0)
+	var new_rel = _uprav_vztah_statu_bez_cooldown(from_tag, to_tag, rel_delta)
+
+	if je_lidsky_stat(from_tag) or je_lidsky_stat(to_tag):
+		_pridej_popup_zucastnenym_hracum(
+			from_tag,
+			to_tag,
+			"DIPLOMACIE",
+			"%s poslal finanční dar %.2f mil. USD státu %s (vztah %+0.1f)." % [from_tag, castka, to_tag, rel_delta]
+		)
+
+	return {
+		"ok": true,
+		"amount": castka,
+		"relation_delta": rel_delta,
+		"new_relation": new_rel,
+		"from_cash": _ziskej_kasu_statu(from_tag),
+		"to_cash": _ziskej_kasu_statu(to_tag)
+	}
+
 func _je_more_provincie(prov_id: int) -> bool:
 	if not map_data.has(prov_id):
 		return false

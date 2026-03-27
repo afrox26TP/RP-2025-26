@@ -416,6 +416,7 @@ func zobraz_data(data: Dictionary):
 			
 		if btn_presunout:
 			btn_presunout.visible = (vojaci > 0)
+			btn_presunout.disabled = not ma_armadu
 			
 		if muze_stavet:
 			btn_verbovat.disabled = false

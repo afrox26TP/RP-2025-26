@@ -54,6 +54,9 @@ var _load_dialog: PopupPanel
 var _load_slot_list: ItemList
 var _load_confirm_btn: Button
 var _load_slot_names: Array = []
+var _gift_dialog: PopupPanel
+var _gift_amount_input: LineEdit
+var gift_money_btn: Button
 
 const POPUP_TOP_MARGIN := 6
 const POPUP_GAP := 6
@@ -92,6 +95,7 @@ func _ziskej_jmeno_statu_podle_tagu(tag: String) -> String:
 func _ready():
 	panel.hide()
 	_setup_overview_inline_deltas()
+	_zajisti_tlacitko_daru()
 	_napln_aliance_option()
 	
 	# Automatically connect the button signal if it exists
@@ -115,6 +119,8 @@ func _ready():
 		improve_rel_btn.pressed.connect(_on_improve_relationship_pressed)
 	if worsen_rel_btn and not worsen_rel_btn.pressed.is_connected(_on_worsen_relationship_pressed):
 		worsen_rel_btn.pressed.connect(_on_worsen_relationship_pressed)
+	if gift_money_btn and not gift_money_btn.pressed.is_connected(_on_gift_money_pressed):
+		gift_money_btn.pressed.connect(_on_gift_money_pressed)
 	if alliance_level_option and not alliance_level_option.item_selected.is_connected(_on_alliance_level_selected):
 		alliance_level_option.item_selected.connect(_on_alliance_level_selected)
 	if GameManager.has_signal("kolo_zmeneno") and not GameManager.kolo_zmeneno.is_connected(_on_kolo_zmeneno):
@@ -128,6 +134,22 @@ func _ready():
 	_vytvor_pause_menu()
 	_aktualizuj_pozice_popupu()
 	_aktualizuj_popup_diplomatickych_zadosti()
+	_vytvor_darovaci_dialog()
+
+func _zajisti_tlacitko_daru() -> void:
+	gift_money_btn = get_node_or_null("OverviewPanel/VBoxContainer/GiftMoneyButton") as Button
+	if gift_money_btn:
+		return
+	var vbox = get_node_or_null("OverviewPanel/VBoxContainer")
+	if vbox == null:
+		return
+	var insert_after = worsen_rel_btn
+	gift_money_btn = Button.new()
+	gift_money_btn.name = "GiftMoneyButton"
+	gift_money_btn.text = "Poslat dar"
+	vbox.add_child(gift_money_btn)
+	if insert_after and insert_after.get_parent() == vbox:
+		vbox.move_child(gift_money_btn, insert_after.get_index() + 1)
 
 func _wrap_overview_metric_label(key: String, base_label: Label) -> void:
 	if base_label == null:
@@ -210,10 +232,15 @@ func _on_viewport_resized():
 	_aktualizuj_pozice_popupu()
 	_pozicuj_pause_menu()
 	_pozicuj_save_load_popupy()
+	_pozicuj_gift_dialog()
 
 func _input(event):
 	if event is InputEventKey and event.pressed and not event.is_echo():
 		if event.keycode == KEY_ESCAPE:
+			if _gift_dialog and _gift_dialog.visible:
+				_gift_dialog.hide()
+				get_viewport().set_input_as_handled()
+				return
 			if _save_dialog and _save_dialog.visible:
 				_save_dialog.hide()
 				get_viewport().set_input_as_handled()
@@ -305,6 +332,112 @@ func _vytvor_pause_menu() -> void:
 	_pause_menu_panel.hide()
 	_pozicuj_pause_menu()
 	_pozicuj_save_load_popupy()
+
+func _vytvor_darovaci_dialog() -> void:
+	_gift_dialog = PopupPanel.new()
+	_gift_dialog.name = "GiftDialog"
+	_gift_dialog.size = Vector2(420, 190)
+	add_child(_gift_dialog)
+
+	var margin = MarginContainer.new()
+	margin.offset_left = 12
+	margin.offset_top = 12
+	margin.offset_right = -12
+	margin.offset_bottom = -12
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_gift_dialog.add_child(margin)
+
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 8)
+	margin.add_child(vbox)
+
+	var title = Label.new()
+	title.text = "Poslat finanční dar"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 20)
+	vbox.add_child(title)
+
+	var hint = Label.new()
+	hint.text = "Částka v mil. USD"
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(hint)
+
+	_gift_amount_input = LineEdit.new()
+	_gift_amount_input.placeholder_text = "např. 50"
+	_gift_amount_input.text_submitted.connect(func(_t): _on_confirm_gift_money())
+	vbox.add_child(_gift_amount_input)
+
+	var btn_row = HBoxContainer.new()
+	btn_row.add_theme_constant_override("separation", 8)
+	vbox.add_child(btn_row)
+
+	var confirm_btn = Button.new()
+	confirm_btn.text = "Poslat"
+	confirm_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	confirm_btn.pressed.connect(_on_confirm_gift_money)
+	btn_row.add_child(confirm_btn)
+
+	var cancel_btn = Button.new()
+	cancel_btn.text = "Zrušit"
+	cancel_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cancel_btn.pressed.connect(func(): _gift_dialog.hide())
+	btn_row.add_child(cancel_btn)
+
+	_gift_dialog.hide()
+	_pozicuj_gift_dialog()
+
+func _pozicuj_gift_dialog() -> void:
+	if not _gift_dialog:
+		return
+	var vp = get_viewport().get_visible_rect().size
+	_gift_dialog.position = Vector2((vp.x - _gift_dialog.size.x) * 0.5, (vp.y - _gift_dialog.size.y) * 0.5)
+
+func _parse_gift_amount(text: String) -> float:
+	var sanitized = text.strip_edges().replace(",", ".")
+	if sanitized == "":
+		return 0.0
+	if not sanitized.is_valid_float():
+		return 0.0
+	return maxf(0.0, float(sanitized))
+
+func _on_gift_money_pressed() -> void:
+	if current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat:
+		return
+	if not _gift_dialog:
+		return
+	_gift_amount_input.text = "10"
+	_pozicuj_gift_dialog()
+	_gift_dialog.popup()
+	_gift_amount_input.grab_focus()
+	_gift_amount_input.select_all()
+
+func _on_confirm_gift_money() -> void:
+	if current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat:
+		return
+	if not GameManager.has_method("daruj_penize_statu"):
+		return
+
+	var amount = _parse_gift_amount(_gift_amount_input.text if _gift_amount_input else "")
+	var result = GameManager.daruj_penize_statu(GameManager.hrac_stat, current_viewed_tag, amount)
+	var ok = bool(result.get("ok", false))
+	if ok:
+		if _gift_dialog:
+			_gift_dialog.hide()
+		await zobraz_systemove_hlaseni(
+			"Diplomacie",
+			"Odeslán dar %.2f mil. USD státu %s.\nVztah: %+0.1f" % [
+				float(result.get("amount", amount)),
+				current_viewed_tag,
+				float(result.get("relation_delta", 0.0))
+			]
+		)
+		if GameManager.has_signal("kolo_zmeneno"):
+			GameManager.kolo_zmeneno.emit()
+		_aktualizuj_vztah_ui(current_viewed_tag)
+		_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
+		return
+
+	await zobraz_systemove_hlaseni("Diplomacie", str(result.get("reason", "Dar se nepodařilo odeslat.")))
 
 func _pozicuj_pause_menu() -> void:
 	if not _pause_menu_panel:
@@ -801,6 +934,7 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 			action_separator.hide()
 			if improve_rel_btn: improve_rel_btn.hide()
 			if worsen_rel_btn: worsen_rel_btn.hide()
+			if gift_money_btn: gift_money_btn.hide()
 			if alliance_level_option: alliance_level_option.hide()
 			declare_war_btn.hide()
 			propose_peace_btn.hide()
@@ -813,6 +947,7 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 			action_separator.show()
 			if improve_rel_btn: improve_rel_btn.show()
 			if worsen_rel_btn: worsen_rel_btn.show()
+			if gift_money_btn: gift_money_btn.show()
 			if alliance_level_option: alliance_level_option.show()
 			_aktualizuj_aliance_ui(owner_tag)
 			_aktualizuj_diplomacii_tlacitka(owner_tag)
@@ -975,6 +1110,9 @@ func _aktualizuj_vztah_ui(target_tag: String):
 	if worsen_rel_btn:
 		worsen_rel_btn.text = "Zhorsit vztah (%d kol)" % zbyle_kola if je_cooldown else "Zhorsit vztah (-10)"
 		worsen_rel_btn.disabled = je_cooldown or vztah <= -100.0
+	if gift_money_btn:
+		gift_money_btn.text = "Poslat dar"
+		gift_money_btn.disabled = current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat
 
 	_aktualizuj_aliance_ui(target_tag)
 	_aktualizuj_diplomacii_tlacitka(target_tag)

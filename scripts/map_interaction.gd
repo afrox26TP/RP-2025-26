@@ -133,7 +133,7 @@ func _unhandled_input(event):
 			var root = get_parent()
 			var is_targeting = "ceka_na_cil_presunu" in root and root.ceka_na_cil_presunu
 			var is_bulk_targeting = "ceka_na_hromadny_cil_presunu" in root and root.ceka_na_hromadny_cil_presunu
-			if event.shift_pressed and not is_targeting and not is_bulk_targeting:
+			if not is_targeting and not is_bulk_targeting:
 				_drag_select_active = true
 				_drag_select_started = false
 				_drag_start_local = _ziskej_localni_pozici_mysi(get_global_mouse_position())
@@ -151,7 +151,7 @@ func _unhandled_input(event):
 				if had_drag:
 					_aplikuj_drag_hromadny_vyber()
 				else:
-					_zpracuj_interakci(event.position, true, true)
+					_zpracuj_interakci(event.position, true, event.shift_pressed)
 				return
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
 			if event.pressed:
