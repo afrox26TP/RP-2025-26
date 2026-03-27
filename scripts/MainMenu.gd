@@ -81,7 +81,7 @@ var hratelne_staty = {
 }
 
 const MAP_SCENE_PATH := "res://scenes/map.tscn"
-const SAVE_FILE_PATH := "user://savegame.json"
+const SAVE_FILE_PATH := "user://savegame.dat"
 const PROVINCES_DATA_PATH := "res://map_data/Provinces.txt"
 const SETTINGS_DIALOG_TITLE := "Nastaveni"
 const SETTINGS_DIALOG_TEXT := "Nastaveni budou doplnena v dalsi iteraci.\n\nOVLADANI:\n- Zoom koleckem\n- Posouvat mapu WSAD\n- Ukoncit kolo mezernikem\n- Pravim tlacitkem cancelovat akce a zavirat dialogy\n- DEv simple conquer tool: C"
@@ -594,6 +594,8 @@ func _aktualizuj_browser_napovedu():
 
 func _nastav_stav_pokracovani():
 	var ma_save = FileAccess.file_exists(SAVE_FILE_PATH)
+	if GameManager and GameManager.has_method("ma_ulozene_hry"):
+		ma_save = bool(GameManager.ma_ulozene_hry())
 	btn_continue.disabled = not ma_save
 	if ma_save:
 		btn_continue.text = "Pokracovat"
@@ -607,6 +609,10 @@ func _spust_hru_vyberem(player_tags: Array = []):
 	if final_tags.is_empty():
 		return
 	selected_country_tag = str(final_tags[0])
+
+	# Start a truly fresh session for New Game and avoid carrying previous run state.
+	if GameManager and GameManager.has_method("reset_pro_novou_hru"):
+		GameManager.reset_pro_novou_hru()
 
 	# Save selected local players to GameManager.
 	if GameManager.has_method("nastav_lokalni_hrace"):
@@ -645,8 +651,27 @@ func _on_new_game_pressed():
 	_otevri_browser_statu()
 
 func _on_continue_pressed():
-	# Placeholder behavior until save/load pipeline is implemented.
-	_spust_hru_vyberem()
+	var ma_save = FileAccess.file_exists(SAVE_FILE_PATH)
+	if GameManager and GameManager.has_method("ma_ulozene_hry"):
+		ma_save = bool(GameManager.ma_ulozene_hry())
+
+	if not ma_save:
+		_nastav_stav_pokracovani()
+		return
+
+	var err = get_tree().change_scene_to_file(MAP_SCENE_PATH)
+	if err != OK:
+		push_warning("Nepodarilo se otevrit mapu pro Continue. Chyba: %s" % str(err))
+		return
+
+	# Wait for map scene setup, then override runtime state with saved data.
+	await get_tree().process_frame
+	if GameManager and GameManager.has_method("nacti_posledni_hru"):
+		if not bool(GameManager.nacti_posledni_hru()):
+			push_warning("Continue selhalo: save se nepodarilo nacist.")
+	elif GameManager and GameManager.has_method("nacti_hru"):
+		if not bool(GameManager.nacti_hru()):
+			push_warning("Continue selhalo: save se nepodarilo nacist.")
 
 func _on_settings_pressed():
 	settings_dialog.popup_centered()

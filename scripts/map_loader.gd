@@ -2452,6 +2452,24 @@ func _zpracuj_odlozene_kapitulace(celkovy_report: String) -> String:
 
 	return celkovy_report
 
+func hrac_se_vzdal(state_tag: String) -> bool:
+	var target_owner = state_tag.strip_edges().to_upper()
+	if target_owner == "" or target_owner == "SEA":
+		return false
+
+	var vysledek = _kapituluj_stat_rozdelenim(target_owner, "")
+	if not bool(vysledek.get("provedeno", false)):
+		return false
+
+	if GameManager.has_method("vycisti_stat_po_kapitulaci"):
+		GameManager.vycisti_stat_po_kapitulaci(target_owner)
+
+	GameManager.map_data = provinces
+	aktualizuj_ikony_armad()
+	_aktualizuj_indikatory_kapitulace()
+	GameManager.kolo_zmeneno.emit()
+	return true
+
 func _aktualizuj_indikatory_kapitulace():
 	var container = get_node_or_null("CapitulationIndicators")
 	if not container:

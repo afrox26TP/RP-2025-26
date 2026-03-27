@@ -46,6 +46,9 @@ const AI_ALLIANCE_LEAVE_REL_MARGIN := 8.0
 const AGGRESSION_RELATION_PENALTY := 12.0
 const NON_AGGRESSION_MIN_REL := 10.0
 const NON_AGGRESSION_DURATION_TURNS := 10
+const SAVEGAME_STATE_PATH := "user://savegame.dat"
+const SAVE_SLOTS_DIR := "user://saves"
+const SAVE_SLOT_EXT := ".dat"
 
 # Diplomacy
 var valky: Dictionary = {}
@@ -203,6 +206,277 @@ func _prepni_na_dalsiho_hrace() -> void:
 
 func _je_posledni_hrac_v_poradi() -> bool:
 	return lokalni_hraci_staty.size() <= 1 or aktivni_hrac_index >= (lokalni_hraci_staty.size() - 1)
+
+func odeber_lidsky_stat(tag: String) -> void:
+	var cisty = _normalizuj_tag(tag)
+	if cisty == "":
+		return
+
+	var idx = lokalni_hraci_staty.find(cisty)
+	if idx == -1:
+		return
+
+	lokalni_hraci_staty.remove_at(idx)
+	hrac_kasy.erase(cisty)
+	hrac_prijmy.erase(cisty)
+	hrac_kasa_inicializovana.erase(cisty)
+	cekajici_popupy_hracu.erase(cisty)
+
+	if lokalni_hraci_staty.is_empty():
+		return
+
+	if idx < aktivni_hrac_index:
+		aktivni_hrac_index -= 1
+	if aktivni_hrac_index >= lokalni_hraci_staty.size():
+		aktivni_hrac_index = 0
+	_prepni_na_hrace(aktivni_hrac_index)
+
+func _ziskej_data_mapy_pro_ulozeni() -> Dictionary:
+	var map_loader = _get_map_loader()
+	if map_loader and "provinces" in map_loader:
+		return (map_loader.provinces as Dictionary)
+	return map_data
+
+func _normalizuj_nazev_save(slot_name: String) -> String:
+	var name = slot_name.strip_edges()
+	if name == "":
+		name = "save_%s" % Time.get_datetime_string_from_system().replace("T", "_").replace(":", "-")
+
+	for bad in ["\\", "/", ":", "*", "?", "\"", "<", ">", "|"]:
+		name = name.replace(str(bad), "_")
+
+	name = name.replace("\n", "_").replace("\r", "_").replace("\t", "_")
+	name = name.strip_edges().replace(" ", "_")
+	if name == "":
+		name = "save"
+	return name
+
+func _cesta_slotu_save(slot_name: String) -> String:
+	return "%s/%s%s" % [SAVE_SLOTS_DIR, _normalizuj_nazev_save(slot_name), SAVE_SLOT_EXT]
+
+func _zajisti_slozku_save() -> void:
+	var root_dir = DirAccess.open("user://")
+	if root_dir and not root_dir.dir_exists("saves"):
+		root_dir.make_dir_recursive("saves")
+
+func _vytvor_save_state() -> Dictionary:
+	var map_snapshot = _ziskej_data_mapy_pro_ulozeni().duplicate(true)
+	if map_snapshot.is_empty():
+		return {}
+
+	map_data = map_snapshot
+	return {
+		"hrac_stat": hrac_stat,
+		"hrac_jmeno": hrac_jmeno,
+		"hrac_ideologie": hrac_ideologie,
+		"statni_kasa": statni_kasa,
+		"celkovy_prijem": celkovy_prijem,
+		"aktualni_kolo": aktualni_kolo,
+		"map_data": map_snapshot,
+		"provincie_cooldowny": provincie_cooldowny.duplicate(true),
+		"ai_kasy": ai_kasy.duplicate(true),
+		"lokalni_hraci_staty": lokalni_hraci_staty.duplicate(true),
+		"aktivni_hrac_index": aktivni_hrac_index,
+		"hrac_kasy": hrac_kasy.duplicate(true),
+		"hrac_prijmy": hrac_prijmy.duplicate(true),
+		"hrac_kasa_inicializovana": hrac_kasa_inicializovana.duplicate(true),
+		"valky": valky.duplicate(true),
+		"cekajici_kapitulace": cekajici_kapitulace.duplicate(true),
+		"cekajici_mirove_nabidky": cekajici_mirove_nabidky.duplicate(true),
+		"aliance_statu": aliance_statu.duplicate(true),
+		"neagresivni_smlouvy": neagresivni_smlouvy.duplicate(true),
+		"povalecne_cooldowny": povalecne_cooldowny.duplicate(true),
+		"cekajici_diplomaticke_zadosti": cekajici_diplomaticke_zadosti.duplicate(true),
+		"cekajici_aliancni_zadosti": cekajici_aliancni_zadosti.duplicate(true),
+		"vztah_akce_posledni_kolo": _vztah_akce_posledni_kolo.duplicate(true),
+		"vztahy_statu": _vztahy_statu.duplicate(true),
+		"vztahy_nactene": _vztahy_nactene,
+		"hrac_kasa_inicializovana_single": _hrac_kasa_inicializovana
+	}
+
+func _uloz_state_do_cesty(path: String, state: Dictionary) -> bool:
+	var file = FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		return false
+	file.store_var(state, true)
+	return true
+
+func _nacti_state_z_cesty(path: String) -> Dictionary:
+	if not FileAccess.file_exists(path):
+		return {}
+
+	var file = FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return {}
+
+	var raw = file.get_var(true)
+	if not (raw is Dictionary):
+		return {}
+
+	return raw as Dictionary
+
+func _aplikuj_save_state(state: Dictionary) -> bool:
+	if state.is_empty():
+		return false
+
+	hrac_stat = str(state.get("hrac_stat", hrac_stat)).strip_edges().to_upper()
+	hrac_jmeno = str(state.get("hrac_jmeno", ""))
+	hrac_ideologie = str(state.get("hrac_ideologie", ""))
+	statni_kasa = float(state.get("statni_kasa", statni_kasa))
+	celkovy_prijem = float(state.get("celkovy_prijem", celkovy_prijem))
+	aktualni_kolo = int(state.get("aktualni_kolo", aktualni_kolo))
+	map_data = (state.get("map_data", {}) as Dictionary).duplicate(true)
+	provincie_cooldowny = (state.get("provincie_cooldowny", {}) as Dictionary).duplicate(true)
+	ai_kasy = (state.get("ai_kasy", {}) as Dictionary).duplicate(true)
+	lokalni_hraci_staty = (state.get("lokalni_hraci_staty", []) as Array).duplicate(true)
+	aktivni_hrac_index = int(state.get("aktivni_hrac_index", 0))
+	hrac_kasy = (state.get("hrac_kasy", {}) as Dictionary).duplicate(true)
+	hrac_prijmy = (state.get("hrac_prijmy", {}) as Dictionary).duplicate(true)
+	hrac_kasa_inicializovana = (state.get("hrac_kasa_inicializovana", {}) as Dictionary).duplicate(true)
+	valky = (state.get("valky", {}) as Dictionary).duplicate(true)
+	cekajici_kapitulace = (state.get("cekajici_kapitulace", []) as Array).duplicate(true)
+	cekajici_mirove_nabidky = (state.get("cekajici_mirove_nabidky", []) as Array).duplicate(true)
+	aliance_statu = (state.get("aliance_statu", {}) as Dictionary).duplicate(true)
+	neagresivni_smlouvy = (state.get("neagresivni_smlouvy", {}) as Dictionary).duplicate(true)
+	povalecne_cooldowny = (state.get("povalecne_cooldowny", {}) as Dictionary).duplicate(true)
+	cekajici_diplomaticke_zadosti = (state.get("cekajici_diplomaticke_zadosti", {}) as Dictionary).duplicate(true)
+	cekajici_aliancni_zadosti = (state.get("cekajici_aliancni_zadosti", []) as Array).duplicate(true)
+	_vztah_akce_posledni_kolo = (state.get("vztah_akce_posledni_kolo", {}) as Dictionary).duplicate(true)
+	_vztahy_statu = (state.get("vztahy_statu", {}) as Dictionary).duplicate(true)
+	_vztahy_nactene = bool(state.get("vztahy_nactene", true))
+	_hrac_kasa_inicializovana = bool(state.get("hrac_kasa_inicializovana_single", _hrac_kasa_inicializovana))
+
+	if not lokalni_hraci_staty.is_empty():
+		if not lokalni_hraci_staty.has(hrac_stat):
+			hrac_stat = str(lokalni_hraci_staty[0])
+		aktivni_hrac_index = clampi(aktivni_hrac_index, 0, lokalni_hraci_staty.size() - 1)
+
+	var map_loader = _get_map_loader()
+	if map_loader:
+		if "provinces" in map_loader:
+			map_loader.provinces = map_data.duplicate(true)
+			map_data = map_loader.provinces
+		if map_loader.has_method("_invalidate_naval_reachability_cache"):
+			map_loader._invalidate_naval_reachability_cache()
+		if map_loader.has_method("_aktualizuj_aktivni_mapovy_mod"):
+			map_loader._aktualizuj_aktivni_mapovy_mod()
+		if map_loader.has_method("aktualizuj_ikony_armad"):
+			map_loader.aktualizuj_ikony_armad()
+
+	_synchronizuj_jmeno_a_ideologii_hrace()
+	kolo_zmeneno.emit()
+	return true
+
+func reset_pro_novou_hru() -> void:
+	hrac_stat = "ALB"
+	hrac_jmeno = ""
+	hrac_ideologie = ""
+	statni_kasa = 0.0
+	celkovy_prijem = 0.0
+	aktualni_kolo = 1
+
+	map_data.clear()
+	provincie_cooldowny.clear()
+	ai_kasy.clear()
+	_hrac_kasa_inicializovana = false
+	lokalni_hraci_staty.clear()
+	aktivni_hrac_index = 0
+	hrac_kasy.clear()
+	hrac_prijmy.clear()
+	hrac_kasa_inicializovana.clear()
+	cekajici_popupy_hracu.clear()
+
+	valky.clear()
+	cekajici_kapitulace.clear()
+	cekajici_mirove_nabidky.clear()
+	aliance_statu.clear()
+	neagresivni_smlouvy.clear()
+	povalecne_cooldowny.clear()
+	cekajici_diplomaticke_zadosti.clear()
+	cekajici_aliancni_zadosti.clear()
+
+	_core_state_cache.clear()
+	_vztahy_statu.clear()
+	_vztahy_nactene = false
+	_vztah_akce_posledni_kolo.clear()
+	_turn_cache_valid = false
+	_turn_state_soldier_power.clear()
+	_turn_state_hdp.clear()
+	_turn_border_pairs.clear()
+	_turn_active_states.clear()
+
+func ziskej_save_sloty() -> Array:
+	_zajisti_slozku_save()
+	var slots: Array = []
+
+	var dir = DirAccess.open(SAVE_SLOTS_DIR)
+	if dir == null:
+		return slots
+
+	dir.list_dir_begin()
+	while true:
+		var file_name = dir.get_next()
+		if file_name == "":
+			break
+		if dir.current_is_dir():
+			continue
+		if not file_name.ends_with(SAVE_SLOT_EXT):
+			continue
+
+		var slot_name = file_name.substr(0, file_name.length() - SAVE_SLOT_EXT.length())
+		var slot_path = "%s/%s" % [SAVE_SLOTS_DIR, file_name]
+		slots.append({
+			"name": slot_name,
+			"path": slot_path,
+			"modified": int(FileAccess.get_modified_time(slot_path))
+		})
+	dir.list_dir_end()
+
+	slots.sort_custom(func(a, b):
+		return int((a as Dictionary).get("modified", 0)) > int((b as Dictionary).get("modified", 0))
+	)
+	return slots
+
+func ma_ulozene_hry() -> bool:
+	if FileAccess.file_exists(SAVEGAME_STATE_PATH):
+		return true
+	return not ziskej_save_sloty().is_empty()
+
+func uloz_hru_do_slotu(slot_name: String) -> bool:
+	_zajisti_slozku_save()
+	var state = _vytvor_save_state()
+	if state.is_empty():
+		return false
+
+	var slot_path = _cesta_slotu_save(slot_name)
+	var ok_slot = _uloz_state_do_cesty(slot_path, state)
+	# Keep legacy quicksave path for backward compatibility with existing flows.
+	_uloz_state_do_cesty(SAVEGAME_STATE_PATH, state)
+	return ok_slot
+
+func nacti_hru_ze_slotu(slot_name: String) -> bool:
+	var slot_path = _cesta_slotu_save(slot_name)
+	var state = _nacti_state_z_cesty(slot_path)
+	return _aplikuj_save_state(state)
+
+func nacti_posledni_hru() -> bool:
+	var slots = ziskej_save_sloty()
+	if not slots.is_empty():
+		var newest = slots[0] as Dictionary
+		var slot_name = str(newest.get("name", ""))
+		if slot_name != "" and nacti_hru_ze_slotu(slot_name):
+			return true
+	return nacti_hru()
+
+func uloz_hru() -> bool:
+	return uloz_hru_do_slotu("quicksave")
+
+func nacti_hru() -> bool:
+	var legacy_state = _nacti_state_z_cesty(SAVEGAME_STATE_PATH)
+	if _aplikuj_save_state(legacy_state):
+		return true
+	# Fallback to slot-based quicksave if legacy file is missing.
+	return nacti_hru_ze_slotu("quicksave")
 
 # Safely get the map node
 func _get_map_loader():

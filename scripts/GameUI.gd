@@ -42,9 +42,19 @@ var _updating_alliance_ui: bool = false
 var _current_incoming_request: Dictionary = {}
 var _popup_request_from_tag: String = ""
 var _system_message_ack: bool = false
+var _pause_menu_panel: PopupPanel
+var _pause_confirm_dialog: ConfirmationDialog
+var _pause_pending_action: String = ""
+var _save_dialog: PopupPanel
+var _save_name_input: LineEdit
+var _load_dialog: PopupPanel
+var _load_slot_list: ItemList
+var _load_confirm_btn: Button
+var _load_slot_names: Array = []
 
 const POPUP_TOP_MARGIN := 6
 const POPUP_GAP := 6
+const MAIN_MENU_SCENE_PATH := "res://scenes/MainMenu.tscn"
 
 func _resolve_flag_texture(owner_tag: String, ideologie: String):
 	var ideo = ideologie.strip_edges().to_lower()
@@ -111,6 +121,7 @@ func _ready():
 		system_message_popup.hide()
 	if get_viewport() and not get_viewport().size_changed.is_connected(_on_viewport_resized):
 		get_viewport().size_changed.connect(_on_viewport_resized)
+	_vytvor_pause_menu()
 	_aktualizuj_pozice_popupu()
 	_aktualizuj_popup_diplomatickych_zadosti()
 
@@ -122,12 +133,372 @@ func _on_system_message_ok_pressed():
 
 func _on_viewport_resized():
 	_aktualizuj_pozice_popupu()
+	_pozicuj_pause_menu()
+	_pozicuj_save_load_popupy()
 
 func _input(event):
 	if event is InputEventKey and event.pressed and not event.is_echo():
+		if event.keycode == KEY_ESCAPE:
+			if _save_dialog and _save_dialog.visible:
+				_save_dialog.hide()
+				get_viewport().set_input_as_handled()
+				return
+			if _load_dialog and _load_dialog.visible:
+				_load_dialog.hide()
+				get_viewport().set_input_as_handled()
+				return
+			if system_message_popup and system_message_popup.visible:
+				_on_system_message_ok_pressed()
+			else:
+				_prepni_pause_menu()
+			get_viewport().set_input_as_handled()
+			return
 		if event.keycode == KEY_SPACE and system_message_popup and system_message_popup.visible:
 			_on_system_message_ok_pressed()
 			get_viewport().set_input_as_handled()
+
+func _vytvor_pause_menu() -> void:
+	_pause_menu_panel = PopupPanel.new()
+	_pause_menu_panel.name = "PauseMenu"
+	_pause_menu_panel.size = Vector2(320, 352)
+	add_child(_pause_menu_panel)
+
+	var root_margin = MarginContainer.new()
+	root_margin.offset_left = 12
+	root_margin.offset_top = 12
+	root_margin.offset_right = -12
+	root_margin.offset_bottom = -12
+	root_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_pause_menu_panel.add_child(root_margin)
+
+	var vbox = VBoxContainer.new()
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vbox.add_theme_constant_override("separation", 8)
+	root_margin.add_child(vbox)
+
+	var title = Label.new()
+	title.text = "Game Menu"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 24)
+	vbox.add_child(title)
+
+	var subtitle = Label.new()
+	subtitle.text = "ESC"
+	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(subtitle)
+
+	vbox.add_child(HSeparator.new())
+
+	var btn_resume = Button.new()
+	btn_resume.text = "Resume"
+	btn_resume.pressed.connect(_on_pause_resume_pressed)
+	vbox.add_child(btn_resume)
+
+	var btn_options = Button.new()
+	btn_options.text = "Options"
+	btn_options.pressed.connect(_on_pause_options_pressed)
+	vbox.add_child(btn_options)
+
+	var btn_surrender = Button.new()
+	btn_surrender.text = "Surrender"
+	btn_surrender.pressed.connect(_on_pause_surrender_pressed)
+	vbox.add_child(btn_surrender)
+
+	var btn_save = Button.new()
+	btn_save.text = "Save"
+	btn_save.pressed.connect(_on_pause_save_pressed)
+	vbox.add_child(btn_save)
+
+	var btn_load = Button.new()
+	btn_load.text = "Load"
+	btn_load.pressed.connect(_on_pause_load_pressed)
+	vbox.add_child(btn_load)
+
+	var btn_quit = Button.new()
+	btn_quit.text = "Quit"
+	btn_quit.pressed.connect(_on_pause_quit_pressed)
+	vbox.add_child(btn_quit)
+
+	_pause_confirm_dialog = ConfirmationDialog.new()
+	_pause_confirm_dialog.min_size = Vector2i(430, 160)
+	_pause_confirm_dialog.confirmed.connect(_on_pause_confirmed)
+	add_child(_pause_confirm_dialog)
+
+	_vytvor_save_load_dialogy()
+
+	_pause_menu_panel.hide()
+	_pozicuj_pause_menu()
+	_pozicuj_save_load_popupy()
+
+func _pozicuj_pause_menu() -> void:
+	if not _pause_menu_panel:
+		return
+	var viewport_size = get_viewport().get_visible_rect().size
+	_pause_menu_panel.position = Vector2((viewport_size.x - _pause_menu_panel.size.x) * 0.5, (viewport_size.y - _pause_menu_panel.size.y) * 0.5)
+
+func _prepni_pause_menu() -> void:
+	if not _pause_menu_panel:
+		return
+	if _pause_menu_panel.visible:
+		_pause_menu_panel.hide()
+	else:
+		_pozicuj_pause_menu()
+		_pause_menu_panel.popup()
+
+func _zavri_pause_menu() -> void:
+	if _pause_menu_panel:
+		_pause_menu_panel.hide()
+
+func _zobraz_pause_confirm(action: String, title: String, text: String) -> void:
+	if not _pause_confirm_dialog:
+		return
+	_pause_pending_action = action
+	_pause_confirm_dialog.title = title
+	_pause_confirm_dialog.dialog_text = text
+	_pause_confirm_dialog.popup_centered()
+
+func _vytvor_save_load_dialogy() -> void:
+	_save_dialog = PopupPanel.new()
+	_save_dialog.name = "SaveDialog"
+	_save_dialog.size = Vector2(430, 190)
+	add_child(_save_dialog)
+
+	var save_margin = MarginContainer.new()
+	save_margin.offset_left = 12
+	save_margin.offset_top = 12
+	save_margin.offset_right = -12
+	save_margin.offset_bottom = -12
+	save_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_save_dialog.add_child(save_margin)
+
+	var save_vbox = VBoxContainer.new()
+	save_vbox.add_theme_constant_override("separation", 10)
+	save_margin.add_child(save_vbox)
+
+	var save_title = Label.new()
+	save_title.text = "Save game"
+	save_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	save_title.add_theme_font_size_override("font_size", 20)
+	save_vbox.add_child(save_title)
+
+	var save_hint = Label.new()
+	save_hint.text = "Zadej jmeno save slotu"
+	save_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	save_vbox.add_child(save_hint)
+
+	_save_name_input = LineEdit.new()
+	_save_name_input.placeholder_text = "napr. france_turn12"
+	_save_name_input.text_submitted.connect(func(_t): _on_save_dialog_confirm_pressed())
+	save_vbox.add_child(_save_name_input)
+
+	var save_btns = HBoxContainer.new()
+	save_btns.add_theme_constant_override("separation", 8)
+	save_vbox.add_child(save_btns)
+
+	var save_confirm_btn = Button.new()
+	save_confirm_btn.text = "Ulozit"
+	save_confirm_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	save_confirm_btn.pressed.connect(_on_save_dialog_confirm_pressed)
+	save_btns.add_child(save_confirm_btn)
+
+	var save_cancel_btn = Button.new()
+	save_cancel_btn.text = "Zrusit"
+	save_cancel_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	save_cancel_btn.pressed.connect(func(): _save_dialog.hide())
+	save_btns.add_child(save_cancel_btn)
+
+	_load_dialog = PopupPanel.new()
+	_load_dialog.name = "LoadDialog"
+	_load_dialog.size = Vector2(460, 320)
+	add_child(_load_dialog)
+
+	var load_margin = MarginContainer.new()
+	load_margin.offset_left = 12
+	load_margin.offset_top = 12
+	load_margin.offset_right = -12
+	load_margin.offset_bottom = -12
+	load_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_load_dialog.add_child(load_margin)
+
+	var load_vbox = VBoxContainer.new()
+	load_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	load_vbox.add_theme_constant_override("separation", 8)
+	load_margin.add_child(load_vbox)
+
+	var load_title = Label.new()
+	load_title.text = "Load game"
+	load_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	load_title.add_theme_font_size_override("font_size", 20)
+	load_vbox.add_child(load_title)
+
+	_load_slot_list = ItemList.new()
+	_load_slot_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_load_slot_list.allow_reselect = true
+	load_vbox.add_child(_load_slot_list)
+
+	var load_btns = HBoxContainer.new()
+	load_btns.add_theme_constant_override("separation", 8)
+	load_vbox.add_child(load_btns)
+
+	_load_confirm_btn = Button.new()
+	_load_confirm_btn.text = "Nacist"
+	_load_confirm_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_load_confirm_btn.pressed.connect(_on_load_dialog_confirm_pressed)
+	load_btns.add_child(_load_confirm_btn)
+
+	var load_refresh_btn = Button.new()
+	load_refresh_btn.text = "Obnovit"
+	load_refresh_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	load_refresh_btn.pressed.connect(_obnov_load_sloty)
+	load_btns.add_child(load_refresh_btn)
+
+	var load_cancel_btn = Button.new()
+	load_cancel_btn.text = "Zrusit"
+	load_cancel_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	load_cancel_btn.pressed.connect(func(): _load_dialog.hide())
+	load_btns.add_child(load_cancel_btn)
+
+	_save_dialog.hide()
+	_load_dialog.hide()
+
+func _pozicuj_save_load_popupy() -> void:
+	if _save_dialog:
+		var vp = get_viewport().get_visible_rect().size
+		_save_dialog.position = Vector2((vp.x - _save_dialog.size.x) * 0.5, (vp.y - _save_dialog.size.y) * 0.5)
+	if _load_dialog:
+		var vp2 = get_viewport().get_visible_rect().size
+		_load_dialog.position = Vector2((vp2.x - _load_dialog.size.x) * 0.5, (vp2.y - _load_dialog.size.y) * 0.5)
+
+func _vygeneruj_default_jmeno_save() -> String:
+	return "save_%s" % Time.get_datetime_string_from_system().replace("T", "_").replace(":", "-")
+
+func _obnov_load_sloty() -> void:
+	if not _load_slot_list:
+		return
+
+	_load_slot_list.clear()
+	_load_slot_names.clear()
+	var sloty: Array = []
+	if GameManager and GameManager.has_method("ziskej_save_sloty"):
+		sloty = GameManager.ziskej_save_sloty()
+
+	for s in sloty:
+		var d = s as Dictionary
+		var slot_name = str(d.get("name", ""))
+		if slot_name == "":
+			continue
+		_load_slot_list.add_item(slot_name)
+		_load_slot_names.append(slot_name)
+
+	if _load_slot_list.get_item_count() == 0 and FileAccess.file_exists("user://savegame.dat"):
+		_load_slot_list.add_item("quicksave (legacy)")
+		_load_slot_names.append("__legacy__")
+
+	if _load_slot_list.get_item_count() > 0:
+		_load_slot_list.select(0)
+	if _load_confirm_btn:
+		_load_confirm_btn.disabled = _load_slot_list.get_item_count() == 0
+
+func _on_save_dialog_confirm_pressed() -> void:
+	if not _save_name_input:
+		return
+
+	var slot_name = _save_name_input.text.strip_edges()
+	if slot_name == "":
+		slot_name = _vygeneruj_default_jmeno_save()
+
+	var ok = false
+	if GameManager and GameManager.has_method("uloz_hru_do_slotu"):
+		ok = bool(GameManager.uloz_hru_do_slotu(slot_name))
+	elif GameManager and GameManager.has_method("uloz_hru"):
+		ok = bool(GameManager.uloz_hru())
+
+	if ok:
+		_save_dialog.hide()
+		await zobraz_systemove_hlaseni("Save", "Hra byla ulozena do slotu: %s" % slot_name)
+	else:
+		await zobraz_systemove_hlaseni("Save", "Ulozeni se nepodarilo.")
+
+func _on_load_dialog_confirm_pressed() -> void:
+	if not _load_slot_list:
+		return
+	var selected = _load_slot_list.get_selected_items()
+	if selected.is_empty():
+		return
+
+	var idx = int(selected[0])
+	if idx < 0 or idx >= _load_slot_names.size():
+		return
+
+	var slot_name = str(_load_slot_names[idx])
+	var ok = false
+	if slot_name == "__legacy__" and GameManager and GameManager.has_method("nacti_hru"):
+		ok = bool(GameManager.nacti_hru())
+	elif GameManager and GameManager.has_method("nacti_hru_ze_slotu"):
+		ok = bool(GameManager.nacti_hru_ze_slotu(slot_name))
+	elif GameManager and GameManager.has_method("nacti_hru"):
+		ok = bool(GameManager.nacti_hru())
+
+	if ok:
+		_load_dialog.hide()
+		await zobraz_systemove_hlaseni("Load", "Hra byla nactena ze slotu: %s" % slot_name)
+	else:
+		await zobraz_systemove_hlaseni("Load", "Nacteni se nepodarilo.")
+
+func _on_pause_resume_pressed() -> void:
+	_zavri_pause_menu()
+
+func _on_pause_options_pressed() -> void:
+	_zavri_pause_menu()
+	await zobraz_systemove_hlaseni("Options", "Nastaveni bude doplneno v dalsi iteraci.")
+
+func _on_pause_surrender_pressed() -> void:
+	_zobraz_pause_confirm("surrender", "Surrender", "Opravdu se chces vzdat za aktualni stat?")
+
+func _on_pause_save_pressed() -> void:
+	_zavri_pause_menu()
+	if _save_name_input:
+		_save_name_input.text = _vygeneruj_default_jmeno_save()
+	if _save_dialog:
+		_pozicuj_save_load_popupy()
+		_save_dialog.popup()
+		if _save_name_input:
+			_save_name_input.grab_focus()
+			_save_name_input.select_all()
+
+func _on_pause_load_pressed() -> void:
+	_zavri_pause_menu()
+	_obnov_load_sloty()
+	if _load_dialog:
+		_pozicuj_save_load_popupy()
+		_load_dialog.popup()
+
+func _on_pause_quit_pressed() -> void:
+	_zobraz_pause_confirm("quit", "Quit", "Opravdu se chces vratit do hlavniho menu?")
+
+func _on_pause_confirmed() -> void:
+	var action = _pause_pending_action
+	_pause_pending_action = ""
+	_zavri_pause_menu()
+
+	if action == "surrender":
+		var current_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
+		var map_loader = get_tree().current_scene.find_child("Map", true, false)
+		if map_loader and map_loader.has_method("hrac_se_vzdal") and bool(map_loader.hrac_se_vzdal(current_tag)):
+			if GameManager.has_method("odeber_lidsky_stat"):
+				GameManager.odeber_lidsky_stat(current_tag)
+			if GameManager.lokalni_hraci_staty.is_empty():
+				await zobraz_systemove_hlaseni("Surrender", "Vzdal ses. Vracim se do hlavniho menu.")
+				get_tree().change_scene_to_file(MAIN_MENU_SCENE_PATH)
+				return
+			await zobraz_systemove_hlaseni("Surrender", "Stat %s kapituloval." % current_tag)
+		else:
+			await zobraz_systemove_hlaseni("Surrender", "Vzdat se se nepodarilo.")
+		return
+
+	if action == "quit":
+		get_tree().change_scene_to_file(MAIN_MENU_SCENE_PATH)
 
 func _topbar_bottom_y() -> float:
 	var topbar = get_tree().current_scene.find_child("TopBar", true, false)

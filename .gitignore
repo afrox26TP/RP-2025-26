@@ -12,6 +12,9 @@
 opengs_export/
 export/
 build/
+*.exe
+*.pck
+*.console
 
 # Editor/user-local files
 .vscode/
