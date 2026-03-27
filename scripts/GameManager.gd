@@ -25,6 +25,7 @@ var cekajici_popupy_hracu: Dictionary = {}
 const AI_DECLARE_WAR_MIN_BORDER_ADVANTAGE := 1.25
 const AI_DECLARE_WAR_MIN_ATTACK_FORCE := 1800
 const AI_DECLARE_WAR_MAX_RELATION := -10.0
+const PEACE_WAR_COOLDOWN_TURNS := 5
 const RELATION_MIN := -100.0
 const RELATION_MAX := 100.0
 const RELATION_STEP_PLAYER := 10.0
@@ -52,6 +53,7 @@ var cekajici_kapitulace: Array = []
 var cekajici_mirove_nabidky: Array = []
 var aliance_statu: Dictionary = {}
 var neagresivni_smlouvy: Dictionary = {}
+var povalecne_cooldowny: Dictionary = {}
 var cekajici_diplomaticke_zadosti: Dictionary = {}
 var cekajici_aliancni_zadosti: Array = []
 
@@ -417,7 +419,7 @@ func _nastav_uroven_aliance_bez_kontroly(tag_a: String, tag_b: String, level: in
 		return
 	aliance_statu[key] = clamp(level, ALLIANCE_NONE, ALLIANCE_FULL)
 
-func nastav_uroven_aliance(tag_a: String, tag_b: String, level: int) -> bool:
+func nastav_uroven_aliance(tag_a: String, tag_b: String, level: int, ignoruj_vztahove_podminky: bool = false) -> bool:
 	var a = _normalizuj_tag(tag_a)
 	var b = _normalizuj_tag(tag_b)
 	var target_level = clamp(level, ALLIANCE_NONE, ALLIANCE_FULL)
@@ -434,14 +436,14 @@ func nastav_uroven_aliance(tag_a: String, tag_b: String, level: int) -> bool:
 	if target_level > ALLIANCE_NONE:
 		var rel = ziskej_vztah_statu(a, b)
 		var needed_rel = _minimalni_vztah_pro_alianci(target_level)
-		if target_level > old_level and not _ma_stat_prijmout_alianci(a, b, target_level):
+		if (not ignoruj_vztahove_podminky) and target_level > old_level and not _ma_stat_prijmout_alianci(a, b, target_level):
 			if je_lidsky_stat(a) or je_lidsky_stat(b):
 				if rel < ALLIANCE_HARD_REJECT_REL:
 					_pridej_popup_zucastnenym_hracum(a, b, "Diplomacie", "%s a %s se nemají rádi (vztah %.1f), aliance odmítnuta." % [a, b, rel])
 				else:
 					_pridej_popup_zucastnenym_hracum(a, b, "Diplomacie", "%s odmítá %s: pro %s je potřeba vztah alespoň %.1f." % [b, a, nazev_urovne_aliance(target_level), needed_rel])
 			return false
-		if rel < needed_rel:
+		if (not ignoruj_vztahove_podminky) and rel < needed_rel:
 			if je_lidsky_stat(a) or je_lidsky_stat(b):
 				_pridej_popup_zucastnenym_hracum(a, b, "Diplomacie", "Vztah %.1f je příliš nízký pro %s (potřeba %.1f)." % [rel, nazev_urovne_aliance(target_level), needed_rel])
 			return false
@@ -533,7 +535,7 @@ func je_aliancni_zadost_cekajici(odesilatel: String, prijemce: String) -> bool:
 		return true
 	return false
 
-func odeslat_aliancni_zadost(tag_a: String, tag_b: String, level: int) -> bool:
+func odeslat_aliancni_zadost(tag_a: String, tag_b: String, level: int, ignoruj_vztahove_podminky: bool = false) -> bool:
 	var a = _normalizuj_tag(tag_a)
 	var b = _normalizuj_tag(tag_b)
 	var target_level = clamp(level, ALLIANCE_NONE, ALLIANCE_FULL)
@@ -548,12 +550,13 @@ func odeslat_aliancni_zadost(tag_a: String, tag_b: String, level: int) -> bool:
 			_pridej_popup_hraci(a, "Diplomacie", "Žádost o alianci už byla odeslána. Čeká se na odpověď.")
 		return false
 
-	var rel = ziskej_vztah_statu(a, b)
-	var needed_rel = _minimalni_vztah_pro_alianci(target_level)
-	if rel < needed_rel:
-		if je_lidsky_stat(a):
-			_pridej_popup_hraci(a, "Diplomacie", "Pro %s je potřeba vztah alespoň %.1f." % [nazev_urovne_aliance(target_level), needed_rel])
-		return false
+	if not ignoruj_vztahove_podminky:
+		var rel = ziskej_vztah_statu(a, b)
+		var needed_rel = _minimalni_vztah_pro_alianci(target_level)
+		if rel < needed_rel:
+			if je_lidsky_stat(a):
+				_pridej_popup_hraci(a, "Diplomacie", "Pro %s je potřeba vztah alespoň %.1f." % [nazev_urovne_aliance(target_level), needed_rel])
+			return false
 
 	cekajici_aliancni_zadosti.append({
 		"from": a,
@@ -624,7 +627,7 @@ func _pridej_diplomatickou_zadost(from_tag: String, to_tag: String, req_type: St
 	if from_clean == "" or to_clean == "" or from_clean == to_clean:
 		return false
 
-	if req_type != "alliance" and req_type != "non_aggression":
+	if req_type != "alliance" and req_type != "non_aggression" and req_type != "peace":
 		return false
 
 	if not cekajici_diplomaticke_zadosti.has(to_clean):
@@ -701,9 +704,20 @@ func hrac_prijmi_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> boo
 	var req_type = str(req.get("type", ""))
 	if req_type == "alliance":
 		var level = int(req.get("level", ALLIANCE_NONE))
+		var obe_strany_lide = je_lidsky_stat(player_clean) and je_lidsky_stat(sender)
+		if obe_strany_lide:
+			# Human-vs-human diplomacy is decided purely by acceptance/rejection.
+			return nastav_uroven_aliance(player_clean, sender, level, true)
 		return nastav_uroven_aliance(player_clean, sender, level)
 	if req_type == "non_aggression":
 		return uzavrit_neagresivni_smlouvu(player_clean, sender)
+	if req_type == "peace":
+		if not jsou_ve_valce(player_clean, sender):
+			return false
+		_uzavri_mir_mezi(player_clean, sender)
+		if je_lidsky_stat(player_clean) or je_lidsky_stat(sender):
+			_pridej_popup_zucastnenym_hracum(player_clean, sender, "Diplomacie", "Mirova nabidka prijata: %s a %s uzavrely mir." % [player_clean, sender])
+		return true
 	return false
 
 func hrac_odmitni_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> bool:
@@ -761,6 +775,14 @@ func vycisti_stat_po_kapitulaci(tag: String):
 			continue
 		if parts2[0] == target or parts2[1] == target:
 			neagresivni_smlouvy.erase(klic)
+
+	var cooldown_klice = povalecne_cooldowny.keys().duplicate()
+	for klic in cooldown_klice:
+		var parts_c = str(klic).split("|")
+		if parts_c.size() != 2:
+			continue
+		if parts_c[0] == target or parts_c[1] == target:
+			povalecne_cooldowny.erase(klic)
 
 	var zadosti_klice = cekajici_diplomaticke_zadosti.keys().duplicate()
 	for receiver in zadosti_klice:
@@ -909,6 +931,11 @@ func vyhlasit_valku(utocnik: String, obrance: String):
 		return false
 	if jsou_ve_valce(a, b):
 		return false
+	var zbyva_povalecny_cooldown = zbyva_kol_do_dalsi_valky(a, b)
+	if zbyva_povalecny_cooldown > 0:
+		if je_lidsky_stat(a):
+			_pridej_popup_hraci(a, "Diplomacie", "Po uzavření míru musíš vyčkat ještě %d kol, než můžeš znovu vyhlásit válku státu %s." % [zbyva_povalecny_cooldown, b])
+		return false
 	if ma_neagresivni_smlouvu(a, b):
 		if je_lidsky_stat(a):
 			var zbyva = zbyva_kol_neagresivni_smlouvy(a, b)
@@ -943,6 +970,11 @@ func nabidnout_mir(tag1: String, tag2: String):
 	if je_mirova_nabidka_cekajici(cisty_tag1, cisty_tag2):
 		return
 
+	if je_lidsky_stat(cisty_tag2):
+		if _pridej_diplomatickou_zadost(cisty_tag1, cisty_tag2, "peace"):
+			print("Mirova zadost hraci odeslana: %s -> %s" % [cisty_tag1, cisty_tag2])
+		return
+
 	cekajici_mirove_nabidky.append({
 		"from": cisty_tag1,
 		"to": cisty_tag2,
@@ -957,6 +989,13 @@ func je_mirova_nabidka_cekajici(odesilatel: String, prijemce: String) -> bool:
 	for nabidka in cekajici_mirove_nabidky:
 		if str(nabidka.get("from", "")).strip_edges().to_upper() == from_tag and str(nabidka.get("to", "")).strip_edges().to_upper() == to_tag:
 			return true
+	if cekajici_diplomaticke_zadosti.has(to_tag):
+		for req in (cekajici_diplomaticke_zadosti[to_tag] as Array):
+			if _normalizuj_tag(str(req.get("from", ""))) != from_tag:
+				continue
+			if str(req.get("type", "")) != "peace":
+				continue
+			return true
 	return false
 
 func _uzavri_mir_mezi(tag1: String, tag2: String):
@@ -967,6 +1006,8 @@ func _uzavri_mir_mezi(tag1: String, tag2: String):
 
 	valky.erase(klic1)
 	valky.erase(klic2)
+	_nastav_povalecny_cooldown(cisty_tag1, cisty_tag2)
+	_prepis_okupace_po_miru(cisty_tag1, cisty_tag2)
 
 	for i in range(cekajici_kapitulace.size() - 1, -1, -1):
 		var obr = str(cekajici_kapitulace[i].get("obrance", "")).strip_edges().to_upper()
@@ -974,6 +1015,59 @@ func _uzavri_mir_mezi(tag1: String, tag2: String):
 		var stejna_dvojice = (obr == cisty_tag1 and uto == cisty_tag2) or (obr == cisty_tag2 and uto == cisty_tag1)
 		if stejna_dvojice:
 			cekajici_kapitulace.remove_at(i)
+
+	for i in range(cekajici_mirove_nabidky.size() - 1, -1, -1):
+		var from_tag = str(cekajici_mirove_nabidky[i].get("from", "")).strip_edges().to_upper()
+		var to_tag = str(cekajici_mirove_nabidky[i].get("to", "")).strip_edges().to_upper()
+		var stejna_dvojice_mir = (from_tag == cisty_tag1 and to_tag == cisty_tag2) or (from_tag == cisty_tag2 and to_tag == cisty_tag1)
+		if stejna_dvojice_mir:
+			cekajici_mirove_nabidky.remove_at(i)
+
+func _vycisti_expirovane_povalecne_cooldowny() -> void:
+	var keys = povalecne_cooldowny.keys().duplicate()
+	for k in keys:
+		var expiry_turn = int(povalecne_cooldowny.get(k, -1))
+		if expiry_turn < aktualni_kolo:
+			povalecne_cooldowny.erase(k)
+
+func _nastav_povalecny_cooldown(tag_a: String, tag_b: String) -> void:
+	var key = _klic_pair(tag_a, tag_b)
+	if key == "":
+		return
+	povalecne_cooldowny[key] = aktualni_kolo + PEACE_WAR_COOLDOWN_TURNS - 1
+
+func zbyva_kol_do_dalsi_valky(tag_a: String, tag_b: String) -> int:
+	_vycisti_expirovane_povalecne_cooldowny()
+	var key = _klic_pair(tag_a, tag_b)
+	if key == "" or not povalecne_cooldowny.has(key):
+		return 0
+	var expiry_turn = int(povalecne_cooldowny[key])
+	return max(0, expiry_turn - aktualni_kolo + 1)
+
+func _prepis_okupace_po_miru(tag_a: String, tag_b: String) -> void:
+	if map_data.is_empty():
+		return
+
+	var a = _normalizuj_tag(tag_a)
+	var b = _normalizuj_tag(tag_b)
+	if a == "" or b == "" or a == b:
+		return
+
+	for p_id in map_data:
+		var d = map_data[p_id]
+		var owner = _normalizuj_tag(str(d.get("owner", "")))
+		var core_owner = _normalizuj_tag(str(d.get("core_owner", owner)))
+		if owner == a and core_owner == b:
+			d["core_owner"] = a
+		elif owner == b and core_owner == a:
+			d["core_owner"] = b
+
+	var map_loader = _get_map_loader()
+	if map_loader:
+		if "provinces" in map_loader:
+			map_loader.provinces = map_data
+		if map_loader.has_method("_aktualizuj_aktivni_mapovy_mod"):
+			map_loader._aktualizuj_aktivni_mapovy_mod()
 
 func _ma_aktivni_tlak_na_kapitulaci(obrance: String, utocnik: String) -> bool:
 	var obr_tag = obrance.strip_edges().to_upper()
@@ -1466,6 +1560,8 @@ func _vyhodnot_mirove_nabidky_pred_ai():
 
 		# This evaluation runs in AI phase, so only AI recipients are resolved now.
 		if je_lidsky_stat(prijemce) or prijemce == "SEA":
+			if je_lidsky_stat(prijemce):
+				_pridej_diplomatickou_zadost(odesilatel, prijemce, "peace")
 			continue
 
 		if _ma_ai_prijmout_mir(prijemce, odesilatel):
@@ -1705,14 +1801,18 @@ func ukonci_kolo():
 	if not map_data.is_empty():
 		spocitej_prijem(map_data, false)
 		
-		# Regenerate recruitable population from province baseline (no nerf).
+		# Occupied territory recovers recruits much slower than core land.
 		for p_id in map_data:
 			var d = map_data[p_id]
 			var base_recruits = int(d.get("base_recruitable_population", d.get("recruitable_population", 0)))
 			if base_recruits < 0:
 				base_recruits = 0
 			var cap = base_recruits
-			var regen_per_turn = max(1, int(round(float(base_recruits) * 0.10)))
+			var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
+			var core_owner_tag = str(d.get("core_owner", owner_tag)).strip_edges().to_upper()
+			var je_okupace = owner_tag != "" and owner_tag != "SEA" and core_owner_tag != "" and core_owner_tag != owner_tag
+			var regen_ratio = 0.025 if je_okupace else 0.10
+			var regen_per_turn = max(1, int(round(float(base_recruits) * regen_ratio)))
 			d["recruitable_population"] = min(int(d.get("recruitable_population", 0)) + regen_per_turn, cap)
 			d["gdp"] += 0.5 # Passive wealth growth
 
@@ -1837,6 +1937,10 @@ func zpracuj_tah_ai():
 
 		# AI Recruitment
 		var rekruti = int(d.get("recruitable_population", 0))
+		var core_owner_tag = str(d.get("core_owner", owner_tag)).strip_edges().to_upper()
+		var je_okupace = core_owner_tag != "" and core_owner_tag != owner_tag
+		if je_okupace:
+			rekruti = int(floor(float(rekruti) * 0.2))
 		if rekruti > 300 and ai_kasy[owner_tag] > 50.0:
 			var pocet_k_verbovani = min(rekruti, int(ai_kasy[owner_tag] / cena_za_vojaka))
 			var frontline_bonus = 0
@@ -1847,6 +1951,8 @@ func zpracuj_tah_ai():
 			var hrozba = _spocitej_hrozbu_nepratel_u_provincie(p_id, owner_tag)
 			frontline_bonus += min(900, int(float(hrozba) * 0.15))
 			var limit_verbovani = min(2500, 900 + frontline_bonus)
+			if je_okupace:
+				limit_verbovani = int(max(120, floor(float(limit_verbovani) * 0.25)))
 			pocet_k_verbovani = min(pocet_k_verbovani, limit_verbovani)
 			d["recruitable_population"] -= pocet_k_verbovani
 			d["soldiers"] += pocet_k_verbovani

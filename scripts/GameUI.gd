@@ -240,6 +240,8 @@ func _aktualizuj_popup_diplomatickych_zadosti():
 				3:
 					level_text = "plnou alianci"
 			popup_request_text.text = "%s navrhuje %s" % [display_name, level_text]
+		elif req_type == "peace":
+			popup_request_text.text = "%s navrhuje uzavrit mir" % display_name
 		else:
 			popup_request_text.text = "%s navrhuje neagresivni smlouvu (10 kol)" % display_name
 
@@ -477,8 +479,9 @@ func _on_alliance_level_selected(index: int):
 	if GameManager.has_method("je_lidsky_stat"):
 		target_is_ai = not bool(GameManager.je_lidsky_stat(current_viewed_tag))
 
-	if index > current_level and target_is_ai and GameManager.has_method("odeslat_aliancni_zadost"):
-		var sent = bool(GameManager.odeslat_aliancni_zadost(GameManager.hrac_stat, current_viewed_tag, index))
+	if index > current_level and GameManager.has_method("odeslat_aliancni_zadost"):
+		var ignorovat_vztah = not target_is_ai
+		var sent = bool(GameManager.odeslat_aliancni_zadost(GameManager.hrac_stat, current_viewed_tag, index, ignorovat_vztah))
 		if sent:
 			_aktualizuj_aliance_ui(current_viewed_tag)
 			_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
@@ -557,9 +560,17 @@ func _aktualizuj_diplomacii_tlacitka(target_tag: String):
 		if has_non_aggression and GameManager.has_method("zbyva_kol_neagresivni_smlouvy"):
 			non_aggression_turns_left = int(GameManager.zbyva_kol_neagresivni_smlouvy(GameManager.hrac_stat, target_tag))
 		var war_blocked_by_non_aggression = has_non_aggression
+		var war_blocked_by_peace_cooldown = false
+		var peace_cooldown_turns_left = 0
+		if GameManager.has_method("zbyva_kol_do_dalsi_valky"):
+			peace_cooldown_turns_left = int(GameManager.zbyva_kol_do_dalsi_valky(GameManager.hrac_stat, target_tag))
+			war_blocked_by_peace_cooldown = peace_cooldown_turns_left > 0
 
-		declare_war_btn.text = "Vyhlasit valku"
-		declare_war_btn.disabled = war_blocked_by_alliance or war_blocked_by_non_aggression
+		if war_blocked_by_peace_cooldown:
+			declare_war_btn.text = "Povalecny cooldown (%d kol)" % peace_cooldown_turns_left
+		else:
+			declare_war_btn.text = "Vyhlasit valku"
+		declare_war_btn.disabled = war_blocked_by_alliance or war_blocked_by_non_aggression or war_blocked_by_peace_cooldown
 		declare_war_btn.modulate = Color(1, 1, 1)
 		declare_war_btn.show()
 

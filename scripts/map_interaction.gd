@@ -16,6 +16,11 @@ var _drag_select_started: bool = false
 var _drag_start_local: Vector2 = Vector2.ZERO
 var _drag_end_local: Vector2 = Vector2.ZERO
 const DRAG_SELECT_THRESHOLD := 6.0
+const RIGHT_CLICK_CANCEL_THRESHOLD := 8.0
+
+var _right_press_active: bool = false
+var _right_press_pos: Vector2 = Vector2.ZERO
+var _right_dragging: bool = false
 
 # Variable to track the last hovered province ID for label popping
 var _posledni_hover_id: int = -1
@@ -148,11 +153,26 @@ func _unhandled_input(event):
 				else:
 					_zpracuj_interakci(event.position, true, true)
 				return
-		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
-			_odzanc_vse()
+		elif event.button_index == MOUSE_BUTTON_RIGHT:
+			if event.pressed:
+				_right_press_active = true
+				_right_dragging = false
+				_right_press_pos = event.position
+			else:
+				if _right_press_active and not _right_dragging:
+					_odzanc_vse()
+				_right_press_active = false
+				_right_dragging = false
+
+	if event is InputEventMouseMotion and _right_press_active and not _right_dragging:
+		if event.position.distance_to(_right_press_pos) >= RIGHT_CLICK_CANCEL_THRESHOLD:
+			_right_dragging = true
 		
 	if event is InputEventKey and event.pressed and not event.is_echo():
 		var root = get_parent()
+		if event.keycode == KEY_ESCAPE:
+			_odzanc_vse()
+			return
 		if "provinces" in root:
 			if event.keycode == KEY_1:
 				aktualizuj_mapovy_mod("political", root.provinces)

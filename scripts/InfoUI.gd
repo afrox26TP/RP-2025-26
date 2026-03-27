@@ -47,6 +47,21 @@ var aktualni_provincie_id: int = -1
 var cena_za_vojaka: float = 0.05 # Cost: 50 mil. per 1000 men
 var likvidace_vynos_za_vojaka: float = 0.01 # Small refund per removed soldier
 
+func _ziskej_provincie_data() -> Dictionary:
+	var map_loader = get_tree().current_scene.find_child("Map", true, false)
+	if map_loader and "provinces" in map_loader:
+		return map_loader.provinces
+	return GameManager.map_data
+
+func _limit_verbovani_v_okupaci(requested: int, prov_data: Dictionary) -> int:
+	var owner = str(prov_data.get("owner", "")).strip_edges().to_upper()
+	var core_owner = str(prov_data.get("core_owner", owner)).strip_edges().to_upper()
+	var je_okupace = owner != "" and owner != "SEA" and core_owner != "" and core_owner != owner
+	if not je_okupace:
+		return max(0, requested)
+	# Occupation allows only limited local recruitment each action.
+	return int(max(0, floor(float(requested) * 0.2)))
+
 func _ready():
 	action_menu.hide()
 	if move_popup: move_popup.hide()
@@ -199,10 +214,11 @@ func zobraz_data(data: Dictionary):
 func _on_likvidovat_pressed():
 	if aktualni_provincie_id == -1:
 		return
-	if not GameManager.map_data.has(aktualni_provincie_id):
+	var province_data = _ziskej_provincie_data()
+	if not province_data.has(aktualni_provincie_id):
 		return
 
-	var prov_data = GameManager.map_data[aktualni_provincie_id]
+	var prov_data = province_data[aktualni_provincie_id]
 	var owner_tag = str(prov_data.get("owner", "")).strip_edges().to_upper()
 	var armada_owner = str(prov_data.get("army_owner", "")).strip_edges().to_upper()
 	var je_more = (owner_tag == "SEA")
@@ -238,10 +254,11 @@ func _on_likvidace_slider_zmenen(hodnota: float):
 func _on_potvrdit_likvidaci():
 	if aktualni_provincie_id == -1:
 		return
-	if not GameManager.map_data.has(aktualni_provincie_id):
+	var province_data = _ziskej_provincie_data()
+	if not province_data.has(aktualni_provincie_id):
 		return
 
-	var prov_data = GameManager.map_data[aktualni_provincie_id]
+	var prov_data = province_data[aktualni_provincie_id]
 	var owner_tag = str(prov_data.get("owner", "")).strip_edges().to_upper()
 	var armada_owner = str(prov_data.get("army_owner", "")).strip_edges().to_upper()
 	var je_more = (owner_tag == "SEA")
@@ -287,7 +304,8 @@ func _on_presunout_pressed():
 
 	if aktualni_provincie_id == -1: return
 	
-	var prov_data = GameManager.map_data.get(aktualni_provincie_id, {})
+	var province_data = _ziskej_provincie_data()
+	var prov_data = province_data.get(aktualni_provincie_id, {})
 	var dostupni_vojaci = int(prov_data.get("soldiers", 0))
 	if dostupni_vojaci <= 0: return
 	
@@ -375,8 +393,12 @@ func _on_verbovat_pressed():
 
 	if aktualni_provincie_id == -1: return
 	
-	var prov_data = GameManager.map_data[aktualni_provincie_id]
+	var province_data = _ziskej_provincie_data()
+	if not province_data.has(aktualni_provincie_id):
+		return
+	var prov_data = province_data[aktualni_provincie_id]
 	var dostupni_rekruti = int(prov_data.get("recruitable_population", 0))
+	dostupni_rekruti = _limit_verbovani_v_okupaci(dostupni_rekruti, prov_data)
 	var max_za_penize = int(GameManager.statni_kasa / cena_za_vojaka)
 	var max_mozno = min(dostupni_rekruti, max_za_penize)
 	
@@ -407,7 +429,18 @@ func _on_potvrdit_verbovani():
 
 	var pocet_vojaku = int(recruit_slider.value)
 	var celkova_cena = pocet_vojaku * cena_za_vojaka
-	var prov_data = GameManager.map_data[aktualni_provincie_id]
+	var province_data = _ziskej_provincie_data()
+	if not province_data.has(aktualni_provincie_id):
+		recruit_popup.hide()
+		return
+	var prov_data = province_data[aktualni_provincie_id]
+	var max_okupace = _limit_verbovani_v_okupaci(int(prov_data.get("recruitable_population", 0)), prov_data)
+	if max_okupace <= 0:
+		recruit_popup.hide()
+		_ukaz_stavbu_info("VERBOVÁNÍ", "Na okupovaném území je momentálně možné verbovat jen velmi omezeně.")
+		return
+	pocet_vojaku = min(pocet_vojaku, max_okupace)
+	celkova_cena = pocet_vojaku * cena_za_vojaka
 	
 	GameManager.statni_kasa -= celkova_cena
 	prov_data["recruitable_population"] -= pocet_vojaku
@@ -433,9 +466,10 @@ func _on_kolo_zmeneno():
 		return
 	if not $PanelContainer.visible:
 		return
-	if not GameManager.map_data.has(aktualni_provincie_id):
+	var province_data = _ziskej_provincie_data()
+	if not province_data.has(aktualni_provincie_id):
 		return
-	zobraz_data(GameManager.map_data[aktualni_provincie_id])
+	zobraz_data(province_data[aktualni_provincie_id])
 
 func _formatuj_cislo(cislo: int) -> String:
 	var text_cisla = str(cislo)
@@ -510,11 +544,12 @@ func zobraz_hromadna_data(ids: Array, all_provinces: Dictionary):
 
 func _ziskej_hromadne_vlastni_pozemni() -> Array:
 	var out: Array = []
+	var province_data = _ziskej_provincie_data()
 	for raw_id in hromadny_vyber_ids:
 		var pid = int(raw_id)
-		if not GameManager.map_data.has(pid):
+		if not province_data.has(pid):
 			continue
-		var d = GameManager.map_data[pid]
+		var d = province_data[pid]
 		var owner = str(d.get("owner", "")).strip_edges().to_upper()
 		if owner == GameManager.hrac_stat and owner != "SEA":
 			out.append(pid)
@@ -522,11 +557,12 @@ func _ziskej_hromadne_vlastni_pozemni() -> Array:
 
 func _ziskej_hromadne_zdroje_s_armadou() -> Array:
 	var out: Array = []
+	var province_data = _ziskej_provincie_data()
 	for raw_id in hromadny_vyber_ids:
 		var pid = int(raw_id)
-		if not GameManager.map_data.has(pid):
+		if not province_data.has(pid):
 			continue
-		var d = GameManager.map_data[pid]
+		var d = province_data[pid]
 		var owner = str(d.get("owner", "")).strip_edges().to_upper()
 		var army_owner = str(d.get("army_owner", "")).strip_edges().to_upper()
 		var je_more = (owner == "SEA")
@@ -543,8 +579,11 @@ func _otevri_hromadne_verbovani():
 		return
 
 	var total_recruits := 0
+	var province_data = _ziskej_provincie_data()
 	for pid in pozemni:
-		total_recruits += int(GameManager.map_data[pid].get("recruitable_population", 0))
+		if not province_data.has(pid):
+			continue
+		total_recruits += _limit_verbovani_v_okupaci(int(province_data[pid].get("recruitable_population", 0)), province_data[pid])
 	var max_za_penize = int(GameManager.statni_kasa / cena_za_vojaka)
 	var max_mozno = min(total_recruits, max_za_penize)
 	if max_mozno <= 0:
@@ -573,15 +612,19 @@ func _potvrd_hromadne_verbovani():
 
 	var pozemni = _ziskej_hromadne_vlastni_pozemni()
 	var total_recruited := 0
+	var province_data = _ziskej_provincie_data()
 	for pid in pozemni:
 		if remaining <= 0:
 			break
-		var d = GameManager.map_data[pid]
-		var free_recruits = int(d.get("recruitable_population", 0))
-		if free_recruits <= 0:
+		if not province_data.has(pid):
 			continue
-		var add = min(remaining, free_recruits)
-		d["recruitable_population"] = free_recruits - add
+		var d = province_data[pid]
+		var available_recruits = int(d.get("recruitable_population", 0))
+		var max_allowed_here = _limit_verbovani_v_okupaci(available_recruits, d)
+		if max_allowed_here <= 0:
+			continue
+		var add = min(remaining, max_allowed_here)
+		d["recruitable_population"] = available_recruits - add
 		d["soldiers"] = int(d.get("soldiers", 0)) + add
 		remaining -= add
 		total_recruited += add

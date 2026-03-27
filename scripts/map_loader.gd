@@ -1799,6 +1799,15 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int, vykreslit_
 	if owner_tag == "":
 		return
 
+	# Replace older queued move from the same source province/owner immediately.
+	for i in range(cekajici_presuny.size() - 1, -1, -1):
+		var q = cekajici_presuny[i]
+		if int(q.get("from", -1)) != from_id:
+			continue
+		if str(q.get("owner", "")).strip_edges().to_upper() != owner_tag:
+			continue
+		cekajici_presuny.remove_at(i)
+
 	var target_owner_tag = ""
 	if _je_more_provincie(to_id):
 		target_owner_tag = str(provinces[to_id].get("army_owner", "")).strip_edges().to_upper()
@@ -1843,6 +1852,7 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int, vykreslit_
 		
 		ceka_na_cil_presunu = false
 		vycisti_nahled_presunu()
+		_vykresli_indikaci_cekajicich_presunu()
 		var root2 = get_parent()
 		if "ceka_na_cil_presunu" in root2:
 			root2.ceka_na_cil_presunu = false
@@ -1866,6 +1876,7 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int, vykreslit_
 	
 	ceka_na_cil_presunu = false
 	vycisti_nahled_presunu()
+	_vykresli_indikaci_cekajicich_presunu()
 	var root = get_parent()
 	if "ceka_na_cil_presunu" in root:
 		root.ceka_na_cil_presunu = false
