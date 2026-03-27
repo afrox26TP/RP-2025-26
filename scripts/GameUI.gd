@@ -45,6 +45,9 @@ var _system_message_ack: bool = false
 var _pause_menu_panel: PopupPanel
 var _pause_confirm_dialog: ConfirmationDialog
 var _pause_pending_action: String = ""
+var _overview_metric_rows: Dictionary = {}
+var _overview_metric_deltas: Dictionary = {}
+var _overview_preview_deltas: Dictionary = {}
 var _save_dialog: PopupPanel
 var _save_name_input: LineEdit
 var _load_dialog: PopupPanel
@@ -88,6 +91,7 @@ func _ziskej_jmeno_statu_podle_tagu(tag: String) -> String:
 
 func _ready():
 	panel.hide()
+	_setup_overview_inline_deltas()
 	_napln_aliance_option()
 	
 	# Automatically connect the button signal if it exists
@@ -124,6 +128,77 @@ func _ready():
 	_vytvor_pause_menu()
 	_aktualizuj_pozice_popupu()
 	_aktualizuj_popup_diplomatickych_zadosti()
+
+func _wrap_overview_metric_label(key: String, base_label: Label) -> void:
+	if base_label == null:
+		return
+	if _overview_metric_rows.has(key):
+		return
+	var parent = base_label.get_parent()
+	if parent == null:
+		return
+
+	var idx = base_label.get_index()
+	parent.remove_child(base_label)
+
+	var row = HBoxContainer.new()
+	row.name = "OverviewMetricRow_%s" % key
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(row)
+	parent.move_child(row, idx)
+
+	base_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(base_label)
+
+	var delta = Label.new()
+	delta.name = "OverviewDelta_%s" % key
+	delta.visible = false
+	row.add_child(delta)
+
+	_overview_metric_rows[key] = row
+	_overview_metric_deltas[key] = delta
+
+func _setup_overview_inline_deltas() -> void:
+	_wrap_overview_metric_label("pop", pop_label)
+	_wrap_overview_metric_label("recruit", recruit_label)
+	_wrap_overview_metric_label("gdp", gdp_label)
+
+func _set_overview_metric_delta(key: String, text: String, color: Color) -> void:
+	if not _overview_metric_deltas.has(key):
+		return
+	var lbl = _overview_metric_deltas[key] as Label
+	var clean = text.strip_edges()
+	if clean == "":
+		lbl.text = ""
+		lbl.visible = false
+		return
+	lbl.text = "(%s)" % clean
+	lbl.add_theme_color_override("font_color", color)
+	lbl.visible = true
+
+func _clear_overview_metric_deltas() -> void:
+	for k in _overview_metric_deltas.keys():
+		_set_overview_metric_delta(str(k), "", Color.WHITE)
+
+func _apply_overview_preview_deltas() -> void:
+	_clear_overview_metric_deltas()
+	if _overview_preview_deltas.is_empty():
+		return
+
+	for key in _overview_preview_deltas.keys():
+		var entry = _overview_preview_deltas[key] as Dictionary
+		var txt = str(entry.get("text", ""))
+		var clr = entry.get("color", Color.WHITE)
+		_set_overview_metric_delta(str(key), txt, clr)
+
+func nastav_akce_nahled_delta(deltas: Dictionary) -> void:
+	_overview_preview_deltas = deltas.duplicate(true)
+	_apply_overview_preview_deltas()
+
+func nastav_akce_nahled(_text: String) -> void:
+	# Backward-compatible no-op; preview now uses inline deltas next to existing rows.
+	if _text.strip_edges() == "":
+		nastav_akce_nahled_delta({})
 
 func _on_system_message_ok_pressed():
 	_system_message_ack = true
@@ -660,6 +735,7 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 		return
 		
 	var owner_tag = str(data.get("owner", "")).strip_edges().to_upper()
+	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
 	current_viewed_tag = owner_tag # Save the tag for button actions
 	
 	var plne_jmeno = str(data.get("country_name", owner_tag))
@@ -709,10 +785,16 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 		gdp_pc_label.text = "HDP na osobu: $%.0f" % gdp_per_capita
 	else:
 		gdp_pc_label.text = "HDP na osobu: N/A"
+
+	# Keep action preview inline with current metrics (no extra rows).
+	if owner_tag != player_tag:
+		_clear_overview_metric_deltas()
+	else:
+		_apply_overview_preview_deltas()
 		
 	# --- NEW: DIPLOMACY UI LOGIC ---
 	if action_separator and declare_war_btn and propose_peace_btn:
-		if owner_tag == GameManager.hrac_stat:
+		if owner_tag == player_tag:
 			# Hide actions if looking at our own country
 			if relationship_label:
 				relationship_label.hide()
@@ -742,6 +824,7 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 # Triggered by right-clicking on the map
 func schovej_se():
 	panel.hide()
+	nastav_akce_nahled_delta({})
 
 func _formatuj_cislo(cislo: int) -> String:
 	var text_cisla = str(cislo)
@@ -901,13 +984,22 @@ func _aktualizuj_diplomacii_tlacitka(target_tag: String):
 	if not declare_war_btn or not propose_peace_btn:
 		return
 
-	if GameManager.jsou_ve_valce(GameManager.hrac_stat, target_tag):
+	var target = target_tag.strip_edges().to_upper()
+	var me = str(GameManager.hrac_stat).strip_edges().to_upper()
+	if target == "" or target == me:
+		declare_war_btn.hide()
+		propose_peace_btn.hide()
+		if non_aggression_btn:
+			non_aggression_btn.hide()
+		return
+
+	if GameManager.jsou_ve_valce(GameManager.hrac_stat, target):
 		declare_war_btn.text = "VE VALCE"
 		declare_war_btn.disabled = true
 		declare_war_btn.modulate = Color(1, 0.5, 0.5)
 		declare_war_btn.show()
 
-		var ceka_na_odpoved = GameManager.je_mirova_nabidka_cekajici(GameManager.hrac_stat, target_tag)
+		var ceka_na_odpoved = GameManager.je_mirova_nabidka_cekajici(GameManager.hrac_stat, target)
 		propose_peace_btn.text = "Nabidka odeslana" if ceka_na_odpoved else "Nabidnout mir"
 		propose_peace_btn.disabled = ceka_na_odpoved
 		propose_peace_btn.modulate = Color(1, 1, 1)
@@ -922,19 +1014,19 @@ func _aktualizuj_diplomacii_tlacitka(target_tag: String):
 	else:
 		var alliance_level = 0
 		if GameManager.has_method("ziskej_uroven_aliance"):
-			alliance_level = int(GameManager.ziskej_uroven_aliance(GameManager.hrac_stat, target_tag))
+			alliance_level = int(GameManager.ziskej_uroven_aliance(GameManager.hrac_stat, target))
 		var war_blocked_by_alliance = alliance_level > 0
 		var has_non_aggression = false
 		var non_aggression_turns_left = 0
 		if GameManager.has_method("ma_neagresivni_smlouvu"):
-			has_non_aggression = bool(GameManager.ma_neagresivni_smlouvu(GameManager.hrac_stat, target_tag))
+			has_non_aggression = bool(GameManager.ma_neagresivni_smlouvu(GameManager.hrac_stat, target))
 		if has_non_aggression and GameManager.has_method("zbyva_kol_neagresivni_smlouvy"):
-			non_aggression_turns_left = int(GameManager.zbyva_kol_neagresivni_smlouvy(GameManager.hrac_stat, target_tag))
+			non_aggression_turns_left = int(GameManager.zbyva_kol_neagresivni_smlouvy(GameManager.hrac_stat, target))
 		var war_blocked_by_non_aggression = has_non_aggression
 		var war_blocked_by_peace_cooldown = false
 		var peace_cooldown_turns_left = 0
 		if GameManager.has_method("zbyva_kol_do_dalsi_valky"):
-			peace_cooldown_turns_left = int(GameManager.zbyva_kol_do_dalsi_valky(GameManager.hrac_stat, target_tag))
+			peace_cooldown_turns_left = int(GameManager.zbyva_kol_do_dalsi_valky(GameManager.hrac_stat, target))
 			war_blocked_by_peace_cooldown = peace_cooldown_turns_left > 0
 
 		if war_blocked_by_peace_cooldown:
@@ -953,7 +1045,7 @@ func _aktualizuj_diplomacii_tlacitka(target_tag: String):
 		if non_aggression_btn:
 			var rel = 0.0
 			if GameManager.has_method("ziskej_vztah_statu"):
-				rel = float(GameManager.ziskej_vztah_statu(GameManager.hrac_stat, target_tag))
+				rel = float(GameManager.ziskej_vztah_statu(GameManager.hrac_stat, target))
 			if has_non_aggression:
 				non_aggression_btn.text = "Neagresivni smlouva (%d kol)" % non_aggression_turns_left
 				non_aggression_btn.disabled = true
