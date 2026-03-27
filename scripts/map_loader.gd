@@ -300,17 +300,40 @@ func _get_cached_texture(path: String, cache: Dictionary):
 	cache[path] = tex
 	return tex
 
+func _normalizuj_ideologii(ideology: String) -> String:
+	var raw = ideology.strip_edges().to_lower()
+	match raw:
+		"democracy", "democratic":
+			return "demokracie"
+		"autocracy", "autocratic", "dictatorship":
+			return "autokracie"
+		"communism", "communist", "socialism":
+			return "komunismus"
+		"fascism", "fascist":
+			return "fasismus"
+		"nazism", "nazismus", "nazi", "national_socialism", "nacismum":
+			return "nacismus"
+		"kingdom", "monarchy", "royal", "kralostvi":
+			return "kralovstvi"
+		_:
+			return raw
+
 func _get_flag_texture(tag: String, ideology: String):
-	var ideologie = ideology.strip_edges().to_lower()
-	var ideo_cesta = "res://map_data/FlagsIdeology/%s_%s.svg" % [tag, ideologie]
-	var zaklad_cesta = "res://map_data/Flags/%s.svg" % tag
-
+	var ideologie = _normalizuj_ideologii(ideology)
+	var candidates: Array = []
 	if ideologie != "":
-		var ideo_tex = _get_cached_texture(ideo_cesta, flag_texture_cache)
-		if ideo_tex:
-			return ideo_tex
+		candidates.append("res://map_data/FlagsIdeology/%s__%s.svg" % [tag, ideologie])
+		candidates.append("res://map_data/FlagsIdeology/%s__%s.png" % [tag, ideologie])
+		candidates.append("res://map_data/FlagsIdeology/%s_%s.svg" % [tag, ideologie])
+		candidates.append("res://map_data/FlagsIdeology/%s_%s.png" % [tag, ideologie])
+	candidates.append("res://map_data/Flags/%s.svg" % tag)
+	candidates.append("res://map_data/Flags/%s.png" % tag)
 
-	return _get_cached_texture(zaklad_cesta, flag_texture_cache)
+	for path in candidates:
+		var tex = _get_cached_texture(path, flag_texture_cache)
+		if tex:
+			return tex
+	return null
 
 func _get_army_icon_texture(owner_tag: String):
 	var icon_path = "res://map_data/ArmyIcons/%s.svg" % owner_tag

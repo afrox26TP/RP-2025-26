@@ -59,27 +59,38 @@ var _load_slot_names: Array = []
 var _gift_dialog: PopupPanel
 var _gift_amount_input: LineEdit
 var gift_money_btn: Button
+var ideology_separator: HSeparator
+var ideology_effects_label: Label
+var ideology_option: OptionButton
+var ideology_apply_btn: Button
+var _ideology_option_values: Array = []
 var _popup_country_link_btn: LinkButton
 var _camera_focus_tween: Tween
 
 const POPUP_TOP_MARGIN := 6
 const POPUP_GAP := 6
 const MAIN_MENU_SCENE_PATH := "res://scenes/MainMenu.tscn"
+const IDEOLOGY_UI_ORDER := ["demokracie", "kralovstvi", "autokracie", "komunismus", "nacismus", "fasismus"]
 
 func _resolve_flag_texture(owner_tag: String, ideologie: String):
-	var ideo = ideologie.strip_edges().to_lower()
-	var ideo_cesta = "res://map_data/FlagsIdeology/%s_%s.svg" % [owner_tag, ideo]
-	var zaklad_cesta = "res://map_data/Flags/%s.svg" % owner_tag
+	var ideo = _normalizuj_ideologii(ideologie)
+	var candidates: Array = []
 
-	if ideo != "" and ideo != "neznámo" and ResourceLoader.exists(ideo_cesta):
-		if not flag_texture_cache.has(ideo_cesta):
-			flag_texture_cache[ideo_cesta] = load(ideo_cesta)
-		return flag_texture_cache[ideo_cesta]
+	if ideo != "" and ideo != "neznamo":
+		candidates.append("res://map_data/FlagsIdeology/%s__%s.svg" % [owner_tag, ideo])
+		candidates.append("res://map_data/FlagsIdeology/%s__%s.png" % [owner_tag, ideo])
+		candidates.append("res://map_data/FlagsIdeology/%s_%s.svg" % [owner_tag, ideo])
+		candidates.append("res://map_data/FlagsIdeology/%s_%s.png" % [owner_tag, ideo])
 
-	if ResourceLoader.exists(zaklad_cesta):
-		if not flag_texture_cache.has(zaklad_cesta):
-			flag_texture_cache[zaklad_cesta] = load(zaklad_cesta)
-		return flag_texture_cache[zaklad_cesta]
+	candidates.append("res://map_data/Flags/%s.svg" % owner_tag)
+	candidates.append("res://map_data/Flags/%s.png" % owner_tag)
+
+	for path in candidates:
+		if not ResourceLoader.exists(path):
+			continue
+		if not flag_texture_cache.has(path):
+			flag_texture_cache[path] = load(path)
+		return flag_texture_cache[path]
 
 	return null
 
@@ -100,6 +111,7 @@ func _ready():
 	panel.hide()
 	_setup_overview_inline_deltas()
 	_zajisti_tlacitko_daru()
+	_zajisti_ideology_controls()
 	_setup_popup_country_link()
 	_napln_aliance_option()
 	
@@ -126,6 +138,10 @@ func _ready():
 		worsen_rel_btn.pressed.connect(_on_worsen_relationship_pressed)
 	if gift_money_btn and not gift_money_btn.pressed.is_connected(_on_gift_money_pressed):
 		gift_money_btn.pressed.connect(_on_gift_money_pressed)
+	if ideology_option and not ideology_option.item_selected.is_connected(_on_ideology_option_selected):
+		ideology_option.item_selected.connect(_on_ideology_option_selected)
+	if ideology_apply_btn and not ideology_apply_btn.pressed.is_connected(_on_apply_ideology_pressed):
+		ideology_apply_btn.pressed.connect(_on_apply_ideology_pressed)
 	if alliance_level_option and not alliance_level_option.item_selected.is_connected(_on_alliance_level_selected):
 		alliance_level_option.item_selected.connect(_on_alliance_level_selected)
 	if GameManager.has_signal("kolo_zmeneno") and not GameManager.kolo_zmeneno.is_connected(_on_kolo_zmeneno):
@@ -168,6 +184,12 @@ func _nastav_tooltipy_ui() -> void:
 	gdp_label.tooltip_text = "Celkove HDP statu."
 	gdp_pc_label.tooltip_text = "HDP prepocitane na jednoho obyvatele."
 	relationship_label.tooltip_text = "Diplomaticky vztah mezi tvym statem a cilem."
+	if ideology_option:
+		ideology_option.tooltip_text = "Vyber nove ideologie pro tvuj stat."
+	if ideology_effects_label:
+		ideology_effects_label.tooltip_text = "Prehled vyhod a nevyhod zvolene ideologie."
+	if ideology_apply_btn:
+		ideology_apply_btn.tooltip_text = "Potvrdi prechod tvého statu na zvolenou ideologii."
 	improve_rel_btn.tooltip_text = "Zlepsi vztah o 10 bodu."
 	worsen_rel_btn.tooltip_text = "Zhorsi vztah o 10 bodu."
 	if gift_money_btn:
@@ -366,6 +388,216 @@ func _zajisti_tlacitko_daru() -> void:
 	vbox.add_child(gift_money_btn)
 	if insert_after and insert_after.get_parent() == vbox:
 		vbox.move_child(gift_money_btn, insert_after.get_index() + 1)
+
+func _zajisti_ideology_controls() -> void:
+	var vbox = get_node_or_null("OverviewPanel/VBoxContainer")
+	if vbox == null:
+		return
+
+	ideology_separator = get_node_or_null("OverviewPanel/VBoxContainer/IdeologySeparator") as HSeparator
+	if ideology_separator == null:
+		ideology_separator = HSeparator.new()
+		ideology_separator.name = "IdeologySeparator"
+		vbox.add_child(ideology_separator)
+
+	ideology_effects_label = get_node_or_null("OverviewPanel/VBoxContainer/IdeologyEffectsLabel") as Label
+	if ideology_effects_label == null:
+		ideology_effects_label = Label.new()
+		ideology_effects_label.name = "IdeologyEffectsLabel"
+		ideology_effects_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		vbox.add_child(ideology_effects_label)
+
+	ideology_option = get_node_or_null("OverviewPanel/VBoxContainer/IdeologyOption") as OptionButton
+	if ideology_option == null:
+		ideology_option = OptionButton.new()
+		ideology_option.name = "IdeologyOption"
+		vbox.add_child(ideology_option)
+
+	ideology_apply_btn = get_node_or_null("OverviewPanel/VBoxContainer/ChangeIdeologyButton") as Button
+	if ideology_apply_btn == null:
+		ideology_apply_btn = Button.new()
+		ideology_apply_btn.name = "ChangeIdeologyButton"
+		ideology_apply_btn.text = "Zmenit ideologii"
+		vbox.add_child(ideology_apply_btn)
+
+	if action_separator and action_separator.get_parent() == vbox:
+		var base_idx = action_separator.get_index()
+		vbox.move_child(ideology_separator, base_idx)
+		vbox.move_child(ideology_effects_label, ideology_separator.get_index() + 1)
+		vbox.move_child(ideology_option, ideology_effects_label.get_index() + 1)
+		vbox.move_child(ideology_apply_btn, ideology_option.get_index() + 1)
+
+func _normalizuj_ideologii(ideology: String) -> String:
+	var raw = ideology.strip_edges().to_lower()
+	match raw:
+		"democracy", "democratic":
+			return "demokracie"
+		"autocracy", "autocratic", "dictatorship":
+			return "autokracie"
+		"communism", "communist", "socialism":
+			return "komunismus"
+		"fascism", "fascist":
+			return "fasismus"
+		"nazism", "nazismus", "nazi", "national_socialism":
+			return "nacismus"
+		"kingdom", "monarchy":
+			return "kralovstvi"
+		"royal":
+			return "kralovstvi"
+		"nacismum":
+			return "nacismus"
+		"kralostvi":
+			return "kralovstvi"
+		_:
+			return raw
+
+func _display_ideologie(ideology: String) -> String:
+	var raw = _normalizuj_ideologii(ideology)
+	if raw == "":
+		return "Neznamo"
+	return raw.capitalize()
+
+func _ziskej_vyhody_nevyhody_ideologie(ideology: String) -> Dictionary:
+	var ideo = _normalizuj_ideologii(ideology)
+	match ideo:
+		"demokracie":
+			return {
+				"plus": ["stabilni ekonomika", "lepsi vztahy s podobnymi rezimy"],
+				"minus": ["pomalejsi rozhodovani", "mensi tolerance k agresi"]
+			}
+		"kralovstvi":
+			return {
+				"plus": ["silna legitimita moci", "snazsi diplomaticke vazby s tradicnimi staty"],
+				"minus": ["riziko konzervativni stagnace", "horsi vztahy s revolucnimi rezimy"]
+			}
+		"autokracie":
+			return {
+				"plus": ["rychle centralni rozhodovani", "pevna vnitrni kontrola"],
+				"minus": ["slabsi mezinarodni duvera", "napeti s demokratickymi staty"]
+			}
+		"komunismus":
+			return {
+				"plus": ["silna mobilizace statu", "duraz na tezky prumysl"],
+				"minus": ["slabsi vztahy s monarchiemi a demokraciemi", "vyssi geopoliticke napeti"]
+			}
+		"nacismus", "fasismus":
+			return {
+				"plus": ["agresivni militarni mobilizace", "vysoka kontrola moci"],
+				"minus": ["silne diplomaticke sankce", "rychle zhorsovani vztahu s oponenty"]
+			}
+		_:
+			return {
+				"plus": ["zmena vlajky a diplomatickeho profilu"],
+				"minus": ["nejista reakce zahranici"]
+			}
+
+func _set_ideology_effects_label(ideology: String) -> void:
+	if ideology_effects_label == null:
+		return
+	var info = _ziskej_vyhody_nevyhody_ideologie(ideology)
+	var plus: Array = info.get("plus", [])
+	var minus: Array = info.get("minus", [])
+	var plus_txt = " + " + ", + ".join(plus)
+	var minus_txt = " - " + ", - ".join(minus)
+	ideology_effects_label.text = "Ideologie: %s\nVyhody:%s\nNevyhody:%s" % [_display_ideologie(ideology), plus_txt, minus_txt]
+
+func _ziskej_dostupne_ideologie_pro_stat(tag: String) -> Array:
+	var out: Array = []
+	var clean_tag = tag.strip_edges().to_upper()
+	if clean_tag == "":
+		return out
+
+	var dir = DirAccess.open("res://map_data/FlagsIdeology")
+	if dir == null:
+		return out
+
+	var seen: Dictionary = {}
+	dir.list_dir_begin()
+	while true:
+		var file_name = dir.get_next()
+		if file_name == "":
+			break
+		if dir.current_is_dir():
+			continue
+		var lower = file_name.to_lower()
+		if not (lower.ends_with(".svg") or lower.ends_with(".png")):
+			continue
+		if lower.ends_with(".import"):
+			continue
+		var prefix := ""
+		var prefix_double = (clean_tag + "__").to_lower()
+		var prefix_single = (clean_tag + "_").to_lower()
+		if lower.begins_with(prefix_double):
+			prefix = prefix_double
+		elif lower.begins_with(prefix_single):
+			prefix = prefix_single
+		else:
+			continue
+
+		var ext_idx = lower.rfind(".")
+		if ext_idx <= prefix.length():
+			continue
+		var raw_ideo = lower.substr(prefix.length(), ext_idx - prefix.length())
+		var ideo = _normalizuj_ideologii(raw_ideo)
+		if IDEOLOGY_UI_ORDER.find(ideo) == -1:
+			continue
+		if ideo == "" or seen.has(ideo):
+			continue
+		seen[ideo] = true
+		out.append(ideo)
+
+	dir.list_dir_end()
+	out.sort_custom(func(a, b):
+		var ai = IDEOLOGY_UI_ORDER.find(a)
+		var bi = IDEOLOGY_UI_ORDER.find(b)
+		if ai == -1 and bi == -1:
+			return str(a) < str(b)
+		if ai == -1:
+			return false
+		if bi == -1:
+			return true
+		return ai < bi
+	)
+	return out
+
+func _aktualizuj_ideology_ui(owner_tag: String, current_ideology: String) -> void:
+	if ideology_separator == null or ideology_option == null or ideology_apply_btn == null or ideology_effects_label == null:
+		return
+
+	var is_player = owner_tag == str(GameManager.hrac_stat).strip_edges().to_upper()
+	if not is_player:
+		ideology_separator.hide()
+		ideology_effects_label.hide()
+		ideology_option.hide()
+		ideology_apply_btn.hide()
+		return
+
+	ideology_separator.show()
+	ideology_effects_label.show()
+	ideology_option.show()
+	ideology_apply_btn.show()
+
+	var current = _normalizuj_ideologii(current_ideology)
+	var options = _ziskej_dostupne_ideologie_pro_stat(owner_tag)
+	if current != "" and not options.has(current):
+		options.append(current)
+
+	if options.is_empty():
+		options = [current if current != "" else "demokracie"]
+
+	_ideology_option_values = options.duplicate()
+	ideology_option.clear()
+
+	var selected_idx := 0
+	for i in range(options.size()):
+		var ideo = str(options[i])
+		ideology_option.add_item(_display_ideologie(ideo), i)
+		if ideo == current:
+			selected_idx = i
+
+	ideology_option.select(selected_idx)
+	ideology_apply_btn.disabled = options.size() <= 1
+	_set_ideology_effects_label(str(options[selected_idx]))
 
 func _wrap_overview_metric_label(key: String, base_label: Label) -> void:
 	if base_label == null:
@@ -1149,6 +1381,7 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 	# --- NEW: DIPLOMACY UI LOGIC ---
 	if action_separator and declare_war_btn and propose_peace_btn:
 		if owner_tag == player_tag:
+			_aktualizuj_ideology_ui(owner_tag, ideologie)
 			# Hide actions if looking at our own country
 			if relationship_label:
 				relationship_label.hide()
@@ -1163,6 +1396,7 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 			if incoming_request_label: incoming_request_label.hide()
 			if respond_request_buttons: respond_request_buttons.hide()
 		else:
+			_aktualizuj_ideology_ui(owner_tag, ideologie)
 			_aktualizuj_vztah_ui(owner_tag)
 			# Show actions for other countries
 			action_separator.show()
@@ -1176,6 +1410,54 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 			_aktualizuj_zadost_ui(owner_tag)
 	
 	panel.show()
+
+func _on_apply_ideology_pressed() -> void:
+	if current_viewed_tag == "" or current_viewed_tag != str(GameManager.hrac_stat).strip_edges().to_upper():
+		return
+	if ideology_option == null or _ideology_option_values.is_empty():
+		return
+	if not GameManager.has_method("zmen_ideologii_statu"):
+		return
+
+	var idx = ideology_option.selected
+	if idx < 0 or idx >= _ideology_option_values.size():
+		return
+
+	var selected_ideology = str(_ideology_option_values[idx])
+	var result = GameManager.zmen_ideologii_statu(GameManager.hrac_stat, selected_ideology)
+	if not bool(result.get("ok", false)):
+		await zobraz_systemove_hlaseni("Ideologie", str(result.get("reason", "Zmena ideologie selhala.")))
+		return
+
+	var changed = bool(result.get("changed", true))
+	if not changed:
+		await zobraz_systemove_hlaseni("Ideologie", "Tato ideologie uz je aktivni.")
+		return
+
+	var relation_changes = result.get("relation_changes", []) as Array
+	var plus_count := 0
+	var minus_count := 0
+	for c in relation_changes:
+		var delta = float((c as Dictionary).get("delta", 0.0))
+		if delta > 0.0:
+			plus_count += 1
+		elif delta < 0.0:
+			minus_count += 1
+
+	await zobraz_systemove_hlaseni(
+		"Ideologie",
+		"Stat %s presel na ideologii %s.\nZlepsene vztahy: %d\nZhorske vztahy: %d" % [
+			str(result.get("state", current_viewed_tag)),
+			_display_ideologie(str(result.get("new_ideology", selected_ideology))),
+			plus_count,
+			minus_count
+		]
+	)
+
+func _on_ideology_option_selected(index: int) -> void:
+	if index < 0 or index >= _ideology_option_values.size():
+		return
+	_set_ideology_effects_label(str(_ideology_option_values[index]))
 
 # Triggered by right-clicking on the map
 func schovej_se():

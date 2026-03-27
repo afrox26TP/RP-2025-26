@@ -25,6 +25,8 @@ var cekajici_popupy_hracu: Dictionary = {}
 const AI_DECLARE_WAR_MIN_BORDER_ADVANTAGE := 1.25
 const AI_DECLARE_WAR_MIN_ATTACK_FORCE := 1800
 const AI_DECLARE_WAR_MAX_RELATION := -10.0
+const IDEOLOGY_RELATION_SIMILAR_BONUS := 8.0
+const IDEOLOGY_RELATION_OPPOSITE_PENALTY := 12.0
 const PEACE_WAR_COOLDOWN_TURNS := 5
 const RELATION_MIN := -100.0
 const RELATION_MAX := 100.0
@@ -491,6 +493,164 @@ func _get_map_loader():
 
 func _normalizuj_tag(tag: String) -> String:
 	return tag.strip_edges().to_upper()
+
+func _normalizuj_ideologii(ideology: String) -> String:
+	var raw = ideology.strip_edges().to_lower()
+	match raw:
+		"democracy", "democratic":
+			return "demokracie"
+		"autocracy", "autocratic", "dictatorship":
+			return "autokracie"
+		"communism", "communist", "socialism":
+			return "komunismus"
+		"fascism", "fascist":
+			return "fasismus"
+		"nazism", "nazismus", "nazi", "national_socialism":
+			return "nacismus"
+		"kingdom", "monarchy":
+			return "kralovstvi"
+		"royal":
+			return "kralovstvi"
+		"nacismum":
+			return "nacismus"
+		"kralostvi":
+			return "kralovstvi"
+		_:
+			return raw
+
+func _klic_ideologickeho_paru(ideology_a: String, ideology_b: String) -> String:
+	var a = _normalizuj_ideologii(ideology_a)
+	var b = _normalizuj_ideologii(ideology_b)
+	if a < b:
+		return "%s|%s" % [a, b]
+	return "%s|%s" % [b, a]
+
+func _ziskej_ideologii_statu(tag: String) -> String:
+	var wanted = _normalizuj_tag(tag)
+	if wanted == "" or wanted == "SEA":
+		return ""
+	for p_id in map_data:
+		var d = map_data[p_id]
+		if _normalizuj_tag(str(d.get("owner", ""))) == wanted:
+			return _normalizuj_ideologii(str(d.get("ideology", "")))
+	return ""
+
+func _jsou_ideologie_podobne(ideology_a: String, ideology_b: String) -> bool:
+	var a = _normalizuj_ideologii(ideology_a)
+	var b = _normalizuj_ideologii(ideology_b)
+	if a == "" or b == "":
+		return false
+	if a == b:
+		return true
+
+	var similar_pairs := {
+		"autokracie|fasismus": true,
+		"autokracie|kralovstvi": true,
+		"autokracie|nacismus": true,
+		"demokracie|kralovstvi": true,
+		"fasismus|nacismus": true
+	}
+	return similar_pairs.has(_klic_ideologickeho_paru(a, b))
+
+func _jsou_ideologie_uplne_odlisne(ideology_a: String, ideology_b: String) -> bool:
+	var a = _normalizuj_ideologii(ideology_a)
+	var b = _normalizuj_ideologii(ideology_b)
+	if a == "" or b == "":
+		return false
+
+	var opposite_pairs := {
+		"autokracie|komunismus": true,
+		"demokracie|fasismus": true,
+		"demokracie|komunismus": true,
+		"demokracie|nacismus": true,
+		"kralovstvi|fasismus": true,
+		"kralovstvi|komunismus": true,
+		"kralovstvi|nacismus": true
+	}
+	return opposite_pairs.has(_klic_ideologickeho_paru(a, b))
+
+func zmen_ideologii_statu(state_tag: String, new_ideology: String) -> Dictionary:
+	var state = _normalizuj_tag(state_tag)
+	var target_ideology = _normalizuj_ideologii(new_ideology)
+	if state == "" or state == "SEA":
+		return {"ok": false, "reason": "Neplatný stát."}
+	if target_ideology == "":
+		return {"ok": false, "reason": "Neplatná ideologie."}
+	if not _stat_existuje(state):
+		return {"ok": false, "reason": "Stát neexistuje v aktuální mapě."}
+
+	var old_ideology = _ziskej_ideologii_statu(state)
+	if old_ideology == target_ideology:
+		return {
+			"ok": true,
+			"changed": false,
+			"state": state,
+			"old_ideology": old_ideology,
+			"new_ideology": target_ideology,
+			"relation_changes": []
+		}
+
+	var modified_provinces := 0
+	for p_id in map_data:
+		var d = map_data[p_id]
+		if _normalizuj_tag(str(d.get("owner", ""))) != state:
+			continue
+		d["ideology"] = target_ideology
+		modified_provinces += 1
+
+	var relation_changes: Array = []
+	for other_state in _ziskej_aktivni_staty():
+		var other = _normalizuj_tag(str(other_state))
+		if other == "" or other == state:
+			continue
+
+		var other_ideology = _ziskej_ideologii_statu(other)
+		var delta := 0.0
+		if _jsou_ideologie_podobne(target_ideology, other_ideology):
+			delta = IDEOLOGY_RELATION_SIMILAR_BONUS
+		elif _jsou_ideologie_uplne_odlisne(target_ideology, other_ideology):
+			delta = -IDEOLOGY_RELATION_OPPOSITE_PENALTY
+
+		if is_zero_approx(delta):
+			continue
+
+		var old_relation = ziskej_vztah_statu(state, other)
+		var new_relation = _uprav_vztah_statu_bez_cooldown(state, other, delta)
+		relation_changes.append({
+			"other_state": other,
+			"other_ideology": other_ideology,
+			"delta": delta,
+			"old_relation": old_relation,
+			"new_relation": new_relation
+		})
+
+	_synchronizuj_jmeno_a_ideologii_hrace()
+	_invalidate_turn_cache()
+
+	var map_loader = _get_map_loader()
+	if map_loader:
+		if "provinces" in map_loader:
+			map_loader.provinces = map_data
+		if map_loader.has_method("_invalidate_naval_reachability_cache"):
+			map_loader._invalidate_naval_reachability_cache()
+		if map_loader.has_method("_aktualizuj_aktivni_mapovy_mod"):
+			map_loader._aktualizuj_aktivni_mapovy_mod()
+		if map_loader.has_method("aktualizuj_ikony_armad"):
+			map_loader.aktualizuj_ikony_armad()
+
+	if not map_data.is_empty():
+		spocitej_prijem(map_data, false)
+	kolo_zmeneno.emit()
+
+	return {
+		"ok": true,
+		"changed": true,
+		"state": state,
+		"old_ideology": old_ideology,
+		"new_ideology": target_ideology,
+		"modified_provinces": modified_provinces,
+		"relation_changes": relation_changes
+	}
 
 func _stat_existuje(tag: String) -> bool:
 	var wanted = _normalizuj_tag(tag)

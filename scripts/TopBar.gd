@@ -21,6 +21,24 @@ func _cached_texture(path: String):
 		flag_texture_cache[path] = load(path)
 	return flag_texture_cache[path]
 
+func _normalizuj_ideologii(ideologie: String) -> String:
+	var raw = ideologie.strip_edges().to_lower()
+	match raw:
+		"democracy", "democratic":
+			return "demokracie"
+		"autocracy", "autocratic", "dictatorship":
+			return "autokracie"
+		"communism", "communist", "socialism":
+			return "komunismus"
+		"fascism", "fascist":
+			return "fasismus"
+		"nazism", "nazismus", "nazi", "national_socialism", "nacismum":
+			return "nacismus"
+		"kingdom", "monarchy", "royal", "kralostvi":
+			return "kralovstvi"
+		_:
+			return raw
+
 func _ready():
 	# Connect button clicks and GameManager signals
 	next_btn.pressed.connect(_on_next_turn_pressed)
@@ -58,22 +76,22 @@ func nastav_hrace(tag: String, jmeno_statu: String, ideologie: String = ""):
 		player_name.text = jmeno_statu
 		
 	if player_flag:
-		# Generate file paths for flags
-		var ideo_cesta = "res://map_data/FlagsIdeology/%s_%s.svg" % [tag, ideologie]
-		var zaklad_cesta = "res://map_data/Flags/%s.svg" % tag
-		
-		# Try loading the ideology-specific flag first, fallback to the base flag
-		if ideologie != "":
-			var ideo_tex = _cached_texture(ideo_cesta)
-			if ideo_tex:
-				player_flag.texture = ideo_tex
-				return
+		var ideo = _normalizuj_ideologii(ideologie)
+		var candidates: Array = []
+		if ideo != "":
+			candidates.append("res://map_data/FlagsIdeology/%s__%s.svg" % [tag, ideo])
+			candidates.append("res://map_data/FlagsIdeology/%s__%s.png" % [tag, ideo])
+			candidates.append("res://map_data/FlagsIdeology/%s_%s.svg" % [tag, ideo])
+			candidates.append("res://map_data/FlagsIdeology/%s_%s.png" % [tag, ideo])
+		candidates.append("res://map_data/Flags/%s.svg" % tag)
+		candidates.append("res://map_data/Flags/%s.png" % tag)
 
-		var base_tex = _cached_texture(zaklad_cesta)
-		if base_tex:
-			player_flag.texture = base_tex
-		else:
-			player_flag.texture = null
+		for path in candidates:
+			var tex = _cached_texture(path)
+			if tex:
+				player_flag.texture = tex
+				return
+		player_flag.texture = null
 
 func _ziskej_map_loader_node() -> Node:
 	var scene_root = get_tree().current_scene
