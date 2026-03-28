@@ -21,6 +21,8 @@ var hrac_kasy: Dictionary = {}
 var hrac_prijmy: Dictionary = {}
 var hrac_kasa_inicializovana: Dictionary = {}
 var cekajici_popupy_hracu: Dictionary = {}
+var log_zprav_hracu: Dictionary = {}
+var log_globalnich_zprav: Array = []
 
 const AI_DECLARE_WAR_MIN_BORDER_ADVANTAGE := 1.25
 const AI_DECLARE_WAR_MIN_ATTACK_FORCE := 1800
@@ -122,6 +124,7 @@ const NON_AGGRESSION_DURATION_TURNS := 10
 const SAVEGAME_STATE_PATH := "user://savegame.dat"
 const SAVE_SLOTS_DIR := "user://saves"
 const SAVE_SLOT_EXT := ".dat"
+const MAX_LOG_ZPRAV := 500
 
 # Diplomacy
 var valky: Dictionary = {}
@@ -132,6 +135,11 @@ var neagresivni_smlouvy: Dictionary = {}
 var povalecne_cooldowny: Dictionary = {}
 var cekajici_diplomaticke_zadosti: Dictionary = {}
 var cekajici_aliancni_zadosti: Array = []
+
+const DIP_REQUEST_PRIORITY_PLAYER := 0
+const DIP_REQUEST_PRIORITY_PEACE := 1
+const DIP_REQUEST_PRIORITY_ALLIANCE := 2
+const DIP_REQUEST_PRIORITY_NON_AGGRESSION := 3
 
 var zpracovava_se_tah: bool = false
 var _core_state_cache: Dictionary = {}
@@ -172,6 +180,8 @@ func nastav_lokalni_hrace(staty: Array) -> void:
 	hrac_prijmy.clear()
 	hrac_kasa_inicializovana.clear()
 	cekajici_popupy_hracu.clear()
+	log_zprav_hracu.clear()
+	log_globalnich_zprav.clear()
 	ai_kasy.clear()
 
 	if not hrac_kasy.has(hrac_stat):
@@ -187,12 +197,162 @@ func _pridej_popup_hraci(tag: String, titulek: String, text: String) -> void:
 		return
 	if titulek.strip_edges() == "" or text.strip_edges() == "":
 		return
+	_zaloguj_zpravu_hraci(cisty_tag, titulek, text, "popup")
+	if not _je_dulezity_popup(titulek, text):
+		return
 	if not cekajici_popupy_hracu.has(cisty_tag):
 		cekajici_popupy_hracu[cisty_tag] = []
 	(cekajici_popupy_hracu[cisty_tag] as Array).append({
 		"title": titulek,
 		"text": text
 	})
+
+func _je_dulezity_popup(titulek: String, text: String) -> bool:
+	var t = titulek.to_lower()
+	var msg = text.to_lower()
+	var combined = "%s %s" % [t, msg]
+
+	# Keep visible popups only for critical war-state events.
+	var critical_tokens = [
+		"valk", "war", "kapitul", "surrender", "hlavni mesto", "hlavní město",
+		"anex", "vyhlasil valku", "vyhlásil válku", "porazen", "poražen"
+	]
+	for token in critical_tokens:
+		if combined.findn(token) != -1:
+			return true
+
+	return false
+
+func _trim_log_pole(log_arr: Array, max_items: int = MAX_LOG_ZPRAV) -> void:
+	while log_arr.size() > max_items:
+		log_arr.remove_at(0)
+
+func _zaloguj_zpravu_hraci(tag: String, titulek: String, text: String, kategorie: String = "general") -> void:
+	var cisty = _normalizuj_tag(tag)
+	if cisty == "" or titulek.strip_edges() == "" or text.strip_edges() == "":
+		return
+	if not log_zprav_hracu.has(cisty):
+		log_zprav_hracu[cisty] = []
+
+	# Each line is stored as a separate event so indexing in the player's feed
+	# matches individual diplomatic/relation changes.
+	var lines = text.split("\n", false)
+	if lines.is_empty():
+		lines = [text]
+
+	for raw_line in lines:
+		var line = str(raw_line).strip_edges()
+		if line == "":
+			continue
+		var entry = {
+			"turn": aktualni_kolo,
+			"title": titulek,
+			"text": line,
+			"category": kategorie
+		}
+		(log_zprav_hracu[cisty] as Array).append(entry)
+
+	_trim_log_pole(log_zprav_hracu[cisty] as Array)
+
+func _zaloguj_globalni_zpravu(titulek: String, text: String, kategorie: String = "global") -> void:
+	if titulek.strip_edges() == "" or text.strip_edges() == "":
+		return
+	log_globalnich_zprav.append({
+		"turn": aktualni_kolo,
+		"title": titulek,
+		"text": text,
+		"category": kategorie
+	})
+	_trim_log_pole(log_globalnich_zprav)
+
+func ziskej_zpravy_hrace(tag: String, limit: int = 120) -> Array:
+	var cisty = _normalizuj_tag(tag)
+	if cisty == "" or not log_zprav_hracu.has(cisty):
+		return []
+	var src = (log_zprav_hracu[cisty] as Array)
+	if src.is_empty():
+		return []
+	var cnt = clampi(limit, 1, MAX_LOG_ZPRAV)
+	var from_idx = max(0, src.size() - cnt)
+	return src.slice(from_idx, src.size())
+
+func ziskej_globalni_zpravy(limit: int = 160) -> Array:
+	if log_globalnich_zprav.is_empty():
+		return []
+	var cnt = clampi(limit, 1, MAX_LOG_ZPRAV)
+	var from_idx = max(0, log_globalnich_zprav.size() - cnt)
+	return log_globalnich_zprav.slice(from_idx, log_globalnich_zprav.size())
+
+func ziskej_pocet_zprav_hrace(tag: String) -> int:
+	var cisty = _normalizuj_tag(tag)
+	if cisty == "" or not log_zprav_hracu.has(cisty):
+		return 0
+	return (log_zprav_hracu[cisty] as Array).size()
+
+func ziskej_pocet_globalnich_zprav() -> int:
+	return log_globalnich_zprav.size()
+
+func _ziskej_jmeno_statu_podle_tagu(tag: String) -> String:
+	var wanted = _normalizuj_tag(tag)
+	if wanted == "" or map_data.is_empty():
+		return wanted
+	for p_id in map_data:
+		var d = map_data[p_id]
+		if _normalizuj_tag(str(d.get("owner", ""))) == wanted:
+			var state_name = str(d.get("country_name", wanted)).strip_edges()
+			return state_name if state_name != "" else wanted
+	return wanted
+
+func _zprava_obsahuje_stat(entry: Dictionary, state_tag: String) -> bool:
+	var wanted = _normalizuj_tag(state_tag)
+	if wanted == "":
+		return false
+	var full_text = str(entry.get("title", "")) + " " + str(entry.get("text", ""))
+	var hay_upper = full_text.to_upper()
+	if hay_upper.findn(wanted) != -1:
+		return true
+	var country_name = _ziskej_jmeno_statu_podle_tagu(wanted).strip_edges()
+	if country_name == "":
+		return false
+	return full_text.to_lower().findn(country_name.to_lower()) != -1
+
+func ziskej_relevantni_zpravy_statu(state_tag: String, limit: int = 160, jen_aktualni_kolo: bool = true) -> Array:
+	var wanted = _normalizuj_tag(state_tag)
+	if wanted == "":
+		return []
+
+	var merged: Array = []
+	var seen: Dictionary = {}
+	var target_turn = -1
+	if jen_aktualni_kolo:
+		target_turn = aktualni_kolo
+
+	var player_log = log_zprav_hracu.get(wanted, []) as Array
+	for entry_any in player_log:
+		var entry = entry_any as Dictionary
+		if jen_aktualni_kolo and int(entry.get("turn", -1)) != target_turn:
+			continue
+		var key = "%s|%s|%s" % [str(entry.get("turn", "")), str(entry.get("title", "")), str(entry.get("text", ""))]
+		if seen.has(key):
+			continue
+		seen[key] = true
+		merged.append(entry)
+
+	for entry_any in log_globalnich_zprav:
+		var entry = entry_any as Dictionary
+		if jen_aktualni_kolo and int(entry.get("turn", -1)) != target_turn:
+			continue
+		if not _zprava_obsahuje_stat(entry, wanted):
+			continue
+		var key = "%s|%s|%s" % [str(entry.get("turn", "")), str(entry.get("title", "")), str(entry.get("text", ""))]
+		if seen.has(key):
+			continue
+		seen[key] = true
+		merged.append(entry)
+
+	if merged.size() > limit:
+		return merged.slice(merged.size() - limit, merged.size())
+	return merged
 
 func _pridej_popup_zucastnenym_hracum(tag_a: String, tag_b: String, titulek: String, text: String) -> void:
 	var a = _normalizuj_tag(tag_a)
@@ -311,18 +471,18 @@ func _ziskej_data_mapy_pro_ulozeni() -> Dictionary:
 	return map_data
 
 func _normalizuj_nazev_save(slot_name: String) -> String:
-	var name = slot_name.strip_edges()
-	if name == "":
-		name = "save_%s" % Time.get_datetime_string_from_system().replace("T", "_").replace(":", "-")
+	var clean_name = slot_name.strip_edges()
+	if clean_name == "":
+		clean_name = "save_%s" % Time.get_datetime_string_from_system().replace("T", "_").replace(":", "-")
 
 	for bad in ["\\", "/", ":", "*", "?", "\"", "<", ">", "|"]:
-		name = name.replace(str(bad), "_")
+		clean_name = clean_name.replace(str(bad), "_")
 
-	name = name.replace("\n", "_").replace("\r", "_").replace("\t", "_")
-	name = name.strip_edges().replace(" ", "_")
-	if name == "":
-		name = "save"
-	return name
+	clean_name = clean_name.replace("\n", "_").replace("\r", "_").replace("\t", "_")
+	clean_name = clean_name.strip_edges().replace(" ", "_")
+	if clean_name == "":
+		clean_name = "save"
+	return clean_name
 
 func _cesta_slotu_save(slot_name: String) -> String:
 	return "%s/%s%s" % [SAVE_SLOTS_DIR, _normalizuj_nazev_save(slot_name), SAVE_SLOT_EXT]
@@ -353,6 +513,8 @@ func _vytvor_save_state() -> Dictionary:
 		"hrac_kasy": hrac_kasy.duplicate(true),
 		"hrac_prijmy": hrac_prijmy.duplicate(true),
 		"hrac_kasa_inicializovana": hrac_kasa_inicializovana.duplicate(true),
+		"log_zprav_hracu": log_zprav_hracu.duplicate(true),
+		"log_globalnich_zprav": log_globalnich_zprav.duplicate(true),
 		"valky": valky.duplicate(true),
 		"cekajici_kapitulace": cekajici_kapitulace.duplicate(true),
 		"cekajici_mirove_nabidky": cekajici_mirove_nabidky.duplicate(true),
@@ -406,6 +568,8 @@ func _aplikuj_save_state(state: Dictionary) -> bool:
 	hrac_kasy = (state.get("hrac_kasy", {}) as Dictionary).duplicate(true)
 	hrac_prijmy = (state.get("hrac_prijmy", {}) as Dictionary).duplicate(true)
 	hrac_kasa_inicializovana = (state.get("hrac_kasa_inicializovana", {}) as Dictionary).duplicate(true)
+	log_zprav_hracu = (state.get("log_zprav_hracu", {}) as Dictionary).duplicate(true)
+	log_globalnich_zprav = (state.get("log_globalnich_zprav", []) as Array).duplicate(true)
 	valky = (state.get("valky", {}) as Dictionary).duplicate(true)
 	cekajici_kapitulace = (state.get("cekajici_kapitulace", []) as Array).duplicate(true)
 	cekajici_mirove_nabidky = (state.get("cekajici_mirove_nabidky", []) as Array).duplicate(true)
@@ -458,6 +622,8 @@ func reset_pro_novou_hru() -> void:
 	hrac_prijmy.clear()
 	hrac_kasa_inicializovana.clear()
 	cekajici_popupy_hracu.clear()
+	log_zprav_hracu.clear()
+	log_globalnich_zprav.clear()
 
 	valky.clear()
 	cekajici_kapitulace.clear()
@@ -945,8 +1111,8 @@ func _stat_existuje(tag: String) -> bool:
 	if wanted == "" or wanted == "SEA":
 		return false
 	for p_id in map_data:
-		var owner = _normalizuj_tag(str(map_data[p_id].get("owner", "")))
-		if owner == wanted:
+		var owner_tag = _normalizuj_tag(str(map_data[p_id].get("owner", "")))
+		if owner_tag == wanted:
 			return true
 	return false
 
@@ -1004,6 +1170,11 @@ func daruj_penize_statu(odesilatel: String, prijemce: String, amount: float) -> 
 			"DIPLOMACIE",
 			"%s poslal finanční dar %.2f mil. USD státu %s (vztah %+0.1f)." % [from_tag, castka, to_tag, rel_delta]
 		)
+	_zaloguj_globalni_zpravu(
+		"Dary",
+		"%s poslal financni dar %.2f mil. USD statu %s (vztah %+0.1f)." % [from_tag, castka, to_tag, rel_delta],
+		"gifts"
+	)
 
 	return {
 		"ok": true,
@@ -1123,6 +1294,9 @@ func uprav_vztah_statu(tag_a: String, tag_b: String, delta: float) -> float:
 	_vztahy_statu[_klic_vztahu(a, b)] = updated
 	_vztahy_statu[_klic_vztahu(b, a)] = updated
 	_vztah_akce_posledni_kolo[_klic_vztah_pair(a, b)] = aktualni_kolo
+	if not is_zero_approx(delta):
+		var action_txt = "zlepsil" if delta > 0.0 else "zhorsil"
+		_zaloguj_globalni_zpravu("Vztahy", "%s %s vztah k %s na %.1f." % [a, action_txt, b, updated], "relations")
 	_synchronizuj_aliance_po_zmene_vztahu(a, b)
 	return updated
 
@@ -1137,6 +1311,9 @@ func _uprav_vztah_statu_bez_cooldown(tag_a: String, tag_b: String, delta: float)
 	var updated = clamp(current + delta, RELATION_MIN, RELATION_MAX)
 	_vztahy_statu[_klic_vztahu(a, b)] = updated
 	_vztahy_statu[_klic_vztahu(b, a)] = updated
+	if not is_zero_approx(delta):
+		var action_txt = "zlepsil" if delta > 0.0 else "zhorsil"
+		_zaloguj_globalni_zpravu("Vztahy", "%s %s vztah k %s na %.1f." % [a, action_txt, b, updated], "relations")
 	_synchronizuj_aliance_po_zmene_vztahu(a, b)
 	return updated
 
@@ -1247,6 +1424,7 @@ func nastav_uroven_aliance(tag_a: String, tag_b: String, level: int, ignoruj_vzt
 	_nastav_uroven_aliance_bez_kontroly(a, b, target_level)
 
 	if old_level != target_level:
+		_zaloguj_globalni_zpravu("Aliance", "Aliance mezi %s a %s: %s." % [a, b, nazev_urovne_aliance(target_level)], "alliance")
 		if je_lidsky_stat(a) or je_lidsky_stat(b):
 			var title = "Diplomacie"
 			var text = "Aliance mezi %s a %s: %s" % [a, b, nazev_urovne_aliance(target_level)]
@@ -1278,6 +1456,7 @@ func _synchronizuj_aliance_po_zmene_vztahu(tag_a: String, tag_b: String) -> void
 
 	if new_level != current_level:
 		_nastav_uroven_aliance_bez_kontroly(a, b, new_level)
+		_zaloguj_globalni_zpravu("Aliance", "Vztahy oslabily alianci %s-%s: %s." % [a, b, nazev_urovne_aliance(new_level)], "alliance")
 		if je_lidsky_stat(a) or je_lidsky_stat(b):
 			var text = "Vztahy oslabily alianci %s-%s: %s" % [a, b, nazev_urovne_aliance(new_level)]
 			_pridej_popup_zucastnenym_hracum(a, b, "Diplomacie", text)
@@ -1360,6 +1539,7 @@ func odeslat_aliancni_zadost(tag_a: String, tag_b: String, level: int, ignoruj_v
 		"level": target_level,
 		"turn": aktualni_kolo
 	})
+	_zaloguj_globalni_zpravu("Aliance", "%s poslal %s zadost o %s." % [a, b, nazev_urovne_aliance(target_level)], "alliance")
 	if je_lidsky_stat(a):
 		_pridej_popup_hraci(a, "Diplomacie", "Žádost o %s byla odeslána státu %s." % [nazev_urovne_aliance(target_level), b])
 	return true
@@ -1389,6 +1569,7 @@ func _vyhodnot_aliancni_zadosti_pred_ai() -> void:
 		if _ma_stat_prijmout_alianci(to_tag, from_tag, level):
 			nastav_uroven_aliance(from_tag, to_tag, level)
 		else:
+			_zaloguj_globalni_zpravu("Aliance", "%s odmitl zadost %s o %s." % [to_tag, from_tag, nazev_urovne_aliance(level)], "alliance")
 			if je_lidsky_stat(from_tag):
 				_pridej_popup_hraci(from_tag, "Diplomacie", "Stát %s odmítl tvou žádost o %s." % [to_tag, nazev_urovne_aliance(level)])
 
@@ -1413,6 +1594,7 @@ func uzavrit_neagresivni_smlouvu(tag_a: String, tag_b: String) -> bool:
 		return false
 
 	neagresivni_smlouvy[key] = aktualni_kolo + NON_AGGRESSION_DURATION_TURNS - 1
+	_zaloguj_globalni_zpravu("Diplomacie", "%s a %s uzavrely neagresivni smlouvu na %d kol." % [a, b, NON_AGGRESSION_DURATION_TURNS], "diplomacy")
 	if je_lidsky_stat(a) or je_lidsky_stat(b):
 		_pridej_popup_zucastnenym_hracum(a, b, "Diplomacie", "%s a %s uzavřely neagresivní smlouvu na %d kol." % [a, b, NON_AGGRESSION_DURATION_TURNS])
 	return true
@@ -1426,27 +1608,99 @@ func _pridej_diplomatickou_zadost(from_tag: String, to_tag: String, req_type: St
 	if req_type != "alliance" and req_type != "non_aggression" and req_type != "peace":
 		return false
 
+	if not _je_essential_diplomaticka_zadost(from_clean, to_clean, req_type, alliance_level):
+		return false
+
 	if not cekajici_diplomaticke_zadosti.has(to_clean):
 		cekajici_diplomaticke_zadosti[to_clean] = []
 
 	var queue = cekajici_diplomaticke_zadosti[to_clean] as Array
-	for req in queue:
-		if _normalizuj_tag(str(req.get("from", ""))) != from_clean:
-			continue
-		if str(req.get("type", "")) != req_type:
-			continue
-		if req_type == "alliance" and int(req.get("level", ALLIANCE_NONE)) != alliance_level:
-			continue
-		return false
-
-	queue.append({
+	var new_req = {
 		"from": from_clean,
 		"to": to_clean,
 		"type": req_type,
 		"level": alliance_level,
 		"turn": aktualni_kolo
-	})
+	}
+
+	# Keep max one visible request per sender to avoid spam; replace only when the
+	# new request is more important than the currently queued one.
+	for i in range(queue.size()):
+		var existing = queue[i] as Dictionary
+		if _normalizuj_tag(str(existing.get("from", ""))) != from_clean:
+			continue
+		if _diplomaticka_zadost_priorita(new_req) < _diplomaticka_zadost_priorita(existing):
+			queue[i] = new_req
+			_zaloguj_globalni_zpravu("Diplomacie", "%s aktualizoval diplomatickou nabidku pro %s (%s)." % [from_clean, to_clean, req_type], "diplomacy")
+			return true
+		return false
+
+	queue.append(new_req)
+	if req_type == "alliance":
+		_zaloguj_globalni_zpravu("Aliance", "%s poslal %s navrh aliance (%s)." % [from_clean, to_clean, nazev_urovne_aliance(alliance_level)], "alliance")
+	elif req_type == "peace":
+		_zaloguj_globalni_zpravu("Diplomacie", "%s poslal %s navrh miru." % [from_clean, to_clean], "diplomacy")
+	elif req_type == "non_aggression":
+		_zaloguj_globalni_zpravu("Diplomacie", "%s navrhl %s neagresivni smlouvu." % [from_clean, to_clean], "diplomacy")
 	return true
+
+func _je_essential_diplomaticka_zadost(from_tag: String, to_tag: String, req_type: String, alliance_level: int) -> bool:
+	var from_clean = _normalizuj_tag(from_tag)
+	var to_clean = _normalizuj_tag(to_tag)
+	if from_clean == "" or to_clean == "":
+		return false
+
+	# Human initiated diplomacy is always actionable and should never be filtered out.
+	if je_lidsky_stat(from_clean):
+		return true
+
+	# AI-generated requests are filtered to only critical/important offers.
+	match req_type:
+		"peace":
+			return true
+		"alliance":
+			# Defensive alliance offers are still strategically important.
+			return alliance_level >= ALLIANCE_DEFENSE
+		"non_aggression":
+			# Show only meaningful NAPs from AI to avoid low-value spam.
+			var rel = ziskej_vztah_statu(from_clean, to_clean)
+			return rel >= maxf(35.0, NON_AGGRESSION_MIN_REL)
+		_:
+			return false
+
+func _diplomaticka_zadost_priorita(req: Dictionary) -> int:
+	var from_tag = _normalizuj_tag(str(req.get("from", "")))
+	if je_lidsky_stat(from_tag):
+		return DIP_REQUEST_PRIORITY_PLAYER
+
+	match str(req.get("type", "")):
+		"peace":
+			return DIP_REQUEST_PRIORITY_PEACE
+		"alliance":
+			return DIP_REQUEST_PRIORITY_ALLIANCE
+		"non_aggression":
+			return DIP_REQUEST_PRIORITY_NON_AGGRESSION
+		_:
+			return 100
+
+func _ziskej_index_nejvyssi_priority_zadosti(queue: Array) -> int:
+	if queue.is_empty():
+		return -1
+
+	var best_idx := 0
+	var best_priority := _diplomaticka_zadost_priorita(queue[0] as Dictionary)
+	var best_turn := int((queue[0] as Dictionary).get("turn", 0))
+
+	for i in range(1, queue.size()):
+		var req = queue[i] as Dictionary
+		var p = _diplomaticka_zadost_priorita(req)
+		var t = int(req.get("turn", 0))
+		if p < best_priority or (p == best_priority and t < best_turn):
+			best_idx = i
+			best_priority = p
+			best_turn = t
+
+	return best_idx
 
 func _odeber_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> Dictionary:
 	var player_clean = _normalizuj_tag(hrac_tag)
@@ -1488,7 +1742,38 @@ func ziskej_prvni_cekajici_diplomatickou_zadost(hrac_tag: String) -> Dictionary:
 	var queue = cekajici_diplomaticke_zadosti[player_clean] as Array
 	if queue.is_empty():
 		return {}
-	return (queue[0] as Dictionary).duplicate(true)
+
+	var idx = _ziskej_index_nejvyssi_priority_zadosti(queue)
+	if idx < 0:
+		return {}
+	return (queue[idx] as Dictionary).duplicate(true)
+
+func ziskej_pocet_cekajicich_diplomatickych_zadosti(hrac_tag: String) -> int:
+	var player_clean = _normalizuj_tag(hrac_tag)
+	if player_clean == "":
+		return 0
+	if not cekajici_diplomaticke_zadosti.has(player_clean):
+		return 0
+	return (cekajici_diplomaticke_zadosti[player_clean] as Array).size()
+
+func ziskej_cekajici_diplomaticke_zadosti(hrac_tag: String) -> Array:
+	var player_clean = _normalizuj_tag(hrac_tag)
+	if player_clean == "":
+		return []
+	if not cekajici_diplomaticke_zadosti.has(player_clean):
+		return []
+
+	var queue = (cekajici_diplomaticke_zadosti[player_clean] as Array).duplicate(true)
+	queue.sort_custom(func(a, b):
+		var da = a as Dictionary
+		var db = b as Dictionary
+		var pa = _diplomaticka_zadost_priorita(da)
+		var pb = _diplomaticka_zadost_priorita(db)
+		if pa != pb:
+			return pa < pb
+		return int(da.get("turn", 0)) < int(db.get("turn", 0))
+	)
+	return queue
 
 func hrac_prijmi_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> bool:
 	var player_clean = _normalizuj_tag(hrac_tag)
@@ -1498,22 +1783,39 @@ func hrac_prijmi_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> boo
 
 	var sender = _normalizuj_tag(str(req.get("from", "")))
 	var req_type = str(req.get("type", ""))
+	var req_name = "diplomatickou nabidku"
+	if req_type == "alliance":
+		req_name = "nabidku aliance"
+	elif req_type == "peace":
+		req_name = "nabidku miru"
+	elif req_type == "non_aggression":
+		req_name = "nabidku neagresivni smlouvy"
 	if req_type == "alliance":
 		var level = int(req.get("level", ALLIANCE_NONE))
 		var obe_strany_lide = je_lidsky_stat(player_clean) and je_lidsky_stat(sender)
+		var alliance_ok = false
 		if obe_strany_lide:
 			# Human-vs-human diplomacy is decided purely by acceptance/rejection.
-			return nastav_uroven_aliance(player_clean, sender, level, true)
-		return nastav_uroven_aliance(player_clean, sender, level)
+			alliance_ok = nastav_uroven_aliance(player_clean, sender, level, true)
+		else:
+			alliance_ok = nastav_uroven_aliance(player_clean, sender, level)
+		if alliance_ok:
+			_zaloguj_globalni_zpravu("Diplomacie", "%s prijal od %s %s." % [player_clean, sender, req_name], "diplomacy")
+		return alliance_ok
 	if req_type == "non_aggression":
-		return uzavrit_neagresivni_smlouvu(player_clean, sender)
+		var nap_ok = uzavrit_neagresivni_smlouvu(player_clean, sender)
+		if nap_ok:
+			_zaloguj_globalni_zpravu("Diplomacie", "%s prijal od %s %s." % [player_clean, sender, req_name], "diplomacy")
+		return nap_ok
 	if req_type == "peace":
 		if not jsou_ve_valce(player_clean, sender):
 			return false
 		_uzavri_mir_mezi(player_clean, sender)
 		if je_lidsky_stat(player_clean) or je_lidsky_stat(sender):
 			_pridej_popup_zucastnenym_hracum(player_clean, sender, "Diplomacie", "Mirova nabidka prijata: %s a %s uzavrely mir." % [player_clean, sender])
+		_zaloguj_globalni_zpravu("Diplomacie", "%s prijal od %s %s." % [player_clean, sender, req_name], "diplomacy")
 		return true
+	_zaloguj_globalni_zpravu("Diplomacie", "%s prijal od %s %s." % [player_clean, sender, req_name], "diplomacy")
 	return false
 
 func hrac_odmitni_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> bool:
@@ -1523,9 +1825,58 @@ func hrac_odmitni_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> bo
 		return false
 
 	var sender = _normalizuj_tag(str(req.get("from", "")))
+	var req_type = str(req.get("type", ""))
+	var req_name = "diplomatickou nabidku"
+	if req_type == "alliance":
+		req_name = "nabidku aliance"
+	elif req_type == "peace":
+		req_name = "nabidku miru"
+	elif req_type == "non_aggression":
+		req_name = "nabidku neagresivni smlouvy"
 	if je_lidsky_stat(player_clean):
 		_pridej_popup_hraci(player_clean, "Diplomacie", "Odmítl jsi diplomatickou žádost od státu %s." % sender)
+	_zaloguj_globalni_zpravu("Diplomacie", "%s odmitl od %s %s." % [player_clean, sender, req_name], "diplomacy")
 	return true
+
+func hrac_odmitni_vsechny_diplomaticke_zadosti(hrac_tag: String) -> int:
+	var player_clean = _normalizuj_tag(hrac_tag)
+	if player_clean == "":
+		return 0
+	if not cekajici_diplomaticke_zadosti.has(player_clean):
+		return 0
+
+	var queue = cekajici_diplomaticke_zadosti[player_clean] as Array
+	var count = queue.size()
+	if count <= 0:
+		return 0
+
+	queue.clear()
+	if je_lidsky_stat(player_clean):
+		_pridej_popup_hraci(player_clean, "Diplomacie", "Odmítl jsi všechny čekající diplomatické žádosti (%d)." % count)
+	return count
+
+func hrac_prijmi_vsechny_diplomaticke_zadosti(hrac_tag: String) -> int:
+	var player_clean = _normalizuj_tag(hrac_tag)
+	if player_clean == "":
+		return 0
+	if not cekajici_diplomaticke_zadosti.has(player_clean):
+		return 0
+
+	var queue_copy = (cekajici_diplomaticke_zadosti[player_clean] as Array).duplicate(true)
+	if queue_copy.is_empty():
+		return 0
+
+	var accepted := 0
+	for req in queue_copy:
+		var from_tag = _normalizuj_tag(str((req as Dictionary).get("from", "")))
+		if from_tag == "":
+			continue
+		if hrac_prijmi_diplomatickou_zadost(player_clean, from_tag):
+			accepted += 1
+
+	if accepted > 0 and je_lidsky_stat(player_clean):
+		_pridej_popup_hraci(player_clean, "Diplomacie", "Přijal jsi čekající diplomatické žádosti (%d)." % accepted)
+	return accepted
 
 # Diplomacy helpers
 func jsou_ve_valce(tag1: String, tag2: String) -> bool:
@@ -1615,6 +1966,7 @@ func _vyhlasit_valku_par(utocnik: String, obrance: String, headline: String, det
 
 	var msg = "%s\n\n%s" % [headline, details]
 	print(msg.replace("\n\n", " "))
+	_zaloguj_globalni_zpravu("Valka", "%s vyhlasil valku statu %s." % [a, b], "war")
 	if je_lidsky_stat(a) or je_lidsky_stat(b):
 		_pridej_popup_zucastnenym_hracum(a, b, "DIPLOMACIE", msg)
 	_aplikuj_diplomatickou_reakci_na_agresi(a, b)
@@ -1799,6 +2151,7 @@ func _uzavri_mir_mezi(tag1: String, tag2: String):
 	var cisty_tag2 = tag2.strip_edges().to_upper()
 	var klic1 = cisty_tag1 + "_" + cisty_tag2
 	var klic2 = cisty_tag2 + "_" + cisty_tag1
+	_zaloguj_globalni_zpravu("Valka", "%s a %s uzavrely mir." % [cisty_tag1, cisty_tag2], "war")
 
 	valky.erase(klic1)
 	valky.erase(klic2)
@@ -1851,11 +2204,11 @@ func _prepis_okupace_po_miru(tag_a: String, tag_b: String) -> void:
 
 	for p_id in map_data:
 		var d = map_data[p_id]
-		var owner = _normalizuj_tag(str(d.get("owner", "")))
-		var core_owner = _normalizuj_tag(str(d.get("core_owner", owner)))
-		if owner == a and core_owner == b:
+		var owner_tag = _normalizuj_tag(str(d.get("owner", "")))
+		var core_owner = _normalizuj_tag(str(d.get("core_owner", owner_tag)))
+		if owner_tag == a and core_owner == b:
 			d["core_owner"] = a
-		elif owner == b and core_owner == a:
+		elif owner_tag == b and core_owner == a:
 			d["core_owner"] = b
 
 	var map_loader = _get_map_loader()
@@ -2193,20 +2546,19 @@ func _zobraz_hlaseni_neagresivnich_smluv_hrace(zmeny: Array) -> void:
 		if a == "" or b == "":
 			continue
 
+		# Incoming requests already have dedicated accept/decline UI, so do not
+		# duplicate them as system popups.
+		if is_request:
+			continue
+
 		if je_lidsky_stat(a):
 			if not lines_by_target.has(a):
 				lines_by_target[a] = []
-			if is_request:
-				(lines_by_target[a] as Array).append("%s navrhuje neagresivní smlouvu na %d kol. Otevři diplomacii a rozhodni." % [b, NON_AGGRESSION_DURATION_TURNS])
-			else:
-				(lines_by_target[a] as Array).append("Neagresivní smlouva se státem %s (%d kol)." % [b, NON_AGGRESSION_DURATION_TURNS])
+			(lines_by_target[a] as Array).append("Neagresivní smlouva se státem %s (%d kol)." % [b, NON_AGGRESSION_DURATION_TURNS])
 		if je_lidsky_stat(b):
 			if not lines_by_target.has(b):
 				lines_by_target[b] = []
-			if is_request:
-				(lines_by_target[b] as Array).append("%s navrhuje neagresivní smlouvu na %d kol. Otevři diplomacii a rozhodni." % [a, NON_AGGRESSION_DURATION_TURNS])
-			else:
-				(lines_by_target[b] as Array).append("Neagresivní smlouva se státem %s (%d kol)." % [a, NON_AGGRESSION_DURATION_TURNS])
+			(lines_by_target[b] as Array).append("Neagresivní smlouva se státem %s (%d kol)." % [a, NON_AGGRESSION_DURATION_TURNS])
 
 	for target_tag in lines_by_target.keys():
 		var lines = lines_by_target[target_tag] as Array
@@ -2293,20 +2645,19 @@ func _zobraz_hlaseni_alianci_hrace(zmeny: Array) -> void:
 		if a == "" or b == "":
 			continue
 
+		# Incoming requests already have dedicated accept/decline UI, so do not
+		# duplicate them as system popups.
+		if is_request:
+			continue
+
 		if je_lidsky_stat(a):
 			if not lines_by_target.has(a):
 				lines_by_target[a] = []
-			if is_request:
-				(lines_by_target[a] as Array).append("%s navrhuje alianci: %s. Otevři diplomacii a rozhodni." % [b, nazev_urovne_aliance(level)])
-			else:
-				(lines_by_target[a] as Array).append("Aliance se statem %s: %s" % [b, nazev_urovne_aliance(level)])
+			(lines_by_target[a] as Array).append("Aliance se statem %s: %s" % [b, nazev_urovne_aliance(level)])
 		if je_lidsky_stat(b):
 			if not lines_by_target.has(b):
 				lines_by_target[b] = []
-			if is_request:
-				(lines_by_target[b] as Array).append("%s navrhuje alianci: %s. Otevři diplomacii a rozhodni." % [a, nazev_urovne_aliance(level)])
-			else:
-				(lines_by_target[b] as Array).append("Aliance se statem %s: %s" % [a, nazev_urovne_aliance(level)])
+			(lines_by_target[b] as Array).append("Aliance se statem %s: %s" % [a, nazev_urovne_aliance(level)])
 
 	for target_tag in lines_by_target.keys():
 		var lines = lines_by_target[target_tag] as Array
@@ -2364,11 +2715,13 @@ func _vyhodnot_mirove_nabidky_pred_ai():
 			_uzavri_mir_mezi(odesilatel, prijemce)
 			var ok_msg = "Mirova nabidka prijata: %s a %s uzavrely mir." % [odesilatel, prijemce]
 			print(ok_msg)
+			_zaloguj_globalni_zpravu("Diplomacie", ok_msg, "diplomacy")
 			if je_lidsky_stat(odesilatel) or je_lidsky_stat(prijemce):
 				_pridej_popup_zucastnenym_hracum(odesilatel, prijemce, "DIPLOMACIE", ok_msg)
 		else:
 			var no_msg = "Mirova nabidka odmitnuta: %s odmitlo mir se statem %s." % [prijemce, odesilatel]
 			print(no_msg)
+			_zaloguj_globalni_zpravu("Diplomacie", no_msg, "diplomacy")
 			if je_lidsky_stat(odesilatel) or je_lidsky_stat(prijemce):
 				_pridej_popup_zucastnenym_hracum(odesilatel, prijemce, "DIPLOMACIE", no_msg)
 
@@ -2390,6 +2743,11 @@ func zaregistruj_obsazeni_hlavniho_mesta(obrance: String, utocnik: String, capit
 		"capital_id": capital_province_id,
 		"capture_turn": aktualni_kolo
 	})
+	_zaloguj_globalni_zpravu(
+		"Valka",
+		"%s obsadilo hlavni mesto statu %s. Pokud ho udrzi do dalsiho kola, nasleduje kapitulace." % [uto, obr],
+		"war"
+	)
 
 func vyhodnot_odlozene_kapitulace() -> Array:
 	var hotove: Array = []
@@ -2718,15 +3076,15 @@ func zpracuj_tah_ai():
 
 	# Evaluate pending peace offers before AI plans any attacks.
 	await _vyhodnot_mirove_nabidky_pred_ai()
-	await _vyhodnot_aliancni_zadosti_pred_ai()
+	_vyhodnot_aliancni_zadosti_pred_ai()
 	var zmeny_neagrese_k_hraci = _zpracuj_ai_neagresivni_smlouvy(ai_staty)
-	await _zobraz_hlaseni_neagresivnich_smluv_hrace(zmeny_neagrese_k_hraci)
+	_zobraz_hlaseni_neagresivnich_smluv_hrace(zmeny_neagrese_k_hraci)
 	var zmeny_vztahu_k_hraci = _zpracuj_ai_diplomacii(ai_staty)
 	await _zobraz_hlaseni_vztahu_hrace(zmeny_vztahu_k_hraci)
 	var zmeny_opusteni_alianci = _zpracuj_ai_opusteni_alianci(ai_staty)
-	await _zobraz_hlaseni_opusteni_alianci_hrace(zmeny_opusteni_alianci)
+	_zobraz_hlaseni_opusteni_alianci_hrace(zmeny_opusteni_alianci)
 	var zmeny_alianci_k_hraci = _zpracuj_ai_aliance(ai_staty)
-	await _zobraz_hlaseni_alianci_hrace(zmeny_alianci_k_hraci)
+	_zobraz_hlaseni_alianci_hrace(zmeny_alianci_k_hraci)
 		
 	var cena_za_vojaka = 0.01
 
@@ -2834,7 +3192,7 @@ func _naplanuj_ai_presuny(map_loader):
 				moved_from[move["from"]] = true
 			else:
 				if _ma_smyls_vyhlasit_valku(owner_tag, target_owner, int(move["from"]), int(move["to"]), amount):
-					await vyhlasit_valku(owner_tag, target_owner)
+					vyhlasit_valku(owner_tag, target_owner)
 					if jsou_ve_valce(owner_tag, target_owner):
 						map_loader.zaregistruj_presun_armady(move["from"], move["to"], amount, false)
 						moved_from[move["from"]] = true

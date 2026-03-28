@@ -367,7 +367,9 @@ func _ziskej_lane_index(slot: int) -> int:
 	if slot <= 0:
 		return 0
 	var magnitude = int((float(slot) + 1.0) / 2.0)
-	return magnitude if slot % 2 == 1 else -magnitude
+	if slot % 2 == 1:
+		return magnitude
+	return -magnitude
 
 func _vypocitej_ofset_trasy(from_id: int, to_id: int, start_pos: Vector2, end_pos: Vector2) -> Vector2:
 	var a = min(from_id, to_id)
@@ -2708,6 +2710,9 @@ func _zpracuj_automaticke_kapitulace(celkovy_report: String) -> String:
 			GameManager.vycisti_stat_po_kapitulaci(target_owner)
 
 		var okupanti: Dictionary = vysledek.get("okupanti", {})
+		var casti: Array = []
+		for okupant in okupanti.keys():
+			casti.append("%s: %d" % [okupant, int(okupanti[okupant])])
 		var hrac_zapojen = GameManager.je_lidsky_stat(target_owner)
 		if not hrac_zapojen:
 			for okupant in okupanti.keys():
@@ -2715,10 +2720,13 @@ func _zpracuj_automaticke_kapitulace(celkovy_report: String) -> String:
 					hrac_zapojen = true
 					break
 		if hrac_zapojen:
-			var casti: Array = []
-			for okupant in okupanti.keys():
-				casti.append("%s: %d" % [okupant, int(okupanti[okupant])])
 			celkovy_report += "💥 AUTOMATICKÁ KAPITULACE: %s ztratilo všechna neokupovaná území. Rozdělení dle okupace: %s.\n\n" % [target_owner, ", ".join(casti)]
+		if GameManager.has_method("_zaloguj_globalni_zpravu"):
+			GameManager._zaloguj_globalni_zpravu(
+				"Valka",
+				"Automaticka kapitulace statu %s. Rozdeleni dle okupace: %s." % [target_owner, ", ".join(casti)],
+				"war"
+			)
 
 	return celkovy_report
 
@@ -2746,6 +2754,12 @@ func _zpracuj_odlozene_kapitulace(celkovy_report: String) -> String:
 			for okupant in okupanti.keys():
 				casti.append("%s: %d" % [okupant, int(okupanti[okupant])])
 			celkovy_report += "💥 KAPITULACE: %s udrželo hlavní město státu %s celé jedno kolo. Rozdělení dle okupace: %s.\n\n" % [winner_tag, target_owner, ", ".join(casti)]
+			if GameManager.has_method("_zaloguj_globalni_zpravu"):
+				GameManager._zaloguj_globalni_zpravu(
+					"Valka",
+					"Kapitulace statu %s po udrzeni hlavniho mesta. Rozdeleni dle okupace: %s." % [target_owner, ", ".join(casti)],
+					"war"
+				)
 
 	return celkovy_report
 

@@ -1,6 +1,5 @@
 extends CanvasLayer
 
-const TooltipUtils = preload("res://scripts/TooltipUtils.gd")
 
 @onready var id_label = $PanelContainer/VBoxContainer/IDLabel
 @onready var owner_label = $PanelContainer/VBoxContainer/OwnerLabel
@@ -77,9 +76,9 @@ func _ziskej_prijmovou_sazbu_hdp() -> float:
 	return 0.1
 
 func _limit_verbovani_v_okupaci(requested: int, prov_data: Dictionary) -> int:
-	var owner = str(prov_data.get("owner", "")).strip_edges().to_upper()
-	var core_owner = str(prov_data.get("core_owner", owner)).strip_edges().to_upper()
-	var je_okupace = owner != "" and owner != "SEA" and core_owner != "" and core_owner != owner
+	var owner_tag = str(prov_data.get("owner", "")).strip_edges().to_upper()
+	var core_owner = str(prov_data.get("core_owner", owner_tag)).strip_edges().to_upper()
+	var je_okupace = owner_tag != "" and owner_tag != "SEA" and core_owner != "" and core_owner != owner_tag
 	if not je_okupace:
 		return max(0, requested)
 	# Occupation allows only limited local recruitment each action.
@@ -196,10 +195,10 @@ func _setup_inline_delta_rows() -> void:
 	_wrap_metric_label("income", income_label)
 	_wrap_metric_label("soldiers", soldiers_label)
 
-func _set_metric_visible(key: String, visible: bool) -> void:
+func _set_metric_visible(key: String, metric_visible: bool) -> void:
 	if _metric_rows.has(key):
-		(_metric_rows[key] as Control).visible = visible
-	if not visible:
+		(_metric_rows[key] as Control).visible = metric_visible
+	if not metric_visible:
 		_set_metric_delta(key, "", Color.WHITE)
 
 func _set_metric_delta(key: String, text: String, color: Color) -> void:
@@ -898,8 +897,8 @@ func _ziskej_hromadne_vlastni_pozemni() -> Array:
 		if not province_data.has(pid):
 			continue
 		var d = province_data[pid]
-		var owner = str(d.get("owner", "")).strip_edges().to_upper()
-		if owner == GameManager.hrac_stat and owner != "SEA":
+		var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
+		if owner_tag == GameManager.hrac_stat and owner_tag != "SEA":
 			out.append(pid)
 	return out
 
@@ -911,12 +910,12 @@ func _ziskej_hromadne_zdroje_s_armadou() -> Array:
 		if not province_data.has(pid):
 			continue
 		var d = province_data[pid]
-		var owner = str(d.get("owner", "")).strip_edges().to_upper()
+		var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
 		var army_owner = str(d.get("army_owner", "")).strip_edges().to_upper()
-		var je_more = (owner == "SEA")
+		var je_more = (owner_tag == "SEA")
 		if int(d.get("soldiers", 0)) <= 0:
 			continue
-		if owner == GameManager.hrac_stat or (je_more and army_owner == GameManager.hrac_stat):
+		if owner_tag == GameManager.hrac_stat or (je_more and army_owner == GameManager.hrac_stat):
 			out.append(pid)
 	return out
 

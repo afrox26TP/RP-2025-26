@@ -11,22 +11,22 @@ func aktualizuj_labely_statu(all_provinces: Dictionary, prov_labels_node: Node2D
 	for child in prov_labels_node.get_children():
 		var p_id = int(child.get("province_id"))
 		if all_provinces.has(p_id):
-			var owner = str(all_provinces[p_id].get("owner", ""))
-			if owner == "SEA" or owner == "": continue
+			var owner_tag = str(all_provinces[p_id].get("owner", ""))
+			if owner_tag == "SEA" or owner_tag == "": continue
 			
-			if not staty_data.has(owner):
-				staty_data[owner] = {
+			if not staty_data.has(owner_tag):
+				staty_data[owner_tag] = {
 					"body": [], 
-					"jmeno": all_provinces[p_id].get("country_name", owner),
+					"jmeno": all_provinces[p_id].get("country_name", owner_tag),
 					# Extract ideology from the first valid province
 					"ideologie": str(all_provinces[p_id].get("ideology", "")) 
 				}
-			staty_data[owner]["body"].append(child.global_position)
+			staty_data[owner_tag]["body"].append(child.global_position)
 			
 	var existujici_vlastnici = []
-	for owner in staty_data.keys():
-		existujici_vlastnici.append(owner)
-		var body = staty_data[owner]["body"]
+	for owner_tag in staty_data.keys():
+		existujici_vlastnici.append(owner_tag)
+		var body = staty_data[owner_tag]["body"]
 		
 		var min_p = body[0]
 		var max_p = body[0]
@@ -46,18 +46,18 @@ func aktualizuj_labely_statu(all_provinces: Dictionary, prov_labels_node: Node2D
 		# Country size based on bounding box extremes (used for visibility checks)
 		var velikost_statu = min_p.distance_to(max_p) 
 		
-		_vykresli_label(owner, staty_data[owner]["jmeno"], stred, velikost_statu, staty_data[owner]["ideologie"])
+		_vykresli_label(owner_tag, staty_data[owner_tag]["jmeno"], stred, velikost_statu, staty_data[owner_tag]["ideologie"])
 		
 	var znicene_staty = []
-	for owner in aktivni_labely.keys():
-		if not owner in existujici_vlastnici:
-			aktivni_labely[owner].queue_free()
-			znicene_staty.append(owner)
+	for owner_tag in aktivni_labely.keys():
+		if not owner_tag in existujici_vlastnici:
+			aktivni_labely[owner_tag].queue_free()
+			znicene_staty.append(owner_tag)
 			
 	for zniceny in znicene_staty:
 		aktivni_labely.erase(zniceny)
 
-func _vykresli_label(tag: String, jmeno: String, pozice: Vector2, velikost: float, ideologie: String):
+func _vykresli_label(tag: String, jmeno: String, pozice: Vector2, velikost: float, _ideologie: String):
 	var inst
 	if not aktivni_labely.has(tag):
 		inst = label_scene.instantiate()

@@ -1,7 +1,5 @@
 extends CanvasLayer
 
-const TooltipUtils = preload("res://scripts/TooltipUtils.gd")
-
 @onready var money_label = $Panel/HBoxContainer/MoneyLabel
 @onready var turn_label = $Panel/HBoxContainer/TurnLabel
 @onready var next_btn = $Panel/HBoxContainer/NextTurnButton

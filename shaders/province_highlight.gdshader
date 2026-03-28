@@ -41,16 +41,15 @@ void fragment() {
 			base_color.rgb = mix(base_color.rgb, base_color.rgb * 0.72, hatch * 0.20);
 		}
 
-		// --- SELECTION AND HOVER LOGIC ---
+		// Hover/selection keep the original province color and only change luminance.
 		if ((has_selected && abs(prov_id - selected_id) < 0.1) || multi_selected_flag.a > 0.5) {
-			// Cyan for selected province
-			COLOR.rgb = base_color.a < 0.1 ? vec3(0.0, 1.0, 1.0) : mix(base_color.rgb, vec3(0.0, 1.0, 1.0), 0.5);
-			COLOR.a = 0.8; 
+			float select_dim = 0.88;
+			COLOR.rgb = base_color.rgb * select_dim;
+			COLOR.a = base_color.a;
 		} else if (has_hover && abs(prov_id - hovered_id) < 0.1) {
-			// --- MODIFIED: Switch to green color if targeting, otherwise keep yellow ---
-			vec3 hover_color = is_target_hover ? vec3(0.2, 1.0, 0.2) : vec3(1.0, 1.0, 0.0);
-			COLOR.rgb = base_color.a < 0.1 ? hover_color : mix(base_color.rgb, hover_color, 0.4);
-			COLOR.a = 0.6; 
+			float hover_boost = is_target_hover ? 0.14 : 0.10;
+			COLOR.rgb = mix(base_color.rgb, vec3(1.0), hover_boost);
+			COLOR.a = base_color.a;
 		} else {
 			COLOR = base_color;
 		}

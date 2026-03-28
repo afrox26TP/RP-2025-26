@@ -1,7 +1,5 @@
 extends CanvasLayer
 
-const TooltipUtils = preload("res://scripts/TooltipUtils.gd")
-
 @onready var panel = $OverviewPanel
 
 # Updated paths for the new UI tree structure
@@ -32,6 +30,7 @@ const TooltipUtils = preload("res://scripts/TooltipUtils.gd")
 @onready var popup_request_text = $DiplomacyRequestPopup/HBoxContainer/RequestText
 @onready var popup_accept_btn = $DiplomacyRequestPopup/HBoxContainer/AcceptButton
 @onready var popup_decline_btn = $DiplomacyRequestPopup/HBoxContainer/DeclineButton
+@onready var popup_decline_all_btn = $DiplomacyRequestPopup/HBoxContainer/DeclineAllButton
 @onready var system_message_popup = $SystemMessagePopup
 @onready var system_message_title = $SystemMessagePopup/VBoxContainer/MessageTitle
 @onready var system_message_text = $SystemMessagePopup/VBoxContainer/MessageText
@@ -72,9 +71,30 @@ var _updating_ideology_ui: bool = false
 var _ideology_dropdown_open: bool = false
 var _ideology_hover_idx: int = -1
 var _ideology_effects_base_text: String = ""
+var _diplomacy_queue_preview_cards: Array = []
+var _queue_preview_toggle_btn: Button
+var _queue_preview_panel: Panel
+var _queue_preview_scroll: ScrollContainer
+var _queue_preview_list: VBoxContainer
+var _queue_preview_expanded: bool = false
+var _queue_preview_rows: int = 0
+var _zpravy_toggle_btn: Button
+var _zpravy_panel: Panel
+var _zpravy_mode_local_btn: Button
+var _zpravy_mode_global_btn: Button
+var _zpravy_mode: int = 0 # 0 = moje zeme, 1 = globalni
+var _zpravy_title_label: Label
+var _zpravy_historie_checkbox: CheckBox
+var _zpravy_scroll: ScrollContainer
+var _zpravy_groups_list: VBoxContainer
+var _zpravy_category_expanded: Dictionary = {}
+var _zpravy_expanded: bool = false
+var _zpravy_historie_expanded: bool = false
 
 const POPUP_TOP_MARGIN := 6
 const POPUP_GAP := 6
+const QUEUE_PREVIEW_MAX_ITEMS := 8
+const ZPRAVY_MAX_ITEMS := 180
 const MAIN_MENU_SCENE_PATH := "res://scenes/MainMenu.tscn"
 const IDEOLOGY_UI_ORDER := ["demokracie", "kralovstvi", "autokracie", "komunismus", "nacismus", "fasismus"]
 
@@ -97,8 +117,8 @@ func _resolve_flag_texture(owner_tag: String, ideologie: String):
 				return flag_texture_cache[ideol_path]
 
 	var base_candidates = [
-		"res://map_data/Flags/%s.svg" % owner_tag,
-		"res://map_data/Flags/%s.png" % owner_tag
+		"res://map_data/Flags/%s.svg" % cisty_tag,
+		"res://map_data/Flags/%s.png" % cisty_tag
 	]
 	for path in base_candidates:
 		if ResourceLoader.exists(path):
@@ -172,8 +192,8 @@ func _ziskej_jmeno_statu_podle_tagu(tag: String) -> String:
 	for p_id in GameManager.map_data:
 		var d = GameManager.map_data[p_id]
 		if str(d.get("owner", "")).strip_edges().to_upper() == cisty:
-			var name = str(d.get("country_name", cisty)).strip_edges()
-			return name if name != "" else cisty
+			var country_name = str(d.get("country_name", cisty)).strip_edges()
+			return country_name if country_name != "" else cisty
 	return cisty
 
 func _ready():
@@ -195,10 +215,12 @@ func _ready():
 		accept_request_btn.pressed.connect(_on_accept_request_pressed)
 	if decline_request_btn and not decline_request_btn.pressed.is_connected(_on_decline_request_pressed):
 		decline_request_btn.pressed.connect(_on_decline_request_pressed)
-	if popup_accept_btn and not popup_accept_btn.pressed.is_connected(_on_popup_accept_request_pressed):
-		popup_accept_btn.pressed.connect(_on_popup_accept_request_pressed)
-	if popup_decline_btn and not popup_decline_btn.pressed.is_connected(_on_popup_decline_request_pressed):
-		popup_decline_btn.pressed.connect(_on_popup_decline_request_pressed)
+	if popup_accept_btn and not popup_accept_btn.pressed.is_connected(_on_popup_accept_all_requests_pressed):
+		popup_accept_btn.pressed.connect(_on_popup_accept_all_requests_pressed)
+	if popup_decline_btn and not popup_decline_btn.pressed.is_connected(_on_popup_decline_all_requests_pressed):
+		popup_decline_btn.pressed.connect(_on_popup_decline_all_requests_pressed)
+	if popup_decline_all_btn and not popup_decline_all_btn.pressed.is_connected(_on_popup_decline_all_requests_pressed):
+		popup_decline_all_btn.pressed.connect(_on_popup_decline_all_requests_pressed)
 	if system_message_ok_btn and not system_message_ok_btn.pressed.is_connected(_on_system_message_ok_pressed):
 		system_message_ok_btn.pressed.connect(_on_system_message_ok_pressed)
 	if improve_rel_btn and not improve_rel_btn.pressed.is_connected(_on_improve_relationship_pressed):
@@ -225,6 +247,17 @@ func _ready():
 		GameManager.kolo_zmeneno.connect(_on_kolo_zmeneno)
 	if diplomacy_request_popup:
 		diplomacy_request_popup.hide()
+		if popup_decline_all_btn:
+			popup_decline_all_btn.hide()
+		if popup_request_flag:
+			popup_request_flag.hide()
+	_zajisti_vizual_fronty_diplomacii()
+	_zajisti_rozbaleni_fronty_popupu()
+	_zajisti_panel_zprav()
+	_aktualizuj_vizual_fronty_diplomacii(0)
+	_aktualizuj_text_rozbaleni_fronty(0)
+	_aktualizuj_tlacitko_zprav()
+	_aktualizuj_panel_zprav()
 	if system_message_popup:
 		system_message_popup.hide()
 	if get_viewport() and not get_viewport().size_changed.is_connected(_on_viewport_resized):
@@ -249,16 +282,10 @@ func _process(_delta: float) -> void:
 			_on_ideology_dropdown_item_focused(idx)
 
 func _setup_popup_country_link() -> void:
-	var hbox = get_node_or_null("DiplomacyRequestPopup/HBoxContainer") as HBoxContainer
-	if hbox and _popup_country_link_btn == null:
-		_popup_country_link_btn = LinkButton.new()
-		_popup_country_link_btn.name = "RequestCountryLink"
-		_popup_country_link_btn.text = ""
-		_popup_country_link_btn.focus_mode = Control.FOCUS_NONE
-		_popup_country_link_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		hbox.add_child(_popup_country_link_btn)
-		hbox.move_child(_popup_country_link_btn, 1)
-		_popup_country_link_btn.pressed.connect(_on_popup_country_reference_pressed)
+	# Sender name text in the popup was intentionally removed to keep the card compact.
+	if _popup_country_link_btn:
+		_popup_country_link_btn.hide()
+		_popup_country_link_btn.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	if popup_request_flag and not popup_request_flag.gui_input.is_connected(_on_popup_flag_gui_input):
 		popup_request_flag.gui_input.connect(_on_popup_flag_gui_input)
@@ -294,8 +321,10 @@ func _nastav_tooltipy_ui() -> void:
 	if _popup_country_link_btn:
 		_popup_country_link_btn.tooltip_text = "Klikni pro otevreni prehledu tohoto statu."
 	popup_request_text.tooltip_text = "Strucny popis diplomaticke nabidky."
-	popup_accept_btn.tooltip_text = "Prijme diplomatickou nabidku."
-	popup_decline_btn.tooltip_text = "Odmita diplomatickou nabidku."
+	popup_accept_btn.tooltip_text = "Prijme vsechny cekajici nabidky."
+	popup_decline_btn.tooltip_text = "Odmitne vsechny cekajici nabidky."
+	if popup_decline_all_btn:
+		popup_decline_all_btn.tooltip_text = "Odmítne všechny čekající diplomatické nabídky."
 	system_message_title.tooltip_text = "Titulek systemoveho hlaseni."
 	system_message_text.tooltip_text = "Detailni text systemoveho hlaseni."
 	system_message_ok_btn.tooltip_text = "Potvrdi a zavre hlaseni."
@@ -648,7 +677,7 @@ func _sestav_ideology_effects_text(base_ideology: String, preview_ideology: Stri
 		d_recruit_regen_core_pct = (float(preview_profile.get("recruit_regen_ratio_core", recruit_regen_core_pct / 100.0)) * 100.0) - recruit_regen_core_pct
 		d_recruit_regen_occ_pct = (float(preview_profile.get("recruit_regen_ratio_occupied", recruit_regen_occ_pct / 100.0)) * 100.0) - recruit_regen_occ_pct
 
-	return "Cena / 1 vojak: %s%s\nUdrzba/vojak / kolo: %s%s\nSazba prijmu z HDP: %.2f%%%s\nHDP/rust: %.3f%s\nRust populace / kolo: %.3f%%%s\nObnova rekrutu(core): %.2f%%%s\nObnova rekrutu(occ): %.2f%%%s" % [
+	return "Cena/vojak: %s%s\nUdrzba/vojak / kolo: %s%s\nSazba prijmu z HDP: %.2f%%%s\nHDP/rust: %.3f%s\nRust populace / kolo: %.3f%%%s\nObnova rekrutu(core): %.2f%%%s\nObnova rekrutu(occ): %.2f%%%s" % [
 		_format_money_auto(recruit_cost, 4),
 		_format_delta_text_color(d_recruit_cost, 4, " mil") if show_delta else "",
 		_format_money_auto(upkeep_cost, 4),
@@ -1512,14 +1541,15 @@ func _on_pause_confirmed() -> void:
 func _topbar_bottom_y() -> float:
 	var topbar = get_tree().current_scene.find_child("TopBar", true, false)
 	if topbar and topbar is CanvasLayer:
-		var panel = topbar.find_child("Panel", true, false)
-		if panel and panel is Control:
-			return (panel as Control).global_position.y + (panel as Control).size.y
+		var top_panel = topbar.find_child("Panel", true, false)
+		if top_panel and top_panel is Control:
+			return (top_panel as Control).global_position.y + (top_panel as Control).size.y
 	return 35.0
 
 func _aktualizuj_pozice_popupu():
 	var viewport_size = get_viewport().get_visible_rect().size
 	var top_y = _topbar_bottom_y() + POPUP_TOP_MARGIN
+	_pozicuj_tlacitko_zprav()
 
 	if diplomacy_request_popup:
 		var req_w = clamp(viewport_size.x * 0.50, 500.0, 820.0)
@@ -1531,6 +1561,27 @@ func _aktualizuj_pozice_popupu():
 		var req_h = clamp(34.0 + float(req_lines) * 14.0, 48.0, 78.0)
 		diplomacy_request_popup.position = Vector2((viewport_size.x - req_w) * 0.5, top_y)
 		diplomacy_request_popup.size = Vector2(req_w, req_h)
+		_rozmistit_vizual_fronty_diplomacii()
+		if _queue_preview_panel:
+			var rows = max(1, _queue_preview_rows)
+			var panel_h = clamp(56.0 + float(rows) * 36.0, 160.0, 520.0)
+			var panel_w = req_w
+			_queue_preview_panel.position = Vector2((viewport_size.x - panel_w) * 0.5, top_y + req_h + 6.0)
+			_queue_preview_panel.size = Vector2(panel_w, panel_h)
+	if _zpravy_panel and _zpravy_toggle_btn:
+		var zpravy_w = clamp(viewport_size.x * 0.36, 460.0, 690.0)
+		var zpravy_h = clamp(viewport_size.y * 0.34, 180.0, 380.0)
+		var x = viewport_size.x - zpravy_w - 10.0
+		var y = _zpravy_toggle_btn.global_position.y + _zpravy_toggle_btn.size.y + 6.0
+		if diplomacy_request_popup and diplomacy_request_popup.visible:
+			var zpravy_rect = Rect2(Vector2(x, y), Vector2(zpravy_w, zpravy_h))
+			var dip_rect = Rect2(diplomacy_request_popup.position, diplomacy_request_popup.size)
+			if zpravy_rect.intersects(dip_rect):
+				y = dip_rect.position.y + dip_rect.size.y + POPUP_GAP
+				if _queue_preview_panel and _queue_preview_panel.visible:
+					y = _queue_preview_panel.position.y + _queue_preview_panel.size.y + POPUP_GAP
+		_zpravy_panel.position = Vector2(x, y)
+		_zpravy_panel.size = Vector2(zpravy_w, zpravy_h)
 
 	if system_message_popup:
 		var msg_w = clamp(viewport_size.x * 0.42, 440.0, 760.0)
@@ -1545,6 +1596,10 @@ func _aktualizuj_pozice_popupu():
 		var msg_y = top_y
 		if diplomacy_request_popup and diplomacy_request_popup.visible:
 			msg_y += diplomacy_request_popup.size.y + POPUP_GAP
+		if _queue_preview_panel and _queue_preview_panel.visible:
+			msg_y += _queue_preview_panel.size.y + POPUP_GAP
+		if _zpravy_panel and _zpravy_panel.visible:
+			msg_y += _zpravy_panel.size.y + POPUP_GAP
 		var max_msg_h = max(110.0, viewport_size.y - msg_y - 12.0)
 		var msg_h = clamp(96.0 + float(approx_lines) * 18.0, 110.0, max_msg_h)
 		system_message_popup.position = Vector2((viewport_size.x - msg_w) * 0.5, msg_y)
@@ -1577,7 +1632,7 @@ func _napln_aliance_option():
 	alliance_level_option.add_item("[O] Utocna (spolecny utok)", 2)
 	alliance_level_option.add_item("[F] Plna (obrana + utok)", 3)
 
-func _aktualizuj_zadost_ui(target_tag: String):
+func _aktualizuj_zadost_ui(_target_tag: String):
 	_current_incoming_request = {}
 	if incoming_request_label:
 		incoming_request_label.hide()
@@ -1588,50 +1643,892 @@ func _aktualizuj_popup_diplomatickych_zadosti():
 	_popup_request_from_tag = ""
 	if not diplomacy_request_popup:
 		return
-	if not GameManager.has_method("ziskej_prvni_cekajici_diplomatickou_zadost"):
+	if not GameManager.has_method("ziskej_cekajici_diplomaticke_zadosti"):
 		diplomacy_request_popup.hide()
+		_aktualizuj_vizual_fronty_diplomacii(0)
+		_aktualizuj_text_rozbaleni_fronty(0)
+		_aktualizuj_panel_rozbalene_fronty([])
 		return
 
-	var req = GameManager.ziskej_prvni_cekajici_diplomatickou_zadost(GameManager.hrac_stat)
-	if req.is_empty():
+	var queue = GameManager.ziskej_cekajici_diplomaticke_zadosti(GameManager.hrac_stat)
+	if queue.is_empty():
 		diplomacy_request_popup.hide()
+		_aktualizuj_vizual_fronty_diplomacii(0)
+		_aktualizuj_text_rozbaleni_fronty(0)
+		_aktualizuj_panel_rozbalene_fronty([])
 		return
 
-	var from_tag = str(req.get("from", "")).strip_edges().to_upper()
+	var first_req = queue[0] as Dictionary
+	var from_tag = str(first_req.get("from", "")).strip_edges().to_upper()
 	if from_tag == "":
 		diplomacy_request_popup.hide()
+		_aktualizuj_vizual_fronty_diplomacii(0)
+		_aktualizuj_text_rozbaleni_fronty(0)
+		_aktualizuj_panel_rozbalene_fronty([])
 		return
 	_popup_request_from_tag = from_tag
+	var pending_count := queue.size()
+	_aktualizuj_text_rozbaleni_fronty(pending_count)
 
 	if popup_request_flag:
 		popup_request_flag.texture = _resolve_flag_texture(from_tag, "")
 	if popup_request_text:
-		var req_type = str(req.get("type", ""))
-		var country_name = _ziskej_jmeno_statu_podle_tagu(from_tag)
-		var display_name = "%s (%s)" % [country_name, from_tag]
-		if _popup_country_link_btn:
-			_popup_country_link_btn.text = display_name
-			_popup_country_link_btn.tooltip_text = "Klikni pro otevreni prehledu statu %s." % display_name
-		if popup_request_flag:
-			popup_request_flag.tooltip_text = "Klikni pro otevreni prehledu statu %s." % display_name
-		if req_type == "alliance":
-			var level = int(req.get("level", 0))
-			var level_text = "alianci"
-			match level:
-				1:
-					level_text = "obrannou alianci"
-				2:
-					level_text = "utocnou alianci"
-				3:
-					level_text = "plnou alianci"
-			popup_request_text.text = "navrhuje %s" % level_text
-		elif req_type == "peace":
-			popup_request_text.text = "navrhuje uzavrit mir"
-		else:
-			popup_request_text.text = "navrhuje neagresivni smlouvu (10 kol)"
+		popup_request_text.text = "Diplomacie (%d)" % pending_count
+
+	if popup_accept_btn:
+		popup_accept_btn.text = "Prijmout vse"
+	if popup_decline_btn:
+		popup_decline_btn.text = "Odmitnout vse"
 
 	diplomacy_request_popup.show()
+	_aktualizuj_vizual_fronty_diplomacii(pending_count)
+	_aktualizuj_panel_rozbalene_fronty(queue)
+	_aktualizuj_panel_zprav()
 	_aktualizuj_pozice_popupu()
+
+func _zajisti_rozbaleni_fronty_popupu() -> void:
+	if diplomacy_request_popup == null:
+		return
+	var hbox = get_node_or_null("DiplomacyRequestPopup/HBoxContainer") as HBoxContainer
+	if hbox:
+		if popup_request_text:
+			popup_request_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		if popup_accept_btn:
+			popup_accept_btn.custom_minimum_size = Vector2(104, 0)
+		if popup_decline_btn:
+			popup_decline_btn.custom_minimum_size = Vector2(110, 0)
+		if _queue_preview_toggle_btn == null:
+			_queue_preview_toggle_btn = Button.new()
+			_queue_preview_toggle_btn.name = "QueuePreviewToggleButton"
+			_queue_preview_toggle_btn.text = "Fronta"
+			_queue_preview_toggle_btn.toggle_mode = true
+			_queue_preview_toggle_btn.focus_mode = Control.FOCUS_NONE
+			_queue_preview_toggle_btn.custom_minimum_size = Vector2(88, 0)
+			_queue_preview_toggle_btn.tooltip_text = "Rozbali/skryje nahled cekajicich nabidek."
+			_queue_preview_toggle_btn.pressed.connect(_on_queue_preview_toggle_pressed)
+			hbox.add_child(_queue_preview_toggle_btn)
+			hbox.move_child(_queue_preview_toggle_btn, max(0, hbox.get_child_count() - 1))
+
+	if _queue_preview_panel == null:
+		_queue_preview_panel = Panel.new()
+		_queue_preview_panel.name = "DiplomacyQueueExpandedPanel"
+		_queue_preview_panel.visible = false
+		var style = StyleBoxFlat.new()
+		style.bg_color = Color(0.05, 0.08, 0.13, 0.96)
+		style.border_width_left = 1
+		style.border_width_top = 1
+		style.border_width_right = 1
+		style.border_width_bottom = 1
+		style.border_color = Color(0.45, 0.65, 0.9, 0.60)
+		style.corner_radius_top_left = 8
+		style.corner_radius_top_right = 8
+		style.corner_radius_bottom_left = 8
+		style.corner_radius_bottom_right = 8
+		_queue_preview_panel.add_theme_stylebox_override("panel", style)
+		add_child(_queue_preview_panel)
+
+		_queue_preview_scroll = ScrollContainer.new()
+		_queue_preview_scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_queue_preview_scroll.offset_left = 6.0
+		_queue_preview_scroll.offset_top = 4.0
+		_queue_preview_scroll.offset_right = -6.0
+		_queue_preview_scroll.offset_bottom = -4.0
+		_queue_preview_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		_queue_preview_panel.add_child(_queue_preview_scroll)
+
+		_queue_preview_list = VBoxContainer.new()
+		_queue_preview_list.name = "QueueRows"
+		_queue_preview_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_queue_preview_list.add_theme_constant_override("separation", 8)
+		_queue_preview_scroll.add_child(_queue_preview_list)
+
+func _zajisti_panel_zprav() -> void:
+	if diplomacy_request_popup == null:
+		return
+
+	if _zpravy_toggle_btn == null:
+		_zpravy_toggle_btn = Button.new()
+		_zpravy_toggle_btn.name = "ZpravyToggleButton"
+		_zpravy_toggle_btn.toggle_mode = true
+		_zpravy_toggle_btn.focus_mode = Control.FOCUS_NONE
+		_zpravy_toggle_btn.custom_minimum_size = Vector2(120, 30)
+		_zpravy_toggle_btn.text = "Zpravy"
+		_zpravy_toggle_btn.tooltip_text = "Rozbali centrum zprav (moje zeme / globalni)."
+		_zpravy_toggle_btn.pressed.connect(_on_zpravy_toggle_pressed)
+		add_child(_zpravy_toggle_btn)
+
+	if _zpravy_panel == null:
+		_zpravy_panel = Panel.new()
+		_zpravy_panel.name = "ZpravyPanel"
+		_zpravy_panel.visible = false
+		var style = StyleBoxFlat.new()
+		style.bg_color = Color(0.05, 0.07, 0.11, 0.96)
+		style.border_width_left = 1
+		style.border_width_top = 1
+		style.border_width_right = 1
+		style.border_width_bottom = 1
+		style.border_color = Color(0.42, 0.64, 0.9, 0.58)
+		style.corner_radius_top_left = 8
+		style.corner_radius_top_right = 8
+		style.corner_radius_bottom_left = 8
+		style.corner_radius_bottom_right = 8
+		_zpravy_panel.add_theme_stylebox_override("panel", style)
+		add_child(_zpravy_panel)
+
+		var content_box = VBoxContainer.new()
+		content_box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		content_box.offset_left = 8
+		content_box.offset_top = 6
+		content_box.offset_right = -8
+		content_box.offset_bottom = -6
+		content_box.add_theme_constant_override("separation", 6)
+		_zpravy_panel.add_child(content_box)
+
+		var top = HBoxContainer.new()
+		top.add_theme_constant_override("separation", 8)
+		content_box.add_child(top)
+
+		_zpravy_title_label = Label.new()
+		_zpravy_title_label.text = "Zpravy"
+		_zpravy_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		top.add_child(_zpravy_title_label)
+
+		var mode_tabs = HBoxContainer.new()
+		mode_tabs.add_theme_constant_override("separation", 4)
+		top.add_child(mode_tabs)
+
+		_zpravy_mode_local_btn = Button.new()
+		_zpravy_mode_local_btn.text = "Moje zeme"
+		_zpravy_mode_local_btn.toggle_mode = true
+		_zpravy_mode_local_btn.button_pressed = true
+		_zpravy_mode_local_btn.focus_mode = Control.FOCUS_NONE
+		_zpravy_mode_local_btn.pressed.connect(_on_zpravy_mode_local_pressed)
+		mode_tabs.add_child(_zpravy_mode_local_btn)
+
+		_zpravy_mode_global_btn = Button.new()
+		_zpravy_mode_global_btn.text = "Globalni"
+		_zpravy_mode_global_btn.toggle_mode = true
+		_zpravy_mode_global_btn.focus_mode = Control.FOCUS_NONE
+		_zpravy_mode_global_btn.pressed.connect(_on_zpravy_mode_global_pressed)
+		mode_tabs.add_child(_zpravy_mode_global_btn)
+
+		_zpravy_historie_checkbox = CheckBox.new()
+		_zpravy_historie_checkbox.focus_mode = Control.FOCUS_NONE
+		_zpravy_historie_checkbox.text = "Historie"
+		_zpravy_historie_checkbox.tooltip_text = "Zobrazi zpravy z minulych kol."
+		_zpravy_historie_checkbox.toggled.connect(_on_zpravy_historie_toggled)
+		top.add_child(_zpravy_historie_checkbox)
+
+		_zpravy_scroll = ScrollContainer.new()
+		_zpravy_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		_zpravy_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		content_box.add_child(_zpravy_scroll)
+
+		_zpravy_groups_list = VBoxContainer.new()
+		_zpravy_groups_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_zpravy_groups_list.add_theme_constant_override("separation", 6)
+		_zpravy_scroll.add_child(_zpravy_groups_list)
+
+func _ziskej_aktivni_zpravy() -> Array:
+	if not GameManager:
+		return []
+	var out: Array = []
+	if _zpravy_mode == 1:
+		if GameManager.has_method("ziskej_globalni_zpravy"):
+			out = GameManager.ziskej_globalni_zpravy(ZPRAVY_MAX_ITEMS)
+			out = _odfiltruj_popup_kategorie(out)
+		return out
+	if GameManager.has_method("ziskej_relevantni_zpravy_statu"):
+		out = GameManager.ziskej_relevantni_zpravy_statu(GameManager.hrac_stat, ZPRAVY_MAX_ITEMS, true)
+		return _odfiltruj_popup_kategorie(out)
+	if GameManager.has_method("ziskej_zpravy_hrace"):
+		out = GameManager.ziskej_zpravy_hrace(GameManager.hrac_stat, ZPRAVY_MAX_ITEMS)
+		var current_turn = int(GameManager.aktualni_kolo)
+		var filtered: Array = []
+		for entry in out:
+			if int((entry as Dictionary).get("turn", -1)) == current_turn:
+				filtered.append(entry)
+		return filtered
+	return out
+
+func _ziskej_historicke_zpravy() -> Array:
+	if not GameManager:
+		return []
+	var out: Array = []
+	var current_turn = int(GameManager.aktualni_kolo)
+	if _zpravy_mode == 1:
+		if GameManager.has_method("ziskej_globalni_zpravy"):
+			out = _odfiltruj_popup_kategorie(GameManager.ziskej_globalni_zpravy(ZPRAVY_MAX_ITEMS))
+	else:
+		if GameManager.has_method("ziskej_relevantni_zpravy_statu"):
+			out = _odfiltruj_popup_kategorie(GameManager.ziskej_relevantni_zpravy_statu(GameManager.hrac_stat, ZPRAVY_MAX_ITEMS, false))
+		elif GameManager.has_method("ziskej_zpravy_hrace"):
+			out = _odfiltruj_popup_kategorie(GameManager.ziskej_zpravy_hrace(GameManager.hrac_stat, ZPRAVY_MAX_ITEMS))
+
+	var hist: Array = []
+	for entry in out:
+		if int((entry as Dictionary).get("turn", -1)) < current_turn:
+			hist.append(entry)
+	return hist
+
+func _odfiltruj_popup_kategorie(entries: Array) -> Array:
+	var filtered: Array = []
+	for entry in entries:
+		var cat = str((entry as Dictionary).get("category", "")).to_lower()
+		if cat == "popup":
+			continue
+		filtered.append(entry)
+	return filtered
+
+func _format_zprava(entry: Dictionary, index_from_newest: int) -> String:
+	var category = str(entry.get("category", "")).strip_edges().to_lower()
+	var title = str(entry.get("title", "Info")).strip_edges()
+	var text = str(entry.get("text", "")).strip_edges()
+	if text == "":
+		text = "(bez detailu)"
+	var cat_tag = ""
+	if category != "":
+		cat_tag = "[%s] " % category.capitalize()
+	return "%02d. %s%s: %s" % [index_from_newest, cat_tag, title, text]
+
+func _normalizuj_kategorii_zpravy(category: String, title: String = "", text: String = "") -> String:
+	var c = category.strip_edges().to_lower()
+	match c:
+		"war":
+			return "War"
+		"relations":
+			return "Relations"
+		"alliance":
+			return "Alliance"
+		"gift", "gifts":
+			return "Gifts"
+		"diplomacy":
+			pass
+
+	var body = (title + " " + text).to_lower()
+	var war_tokens = ["valk", "war", "mir", "peace", "kapitul", "okup", "anex", "surrender"]
+	for t in war_tokens:
+		if body.findn(t) != -1:
+			return "War"
+
+	var alliance_tokens = ["alianc", "alliance", "neagres", "spojenec", "pakt"]
+	for t in alliance_tokens:
+		if body.findn(t) != -1:
+			return "Alliance"
+
+	var gift_tokens = ["dar", "gift", "usd", "finance", "financni"]
+	for t in gift_tokens:
+		if body.findn(t) != -1:
+			return "Gifts"
+
+	var relation_tokens = ["vztah", "relations"]
+	for t in relation_tokens:
+		if body.findn(t) != -1:
+			return "Relations"
+
+	if c == "diplomacy":
+		return "Negotiations"
+	return "Other"
+
+func _sestav_skupiny_zprav(entries: Array) -> Dictionary:
+	var grouped: Dictionary = {}
+	for item in entries:
+		var entry = item as Dictionary
+		var cat = _normalizuj_kategorii_zpravy(
+			str(entry.get("category", "")),
+			str(entry.get("title", "")),
+			str(entry.get("text", ""))
+		)
+		if not grouped.has(cat):
+			grouped[cat] = []
+		(grouped[cat] as Array).append(entry)
+	return grouped
+
+func _format_zprava_radek(entry: Dictionary, idx: int, historical: bool) -> String:
+	var base = _format_zprava(entry, idx)
+	if historical:
+		return "[Kolo %d] %s" % [int(entry.get("turn", 0)), base]
+	return base
+
+func _vykresli_skupiny_zprav(current_entries: Array, history_entries: Array) -> void:
+	if _zpravy_groups_list == null:
+		return
+
+	for child in _zpravy_groups_list.get_children():
+		child.queue_free()
+
+	var combined: Array = []
+	for e in current_entries:
+		var d = (e as Dictionary).duplicate(true)
+		d["_historical"] = false
+		combined.append(d)
+	for e in history_entries:
+		var d2 = (e as Dictionary).duplicate(true)
+		d2["_historical"] = true
+		combined.append(d2)
+
+	if combined.is_empty():
+		var empty_lbl = Label.new()
+		empty_lbl.text = "(zadne zpravy)"
+		_zpravy_groups_list.add_child(empty_lbl)
+		return
+
+	var grouped = _sestav_skupiny_zprav(combined)
+	var order = ["War", "Alliance", "Negotiations", "Gifts", "Relations", "Other"]
+	var rendered_any := false
+	for cat in order:
+		if not grouped.has(cat):
+			continue
+		rendered_any = true
+
+		if not _zpravy_category_expanded.has(cat):
+			_zpravy_category_expanded[cat] = true
+
+		var cat_entries = grouped[cat] as Array
+		var section = VBoxContainer.new()
+		section.add_theme_constant_override("separation", 4)
+		_zpravy_groups_list.add_child(section)
+
+		var header_btn = Button.new()
+		header_btn.toggle_mode = true
+		header_btn.button_pressed = bool(_zpravy_category_expanded[cat])
+		header_btn.focus_mode = Control.FOCUS_NONE
+		header_btn.text = "%s (%d)" % [cat, cat_entries.size()]
+		header_btn.pressed.connect(_on_zpravy_category_toggle_pressed.bind(cat))
+		section.add_child(header_btn)
+
+		if not bool(_zpravy_category_expanded[cat]):
+			continue
+
+		var body = VBoxContainer.new()
+		body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		body.add_theme_constant_override("separation", 3)
+		var idx = 1
+		for i in range(cat_entries.size() - 1, -1, -1):
+			var entry = cat_entries[i] as Dictionary
+			var historical = bool(entry.get("_historical", false))
+			var line = _format_zprava_radek(entry, idx, historical)
+			idx += 1
+			if line.strip_edges() == "":
+				continue
+
+			var row = HBoxContainer.new()
+			row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row.add_theme_constant_override("separation", 6)
+
+			var flow = HFlowContainer.new()
+			flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			flow.add_theme_constant_override("h_separation", 3)
+			flow.add_theme_constant_override("v_separation", 2)
+			row.add_child(flow)
+
+			var mentions = _najdi_zminky_statu_v_textu(line)
+			if mentions.is_empty():
+				var fallback_line = line
+				if fallback_line == "":
+					fallback_line = "-"
+				flow.add_child(_vytvor_zprava_text_chunk(fallback_line))
+			else:
+				var cursor := 0
+				for m_any in mentions:
+					var m = m_any as Dictionary
+					var start_idx = int(m.get("start", 0))
+					var end_idx = int(m.get("end", start_idx))
+					var tag = str(m.get("tag", "")).strip_edges().to_upper()
+					if start_idx > cursor:
+						var chunk = line.substr(cursor, start_idx - cursor)
+						if chunk.strip_edges() != "":
+							flow.add_child(_vytvor_zprava_text_chunk(chunk))
+					var flag_btn = _vytvor_zprava_flag_btn(tag)
+					if flag_btn:
+						flow.add_child(flag_btn)
+					else:
+						var fallback = line.substr(start_idx, max(0, end_idx - start_idx))
+						flow.add_child(_vytvor_zprava_text_chunk(fallback))
+					cursor = max(cursor, end_idx)
+				if cursor < line.length():
+					var tail = line.substr(cursor, line.length() - cursor)
+					if tail.strip_edges() != "":
+						flow.add_child(_vytvor_zprava_text_chunk(tail))
+
+			body.add_child(row)
+
+		section.add_child(body)
+
+	if not rendered_any:
+		var empty_lbl2 = Label.new()
+		empty_lbl2.text = "(zadne zpravy pro aktualni filtr)"
+		_zpravy_groups_list.add_child(empty_lbl2)
+
+func _aktualizuj_tlacitko_zprav() -> void:
+	if _zpravy_toggle_btn == null:
+		return
+	var count = _ziskej_aktivni_zpravy().size()
+	_zpravy_toggle_btn.text = "Zpravy (%d)" % count
+	_zpravy_toggle_btn.disabled = false
+
+func _pozicuj_tlacitko_zprav() -> void:
+	if _zpravy_toggle_btn == null:
+		return
+	var viewport_size = get_viewport().get_visible_rect().size
+	var y = _topbar_bottom_y() + 4.0
+	var next_btn = get_tree().current_scene.find_child("NextTurnButton", true, false) as Control
+	if next_btn:
+		y = next_btn.global_position.y + next_btn.size.y + 4.0
+	_zpravy_toggle_btn.position = Vector2(viewport_size.x - _zpravy_toggle_btn.size.x - 12.0, y)
+
+func _vyhledat_tagy_statu_v_textu(text: String) -> Array:
+	var tags: Array = []
+	var seen: Dictionary = {}
+	var rx = RegEx.new()
+	if rx.compile("\\b[A-Z]{3}\\b") != OK:
+		return tags
+	for m in rx.search_all(text.to_upper()):
+		var tag = str(m.get_string()).strip_edges().to_upper()
+		if tag == "" or tag == "SEA" or seen.has(tag):
+			continue
+		var has_state = false
+		if not GameManager.map_data.is_empty():
+			for p_id in GameManager.map_data:
+				var d = GameManager.map_data[p_id]
+				if str(d.get("owner", "")).strip_edges().to_upper() == tag:
+					has_state = true
+					break
+		if not has_state:
+			continue
+		seen[tag] = true
+		tags.append(tag)
+	return tags
+
+func _vyhledat_tagy_statu_podle_nazvu(text: String) -> Array:
+	var tags: Array = []
+	var seen: Dictionary = {}
+	if GameManager.map_data.is_empty():
+		return tags
+
+	var lower_text = text.to_lower()
+	var states: Dictionary = {}
+	for p_id in GameManager.map_data:
+		var d = GameManager.map_data[p_id]
+		var tag = str(d.get("owner", "")).strip_edges().to_upper()
+		if tag == "" or states.has(tag):
+			continue
+		states[tag] = str(d.get("country_name", tag)).strip_edges()
+
+	for tag_any in states.keys():
+		var tag = str(tag_any)
+		var country_name = str(states[tag]).strip_edges()
+		if country_name == "":
+			continue
+		if lower_text.find(country_name.to_lower()) != -1 and not seen.has(tag):
+			seen[tag] = true
+			tags.append(tag)
+	return tags
+
+func _je_hranice_slova(text: String, idx: int) -> bool:
+	if idx < 0 or idx >= text.length():
+		return true
+	var ch = text.substr(idx, 1)
+	var word_chars = "abcdefghijklmnopqrstuvwxyz0123456789_"
+	return word_chars.find(ch.to_lower()) == -1
+
+func _najdi_zminky_statu_v_textu(text: String) -> Array:
+	var mentions: Array = []
+	var rx = RegEx.new()
+	if rx.compile("\\b[A-Z]{3}\\b") == OK:
+		for m in rx.search_all(text.to_upper()):
+			var tag = str(m.get_string()).strip_edges().to_upper()
+			if tag == "" or tag == "SEA":
+				continue
+			if _ziskej_jmeno_statu_podle_tagu(tag) == tag and GameManager.map_data.is_empty():
+				continue
+			mentions.append({
+				"start": int(m.get_start()),
+				"end": int(m.get_end()),
+				"tag": tag
+			})
+
+	if not GameManager.map_data.is_empty():
+		var lower_text = text.to_lower()
+		var states: Dictionary = {}
+		for p_id in GameManager.map_data:
+			var d = GameManager.map_data[p_id]
+			var tag = str(d.get("owner", "")).strip_edges().to_upper()
+			if tag == "" or states.has(tag):
+				continue
+			states[tag] = str(d.get("country_name", tag)).strip_edges()
+
+		for tag_any in states.keys():
+			var tag = str(tag_any)
+			var country_name = str(states[tag]).strip_edges()
+			if country_name == "":
+				continue
+			var needle = country_name.to_lower()
+			var from_idx = 0
+			while true:
+				var idx = lower_text.find(needle, from_idx)
+				if idx == -1:
+					break
+				var end_idx = idx + needle.length()
+				if _je_hranice_slova(lower_text, idx - 1) and _je_hranice_slova(lower_text, end_idx):
+					mentions.append({"start": idx, "end": end_idx, "tag": tag})
+				from_idx = idx + max(1, needle.length())
+
+	mentions.sort_custom(func(a: Dictionary, b: Dictionary):
+		var sa = int(a.get("start", 0))
+		var sb = int(b.get("start", 0))
+		if sa == sb:
+			var la = int(a.get("end", 0)) - sa
+			var lb = int(b.get("end", 0)) - sb
+			return la > lb
+		return sa < sb
+	)
+
+	var filtered: Array = []
+	var cursor = -1
+	for m_any in mentions:
+		var m = m_any as Dictionary
+		var s = int(m.get("start", 0))
+		var e = int(m.get("end", s))
+		if s < cursor:
+			continue
+		filtered.append(m)
+		cursor = e
+
+	return filtered
+
+func _vytvor_zprava_text_chunk(text: String) -> Label:
+	var lbl = Label.new()
+	lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
+	lbl.add_theme_color_override("font_color", Color(0.92, 0.95, 1.0))
+	lbl.text = text
+	return lbl
+
+func _vytvor_zprava_flag_btn(tag: String):
+	var clean_tag = tag.strip_edges().to_upper()
+	if clean_tag == "":
+		return null
+	var flag_tex = _resolve_flag_texture(clean_tag, "")
+	if flag_tex == null:
+		return null
+	var flag_btn = TextureButton.new()
+	flag_btn.custom_minimum_size = Vector2(16, 11)
+	flag_btn.size = Vector2(16, 11)
+	flag_btn.ignore_texture_size = true
+	flag_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	flag_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	flag_btn.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+	flag_btn.texture_normal = flag_tex
+	flag_btn.texture_hover = flag_tex
+	flag_btn.texture_pressed = flag_tex
+	flag_btn.tooltip_text = "%s (%s)" % [_ziskej_jmeno_statu_podle_tagu(clean_tag), clean_tag]
+	flag_btn.focus_mode = Control.FOCUS_NONE
+	flag_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	flag_btn.pressed.connect(_on_zprava_flag_pressed.bind(clean_tag))
+	return flag_btn
+
+func _ziskej_tagy_pro_zpravu(entry: Dictionary, fallback_line: String) -> Array:
+	var tags: Array = []
+	var seen: Dictionary = {}
+	var raw = "%s %s" % [str(entry.get("title", "")), str(entry.get("text", ""))]
+	for tag_any in _vyhledat_tagy_statu_v_textu(raw):
+		var tag = str(tag_any)
+		if not seen.has(tag):
+			seen[tag] = true
+			tags.append(tag)
+	if tags.is_empty():
+		for tag_any in _vyhledat_tagy_statu_v_textu(fallback_line):
+			var tag2 = str(tag_any)
+			if not seen.has(tag2):
+				seen[tag2] = true
+				tags.append(tag2)
+
+	for tag_any in _vyhledat_tagy_statu_podle_nazvu(raw):
+		var tag3 = str(tag_any)
+		if not seen.has(tag3):
+			seen[tag3] = true
+			tags.append(tag3)
+
+	if tags.is_empty():
+		for tag_any in _vyhledat_tagy_statu_podle_nazvu(fallback_line):
+			var tag4 = str(tag_any)
+			if not seen.has(tag4):
+				seen[tag4] = true
+				tags.append(tag4)
+	return tags
+
+func _odeber_nazvy_statu_z_textu(text: String, tags: Array) -> String:
+	var out = text
+	for tag_any in tags:
+		var tag = str(tag_any).strip_edges().to_upper()
+		if tag == "":
+			continue
+		out = out.replace(tag, "")
+		var country_name = _ziskej_jmeno_statu_podle_tagu(tag).strip_edges()
+		if country_name != "":
+			out = out.replace(country_name, "")
+			out = out.replace(country_name.to_lower(), "")
+			out = out.replace(country_name.to_upper(), "")
+	out = out.replace("  ", " ")
+	out = out.replace(" ,", ",")
+	out = out.replace(" :", ":")
+	out = out.replace(" ;", ";")
+	return out
+
+func _on_zprava_flag_pressed(state_tag: String) -> void:
+	_otevri_prehled_statu_podle_tagu(state_tag)
+
+func _aktualizuj_panel_zprav() -> void:
+	_aktualizuj_tlacitko_zprav()
+	if _zpravy_panel == null or _zpravy_groups_list == null:
+		return
+	if not _zpravy_expanded:
+		_zpravy_panel.hide()
+		return
+
+	var arr = _ziskej_aktivni_zpravy()
+	var hist_arr = _ziskej_historicke_zpravy()
+	if _zpravy_title_label:
+		if _zpravy_mode == 0 and GameManager:
+			_zpravy_title_label.text = "Zpravy - kolo %d" % int(GameManager.aktualni_kolo)
+		else:
+			_zpravy_title_label.text = "Zpravy - globalni"
+	if _zpravy_historie_checkbox:
+		_zpravy_historie_checkbox.disabled = hist_arr.is_empty()
+		_zpravy_historie_checkbox.text = "Historie (%d)" % hist_arr.size()
+		if hist_arr.is_empty():
+			_zpravy_historie_expanded = false
+			_zpravy_historie_checkbox.button_pressed = false
+
+	var history_to_show: Array = hist_arr if _zpravy_historie_expanded else []
+	_vykresli_skupiny_zprav(arr, history_to_show)
+	_zpravy_panel.show()
+	_aktualizuj_pozice_popupu()
+
+func _on_zpravy_toggle_pressed() -> void:
+	_zpravy_expanded = not _zpravy_expanded
+	if _zpravy_toggle_btn:
+		_zpravy_toggle_btn.button_pressed = _zpravy_expanded
+	_aktualizuj_panel_zprav()
+
+func _on_zpravy_mode_local_pressed() -> void:
+	_zpravy_mode = 0
+	if _zpravy_mode_local_btn:
+		_zpravy_mode_local_btn.button_pressed = true
+	if _zpravy_mode_global_btn:
+		_zpravy_mode_global_btn.button_pressed = false
+	_aktualizuj_panel_zprav()
+
+func _on_zpravy_mode_global_pressed() -> void:
+	_zpravy_mode = 1
+	if _zpravy_mode_local_btn:
+		_zpravy_mode_local_btn.button_pressed = false
+	if _zpravy_mode_global_btn:
+		_zpravy_mode_global_btn.button_pressed = true
+	_aktualizuj_panel_zprav()
+
+func _on_zpravy_category_toggle_pressed(category_name: String) -> void:
+	var current = bool(_zpravy_category_expanded.get(category_name, true))
+	_zpravy_category_expanded[category_name] = not current
+	_aktualizuj_panel_zprav()
+
+func _on_zpravy_historie_toggled(pressed: bool) -> void:
+	_zpravy_historie_expanded = pressed
+	if _zpravy_historie_checkbox:
+		_zpravy_historie_checkbox.button_pressed = _zpravy_historie_expanded
+	_aktualizuj_panel_zprav()
+
+func _aktualizuj_text_rozbaleni_fronty(pending_count: int) -> void:
+	if _queue_preview_toggle_btn == null:
+		return
+	if pending_count <= 0:
+		_queue_preview_toggle_btn.text = "Fronta"
+		_queue_preview_toggle_btn.disabled = true
+		_queue_preview_expanded = false
+		_queue_preview_toggle_btn.button_pressed = false
+		return
+	_queue_preview_toggle_btn.text = "Fronta (%d)" % pending_count
+	_queue_preview_toggle_btn.disabled = false
+
+func _formatuj_text_zadosti(req: Dictionary) -> String:
+	var req_type = str(req.get("type", ""))
+	if req_type == "alliance":
+		match int(req.get("level", 0)):
+			1:
+				return "Obranna aliance"
+			2:
+				return "Utocna aliance"
+			3:
+				return "Plna aliance"
+		return "Aliance"
+	if req_type == "peace":
+		return "Navrh na uzavreni miru"
+	if req_type == "non_aggression":
+		return "Neagresivni smlouva (10 kol)"
+	return "Diplomaticka nabidka"
+
+func _aktualizuj_panel_rozbalene_fronty(queue: Array) -> void:
+	if _queue_preview_panel == null or _queue_preview_list == null:
+		return
+	if not diplomacy_request_popup or not diplomacy_request_popup.visible:
+		_queue_preview_panel.hide()
+		return
+
+	if not _queue_preview_expanded:
+		_queue_preview_panel.hide()
+		return
+
+	if queue.is_empty():
+		_queue_preview_panel.hide()
+		return
+
+	for child in _queue_preview_list.get_children():
+		child.queue_free()
+
+	var limit = min(queue.size(), QUEUE_PREVIEW_MAX_ITEMS)
+	for i in range(limit):
+		var req = queue[i] as Dictionary
+		var from_tag = str(req.get("from", "")).strip_edges().to_upper()
+		var row = HBoxContainer.new()
+		row.custom_minimum_size = Vector2(0, 40)
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_theme_constant_override("separation", 10)
+
+		var flag = TextureRect.new()
+		flag.custom_minimum_size = Vector2(34, 20)
+		flag.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		flag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		flag.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		flag.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		flag.texture = _resolve_flag_texture(from_tag, "")
+		row.add_child(flag)
+
+		var label = Label.new()
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		label.clip_text = true
+		label.autowrap_mode = TextServer.AUTOWRAP_OFF
+		label.text = "%d. [%s] %s" % [i + 1, from_tag, _formatuj_text_zadosti(req)]
+		row.add_child(label)
+
+		var btn_accept = Button.new()
+		btn_accept.text = "Prijmout"
+		btn_accept.custom_minimum_size = Vector2(82, 0)
+		btn_accept.focus_mode = Control.FOCUS_NONE
+		btn_accept.pressed.connect(_on_queue_row_accept_pressed.bind(from_tag))
+		row.add_child(btn_accept)
+
+		var btn_decline = Button.new()
+		btn_decline.text = "Odmitnout"
+		btn_decline.custom_minimum_size = Vector2(86, 0)
+		btn_decline.focus_mode = Control.FOCUS_NONE
+		btn_decline.pressed.connect(_on_queue_row_decline_pressed.bind(from_tag))
+		row.add_child(btn_decline)
+
+		_queue_preview_list.add_child(row)
+
+	var remaining = queue.size() - limit
+	if remaining > 0:
+		var more_label = Label.new()
+		more_label.text = "+%d dalsich nabidek..." % remaining
+		_queue_preview_list.add_child(more_label)
+
+	_queue_preview_rows = max(1, min(queue.size(), QUEUE_PREVIEW_MAX_ITEMS) + (1 if remaining > 0 else 0))
+	_queue_preview_panel.show()
+	_aktualizuj_pozice_popupu()
+
+func _on_queue_preview_toggle_pressed() -> void:
+	_queue_preview_expanded = not _queue_preview_expanded
+	if _queue_preview_toggle_btn:
+		_queue_preview_toggle_btn.button_pressed = _queue_preview_expanded
+	if not _queue_preview_expanded:
+		if _queue_preview_panel:
+			_queue_preview_panel.hide()
+		_aktualizuj_pozice_popupu()
+		return
+
+	if GameManager.has_method("ziskej_cekajici_diplomaticke_zadosti"):
+		_aktualizuj_panel_rozbalene_fronty(GameManager.ziskej_cekajici_diplomaticke_zadosti(GameManager.hrac_stat))
+
+func _on_queue_row_accept_pressed(from_tag: String) -> void:
+	if not GameManager.has_method("hrac_prijmi_diplomatickou_zadost"):
+		return
+	GameManager.hrac_prijmi_diplomatickou_zadost(GameManager.hrac_stat, from_tag)
+	_aktualizuj_popup_diplomatickych_zadosti()
+	_aktualizuj_panel_zprav()
+	if current_viewed_tag == from_tag:
+		_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
+
+func _on_queue_row_decline_pressed(from_tag: String) -> void:
+	if not GameManager.has_method("hrac_odmitni_diplomatickou_zadost"):
+		return
+	GameManager.hrac_odmitni_diplomatickou_zadost(GameManager.hrac_stat, from_tag)
+	_aktualizuj_popup_diplomatickych_zadosti()
+	_aktualizuj_panel_zprav()
+	if current_viewed_tag == from_tag:
+		_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
+
+func _zajisti_vizual_fronty_diplomacii() -> void:
+	if diplomacy_request_popup == null:
+		return
+	if not _diplomacy_queue_preview_cards.is_empty():
+		return
+
+	for i in range(3):
+		var card = Panel.new()
+		card.name = "DiplomacyQueuePreview_%d" % i
+		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.focus_mode = Control.FOCUS_NONE
+		card.z_index = -10 + i
+		card.show_behind_parent = true
+		var style = StyleBoxFlat.new()
+		style.bg_color = Color(0.08, 0.12, 0.18, 0.30)
+		style.border_width_left = 1
+		style.border_width_top = 1
+		style.border_width_right = 1
+		style.border_width_bottom = 1
+		style.border_color = Color(0.48, 0.72, 0.98, 0.32)
+		style.corner_radius_top_left = 8
+		style.corner_radius_top_right = 8
+		style.corner_radius_bottom_left = 8
+		style.corner_radius_bottom_right = 8
+		card.add_theme_stylebox_override("panel", style)
+		diplomacy_request_popup.add_child(card)
+		diplomacy_request_popup.move_child(card, 0)
+		_diplomacy_queue_preview_cards.append(card)
+
+func _rozmistit_vizual_fronty_diplomacii() -> void:
+	if diplomacy_request_popup == null:
+		return
+	if _diplomacy_queue_preview_cards.is_empty():
+		return
+
+	var base_size = diplomacy_request_popup.size
+	for i in range(_diplomacy_queue_preview_cards.size()):
+		var card = _diplomacy_queue_preview_cards[i] as Panel
+		if card == null:
+			continue
+		var depth = i + 1
+		var inset_x = 8.0 * depth
+		var offset_y = 7.0 * depth
+		card.position = Vector2(inset_x, offset_y)
+		card.size = Vector2(max(220.0, base_size.x - inset_x * 2.0), base_size.y)
+
+func _aktualizuj_vizual_fronty_diplomacii(pending_count: int) -> void:
+	if _diplomacy_queue_preview_cards.is_empty():
+		return
+
+	# Preview cards emulate queued offers: deeper card => more transparent.
+	for i in range(_diplomacy_queue_preview_cards.size()):
+		var card = _diplomacy_queue_preview_cards[i] as Panel
+		if card == null:
+			continue
+		var depth = i + 2 # card #2, #3, #4 relative to active card
+		card.visible = pending_count >= depth
+		if not card.visible:
+			continue
+		var alpha = clamp(0.28 - float(i) * 0.09, 0.06, 0.35)
+		card.self_modulate = Color(1, 1, 1, alpha / 0.30)
+	_rozmistit_vizual_fronty_diplomacii()
 
 func _aktualizuj_aliance_ui(target_tag: String):
 	if not alliance_level_option:
@@ -1841,6 +2738,7 @@ func _on_declare_war_button_pressed():
 	# Declare war via GameManager
 	GameManager.vyhlasit_valku(GameManager.hrac_stat, current_viewed_tag)
 	_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
+	_aktualizuj_panel_zprav()
 
 func _on_propose_peace_button_pressed():
 	if current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat:
@@ -1848,6 +2746,7 @@ func _on_propose_peace_button_pressed():
 
 	GameManager.nabidnout_mir(GameManager.hrac_stat, current_viewed_tag)
 	_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
+	_aktualizuj_panel_zprav()
 
 func _on_non_aggression_button_pressed():
 	if current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat:
@@ -1858,25 +2757,40 @@ func _on_non_aggression_button_pressed():
 	var success = bool(GameManager.uzavrit_neagresivni_smlouvu(GameManager.hrac_stat, current_viewed_tag))
 	if success:
 		_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
+	_aktualizuj_panel_zprav()
 
 func _on_popup_accept_request_pressed():
+	# Legacy wrapper: accept currently highlighted request.
 	if _popup_request_from_tag == "":
 		return
-	if not GameManager.has_method("hrac_prijmi_diplomatickou_zadost"):
-		return
-	GameManager.hrac_prijmi_diplomatickou_zadost(GameManager.hrac_stat, _popup_request_from_tag)
-	_aktualizuj_popup_diplomatickych_zadosti()
-	if current_viewed_tag == _popup_request_from_tag:
-		_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
+	_on_queue_row_accept_pressed(_popup_request_from_tag)
 
 func _on_popup_decline_request_pressed():
+	# Legacy wrapper: decline currently highlighted request.
 	if _popup_request_from_tag == "":
 		return
-	if not GameManager.has_method("hrac_odmitni_diplomatickou_zadost"):
+	_on_queue_row_decline_pressed(_popup_request_from_tag)
+
+func _on_popup_accept_all_requests_pressed():
+	if not GameManager.has_method("hrac_prijmi_vsechny_diplomaticke_zadosti"):
 		return
-	GameManager.hrac_odmitni_diplomatickou_zadost(GameManager.hrac_stat, _popup_request_from_tag)
+	var accepted = int(GameManager.hrac_prijmi_vsechny_diplomaticke_zadosti(GameManager.hrac_stat))
+	if accepted <= 0:
+		return
 	_aktualizuj_popup_diplomatickych_zadosti()
-	if current_viewed_tag == _popup_request_from_tag:
+	_aktualizuj_panel_zprav()
+	if current_viewed_tag != "":
+		_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
+
+func _on_popup_decline_all_requests_pressed():
+	if not GameManager.has_method("hrac_odmitni_vsechny_diplomaticke_zadosti"):
+		return
+	var declined = int(GameManager.hrac_odmitni_vsechny_diplomaticke_zadosti(GameManager.hrac_stat))
+	if declined <= 0:
+		return
+	_aktualizuj_popup_diplomatickych_zadosti()
+	_aktualizuj_panel_zprav()
+	if current_viewed_tag != "":
 		_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
 
 func _on_accept_request_pressed():
@@ -1936,6 +2850,7 @@ func _on_alliance_level_selected(index: int):
 		if sent:
 			_aktualizuj_aliance_ui(current_viewed_tag)
 			_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
+			_aktualizuj_panel_zprav()
 		return
 
 	var success = bool(GameManager.nastav_uroven_aliance(GameManager.hrac_stat, current_viewed_tag, index))
@@ -1945,9 +2860,11 @@ func _on_alliance_level_selected(index: int):
 
 	_aktualizuj_aliance_ui(current_viewed_tag)
 	_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
+	_aktualizuj_panel_zprav()
 
 func _on_kolo_zmeneno():
 	_aktualizuj_popup_diplomatickych_zadosti()
+	_aktualizuj_panel_zprav()
 	if current_viewed_tag == "" or not panel.visible:
 		return
 	_obnov_otevreny_prehled_statu()

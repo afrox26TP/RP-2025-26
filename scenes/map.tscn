@@ -342,6 +342,10 @@ text = "Prijmout"
 layout_mode = 2
 text = "Odmitnout"
 
+[node name="DeclineAllButton" type="Button" parent="GameUI/DiplomacyRequestPopup/HBoxContainer" unique_id=2067714431]
+layout_mode = 2
+text = "Odmitnout vse"
+
 [node name="SystemMessagePopup" type="Panel" parent="GameUI" unique_id=204884307]
 anchors_preset = 10
 anchor_right = 1.0
