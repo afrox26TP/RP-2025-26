@@ -1,6 +1,7 @@
 extends Node
 
 signal kolo_zmeneno 
+signal zpracovani_tahu_zmeneno(aktivni: bool)
 
 var hrac_stat = "ALB" 
 var hrac_jmeno = "" 
@@ -23,6 +24,8 @@ var hrac_kasa_inicializovana: Dictionary = {}
 var cekajici_popupy_hracu: Dictionary = {}
 var log_zprav_hracu: Dictionary = {}
 var log_globalnich_zprav: Array = []
+var _defer_log_maintenance: bool = false
+var _log_maintenance_dirty: bool = false
 
 const AI_DECLARE_WAR_MIN_BORDER_ADVANTAGE := 1.25
 const AI_DECLARE_WAR_MIN_ATTACK_FORCE := 1800
@@ -125,6 +128,11 @@ const SAVEGAME_STATE_PATH := "user://savegame.dat"
 const SAVE_SLOTS_DIR := "user://saves"
 const SAVE_SLOT_EXT := ".dat"
 const MAX_LOG_ZPRAV := 500
+const NEXT_TURN_INPUT_COOLDOWN_MS := 250
+const TURN_PROFILE_ENABLED := true
+const TURN_PROFILE_WARN_MS := 1200
+const AI_PROFILE_ENABLED := true
+const AI_PROFILE_WARN_MS := 500
 
 # Diplomacy
 var valky: Dictionary = {}
@@ -142,6 +150,7 @@ const DIP_REQUEST_PRIORITY_ALLIANCE := 2
 const DIP_REQUEST_PRIORITY_NON_AGGRESSION := 3
 
 var zpracovava_se_tah: bool = false
+var _last_end_turn_request_ms: int = -1000000
 var _core_state_cache: Dictionary = {}
 var _vztahy_statu: Dictionary = {}
 var _vztahy_nactene: bool = false
@@ -151,6 +160,21 @@ var _turn_state_soldier_power: Dictionary = {}
 var _turn_state_hdp: Dictionary = {}
 var _turn_border_pairs: Dictionary = {}
 var _turn_active_states: Array = []
+var _turn_state_owned_provinces: Dictionary = {}
+var _ai_phase_cache_active: bool = false
+var _ai_enemy_neighbor_cache: Dictionary = {}
+var _ai_threat_cache: Dictionary = {}
+var _ai_border_strength_cache: Dictionary = {}
+var _ai_war_pair_eval_cache: Dictionary = {}
+var _ai_relation_cache: Dictionary = {}
+var _ai_allies_cache: Dictionary = {}
+var _ai_war_cache: Dictionary = {}
+var _ai_alliance_level_cache: Dictionary = {}
+var _ai_non_aggr_cache: Dictionary = {}
+var _ai_can_adjust_relation_cache: Dictionary = {}
+var _ai_border_cache: Dictionary = {}
+
+const AI_MIN_PROVINCE_SOLDIERS_FOR_PLANNING := 1000
 
 const RELATIONSHIPS_CSV_PATH := "res://map_data/Relationships.csv"
 
@@ -223,9 +247,148 @@ func _je_dulezity_popup(titulek: String, text: String) -> bool:
 
 	return false
 
+func _normalizuj_kategorii_logu_pro_prioritu(category: String, title: String, text: String) -> String:
+	var c = category.strip_edges().to_lower()
+	match c:
+		"war":
+			return "war"
+		"alliance":
+			return "alliance"
+		"treaty", "treaties", "non_aggression":
+			return "treaties"
+		"diplomacy":
+			pass
+		"gift", "gifts":
+			return "gifts"
+		"relations":
+			return "relations"
+		_:
+			pass
+
+	var body = (title + " " + text).to_lower()
+	var war_tokens = ["valk", "war", "mir", "peace", "kapitul", "okup", "anex", "surrender"]
+	for token in war_tokens:
+		if body.findn(token) != -1:
+			return "war"
+
+	var alliance_tokens = ["alianc", "alliance", "spojenec"]
+	for token in alliance_tokens:
+		if body.findn(token) != -1:
+			return "alliance"
+
+	var treaty_tokens = ["neagres", "smlouv", "pakt", "treaty", "truce"]
+	for token in treaty_tokens:
+		if body.findn(token) != -1:
+			return "treaties"
+
+	var gift_tokens = ["dar", "gift", "usd", "finance", "financni"]
+	for token in gift_tokens:
+		if body.findn(token) != -1:
+			return "gifts"
+
+	var relation_tokens = ["vztah", "relations"]
+	for token in relation_tokens:
+		if body.findn(token) != -1:
+			return "relations"
+
+	if c == "diplomacy":
+		return "negotiations"
+	return "other"
+
+func _priorita_kategorie_logu(category: String, title: String, text: String) -> int:
+	# Higher number = higher importance, kept longer during trimming.
+	match _normalizuj_kategorii_logu_pro_prioritu(category, title, text):
+		"war":
+			return 7
+		"alliance":
+			return 6
+		"treaties":
+			return 5
+		"negotiations":
+			return 4
+		"gifts":
+			return 3
+		"other":
+			return 2
+		"relations":
+			return 1
+		_:
+			return 2
+
+func _odstran_expirovane_historicke_smlouvy(log_arr: Array) -> void:
+	if log_arr.is_empty():
+		return
+	for i in range(log_arr.size() - 1, -1, -1):
+		var item = log_arr[i]
+		if not (item is Dictionary):
+			continue
+		var entry = item as Dictionary
+		var normalized = _normalizuj_kategorii_logu_pro_prioritu(
+			str(entry.get("category", "")),
+			str(entry.get("title", "")),
+			str(entry.get("text", ""))
+		)
+		if normalized != "treaties":
+			continue
+		var turn = int(entry.get("turn", aktualni_kolo))
+		if (aktualni_kolo - turn) >= NON_AGGRESSION_DURATION_TURNS:
+			log_arr.remove_at(i)
+
+func _udrzba_vsech_logu() -> void:
+	if _defer_log_maintenance:
+		_log_maintenance_dirty = true
+		return
+	for key in log_zprav_hracu.keys():
+		_trim_log_pole(log_zprav_hracu[key] as Array)
+	_trim_log_pole(log_globalnich_zprav)
+	_log_maintenance_dirty = false
+
+func _najdi_index_zpravy_k_odstraneni(log_arr: Array) -> int:
+	if log_arr.is_empty():
+		return -1
+
+	var chosen_idx := -1
+	var chosen_priority := 999999
+	var chosen_turn := 999999999
+
+	for i in range(log_arr.size()):
+		var item = log_arr[i]
+		if not (item is Dictionary):
+			if chosen_idx == -1:
+				chosen_idx = i
+			continue
+		var entry = item as Dictionary
+		var prio = _priorita_kategorie_logu(
+			str(entry.get("category", "")),
+			str(entry.get("title", "")),
+			str(entry.get("text", ""))
+		)
+		var turn = int(entry.get("turn", -1))
+		if chosen_idx == -1 or prio < chosen_priority or (prio == chosen_priority and (turn < chosen_turn or (turn == chosen_turn and i < chosen_idx))):
+			chosen_idx = i
+			chosen_priority = prio
+			chosen_turn = turn
+
+	return chosen_idx
+
 func _trim_log_pole(log_arr: Array, max_items: int = MAX_LOG_ZPRAV) -> void:
+	if _defer_log_maintenance:
+		_log_maintenance_dirty = true
+		return
+	_odstran_expirovane_historicke_smlouvy(log_arr)
 	while log_arr.size() > max_items:
-		log_arr.remove_at(0)
+		var idx = _najdi_index_zpravy_k_odstraneni(log_arr)
+		if idx < 0 or idx >= log_arr.size():
+			log_arr.remove_at(0)
+		else:
+			log_arr.remove_at(idx)
+
+func _set_defer_log_maintenance(enabled: bool) -> void:
+	if _defer_log_maintenance == enabled:
+		return
+	_defer_log_maintenance = enabled
+	if not enabled and _log_maintenance_dirty:
+		_udrzba_vsech_logu()
 
 func _zaloguj_zpravu_hraci(tag: String, titulek: String, text: String, kategorie: String = "general") -> void:
 	var cisty = _normalizuj_tag(tag)
@@ -266,6 +429,7 @@ func _zaloguj_globalni_zpravu(titulek: String, text: String, kategorie: String =
 	_trim_log_pole(log_globalnich_zprav)
 
 func ziskej_zpravy_hrace(tag: String, limit: int = 120) -> Array:
+	_udrzba_vsech_logu()
 	var cisty = _normalizuj_tag(tag)
 	if cisty == "" or not log_zprav_hracu.has(cisty):
 		return []
@@ -277,6 +441,7 @@ func ziskej_zpravy_hrace(tag: String, limit: int = 120) -> Array:
 	return src.slice(from_idx, src.size())
 
 func ziskej_globalni_zpravy(limit: int = 160) -> Array:
+	_udrzba_vsech_logu()
 	if log_globalnich_zprav.is_empty():
 		return []
 	var cnt = clampi(limit, 1, MAX_LOG_ZPRAV)
@@ -284,12 +449,14 @@ func ziskej_globalni_zpravy(limit: int = 160) -> Array:
 	return log_globalnich_zprav.slice(from_idx, log_globalnich_zprav.size())
 
 func ziskej_pocet_zprav_hrace(tag: String) -> int:
+	_udrzba_vsech_logu()
 	var cisty = _normalizuj_tag(tag)
 	if cisty == "" or not log_zprav_hracu.has(cisty):
 		return 0
 	return (log_zprav_hracu[cisty] as Array).size()
 
 func ziskej_pocet_globalnich_zprav() -> int:
+	_udrzba_vsech_logu()
 	return log_globalnich_zprav.size()
 
 func _ziskej_jmeno_statu_podle_tagu(tag: String) -> String:
@@ -317,6 +484,7 @@ func _zprava_obsahuje_stat(entry: Dictionary, state_tag: String) -> bool:
 	return full_text.to_lower().findn(country_name.to_lower()) != -1
 
 func ziskej_relevantni_zpravy_statu(state_tag: String, limit: int = 160, jen_aktualni_kolo: bool = true) -> Array:
+	_udrzba_vsech_logu()
 	var wanted = _normalizuj_tag(state_tag)
 	if wanted == "":
 		return []
@@ -1275,10 +1443,15 @@ func ziskej_vztah_statu(tag_a: String, tag_b: String) -> float:
 	if a == "" or b == "" or a == b:
 		return 0.0
 
-	var klic = _klic_vztahu(a, b)
-	if _vztahy_statu.has(klic):
-		return float(_vztahy_statu[klic])
-	return 0.0
+	if _ai_phase_cache_active:
+		var pair_key = _klic_vztah_pair(a, b)
+		if _ai_relation_cache.has(pair_key):
+			return float(_ai_relation_cache[pair_key])
+		var rel_cached = float(_vztahy_statu.get("%s|%s" % [a, b], 0.0))
+		_ai_relation_cache[pair_key] = rel_cached
+		return rel_cached
+
+	return float(_vztahy_statu.get("%s|%s" % [a, b], 0.0))
 
 func uprav_vztah_statu(tag_a: String, tag_b: String, delta: float) -> float:
 	_nacti_vztahy_statu()
@@ -1293,6 +1466,9 @@ func uprav_vztah_statu(tag_a: String, tag_b: String, delta: float) -> float:
 	var updated = clamp(current + delta, RELATION_MIN, RELATION_MAX)
 	_vztahy_statu[_klic_vztahu(a, b)] = updated
 	_vztahy_statu[_klic_vztahu(b, a)] = updated
+	_ai_relation_cache[_klic_vztah_pair(a, b)] = updated
+	_ai_can_adjust_relation_cache[_klic_vztah_pair(a, b)] = false
+	_ai_allies_cache.clear()
 	_vztah_akce_posledni_kolo[_klic_vztah_pair(a, b)] = aktualni_kolo
 	if not is_zero_approx(delta):
 		var action_txt = "zlepsil" if delta > 0.0 else "zhorsil"
@@ -1311,6 +1487,9 @@ func _uprav_vztah_statu_bez_cooldown(tag_a: String, tag_b: String, delta: float)
 	var updated = clamp(current + delta, RELATION_MIN, RELATION_MAX)
 	_vztahy_statu[_klic_vztahu(a, b)] = updated
 	_vztahy_statu[_klic_vztahu(b, a)] = updated
+	_ai_relation_cache[_klic_vztah_pair(a, b)] = updated
+	_ai_can_adjust_relation_cache.erase(_klic_vztah_pair(a, b))
+	_ai_allies_cache.clear()
 	if not is_zero_approx(delta):
 		var action_txt = "zlepsil" if delta > 0.0 else "zhorsil"
 		_zaloguj_globalni_zpravu("Vztahy", "%s %s vztah k %s na %.1f." % [a, action_txt, b, updated], "relations")
@@ -1389,8 +1568,16 @@ func _nastav_uroven_aliance_bez_kontroly(tag_a: String, tag_b: String, level: in
 		return
 	if level <= ALLIANCE_NONE:
 		aliance_statu.erase(key)
+		if _ai_phase_cache_active:
+			_ai_alliance_level_cache.erase(key)
+			_ai_allies_cache.clear()
+			_ai_war_pair_eval_cache.clear()
 		return
 	aliance_statu[key] = clamp(level, ALLIANCE_NONE, ALLIANCE_FULL)
+	if _ai_phase_cache_active:
+		_ai_alliance_level_cache[key] = int(aliance_statu[key])
+		_ai_allies_cache.clear()
+		_ai_war_pair_eval_cache.clear()
 
 func nastav_uroven_aliance(tag_a: String, tag_b: String, level: int, ignoruj_vztahove_podminky: bool = false) -> bool:
 	var a = _normalizuj_tag(tag_a)
@@ -1466,12 +1653,21 @@ func _ziskej_spojence_s_min_alianci(state_tag: String, min_level: int) -> Array:
 	var cisty = _normalizuj_tag(state_tag)
 	if cisty == "":
 		return out
-	for other in _ziskej_aktivni_staty():
+	if _ai_phase_cache_active:
+		var cache_key = "%s|%d" % [cisty, min_level]
+		if _ai_allies_cache.has(cache_key):
+			return (_ai_allies_cache[cache_key] as Array).duplicate()
+
+	var active_states: Array = _turn_active_states if _turn_cache_valid else _ziskej_aktivni_staty()
+	for other in active_states:
 		var tag = _normalizuj_tag(str(other))
 		if tag == "" or tag == cisty:
 			continue
 		if ziskej_uroven_aliance(cisty, tag) >= min_level:
 			out.append(tag)
+
+	if _ai_phase_cache_active:
+		_ai_allies_cache["%s|%d" % [cisty, min_level]] = out.duplicate()
 	return out
 
 func _vycisti_expirovane_neagresivni_smlouvy() -> void:
@@ -2291,6 +2487,7 @@ func _invalidate_turn_cache() -> void:
 	_turn_state_hdp.clear()
 	_turn_border_pairs.clear()
 	_turn_active_states.clear()
+	_turn_state_owned_provinces.clear()
 
 func _rebuild_turn_cache() -> void:
 	_invalidate_turn_cache()
@@ -2305,6 +2502,9 @@ func _rebuild_turn_cache() -> void:
 		active[owner_tag] = true
 		_turn_state_soldier_power[owner_tag] = int(_turn_state_soldier_power.get(owner_tag, 0)) + int(d.get("soldiers", 0))
 		_turn_state_hdp[owner_tag] = float(_turn_state_hdp.get(owner_tag, 0.0)) + float(d.get("gdp", 0.0))
+		if not _turn_state_owned_provinces.has(owner_tag):
+			_turn_state_owned_provinces[owner_tag] = []
+		(_turn_state_owned_provinces[owner_tag] as Array).append(int(p_id))
 
 		for n_id in d.get("neighbors", []):
 			if not map_data.has(n_id):
@@ -2352,9 +2552,14 @@ func _ma_spolecnou_hranici(tag_a: String, tag_b: String) -> bool:
 
 func _zpracuj_ai_diplomacii(ai_staty: Array) -> Array:
 	var aktivni_staty = _ziskej_aktivni_staty()
+	var aktivni_staty_norm: Array = []
+	for s in aktivni_staty:
+		var t = _normalizuj_tag(str(s))
+		if t != "":
+			aktivni_staty_norm.append(t)
 	var zmeny_vztahu_k_hraci: Array = []
 	for ai_tag in ai_staty:
-		var owner_tag = str(ai_tag)
+		var owner_tag = _normalizuj_tag(str(ai_tag))
 		if owner_tag == "":
 			continue
 
@@ -2364,19 +2569,18 @@ func _zpracuj_ai_diplomacii(ai_staty: Array) -> Array:
 		var best_worsen_target := ""
 		var best_worsen_score := -INF
 
-		for other in aktivni_staty:
-			var other_tag = str(other)
+		for other_tag in aktivni_staty_norm:
 			if other_tag == owner_tag:
 				continue
-			if jsou_ve_valce(owner_tag, other_tag):
+			if _jsou_ve_valce_ai_cached(owner_tag, other_tag):
 				continue
-			if not muze_upravit_vztah_statu(owner_tag, other_tag):
+			if not _muze_upravit_vztah_ai_cached(owner_tag, other_tag):
 				continue
 
 			var rel = ziskej_vztah_statu(owner_tag, other_tag)
 			var their_power = float(max(1, _spocitej_silu_statu(other_tag)))
 			var ratio = our_power / their_power
-			var border = _ma_spolecnou_hranici(owner_tag, other_tag)
+			var border = _ma_spolecnou_hranici_ai_cached(owner_tag, other_tag)
 
 			# Build allies when weak or when the relation is already positive but not stable.
 			var improve_score := -INF
@@ -2429,34 +2633,55 @@ func _zpracuj_ai_diplomacii(ai_staty: Array) -> Array:
 func _zpracuj_ai_aliance(ai_staty: Array) -> Array:
 	var zmeny_alianci: Array = []
 	var aktivni_staty = _ziskej_aktivni_staty()
+	var aktivni_staty_norm: Array = []
+	for s in aktivni_staty:
+		var t = _normalizuj_tag(str(s))
+		if t != "":
+			aktivni_staty_norm.append(t)
+	var state_power: Dictionary = {}
+	var hostility_by_state: Dictionary = {}
+
+	for state_tag in aktivni_staty_norm:
+		state_power[state_tag] = float(max(1, _spocitej_silu_statu(state_tag)))
+		var hostile_set: Dictionary = {}
+		for enemy_tag in aktivni_staty_norm:
+			if enemy_tag == state_tag:
+				continue
+			if ziskej_vztah_statu(state_tag, enemy_tag) <= -35.0:
+				hostile_set[enemy_tag] = true
+		hostility_by_state[state_tag] = hostile_set
 
 	for ai_tag in ai_staty:
 		var owner_tag = _normalizuj_tag(str(ai_tag))
 		if owner_tag == "":
 			continue
+		var our_power = float(state_power.get(owner_tag, 1.0))
+		var owner_enemies = hostility_by_state.get(owner_tag, {}) as Dictionary
 
-		for other in aktivni_staty:
-			var other_tag = _normalizuj_tag(str(other))
-			if other_tag == "" or other_tag == owner_tag:
+		for other_tag in aktivni_staty_norm:
+			if other_tag == owner_tag:
 				continue
-			if jsou_ve_valce(owner_tag, other_tag):
+			if _jsou_ve_valce_ai_cached(owner_tag, other_tag):
 				continue
 
-			var current_level = ziskej_uroven_aliance(owner_tag, other_tag)
+			var current_level = _ziskej_uroven_aliance_ai_cached(owner_tag, other_tag)
 			var rel = ziskej_vztah_statu(owner_tag, other_tag)
-			var border = _ma_spolecnou_hranici(owner_tag, other_tag)
-			var our_power = float(max(1, _spocitej_silu_statu(owner_tag)))
-			var their_power = float(max(1, _spocitej_silu_statu(other_tag)))
+			var border = _ma_spolecnou_hranici_ai_cached(owner_tag, other_tag)
+			var their_power = float(state_power.get(other_tag, 1.0))
 			var ratio = our_power / their_power
 
 			var common_enemy := false
-			for enemy in aktivni_staty:
-				var enemy_tag = _normalizuj_tag(str(enemy))
-				if enemy_tag == "" or enemy_tag == owner_tag or enemy_tag == other_tag:
-					continue
-				if ziskej_vztah_statu(owner_tag, enemy_tag) <= -35.0 and ziskej_vztah_statu(other_tag, enemy_tag) <= -35.0:
-					common_enemy = true
-					break
+			var other_enemies = hostility_by_state.get(other_tag, {}) as Dictionary
+			if not owner_enemies.is_empty() and not other_enemies.is_empty():
+				var iterate_keys = owner_enemies.keys()
+				var probe = other_enemies
+				if other_enemies.size() < owner_enemies.size():
+					iterate_keys = other_enemies.keys()
+					probe = owner_enemies
+				for enemy_tag in iterate_keys:
+					if probe.has(enemy_tag):
+						common_enemy = true
+						break
 
 			var desired_level = current_level
 			if rel >= ALLIANCE_MIN_REL_FULL and (common_enemy or border):
@@ -2489,6 +2714,12 @@ func _zpracuj_ai_aliance(ai_staty: Array) -> Array:
 func _zpracuj_ai_neagresivni_smlouvy(ai_staty: Array) -> Array:
 	var zmeny: Array = []
 	var aktivni_staty = _ziskej_aktivni_staty()
+	var aktivni_staty_norm: Array = []
+	for s in aktivni_staty:
+		var t = _normalizuj_tag(str(s))
+		if t != "":
+			aktivni_staty_norm.append(t)
+	_vycisti_expirovane_neagresivni_smlouvy()
 
 	for ai_tag in ai_staty:
 		var owner_tag = _normalizuj_tag(str(ai_tag))
@@ -2497,15 +2728,14 @@ func _zpracuj_ai_neagresivni_smlouvy(ai_staty: Array) -> Array:
 
 		var best_target := ""
 		var best_rel := -INF
-		for other in aktivni_staty:
-			var other_tag = _normalizuj_tag(str(other))
-			if other_tag == "" or other_tag == owner_tag:
+		for other_tag in aktivni_staty_norm:
+			if other_tag == owner_tag:
 				continue
-			if jsou_ve_valce(owner_tag, other_tag):
+			if _jsou_ve_valce_ai_cached(owner_tag, other_tag):
 				continue
-			if ma_neagresivni_smlouvu(owner_tag, other_tag):
+			if _ma_neagresivni_smlouvu_ai_cached(owner_tag, other_tag):
 				continue
-			if ziskej_uroven_aliance(owner_tag, other_tag) > ALLIANCE_NONE:
+			if _ziskej_uroven_aliance_ai_cached(owner_tag, other_tag) > ALLIANCE_NONE:
 				continue
 
 			var rel = ziskej_vztah_statu(owner_tag, other_tag)
@@ -2526,6 +2756,7 @@ func _zpracuj_ai_neagresivni_smlouvy(ai_staty: Array) -> Array:
 					})
 			else:
 				if uzavrit_neagresivni_smlouvu(owner_tag, best_target):
+					_ai_non_aggr_cache.clear()
 					if je_lidsky_stat(owner_tag) or je_lidsky_stat(best_target):
 						zmeny.append({
 							"a": owner_tag,
@@ -2569,15 +2800,20 @@ func _zobraz_hlaseni_neagresivnich_smluv_hrace(zmeny: Array) -> void:
 func _zpracuj_ai_opusteni_alianci(ai_staty: Array) -> Array:
 	var zmeny_opusteni: Array = []
 	var processed_pairs: Dictionary = {}
+	var aktivni_staty = _ziskej_aktivni_staty()
+	var aktivni_staty_norm: Array = []
+	for s in aktivni_staty:
+		var t = _normalizuj_tag(str(s))
+		if t != "":
+			aktivni_staty_norm.append(t)
 
 	for ai_tag in ai_staty:
 		var owner_tag = _normalizuj_tag(str(ai_tag))
 		if owner_tag == "":
 			continue
 
-		for other in _ziskej_aktivni_staty():
-			var other_tag = _normalizuj_tag(str(other))
-			if other_tag == "" or other_tag == owner_tag:
+		for other_tag in aktivni_staty_norm:
+			if other_tag == owner_tag:
 				continue
 
 			var pair_key = _klic_pair(owner_tag, other_tag)
@@ -2585,7 +2821,7 @@ func _zpracuj_ai_opusteni_alianci(ai_staty: Array) -> Array:
 				continue
 			processed_pairs[pair_key] = true
 
-			var level = ziskej_uroven_aliance(owner_tag, other_tag)
+			var level = _ziskej_uroven_aliance_ai_cached(owner_tag, other_tag)
 			if level <= ALLIANCE_NONE:
 				continue
 
@@ -2898,18 +3134,100 @@ func _spocitej_hdp_statu(tag: String) -> float:
 			hdp += float(d.get("gdp", 0.0))
 	return hdp
 
+func _nastav_stav_zpracovani_tahu(aktivni: bool) -> void:
+	if zpracovava_se_tah == aktivni:
+		return
+	zpracovava_se_tah = aktivni
+	zpracovani_tahu_zmeneno.emit(aktivni)
+
+func muze_ukoncit_kolo() -> bool:
+	if zpracovava_se_tah:
+		return false
+	var elapsed = Time.get_ticks_msec() - _last_end_turn_request_ms
+	return elapsed >= NEXT_TURN_INPUT_COOLDOWN_MS
+
+func pozaduj_ukonceni_kola() -> bool:
+	if not muze_ukoncit_kolo():
+		return false
+	_last_end_turn_request_ms = Time.get_ticks_msec()
+	ukonci_kolo()
+	return true
+
+func _log_turn_profile(total_ms: int, phases: Dictionary) -> void:
+	if not TURN_PROFILE_ENABLED:
+		return
+	var p_switch = int(phases.get("switch_player", 0))
+	var p_armies = int(phases.get("armies", 0))
+	var p_finance = int(phases.get("finance", 0))
+	var p_growth = int(phases.get("growth", 0))
+	var p_ai = int(phases.get("ai", 0))
+	var p_popups = int(phases.get("popups", 0))
+	var p_ui = int(phases.get("ui", 0))
+	var level = "WARN" if total_ms >= TURN_PROFILE_WARN_MS else "INFO"
+	print("[TURN_PROFILE][%s] turn=%d total=%dms | switch=%dms armies=%dms finance=%dms growth=%dms ai=%dms popups=%dms ui=%dms" % [
+		level,
+		aktualni_kolo,
+		total_ms,
+		p_switch,
+		p_armies,
+		p_finance,
+		p_growth,
+		p_ai,
+		p_popups,
+		p_ui
+	])
+
+func _log_ai_profile(total_ms: int, phases: Dictionary) -> void:
+	if not AI_PROFILE_ENABLED:
+		return
+	var p_setup = int(phases.get("setup", 0))
+	var p_dip = int(phases.get("diplomacy", 0))
+	var p_econ = int(phases.get("economy_recruit", 0))
+	var p_move = int(phases.get("movement", 0))
+	var p_clean = int(phases.get("cleanup", 0))
+	var level = "WARN" if total_ms >= AI_PROFILE_WARN_MS else "INFO"
+	print("[AI_PROFILE][%s] turn=%d total=%dms | setup=%dms dip=%dms econ=%dms move=%dms clean=%dms" % [
+		level,
+		aktualni_kolo,
+		total_ms,
+		p_setup,
+		p_dip,
+		p_econ,
+		p_move,
+		p_clean
+	])
+
 func ukonci_kolo():
-	if zpracovava_se_tah: return 
-	zpracovava_se_tah = true
+	if zpracovava_se_tah:
+		return
+	var turn_start_ms = Time.get_ticks_msec()
+	var phase_start_ms = turn_start_ms
+	var turn_phases := {
+		"switch_player": 0,
+		"armies": 0,
+		"finance": 0,
+		"growth": 0,
+		"ai": 0,
+		"popups": 0,
+		"ui": 0
+	}
+	_last_end_turn_request_ms = Time.get_ticks_msec()
+	_nastav_stav_zpracovani_tahu(true)
 
 	if lokalni_hraci_staty.size() > 1 and not _je_posledni_hrac_v_poradi():
 		_uloz_finance_aktivniho_hrace()
 		_prepni_na_dalsiho_hrace()
 		if not map_data.is_empty():
 			spocitej_prijem(map_data, false)
+		turn_phases["switch_player"] = Time.get_ticks_msec() - phase_start_ms
+		phase_start_ms = Time.get_ticks_msec()
 		await _zobraz_cekajici_popupy_aktivniho_hrace()
+		turn_phases["popups"] = int(turn_phases["popups"]) + (Time.get_ticks_msec() - phase_start_ms)
+		phase_start_ms = Time.get_ticks_msec()
 		kolo_zmeneno.emit()
-		zpracovava_se_tah = false
+		turn_phases["ui"] = Time.get_ticks_msec() - phase_start_ms
+		_nastav_stav_zpracovani_tahu(false)
+		_log_turn_profile(Time.get_ticks_msec() - turn_start_ms, turn_phases)
 		return
 
 	var map_loader = _get_map_loader()
@@ -2917,6 +3235,8 @@ func ukonci_kolo():
 	if map_loader:
 		# Resolve battles and remove stale moves
 		await map_loader.zpracuj_tah_armad()
+	turn_phases["armies"] = Time.get_ticks_msec() - phase_start_ms
+	phase_start_ms = Time.get_ticks_msec()
 
 	if lokalni_hraci_staty.size() > 1:
 		_uloz_finance_aktivniho_hrace()
@@ -2932,6 +3252,8 @@ func ukonci_kolo():
 		# Bankruptcy at debt below -100
 		if statni_kasa < -100.0:
 			await _vyres_bankrot(hrac_stat)
+	turn_phases["finance"] = Time.get_ticks_msec() - phase_start_ms
+	phase_start_ms = Time.get_ticks_msec()
 
 	aktualni_kolo += 1
 	
@@ -2956,6 +3278,7 @@ func ukonci_kolo():
 
 	if not map_data.is_empty():
 		spocitej_prijem(map_data, false)
+		var econ_mods_by_owner: Dictionary = {}
 		
 		# Occupied territory recovers recruits much slower than core land.
 		for p_id in map_data:
@@ -2967,7 +3290,9 @@ func ukonci_kolo():
 			var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
 			var core_owner_tag = str(d.get("core_owner", owner_tag)).strip_edges().to_upper()
 			var je_okupace = owner_tag != "" and owner_tag != "SEA" and core_owner_tag != "" and core_owner_tag != owner_tag
-			var econ_mods = ziskej_ekonomicke_modifikatory_statu(owner_tag)
+			if not econ_mods_by_owner.has(owner_tag):
+				econ_mods_by_owner[owner_tag] = ziskej_ekonomicke_modifikatory_statu(owner_tag)
+			var econ_mods = econ_mods_by_owner[owner_tag] as Dictionary
 			var recruit_regen_mult = max(0.01, float(econ_mods.get("recruit_regen_mult", 1.0)))
 			var gdp_growth_mult = max(0.01, float(econ_mods.get("gdp_growth_mult", 1.0)))
 			var pop_growth_mult = max(0.01, float(econ_mods.get("population_growth_mult", 1.0)))
@@ -2985,9 +3310,13 @@ func ukonci_kolo():
 						growth_ratio *= 0.40
 					var pop_growth = max(1, int(round(float(pop) * growth_ratio)))
 					d["population"] = pop + pop_growth
+	turn_phases["growth"] = Time.get_ticks_msec() - phase_start_ms
+	phase_start_ms = Time.get_ticks_msec()
 
 	# AI plans attacks and may declare wars (await for popups)
 	await zpracuj_tah_ai()
+	turn_phases["ai"] = Time.get_ticks_msec() - phase_start_ms
+	phase_start_ms = Time.get_ticks_msec()
 
 	if not hlaseni_dokoncene_stavby.is_empty():
 		for owner_tag in hlaseni_dokoncene_stavby.keys():
@@ -3006,9 +3335,13 @@ func ukonci_kolo():
 		if not map_data.is_empty():
 			spocitej_prijem(map_data, false)
 	await _zobraz_cekajici_popupy_aktivniho_hrace()
+	turn_phases["popups"] = int(turn_phases["popups"]) + (Time.get_ticks_msec() - phase_start_ms)
+	phase_start_ms = Time.get_ticks_msec()
 	kolo_zmeneno.emit()
+	turn_phases["ui"] = int(turn_phases["ui"]) + (Time.get_ticks_msec() - phase_start_ms)
 		
-	zpracovava_se_tah = false
+	_nastav_stav_zpracovani_tahu(false)
+	_log_turn_profile(Time.get_ticks_msec() - turn_start_ms, turn_phases)
 
 func _aplikuj_bonus(prov_id: int, typ: int):
 	if not map_data.has(prov_id): return
@@ -3068,72 +3401,141 @@ func hrac_verbuje(provincie_id: int, pocet: int) -> bool:
 
 func zpracuj_tah_ai():
 	print("--- AI THINKING START ---")
+	var ai_start_ms = Time.get_ticks_msec()
+	var ai_phase_ms = ai_start_ms
+	var ai_phases := {
+		"setup": 0,
+		"diplomacy": 0,
+		"economy_recruit": 0,
+		"movement": 0,
+		"cleanup": 0
+	}
 	var map_loader = _get_map_loader()
 	if not map_loader or map_data.is_empty(): return
 	_core_state_cache.clear()
+	_ai_phase_cache_active = false
+	_ai_enemy_neighbor_cache.clear()
+	_ai_threat_cache.clear()
+	_ai_border_strength_cache.clear()
+	_ai_war_pair_eval_cache.clear()
+	_ai_relation_cache.clear()
+	_ai_allies_cache.clear()
+	_ai_war_cache.clear()
+	_ai_alliance_level_cache.clear()
+	_ai_non_aggr_cache.clear()
+	_ai_can_adjust_relation_cache.clear()
+	_ai_border_cache.clear()
 	_rebuild_turn_cache()
 	var ai_staty = _ziskej_ai_staty()
+	ai_phases["setup"] = Time.get_ticks_msec() - ai_phase_ms
+	ai_phase_ms = Time.get_ticks_msec()
+	_ai_phase_cache_active = true
+	_set_defer_log_maintenance(true)
 
 	# Evaluate pending peace offers before AI plans any attacks.
-	await _vyhodnot_mirove_nabidky_pred_ai()
+	_vyhodnot_mirove_nabidky_pred_ai()
 	_vyhodnot_aliancni_zadosti_pred_ai()
 	var zmeny_neagrese_k_hraci = _zpracuj_ai_neagresivni_smlouvy(ai_staty)
 	_zobraz_hlaseni_neagresivnich_smluv_hrace(zmeny_neagrese_k_hraci)
 	var zmeny_vztahu_k_hraci = _zpracuj_ai_diplomacii(ai_staty)
-	await _zobraz_hlaseni_vztahu_hrace(zmeny_vztahu_k_hraci)
+	_zobraz_hlaseni_vztahu_hrace(zmeny_vztahu_k_hraci)
 	var zmeny_opusteni_alianci = _zpracuj_ai_opusteni_alianci(ai_staty)
 	_zobraz_hlaseni_opusteni_alianci_hrace(zmeny_opusteni_alianci)
 	var zmeny_alianci_k_hraci = _zpracuj_ai_aliance(ai_staty)
 	_zobraz_hlaseni_alianci_hrace(zmeny_alianci_k_hraci)
+	_set_defer_log_maintenance(false)
+	ai_phases["diplomacy"] = Time.get_ticks_msec() - ai_phase_ms
+	ai_phase_ms = Time.get_ticks_msec()
+
+	# Runtime cache mode remains enabled for economy and movement.
+	_ai_enemy_neighbor_cache.clear()
+	_ai_threat_cache.clear()
+	_ai_border_strength_cache.clear()
+	_ai_war_pair_eval_cache.clear()
+	_ai_relation_cache.clear()
+	_ai_allies_cache.clear()
+	_ai_war_cache.clear()
+	_ai_alliance_level_cache.clear()
+	_ai_non_aggr_cache.clear()
+	_ai_can_adjust_relation_cache.clear()
+	_ai_border_cache.clear()
 		
 	var cena_za_vojaka = 0.01
 
-	for p_id in map_data:
-		var d = map_data[p_id]
-		var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
-		if je_lidsky_stat(owner_tag) or owner_tag == "SEA": continue
-		
+	for owner_tag_raw in ai_staty:
+		var owner_tag = _normalizuj_tag(str(owner_tag_raw))
+		if owner_tag == "":
+			continue
+		var owned = _turn_state_owned_provinces.get(owner_tag, []) as Array
+		if owned.is_empty():
+			continue
+
 		if not ai_kasy.has(owner_tag):
 			var ai_hdp = _spocitej_hdp_statu(owner_tag)
 			ai_kasy[owner_tag] = ai_hdp * 0.05
-		
-		var gdp = float(d.get("gdp", 0.0))
-		var vojaci = int(d.get("soldiers", 0))
-		var prijem = (gdp * 0.1) - (vojaci * 0.001)
-		ai_kasy[owner_tag] += prijem
+
+		for p_id in owned:
+			if not map_data.has(p_id):
+				continue
+			var d_income = map_data[p_id]
+			var gdp = float(d_income.get("gdp", 0.0))
+			var vojaci = int(d_income.get("soldiers", 0))
+			var prijem = (gdp * 0.1) - (vojaci * 0.001)
+			ai_kasy[owner_tag] += prijem
 
 		if ai_kasy[owner_tag] < -100.0:
 			_vyres_bankrot(owner_tag)
 
-		# AI Recruitment
-		var rekruti = int(d.get("recruitable_population", 0))
-		var core_owner_tag = str(d.get("core_owner", owner_tag)).strip_edges().to_upper()
-		var je_okupace = core_owner_tag != "" and core_owner_tag != owner_tag
-		if je_okupace:
-			rekruti = int(floor(float(rekruti) * 0.2))
-		if rekruti > 300 and ai_kasy[owner_tag] > 50.0:
-			var pocet_k_verbovani = min(rekruti, int(ai_kasy[owner_tag] / cena_za_vojaka))
-			var frontline_bonus = 0
-			if _ma_nepratelskeho_souseda(owner_tag, p_id):
-				frontline_bonus += 700
-			if bool(d.get("is_capital", false)):
-				frontline_bonus += 500
-			var hrozba = _spocitej_hrozbu_nepratel_u_provincie(p_id, owner_tag)
-			frontline_bonus += min(900, int(float(hrozba) * 0.15))
-			var limit_verbovani = min(2500, 900 + frontline_bonus)
+		for p_id in owned:
+			if not map_data.has(p_id):
+				continue
+			var d = map_data[p_id]
+			var rekruti = int(d.get("recruitable_population", 0))
+			var core_owner_tag = str(d.get("core_owner", owner_tag)).strip_edges().to_upper()
+			var je_okupace = core_owner_tag != "" and core_owner_tag != owner_tag
 			if je_okupace:
-				limit_verbovani = int(max(120, floor(float(limit_verbovani) * 0.25)))
-			pocet_k_verbovani = min(pocet_k_verbovani, limit_verbovani)
-			d["recruitable_population"] -= pocet_k_verbovani
-			d["soldiers"] += pocet_k_verbovani
-			ai_kasy[owner_tag] -= (pocet_k_verbovani * cena_za_vojaka)
+				rekruti = int(floor(float(rekruti) * 0.2))
+			if rekruti > 300 and ai_kasy[owner_tag] > 50.0:
+				var pocet_k_verbovani = min(rekruti, int(ai_kasy[owner_tag] / cena_za_vojaka))
+				var frontline_bonus = 0
+				if _ma_nepratelskeho_souseda(owner_tag, p_id):
+					frontline_bonus += 700
+				if bool(d.get("is_capital", false)):
+					frontline_bonus += 500
+				var hrozba = _spocitej_hrozbu_nepratel_u_provincie(p_id, owner_tag)
+				frontline_bonus += min(900, int(float(hrozba) * 0.15))
+				var limit_verbovani = min(2500, 900 + frontline_bonus)
+				if je_okupace:
+					limit_verbovani = int(max(120, floor(float(limit_verbovani) * 0.25)))
+				pocet_k_verbovani = min(pocet_k_verbovani, limit_verbovani)
+				d["recruitable_population"] -= pocet_k_verbovani
+				d["soldiers"] += pocet_k_verbovani
+				ai_kasy[owner_tag] -= (pocet_k_verbovani * cena_za_vojaka)
+	ai_phases["economy_recruit"] = Time.get_ticks_msec() - ai_phase_ms
+	ai_phase_ms = Time.get_ticks_msec()
 
 	# AI movement phases:
 	# 1) Non-attacking moves inside own provinces.
 	# 2) Reinforce core provinces (capital + capital state).
 	# 3) Offensive attacks.
 	await _naplanuj_ai_presuny(map_loader)
+	ai_phases["movement"] = Time.get_ticks_msec() - ai_phase_ms
+	ai_phase_ms = Time.get_ticks_msec()
+	# Disable runtime caches after movement and clean up temp maps.
+	_ai_phase_cache_active = false
+	_ai_enemy_neighbor_cache.clear()
+	_ai_threat_cache.clear()
+	_ai_border_strength_cache.clear()
+	_ai_war_pair_eval_cache.clear()
+	_ai_relation_cache.clear()
+	_ai_allies_cache.clear()
+	_ai_war_cache.clear()
+	_ai_alliance_level_cache.clear()
+	_ai_can_adjust_relation_cache.clear()
+	_ai_border_cache.clear()
 	_invalidate_turn_cache()
+	ai_phases["cleanup"] = Time.get_ticks_msec() - ai_phase_ms
+	_log_ai_profile(Time.get_ticks_msec() - ai_start_ms, ai_phases)
 				
 	print("--- AI THINKING END ---")
 
@@ -3159,7 +3561,13 @@ func _naplanuj_ai_presuny(map_loader):
 			var amount = int(move.get("amount", 0))
 			if amount <= 0:
 				continue
-			map_loader.zaregistruj_presun_armady(move["from"], move["to"], amount, false)
+			map_loader.zaregistruj_presun_armady(
+				int(move["from"]),
+				int(move["to"]),
+				amount,
+				false,
+				[int(move["from"]), int(move["to"])]
+			)
 			moved_from[move["from"]] = true
 
 		# 2) Defense of core provinces (capital and provinces in the capital's state).
@@ -3172,7 +3580,13 @@ func _naplanuj_ai_presuny(map_loader):
 			var amount = int(move.get("amount", 0))
 			if amount <= 0:
 				continue
-			map_loader.zaregistruj_presun_armady(move["from"], move["to"], amount, false)
+			map_loader.zaregistruj_presun_armady(
+				int(move["from"]),
+				int(move["to"]),
+				amount,
+				false,
+				[int(move["from"]), int(move["to"])]
+			)
 			moved_from[move["from"]] = true
 
 		# 3) Offensive attacks.
@@ -3188,13 +3602,25 @@ func _naplanuj_ai_presuny(map_loader):
 
 			var target_owner = str(map_data[move["to"]].get("owner", "")).strip_edges().to_upper()
 			if jsou_ve_valce(owner_tag, target_owner):
-				map_loader.zaregistruj_presun_armady(move["from"], move["to"], amount, false)
+				map_loader.zaregistruj_presun_armady(
+					int(move["from"]),
+					int(move["to"]),
+					amount,
+					false,
+					[int(move["from"]), int(move["to"])]
+				)
 				moved_from[move["from"]] = true
 			else:
 				if _ma_smyls_vyhlasit_valku(owner_tag, target_owner, int(move["from"]), int(move["to"]), amount):
 					vyhlasit_valku(owner_tag, target_owner)
 					if jsou_ve_valce(owner_tag, target_owner):
-						map_loader.zaregistruj_presun_armady(move["from"], move["to"], amount, false)
+						map_loader.zaregistruj_presun_armady(
+							int(move["from"]),
+							int(move["to"]),
+							amount,
+							false,
+							[int(move["from"]), int(move["to"])]
+						)
 						moved_from[move["from"]] = true
 
 	if map_loader.has_method("ukonci_davkovy_presun"):
@@ -3202,11 +3628,19 @@ func _naplanuj_ai_presuny(map_loader):
 
 func _seradene_ai_provincie(state_tag: String) -> Array:
 	var ids: Array = []
-	for p_id in map_data:
-		var d = map_data[p_id]
-		if str(d.get("owner", "")).strip_edges().to_upper() == state_tag:
-			if int(d.get("soldiers", 0)) > 0:
+	if _turn_cache_valid and _turn_state_owned_provinces.has(state_tag):
+		for p_id in (_turn_state_owned_provinces[state_tag] as Array):
+			if not map_data.has(p_id):
+				continue
+			var d = map_data[p_id]
+			if int(d.get("soldiers", 0)) >= AI_MIN_PROVINCE_SOLDIERS_FOR_PLANNING:
 				ids.append(p_id)
+	else:
+		for p_id in map_data:
+			var d = map_data[p_id]
+			if str(d.get("owner", "")).strip_edges().to_upper() == state_tag:
+				if int(d.get("soldiers", 0)) >= AI_MIN_PROVINCE_SOLDIERS_FOR_PLANNING:
+					ids.append(p_id)
 
 	ids.sort_custom(func(a, b):
 		return int(map_data[a].get("soldiers", 0)) > int(map_data[b].get("soldiers", 0))
@@ -3214,22 +3648,41 @@ func _seradene_ai_provincie(state_tag: String) -> Array:
 	return ids
 
 func _ma_nepratelskeho_souseda(state_tag: String, province_id: int) -> bool:
+	if _ai_phase_cache_active:
+		var ck = "%s|%d" % [state_tag, province_id]
+		if _ai_enemy_neighbor_cache.has(ck):
+			return bool(_ai_enemy_neighbor_cache[ck])
+
 	if not map_data.has(province_id):
+		if _ai_phase_cache_active:
+			_ai_enemy_neighbor_cache["%s|%d" % [state_tag, province_id]] = false
 		return false
+	var found_enemy := false
 	for n_id in map_data[province_id].get("neighbors", []):
 		if not map_data.has(n_id):
 			continue
 		var n_owner = str(map_data[n_id].get("owner", "")).strip_edges().to_upper()
 		if n_owner == state_tag or n_owner == "SEA":
 			continue
-		if jsou_ve_valce(state_tag, n_owner):
-			return true
-		if not _je_pratelsky_vztah(state_tag, n_owner):
-			return true
-	return false
+		if _jsou_ve_valce_ai_cached(state_tag, n_owner):
+			found_enemy = true
+			break
+		if not _je_pratelsky_vztah_ai_cached(state_tag, n_owner):
+			found_enemy = true
+			break
+	if _ai_phase_cache_active:
+		_ai_enemy_neighbor_cache["%s|%d" % [state_tag, province_id]] = found_enemy
+	return found_enemy
 
 func _spocitej_hrozbu_nepratel_u_provincie(province_id: int, state_tag: String) -> int:
+	if _ai_phase_cache_active:
+		var ck = "%s|%d" % [state_tag, province_id]
+		if _ai_threat_cache.has(ck):
+			return int(_ai_threat_cache[ck])
+
 	if not map_data.has(province_id):
+		if _ai_phase_cache_active:
+			_ai_threat_cache["%s|%d" % [state_tag, province_id]] = 0
 		return 0
 	var threat := 0
 	for n_id in map_data[province_id].get("neighbors", []):
@@ -3238,14 +3691,45 @@ func _spocitej_hrozbu_nepratel_u_provincie(province_id: int, state_tag: String) 
 		var n_owner = str(map_data[n_id].get("owner", "")).strip_edges().to_upper()
 		if n_owner == state_tag or n_owner == "SEA":
 			continue
-		if not jsou_ve_valce(state_tag, n_owner) and _je_pratelsky_vztah(state_tag, n_owner):
+		if not _jsou_ve_valce_ai_cached(state_tag, n_owner) and _je_pratelsky_vztah_ai_cached(state_tag, n_owner):
 			continue
 		threat += int(map_data[n_id].get("soldiers", 0))
+	if _ai_phase_cache_active:
+		_ai_threat_cache["%s|%d" % [state_tag, province_id]] = threat
 	return threat
 
 func _spocitej_silu_na_hranici(state_tag: String, enemy: String) -> Dictionary:
 	var our_border := 0
 	var enemy_border := 0
+
+	if _turn_cache_valid and _turn_state_owned_provinces.has(state_tag) and _turn_state_owned_provinces.has(enemy):
+		for p_id in (_turn_state_owned_provinces[state_tag] as Array):
+			if not map_data.has(p_id):
+				continue
+			var d_our = map_data[p_id]
+			var soldiers_our = int(d_our.get("soldiers", 0))
+			for n_id in d_our.get("neighbors", []):
+				if not map_data.has(n_id):
+					continue
+				var n_owner_our = str(map_data[n_id].get("owner", "")).strip_edges().to_upper()
+				if n_owner_our == enemy:
+					our_border += soldiers_our
+					break
+
+		for p_id in (_turn_state_owned_provinces[enemy] as Array):
+			if not map_data.has(p_id):
+				continue
+			var d_enemy = map_data[p_id]
+			var soldiers_enemy = int(d_enemy.get("soldiers", 0))
+			for n_id in d_enemy.get("neighbors", []):
+				if not map_data.has(n_id):
+					continue
+				var n_owner_enemy = str(map_data[n_id].get("owner", "")).strip_edges().to_upper()
+				if n_owner_enemy == state_tag:
+					enemy_border += soldiers_enemy
+					break
+		return {"our": our_border, "enemy": enemy_border}
+
 	for p_id in map_data:
 		var d = map_data[p_id]
 		var p_owner = str(d.get("owner", "")).strip_edges().to_upper()
@@ -3264,46 +3748,194 @@ func _spocitej_silu_na_hranici(state_tag: String, enemy: String) -> Dictionary:
 				break
 	return {"our": our_border, "enemy": enemy_border}
 
-func _ma_smyls_vyhlasit_valku(state_tag: String, target_owner: String, from_id: int, to_id: int, amount: int) -> bool:
-	if state_tag == "" or target_owner == "" or target_owner == "SEA":
-		return false
-	if ziskej_uroven_aliance(state_tag, target_owner) > ALLIANCE_NONE:
-		return false
-	if _je_pratelsky_vztah(state_tag, target_owner):
-		return false
-	var rel = ziskej_vztah_statu(state_tag, target_owner)
-	if rel > AI_DECLARE_WAR_MAX_RELATION:
-		return false
-	if amount < AI_DECLARE_WAR_MIN_ATTACK_FORCE:
-		return false
-	if not map_data.has(from_id) or not map_data.has(to_id):
-		return false
+func _ziskej_ai_border_strength_cached(state_tag: String, target_owner: String) -> Dictionary:
+	if not _ai_phase_cache_active:
+		return _spocitej_silu_na_hranici(state_tag, target_owner)
+	var key = "%s>%s" % [state_tag, target_owner]
+	if _ai_border_strength_cache.has(key):
+		return (_ai_border_strength_cache[key] as Dictionary)
+	var computed = _spocitej_silu_na_hranici(state_tag, target_owner)
+	_ai_border_strength_cache[key] = computed
+	return computed
 
-	var border_strength = _spocitej_silu_na_hranici(state_tag, target_owner)
+func _ziskej_ai_war_pair_eval_cached(state_tag: String, target_owner: String) -> Dictionary:
+	if not _ai_phase_cache_active:
+		return {}
+	var key = "%s>%s" % [state_tag, target_owner]
+	if _ai_war_pair_eval_cache.has(key):
+		return (_ai_war_pair_eval_cache[key] as Dictionary)
+
+	var out := {
+		"blocked": false,
+		"required_local_ratio": 999.0,
+		"border_ratio": 0.0,
+		"strategic_ratio": 0.0
+	}
+
+	if _ziskej_uroven_aliance_ai_cached(state_tag, target_owner) > ALLIANCE_NONE:
+		out["blocked"] = true
+		_ai_war_pair_eval_cache[key] = out
+		return out
+	if _je_pratelsky_vztah_ai_cached(state_tag, target_owner):
+		out["blocked"] = true
+		_ai_war_pair_eval_cache[key] = out
+		return out
+
+	var rel = _ziskej_ai_vztah_cached(state_tag, target_owner)
+	if rel > AI_DECLARE_WAR_MAX_RELATION:
+		out["blocked"] = true
+		_ai_war_pair_eval_cache[key] = out
+		return out
+
+	var border_strength = _ziskej_ai_border_strength_cached(state_tag, target_owner)
 	var our_border = float(int(border_strength.get("our", 0)))
 	var enemy_border = float(max(1, int(border_strength.get("enemy", 0))))
-	var ratio = our_border / enemy_border
-
-	var target_soldiers = int(map_data[to_id].get("soldiers", 0))
-	var local_ratio = float(amount) / float(max(1, target_soldiers))
+	out["border_ratio"] = our_border / enemy_border
 
 	var relation_factor = clamp((-rel) / 80.0, 0.0, 1.0)
-	var required_local_ratio = 1.25 - (relation_factor * 0.20)
+	out["required_local_ratio"] = 1.25 - (relation_factor * 0.20)
 
 	var defensive_allies_power := 0
 	for ally in _ziskej_spojence_s_min_alianci(target_owner, ALLIANCE_DEFENSE):
 		var ally_tag = _normalizuj_tag(str(ally))
 		if ally_tag == "" or ally_tag == state_tag:
 			continue
-		if ziskej_vztah_statu(ally_tag, state_tag) >= AI_FRIEND_RELATION_THRESHOLD:
+		if _ziskej_ai_vztah_cached(ally_tag, state_tag) >= AI_FRIEND_RELATION_THRESHOLD:
 			continue
 		defensive_allies_power += _spocitej_silu_statu(ally_tag)
 
 	var own_total = float(max(1, _spocitej_silu_statu(state_tag)))
 	var target_total = float(max(1, _spocitej_silu_statu(target_owner) + defensive_allies_power))
-	var strategic_ratio = own_total / target_total
+	out["strategic_ratio"] = own_total / target_total
+
+	_ai_war_pair_eval_cache[key] = out
+	return out
+
+func _ma_smyls_vyhlasit_valku(state_tag: String, target_owner: String, from_id: int, to_id: int, amount: int) -> bool:
+	if state_tag == "" or target_owner == "" or target_owner == "SEA":
+		return false
+	if amount < AI_DECLARE_WAR_MIN_ATTACK_FORCE:
+		return false
+	if not map_data.has(from_id) or not map_data.has(to_id):
+		return false
+
+	var pair_eval: Dictionary = _ziskej_ai_war_pair_eval_cached(state_tag, target_owner)
+	if not pair_eval.is_empty() and bool(pair_eval.get("blocked", false)):
+		return false
+
+	var ratio = float(pair_eval.get("border_ratio", 0.0))
+	var required_local_ratio = float(pair_eval.get("required_local_ratio", 1.25))
+	var strategic_ratio = float(pair_eval.get("strategic_ratio", 0.0))
+
+	if pair_eval.is_empty():
+		# Fallback path when AI phase cache is not active.
+		if _ziskej_uroven_aliance_ai_cached(state_tag, target_owner) > ALLIANCE_NONE:
+			return false
+		if _je_pratelsky_vztah_ai_cached(state_tag, target_owner):
+			return false
+		var rel = _ziskej_ai_vztah_cached(state_tag, target_owner)
+		if rel > AI_DECLARE_WAR_MAX_RELATION:
+			return false
+		var border_strength = _spocitej_silu_na_hranici(state_tag, target_owner)
+		var our_border = float(int(border_strength.get("our", 0)))
+		var enemy_border = float(max(1, int(border_strength.get("enemy", 0))))
+		ratio = our_border / enemy_border
+		var relation_factor = clamp((-rel) / 80.0, 0.0, 1.0)
+		required_local_ratio = 1.25 - (relation_factor * 0.20)
+		var defensive_allies_power := 0
+		for ally in _ziskej_spojence_s_min_alianci(target_owner, ALLIANCE_DEFENSE):
+			var ally_tag = _normalizuj_tag(str(ally))
+			if ally_tag == "" or ally_tag == state_tag:
+				continue
+			if _ziskej_ai_vztah_cached(ally_tag, state_tag) >= AI_FRIEND_RELATION_THRESHOLD:
+				continue
+			defensive_allies_power += _spocitej_silu_statu(ally_tag)
+		var own_total = float(max(1, _spocitej_silu_statu(state_tag)))
+		var target_total = float(max(1, _spocitej_silu_statu(target_owner) + defensive_allies_power))
+		strategic_ratio = own_total / target_total
+
+	var target_soldiers = int(map_data[to_id].get("soldiers", 0))
+	var local_ratio = float(amount) / float(max(1, target_soldiers))
 
 	return ratio >= AI_DECLARE_WAR_MIN_BORDER_ADVANTAGE and local_ratio >= required_local_ratio and strategic_ratio >= 0.85
+
+func _ziskej_ai_vztah_cached(tag_a: String, tag_b: String) -> float:
+	if not _ai_phase_cache_active:
+		return ziskej_vztah_statu(tag_a, tag_b)
+	var key = _klic_pair(tag_a, tag_b)
+	if key == "":
+		return 0.0
+	if _ai_relation_cache.has(key):
+		return float(_ai_relation_cache[key])
+	var rel = ziskej_vztah_statu(tag_a, tag_b)
+	_ai_relation_cache[key] = rel
+	return rel
+
+func _je_pratelsky_vztah_ai_cached(tag_a: String, tag_b: String) -> bool:
+	if tag_a == "" or tag_b == "" or tag_a == tag_b:
+		return false
+	return _ziskej_ai_vztah_cached(tag_a, tag_b) >= AI_FRIEND_RELATION_THRESHOLD
+
+func _jsou_ve_valce_ai_cached(tag_a: String, tag_b: String) -> bool:
+	if not _ai_phase_cache_active:
+		return jsou_ve_valce(tag_a, tag_b)
+	var key = _klic_pair(tag_a, tag_b)
+	if key == "":
+		return false
+	if _ai_war_cache.has(key):
+		return bool(_ai_war_cache[key])
+	var is_war = valky.has(key)
+	_ai_war_cache[key] = is_war
+	return is_war
+
+func _ziskej_uroven_aliance_ai_cached(tag_a: String, tag_b: String) -> int:
+	if not _ai_phase_cache_active:
+		return ziskej_uroven_aliance(tag_a, tag_b)
+	var key = _klic_pair(tag_a, tag_b)
+	if key == "":
+		return ALLIANCE_NONE
+	if _ai_alliance_level_cache.has(key):
+		return int(_ai_alliance_level_cache[key])
+	var level = int(aliance_statu.get(key, ALLIANCE_NONE))
+	_ai_alliance_level_cache[key] = level
+	return level
+
+func _ma_neagresivni_smlouvu_ai_cached(tag_a: String, tag_b: String) -> bool:
+	if not _ai_phase_cache_active:
+		return ma_neagresivni_smlouvu(tag_a, tag_b)
+	var key = _klic_pair(tag_a, tag_b)
+	if key == "":
+		return false
+	if _ai_non_aggr_cache.has(key):
+		return bool(_ai_non_aggr_cache[key])
+	var has_pact = neagresivni_smlouvy.has(key)
+	_ai_non_aggr_cache[key] = has_pact
+	return has_pact
+
+func _muze_upravit_vztah_ai_cached(tag_a: String, tag_b: String) -> bool:
+	if not _ai_phase_cache_active:
+		return muze_upravit_vztah_statu(tag_a, tag_b)
+	var key = _klic_pair(tag_a, tag_b)
+	if key == "":
+		return false
+	if _ai_can_adjust_relation_cache.has(key):
+		return bool(_ai_can_adjust_relation_cache[key])
+	var last_turn = int(_vztah_akce_posledni_kolo.get(key, -9999999))
+	var ok = (aktualni_kolo - last_turn) >= RELATION_ACTION_COOLDOWN_TURNS
+	_ai_can_adjust_relation_cache[key] = ok
+	return ok
+
+func _ma_spolecnou_hranici_ai_cached(tag_a: String, tag_b: String) -> bool:
+	if not _ai_phase_cache_active:
+		return _ma_spolecnou_hranici(tag_a, tag_b)
+	var key = _klic_pair(tag_a, tag_b)
+	if key == "":
+		return false
+	if _ai_border_cache.has(key):
+		return bool(_ai_border_cache[key])
+	var has_border = _ma_spolecnou_hranici(tag_a, tag_b)
+	_ai_border_cache[key] = has_border
+	return has_border
 
 func _navrhni_neutocny_presun(state_tag: String, from_id: int) -> Dictionary:
 	if not map_data.has(from_id):
@@ -3444,7 +4076,7 @@ func _navrhni_utok(state_tag: String, from_id: int) -> Dictionary:
 		var n_owner = str(n_prov.get("owner", "")).strip_edges().to_upper()
 		if n_owner == state_tag or n_owner == "SEA":
 			continue
-		if not jsou_ve_valce(state_tag, n_owner) and _je_pratelsky_vztah(state_tag, n_owner):
+		if not _jsou_ve_valce_ai_cached(state_tag, n_owner) and _je_pratelsky_vztah_ai_cached(state_tag, n_owner):
 			continue
 
 		var n_vojaci = int(n_prov.get("soldiers", 0))
@@ -3457,7 +4089,7 @@ func _navrhni_utok(state_tag: String, from_id: int) -> Dictionary:
 		var score = 0.0
 		score += float(attack_amount - n_vojaci) * 1.2
 		score -= float(threat_after_capture) * 0.30
-		var rel = ziskej_vztah_statu(state_tag, n_owner)
+		var rel = _ziskej_ai_vztah_cached(state_tag, n_owner)
 		score += clamp(-rel, 0.0, 100.0) * 12.0
 		score += float(n_prov.get("gdp", 0.0)) * 16.0
 		score += float(int(n_prov.get("recruitable_population", 0))) * 0.02

@@ -32,6 +32,8 @@ var _preview_anim_markery: Array = []
 const MAX_MINIMALNI_AI_CAR := 90
 const AI_MARKER_ATTACK_SPEED := 170.0
 const AI_MARKER_MOVE_SPEED := 130.0
+const FAST_TURN_RESOLUTION := true
+const FAST_BATTLE_SUMMARY_MAX_LINES := 8
 var _bitevni_kamera_aktivni: bool = false
 var _bitevni_puvodni_pozice: Vector2 = Vector2.ZERO
 var aktualni_mapovy_mod: String = "political"
@@ -2097,15 +2099,19 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int, vykreslit_
 	var owner_tag = _ziskej_vlastnika_armady_v_provincii(from_id)
 	if owner_tag == "":
 		return
+	var is_human_owner = GameManager.je_lidsky_stat(owner_tag)
 
 	# Replace older queued move from the same source province/owner immediately.
-	for i in range(cekajici_presuny.size() - 1, -1, -1):
-		var q = cekajici_presuny[i]
-		if int(q.get("from", -1)) != from_id:
-			continue
-		if str(q.get("owner", "")).strip_edges().to_upper() != owner_tag:
-			continue
-		cekajici_presuny.remove_at(i)
+	# AI batch planning guarantees one outgoing move per source in the same phase,
+	# so we can skip the expensive full scan for non-human owners.
+	if is_human_owner or not _pozastavit_aktualizaci_ikon:
+		for i in range(cekajici_presuny.size() - 1, -1, -1):
+			var q = cekajici_presuny[i]
+			if int(q.get("from", -1)) != from_id:
+				continue
+			if str(q.get("owner", "")).strip_edges().to_upper() != owner_tag:
+				continue
+			cekajici_presuny.remove_at(i)
 
 	var target_owner_tag = ""
 	if _je_more_provincie(to_id):
@@ -2151,7 +2157,10 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int, vykreslit_
 		
 		ceka_na_cil_presunu = false
 		vycisti_nahled_presunu()
-		_vykresli_indikaci_cekajicich_presunu()
+		# Redraw queued-move overlay only for human owners; for AI batches this
+		# avoids O(n^2) redraw churn while preserving gameplay/state.
+		if is_human_owner:
+			_vykresli_indikaci_cekajicich_presunu()
 		var root2 = get_parent()
 		if "ceka_na_cil_presunu" in root2:
 			root2.ceka_na_cil_presunu = false
@@ -2439,15 +2448,17 @@ func zpracuj_tah_armad():
 	aktualizuj_ikony_armad()
 
 	if not bitevni_udalosti.is_empty():
-		_zacni_bitevni_kameru()
-	for udalost in bitevni_udalosti:
-		await _ukaz_bitevni_popup_na_provincii(
-			str(udalost.get("title", "Bitva")),
-			str(udalost.get("text", "")),
-			int(udalost.get("province_id", -1))
-		)
-	if not bitevni_udalosti.is_empty():
-		await _obnov_bitevni_kameru()
+		if _ma_rychle_zpracovani_tahu():
+			await _ukaz_souhrn_bitevnich_udalosti(bitevni_udalosti)
+		else:
+			_zacni_bitevni_kameru()
+			for udalost in bitevni_udalosti:
+				await _ukaz_bitevni_popup_na_provincii(
+					str(udalost.get("title", "Bitva")),
+					str(udalost.get("text", "")),
+					int(udalost.get("province_id", -1))
+				)
+			await _obnov_bitevni_kameru()
 	
 	if celkovy_report != "":
 		await _ukaz_bitevni_popup("Hlášení z fronty", celkovy_report)
@@ -2461,6 +2472,33 @@ func zpracuj_tah_armad():
 	_minimalni_ai_tahy.clear()
 	obsazene_pozice_presunu.clear()
 	trasy_lane_counter.clear()
+
+func _ma_rychle_zpracovani_tahu() -> bool:
+	if not FAST_TURN_RESOLUTION:
+		return false
+	if GameManager == null:
+		return false
+	return bool(GameManager.zpracovava_se_tah)
+
+func _ukaz_souhrn_bitevnich_udalosti(udalosti: Array) -> void:
+	if udalosti.is_empty():
+		return
+	var lines: Array = []
+	var max_lines = min(FAST_BATTLE_SUMMARY_MAX_LINES, udalosti.size())
+	for i in range(max_lines):
+		var e = udalosti[i] as Dictionary
+		var line = str(e.get("text", "")).strip_edges()
+		if line == "":
+			line = str(e.get("title", "Bitva")).strip_edges()
+		if line == "":
+			line = "Bitva"
+		lines.append("- %s" % line)
+
+	var remaining = udalosti.size() - max_lines
+	if remaining > 0:
+		lines.append("- ... a dalsich %d bitevnich udalosti" % remaining)
+
+	await _ukaz_bitevni_popup("Hlaseni z fronty", "\n".join(lines))
 
 func _ukaz_bitevni_popup(titulek: String, text: String):
 	var game_ui = get_tree().current_scene.find_child("GameUI", true, false)

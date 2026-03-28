@@ -206,7 +206,10 @@ func _unhandled_input(event):
 					dobyt_provincii(int(vybrana_provincie), GameManager.hrac_stat, true)
 					
 			elif event.keycode == KEY_SPACE:
-				GameManager.ukonci_kolo()
+				if GameManager.has_method("pozaduj_ukonceni_kola"):
+					GameManager.pozaduj_ukonceni_kola()
+				else:
+					GameManager.ukonci_kolo()
 
 func _aplikuj_drag_hromadny_vyber():
 	if map_image == null:

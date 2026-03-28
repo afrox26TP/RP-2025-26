@@ -90,13 +90,20 @@ var _zpravy_groups_list: VBoxContainer
 var _zpravy_category_expanded: Dictionary = {}
 var _zpravy_expanded: bool = false
 var _zpravy_historie_expanded: bool = false
+var _turn_loading_overlay: ColorRect
+var _turn_loading_label: Label
+var _turn_loading_anim_time: float = 0.0
+var _turn_loading_anim_step: int = 0
+var _turn_loading_active: bool = false
 
 const POPUP_TOP_MARGIN := 6
 const POPUP_GAP := 6
 const QUEUE_PREVIEW_MAX_ITEMS := 8
 const ZPRAVY_MAX_ITEMS := 180
+const ZPRAVY_HISTORY_MAX_ITEMS := 500
 const MAIN_MENU_SCENE_PATH := "res://scenes/MainMenu.tscn"
 const IDEOLOGY_UI_ORDER := ["demokracie", "kralovstvi", "autokracie", "komunismus", "nacismus", "fasismus"]
+const TURN_LOADING_FRAMES := ["Zpracovavam tah", "Zpracovavam tah.", "Zpracovavam tah..", "Zpracovavam tah..."]
 
 func _resolve_flag_texture(owner_tag: String, ideologie: String):
 	var cisty_tag = owner_tag.strip_edges().to_upper()
@@ -245,6 +252,8 @@ func _ready():
 		alliance_level_option.item_selected.connect(_on_alliance_level_selected)
 	if GameManager.has_signal("kolo_zmeneno") and not GameManager.kolo_zmeneno.is_connected(_on_kolo_zmeneno):
 		GameManager.kolo_zmeneno.connect(_on_kolo_zmeneno)
+	if GameManager.has_signal("zpracovani_tahu_zmeneno") and not GameManager.zpracovani_tahu_zmeneno.is_connected(_on_zpracovani_tahu_zmeneno):
+		GameManager.zpracovani_tahu_zmeneno.connect(_on_zpracovani_tahu_zmeneno)
 	if diplomacy_request_popup:
 		diplomacy_request_popup.hide()
 		if popup_decline_all_btn:
@@ -263,23 +272,66 @@ func _ready():
 	if get_viewport() and not get_viewport().size_changed.is_connected(_on_viewport_resized):
 		get_viewport().size_changed.connect(_on_viewport_resized)
 	_vytvor_pause_menu()
+	_vytvor_turn_loading_overlay()
+	_on_zpracovani_tahu_zmeneno(bool(GameManager.zpracovava_se_tah))
 	_aktualizuj_pozice_popupu()
 	_aktualizuj_popup_diplomatickych_zadosti()
 	_vytvor_darovaci_dialog()
 	_nastav_tooltipy_ui()
 
 func _process(_delta: float) -> void:
+	if _turn_loading_active:
+		_turn_loading_anim_time += _delta
+		if _turn_loading_anim_time >= 0.2 and _turn_loading_label:
+			_turn_loading_anim_time = 0.0
+			_turn_loading_anim_step = (_turn_loading_anim_step + 1) % TURN_LOADING_FRAMES.size()
+			_turn_loading_label.text = TURN_LOADING_FRAMES[_turn_loading_anim_step]
+
 	if not _ideology_dropdown_open or ideology_option == null:
-		set_process(false)
+		if not _turn_loading_active:
+			set_process(false)
 		return
 	var popup = ideology_option.get_popup()
 	if popup == null or not popup.visible:
-		set_process(false)
+		if not _turn_loading_active:
+			set_process(false)
 		return
 	if popup.has_method("get_focused_item"):
 		var idx = int(popup.get_focused_item())
 		if idx != _ideology_hover_idx:
 			_on_ideology_dropdown_item_focused(idx)
+
+func _vytvor_turn_loading_overlay() -> void:
+	if _turn_loading_overlay != null:
+		return
+	_turn_loading_overlay = ColorRect.new()
+	_turn_loading_overlay.name = "TurnLoadingOverlay"
+	_turn_loading_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_turn_loading_overlay.color = Color(0.03, 0.05, 0.08, 0.18)
+	_turn_loading_overlay.visible = false
+	_turn_loading_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_turn_loading_overlay)
+
+	_turn_loading_label = Label.new()
+	_turn_loading_label.name = "TurnLoadingLabel"
+	_turn_loading_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	_turn_loading_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_turn_loading_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_turn_loading_label.text = TURN_LOADING_FRAMES[0]
+	_turn_loading_label.add_theme_font_size_override("font_size", 24)
+	_turn_loading_label.add_theme_color_override("font_color", Color(0.95, 0.98, 1.0, 0.95))
+	_turn_loading_overlay.add_child(_turn_loading_label)
+
+func _on_zpracovani_tahu_zmeneno(aktivni: bool) -> void:
+	_turn_loading_active = aktivni
+	_turn_loading_anim_time = 0.0
+	_turn_loading_anim_step = 0
+	if _turn_loading_overlay:
+		_turn_loading_overlay.visible = aktivni
+	if _turn_loading_label:
+		_turn_loading_label.text = TURN_LOADING_FRAMES[0]
+	if aktivni:
+		set_process(true)
 
 func _setup_popup_country_link() -> void:
 	# Sender name text in the popup was intentionally removed to keep the card compact.
@@ -1858,12 +1910,12 @@ func _ziskej_historicke_zpravy() -> Array:
 	var current_turn = int(GameManager.aktualni_kolo)
 	if _zpravy_mode == 1:
 		if GameManager.has_method("ziskej_globalni_zpravy"):
-			out = _odfiltruj_popup_kategorie(GameManager.ziskej_globalni_zpravy(ZPRAVY_MAX_ITEMS))
+			out = _odfiltruj_popup_kategorie(GameManager.ziskej_globalni_zpravy(ZPRAVY_HISTORY_MAX_ITEMS))
 	else:
 		if GameManager.has_method("ziskej_relevantni_zpravy_statu"):
-			out = _odfiltruj_popup_kategorie(GameManager.ziskej_relevantni_zpravy_statu(GameManager.hrac_stat, ZPRAVY_MAX_ITEMS, false))
+			out = _odfiltruj_popup_kategorie(GameManager.ziskej_relevantni_zpravy_statu(GameManager.hrac_stat, ZPRAVY_HISTORY_MAX_ITEMS, false))
 		elif GameManager.has_method("ziskej_zpravy_hrace"):
-			out = _odfiltruj_popup_kategorie(GameManager.ziskej_zpravy_hrace(GameManager.hrac_stat, ZPRAVY_MAX_ITEMS))
+			out = _odfiltruj_popup_kategorie(GameManager.ziskej_zpravy_hrace(GameManager.hrac_stat, ZPRAVY_HISTORY_MAX_ITEMS))
 
 	var hist: Array = []
 	for entry in out:
@@ -1880,16 +1932,40 @@ func _odfiltruj_popup_kategorie(entries: Array) -> Array:
 		filtered.append(entry)
 	return filtered
 
-func _format_zprava(entry: Dictionary, index_from_newest: int) -> String:
+func _je_redundantni_titulek_zpravy(category_label: String, title: String) -> bool:
+	var t = title.strip_edges().to_lower()
+	if t == "":
+		return true
+	match category_label:
+		"War":
+			return t.findn("valk") != -1 or t.findn("war") != -1
+		"Alliance":
+			return t.findn("alianc") != -1 or t.findn("alliance") != -1
+		"Treaties":
+			return t.findn("smlouv") != -1 or t.findn("treaty") != -1 or t.findn("pakt") != -1
+		"Relations":
+			return t.findn("vztah") != -1 or t.findn("relation") != -1
+		"Negotiations":
+			return t.findn("diplom") != -1 or t.findn("negoti") != -1
+		"Gifts":
+			return t.findn("dar") != -1 or t.findn("gift") != -1
+		_:
+			return false
+
+func _format_zprava(entry: Dictionary) -> String:
 	var category = str(entry.get("category", "")).strip_edges().to_lower()
 	var title = str(entry.get("title", "Info")).strip_edges()
 	var text = str(entry.get("text", "")).strip_edges()
 	if text == "":
 		text = "(bez detailu)"
+	var category_label = _normalizuj_kategorii_zpravy(category, title, text)
 	var cat_tag = ""
-	if category != "":
-		cat_tag = "[%s] " % category.capitalize()
-	return "%02d. %s%s: %s" % [index_from_newest, cat_tag, title, text]
+	if category_label != "":
+		cat_tag = "[%s] " % category_label
+
+	if _je_redundantni_titulek_zpravy(category_label, title):
+		return "%s%s" % [cat_tag, text]
+	return "%s%s: %s" % [cat_tag, title, text]
 
 func _normalizuj_kategorii_zpravy(category: String, title: String = "", text: String = "") -> String:
 	var c = category.strip_edges().to_lower()
@@ -1900,6 +1976,8 @@ func _normalizuj_kategorii_zpravy(category: String, title: String = "", text: St
 			return "Relations"
 		"alliance":
 			return "Alliance"
+		"treaty", "treaties", "non_aggression":
+			return "Treaties"
 		"gift", "gifts":
 			return "Gifts"
 		"diplomacy":
@@ -1911,10 +1989,15 @@ func _normalizuj_kategorii_zpravy(category: String, title: String = "", text: St
 		if body.findn(t) != -1:
 			return "War"
 
-	var alliance_tokens = ["alianc", "alliance", "neagres", "spojenec", "pakt"]
+	var alliance_tokens = ["alianc", "alliance", "spojenec"]
 	for t in alliance_tokens:
 		if body.findn(t) != -1:
 			return "Alliance"
+
+	var treaty_tokens = ["neagres", "smlouv", "pakt", "treaty", "truce"]
+	for t in treaty_tokens:
+		if body.findn(t) != -1:
+			return "Treaties"
 
 	var gift_tokens = ["dar", "gift", "usd", "finance", "financni"]
 	for t in gift_tokens:
@@ -1944,8 +2027,8 @@ func _sestav_skupiny_zprav(entries: Array) -> Dictionary:
 		(grouped[cat] as Array).append(entry)
 	return grouped
 
-func _format_zprava_radek(entry: Dictionary, idx: int, historical: bool) -> String:
-	var base = _format_zprava(entry, idx)
+func _format_zprava_radek(entry: Dictionary, historical: bool) -> String:
+	var base = _format_zprava(entry)
 	if historical:
 		return "[Kolo %d] %s" % [int(entry.get("turn", 0)), base]
 	return base
@@ -1957,34 +2040,36 @@ func _vykresli_skupiny_zprav(current_entries: Array, history_entries: Array) -> 
 	for child in _zpravy_groups_list.get_children():
 		child.queue_free()
 
-	var combined: Array = []
-	for e in current_entries:
-		var d = (e as Dictionary).duplicate(true)
-		d["_historical"] = false
-		combined.append(d)
-	for e in history_entries:
-		var d2 = (e as Dictionary).duplicate(true)
-		d2["_historical"] = true
-		combined.append(d2)
-
-	if combined.is_empty():
+	if current_entries.is_empty() and history_entries.is_empty():
 		var empty_lbl = Label.new()
 		empty_lbl.text = "(zadne zpravy)"
 		_zpravy_groups_list.add_child(empty_lbl)
 		return
 
-	var grouped = _sestav_skupiny_zprav(combined)
-	var order = ["War", "Alliance", "Negotiations", "Gifts", "Relations", "Other"]
+	var grouped_current = _sestav_skupiny_zprav(current_entries)
+	var grouped_history = _sestav_skupiny_zprav(history_entries)
+	var order = ["War", "Alliance", "Treaties", "Negotiations", "Gifts", "Relations", "Other"]
 	var rendered_any := false
 	for cat in order:
-		if not grouped.has(cat):
+		var current_cat_entries = grouped_current.get(cat, []) as Array
+		var history_cat_entries = grouped_history.get(cat, []) as Array
+		if current_cat_entries.is_empty() and history_cat_entries.is_empty():
 			continue
 		rendered_any = true
 
 		if not _zpravy_category_expanded.has(cat):
 			_zpravy_category_expanded[cat] = true
 
-		var cat_entries = grouped[cat] as Array
+		var cat_entries: Array = []
+		for e in current_cat_entries:
+			var d = (e as Dictionary).duplicate(true)
+			d["_historical"] = false
+			cat_entries.append(d)
+		for e in history_cat_entries:
+			var d2 = (e as Dictionary).duplicate(true)
+			d2["_historical"] = true
+			cat_entries.append(d2)
+
 		var section = VBoxContainer.new()
 		section.add_theme_constant_override("separation", 4)
 		_zpravy_groups_list.add_child(section)
@@ -2003,12 +2088,10 @@ func _vykresli_skupiny_zprav(current_entries: Array, history_entries: Array) -> 
 		var body = VBoxContainer.new()
 		body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		body.add_theme_constant_override("separation", 3)
-		var idx = 1
 		for i in range(cat_entries.size() - 1, -1, -1):
 			var entry = cat_entries[i] as Dictionary
 			var historical = bool(entry.get("_historical", false))
-			var line = _format_zprava_radek(entry, idx, historical)
-			idx += 1
+			var line = _format_zprava_radek(entry, historical)
 			if line.strip_edges() == "":
 				continue
 
@@ -2389,40 +2472,60 @@ func _aktualizuj_panel_rozbalene_fronty(queue: Array) -> void:
 	for i in range(limit):
 		var req = queue[i] as Dictionary
 		var from_tag = str(req.get("from", "")).strip_edges().to_upper()
-		var row = HBoxContainer.new()
+		var row = Button.new()
+		row.flat = true
+		row.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		row.focus_mode = Control.FOCUS_NONE
+		row.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		row.pressed.connect(_on_queue_row_focus_country_pressed.bind(from_tag))
 		row.custom_minimum_size = Vector2(0, 40)
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_theme_constant_override("separation", 10)
 
-		var flag = TextureRect.new()
-		flag.custom_minimum_size = Vector2(34, 20)
-		flag.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-		flag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		flag.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		flag.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		flag.texture = _resolve_flag_texture(from_tag, "")
-		row.add_child(flag)
+		var row_content = HBoxContainer.new()
+		row_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row_content.add_theme_constant_override("separation", 10)
+		row.add_child(row_content)
+
+		var flag_btn = TextureButton.new()
+		flag_btn.custom_minimum_size = Vector2(30, 20)
+		flag_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		flag_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		flag_btn.ignore_texture_size = true
+		flag_btn.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+		var flag_tex = _resolve_flag_texture(from_tag, "")
+		if flag_tex:
+			flag_btn.texture_normal = flag_tex
+			flag_btn.texture_hover = flag_tex
+			flag_btn.texture_pressed = flag_tex
+		flag_btn.focus_mode = Control.FOCUS_NONE
+		flag_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		flag_btn.tooltip_text = "%s (%s)" % [_ziskej_jmeno_statu_podle_tagu(from_tag), from_tag]
+		flag_btn.pressed.connect(_on_queue_row_focus_country_pressed.bind(from_tag))
+		row_content.add_child(flag_btn)
 
 		var label = Label.new()
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		label.clip_text = true
 		label.autowrap_mode = TextServer.AUTOWRAP_OFF
-		label.text = "%d. [%s] %s" % [i + 1, from_tag, _formatuj_text_zadosti(req)]
-		row.add_child(label)
+		label.text = "%d. %s - %s" % [i + 1, _ziskej_jmeno_statu_podle_tagu(from_tag), _formatuj_text_zadosti(req)]
+		label.tooltip_text = "Klik na vlajku presune kameru na stat %s." % from_tag
+		row_content.add_child(label)
 
 		var btn_accept = Button.new()
 		btn_accept.text = "Prijmout"
 		btn_accept.custom_minimum_size = Vector2(82, 0)
 		btn_accept.focus_mode = Control.FOCUS_NONE
 		btn_accept.pressed.connect(_on_queue_row_accept_pressed.bind(from_tag))
-		row.add_child(btn_accept)
+		row_content.add_child(btn_accept)
 
 		var btn_decline = Button.new()
 		btn_decline.text = "Odmitnout"
 		btn_decline.custom_minimum_size = Vector2(86, 0)
 		btn_decline.focus_mode = Control.FOCUS_NONE
 		btn_decline.pressed.connect(_on_queue_row_decline_pressed.bind(from_tag))
-		row.add_child(btn_decline)
+		row_content.add_child(btn_decline)
 
 		_queue_preview_list.add_child(row)
 
@@ -2466,6 +2569,9 @@ func _on_queue_row_decline_pressed(from_tag: String) -> void:
 	_aktualizuj_panel_zprav()
 	if current_viewed_tag == from_tag:
 		_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
+
+func _on_queue_row_focus_country_pressed(from_tag: String) -> void:
+	_otevri_prehled_statu_podle_tagu(from_tag)
 
 func _zajisti_vizual_fronty_diplomacii() -> void:
 	if diplomacy_request_popup == null:

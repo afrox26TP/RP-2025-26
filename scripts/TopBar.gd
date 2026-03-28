@@ -13,6 +13,12 @@ var ideology_flag_path_index: Dictionary = {}
 var ideology_flag_index_ready: bool = false
 var _last_seen_player_tag: String = ""
 var _player_focus_tween: Tween
+var _turn_busy_indicator: Label
+var _is_turn_processing: bool = false
+var _turn_busy_anim_time: float = 0.0
+var _turn_busy_anim_step: int = 0
+
+const TURN_BUSY_FRAMES := ["[zpracovavam  ]", "[zpracovavam .]", "[zpracovavam ..]", "[zpracovavam ...]"]
 
 func _cached_texture(path: String):
 	if path == "" or not ResourceLoader.exists(path):
@@ -97,6 +103,10 @@ func _ready():
 	# Connect button clicks and GameManager signals
 	next_btn.pressed.connect(_on_next_turn_pressed)
 	GameManager.kolo_zmeneno.connect(aktualizuj_ui)
+	if GameManager.has_signal("zpracovani_tahu_zmeneno") and not GameManager.zpracovani_tahu_zmeneno.is_connected(_on_zpracovani_tahu_zmeneno):
+		GameManager.zpracovani_tahu_zmeneno.connect(_on_zpracovani_tahu_zmeneno)
+	_vytvor_turn_busy_indicator()
+	_on_zpracovani_tahu_zmeneno(bool(GameManager.zpracovava_se_tah))
 	_nastav_tooltipy_ui()
 
 func _nastav_tooltipy_ui() -> void:
@@ -123,7 +133,44 @@ func aktualizuj_ui():
 	_last_seen_player_tag = aktivni_tag
 
 func _on_next_turn_pressed():
-	GameManager.ukonci_kolo()
+	if GameManager.has_method("pozaduj_ukonceni_kola"):
+		GameManager.pozaduj_ukonceni_kola()
+	else:
+		GameManager.ukonci_kolo()
+
+func _vytvor_turn_busy_indicator() -> void:
+	if _turn_busy_indicator != null:
+		return
+	var parent = next_btn.get_parent()
+	if parent == null:
+		return
+	_turn_busy_indicator = Label.new()
+	_turn_busy_indicator.text = TURN_BUSY_FRAMES[0]
+	_turn_busy_indicator.visible = false
+	_turn_busy_indicator.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_turn_busy_indicator.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	parent.add_child(_turn_busy_indicator)
+	parent.move_child(_turn_busy_indicator, next_btn.get_index() + 1)
+
+func _on_zpracovani_tahu_zmeneno(aktivni: bool) -> void:
+	_is_turn_processing = aktivni
+	next_btn.disabled = aktivni
+	if _turn_busy_indicator:
+		_turn_busy_indicator.visible = aktivni
+		_turn_busy_anim_step = 0
+		_turn_busy_indicator.text = TURN_BUSY_FRAMES[0]
+	_turn_busy_anim_time = 0.0
+	set_process(aktivni)
+
+func _process(delta: float) -> void:
+	if not _is_turn_processing or _turn_busy_indicator == null:
+		return
+	_turn_busy_anim_time += delta
+	if _turn_busy_anim_time < 0.16:
+		return
+	_turn_busy_anim_time = 0.0
+	_turn_busy_anim_step = (_turn_busy_anim_step + 1) % TURN_BUSY_FRAMES.size()
+	_turn_busy_indicator.text = TURN_BUSY_FRAMES[_turn_busy_anim_step]
 
 func nastav_hrace(tag: String, jmeno_statu: String, ideologie: String = ""):
 	if player_name:
