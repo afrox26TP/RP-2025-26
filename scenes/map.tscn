@@ -23,28 +23,26 @@ shader_parameter/has_selected = false
 shader_parameter/is_target_hover = false
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_overview_panel"]
+content_margin_left = 14.0
+content_margin_top = 18.0
+content_margin_right = 14.0
+content_margin_bottom = 14.0
 bg_color = Color(0.0784314, 0.109804, 0.164706, 0.929412)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
 border_color = Color(0.333333, 0.556863, 0.886275, 0.388235)
-corner_radius_top_left = 0
-corner_radius_top_right = 0
 corner_radius_bottom_right = 12
-corner_radius_bottom_left = 0
 shadow_color = Color(0, 0, 0, 0.321569)
 shadow_size = 8
-content_margin_left = 14.0
-content_margin_top = 18.0
-content_margin_right = 14.0
-content_margin_bottom = 14.0
 
 [node name="map2D" type="Node2D" unique_id=92782134]
 script = ExtResource("1_4xfga")
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=388768891]
 material = SubResource("ShaderMaterial_2klcf")
+position = Vector2(-704, -23)
 texture = ExtResource("2_2klcf")
 script = ExtResource("3_gldc4")
 logic_map = ExtResource("3_2klcf")
@@ -203,10 +201,10 @@ text = "Zrusit"
 script = ExtResource("9_be0no")
 
 [node name="OverviewPanel" type="Panel" parent="GameUI" unique_id=1420402112]
-offset_right = 325.0
-offset_bottom = 590.0
-theme_override_styles/panel = SubResource("StyleBoxFlat_overview_panel")
 clip_contents = true
+offset_right = 325.0
+offset_bottom = 760.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_overview_panel")
 
 [node name="VBoxContainer" type="VBoxContainer" parent="GameUI/OverviewPanel" unique_id=128986979]
 layout_mode = 1
@@ -234,14 +232,14 @@ expand_mode = 1
 stretch_mode = 5
 
 [node name="CountryNameLabel" type="Label" parent="GameUI/OverviewPanel/VBoxContainer/TitleBox" unique_id=306217381]
+custom_minimum_size = Vector2(0, 84)
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 84)
 theme_override_font_sizes/font_size = 31
 text = "test"
+vertical_alignment = 1
 autowrap_mode = 3
 max_lines_visible = 2
-vertical_alignment = 1
 
 [node name="IdeologyLabel" type="Label" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=240606362]
 layout_mode = 2

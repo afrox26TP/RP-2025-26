@@ -61,6 +61,21 @@ func _ziskej_provincie_data() -> Dictionary:
 		return map_loader.provinces
 	return GameManager.map_data
 
+func _ziskej_cenu_za_vojaka() -> float:
+	if GameManager.has_method("ziskej_cenu_za_vojaka"):
+		return float(GameManager.ziskej_cenu_za_vojaka(GameManager.hrac_stat))
+	return cena_za_vojaka
+
+func _ziskej_udrzbu_za_vojaka() -> float:
+	if GameManager.has_method("ziskej_udrzbu_za_vojaka"):
+		return float(GameManager.ziskej_udrzbu_za_vojaka(GameManager.hrac_stat))
+	return 0.001
+
+func _ziskej_prijmovou_sazbu_hdp() -> float:
+	if GameManager.has_method("ziskej_prijmovou_sazbu_hdp"):
+		return float(GameManager.ziskej_prijmovou_sazbu_hdp(GameManager.hrac_stat))
+	return 0.1
+
 func _limit_verbovani_v_okupaci(requested: int, prov_data: Dictionary) -> int:
 	var owner = str(prov_data.get("owner", "")).strip_edges().to_upper()
 	var core_owner = str(prov_data.get("core_owner", owner)).strip_edges().to_upper()
@@ -304,13 +319,15 @@ func _nahled_stavby_text(building_id: int, cena: float, prov_data: Dictionary) -
 	var totals = _spocitej_stat_hdp_a_vojaky(owner_tag, province_data)
 	var base_hdp = float(totals.get("hdp", 0.0))
 	var base_vojaci = int(totals.get("vojaci", 0))
-	var base_income = (base_hdp * 0.1) - (float(base_vojaci) * 0.001)
+	var prijmova_sazba = _ziskej_prijmovou_sazbu_hdp()
+	var upkeep_za_vojaka = _ziskej_udrzbu_za_vojaka()
+	var base_income = (base_hdp * prijmova_sazba) - (float(base_vojaci) * upkeep_za_vojaka)
 	var delta_income = 0.0
 	var bonus_text = ""
 
 	match building_id:
 		0:
-			delta_income = 10.0 * 0.1
+			delta_income = 10.0 * prijmova_sazba
 			bonus_text = "Civilní továrna: +10 HDP"
 		1:
 			bonus_text = "Zbrojovka: +2 000 rekrutů"
@@ -324,7 +341,7 @@ func _nahled_stavby_text(building_id: int, cena: float, prov_data: Dictionary) -
 		_set_metric_delta("income", "+1.00 / kolo", Color(0.20, 0.85, 0.25))
 		overview_deltas["gdp"] = {"text": "+10.00", "color": Color(0.20, 0.85, 0.25)}
 		_push_overview_deltas(overview_deltas)
-		return "%s | Cena: %.2f mil. | Kasa po nákupu: %.2f mil. | Příjem po dokončení (3 kola): %.2f mil./kolo (Δ %+0.2f)" % [bonus_text, cena, cash_after, income_after, delta_income]
+		return "%s | Cena: %s | Kasa po nákupu: %s | Příjem po dokončení (3 kola): %s (Δ %s)" % [bonus_text, _format_money_auto(cena, 2), _format_money_auto(cash_after, 2), _format_money_auto(income_after, 2, false, true), _format_money_auto(delta_income, 2, true, true)]
 	if building_id == 1:
 		_set_metric_delta("recruit", "+2 000", Color(0.20, 0.85, 0.25))
 		overview_deltas["recruit"] = {"text": "+2 000", "color": Color(0.20, 0.85, 0.25)}
@@ -332,13 +349,13 @@ func _nahled_stavby_text(building_id: int, cena: float, prov_data: Dictionary) -
 		_set_metric_delta("income", "0.00", Color(0.75, 0.75, 0.75))
 		overview_deltas["gdp"] = {"text": "0.00", "color": Color(0.75, 0.75, 0.75)}
 	_push_overview_deltas(overview_deltas)
-	return "%s | Cena: %.2f mil. | Kasa po nákupu: %.2f mil. | Bez přímé změny příjmu" % [bonus_text, cena, cash_after]
+	return "%s | Cena: %s | Kasa po nákupu: %s | Bez přímé změny příjmu" % [bonus_text, _format_money_auto(cena, 2), _format_money_auto(cash_after, 2)]
 
 func _nahled_verbovani_text(pocet: int) -> String:
 	_clear_inline_deltas()
-	var upkeep_delta = -float(pocet) * 0.001
+	var upkeep_delta = -float(pocet) * _ziskej_udrzbu_za_vojaka()
 	var projected_income = float(GameManager.celkovy_prijem) + upkeep_delta
-	var cena = float(pocet) * cena_za_vojaka
+	var cena = float(pocet) * _ziskej_cenu_za_vojaka()
 	var cash_after = GameManager.statni_kasa - cena
 	_set_metric_delta("soldiers", "+%s" % _formatuj_cislo(pocet), Color(0.20, 0.85, 0.25))
 	_set_metric_delta("recruit", "-%s" % _formatuj_cislo(pocet), Color(0.95, 0.35, 0.35))
@@ -347,7 +364,7 @@ func _nahled_verbovani_text(pocet: int) -> String:
 		"recruit": {"text": "-%s" % _formatuj_cislo(pocet), "color": Color(0.95, 0.35, 0.35)},
 		"gdp": {"text": "%+.2f / kolo" % upkeep_delta, "color": Color(0.95, 0.35, 0.35)}
 	})
-	return "Nábor: %s vojáků | Cena: %.2f mil. | Kasa po nákupu: %.2f mil. | Údržba: %+0.2f mil./kolo | Nový čistý příjem: %.2f mil./kolo" % [_formatuj_cislo(pocet), cena, cash_after, upkeep_delta, projected_income]
+	return "Nábor: %s vojáků | Cena: %s | Kasa po nákupu: %s | Údržba: %s | Nový čistý příjem: %s" % [_formatuj_cislo(pocet), _format_money_auto(cena, 2), _format_money_auto(cash_after, 2), _format_money_auto(upkeep_delta, 2, true, true), _format_money_auto(projected_income, 2, false, true)]
 
 func _posun_stavba_menu():
 	var p = btn_stavet.get_popup()
@@ -477,7 +494,7 @@ func zobraz_data(data: Dictionary):
 		
 		if je_moje:
 			_set_metric_visible("income", true)
-			income_label.text = "Příjem: +%.2f mil. USD" % (gdp * 0.05)
+			income_label.text = "Příjem: +%s USD" % _format_money_auto(gdp * 0.05, 2)
 		else:
 			_set_metric_visible("income", false)
 
@@ -551,7 +568,7 @@ func _on_likvidace_slider_zmenen(hodnota: float):
 		return
 	var pocet = int(hodnota)
 	var refundace = float(pocet) * likvidace_vynos_za_vojaka
-	likvidace_info.text = "Likvidovat: %s vojáků\nZisk: +%.2f mil." % [_formatuj_cislo(pocet), refundace]
+	likvidace_info.text = "Likvidovat: %s vojáků\nZisk: +%s" % [_formatuj_cislo(pocet), _format_money_auto(refundace, 2)]
 	if btn_likvidace_potvrdit:
 		btn_likvidace_potvrdit.disabled = (pocet <= 0)
 
@@ -590,7 +607,7 @@ func _on_potvrdit_likvidaci():
 		prov_data["recruitable_population"] = int(prov_data.get("recruitable_population", 0)) + pocet_vojaku
 
 	likvidace_popup.hide()
-	_ukaz_stavbu_info("LIKVIDACE ARMADY", "Rozpuštěno %s vojáků. Do kasy se vrátilo %.2f mil. USD." % [_formatuj_cislo(pocet_vojaku), refundace])
+	_ukaz_stavbu_info("LIKVIDACE ARMADY", "Rozpuštěno %s vojáků. Do kasy se vrátilo %s USD." % [_formatuj_cislo(pocet_vojaku), _format_money_auto(refundace, 2)])
 	zobraz_data(prov_data)
 	GameManager.kolo_zmeneno.emit()
 
@@ -687,7 +704,7 @@ func _on_stavba_vybrana(id: int):
 		_ukaz_stavbu_info("STAVBA ZAHÁJENA", _nahled_stavby_text(id, cena, province_data[aktualni_provincie_id]))
 		GameManager.kolo_zmeneno.emit()
 	else:
-		_set_preview_text("Nedostatek peněz: potřebuješ %.2f mil., máš %.2f mil." % [cena, GameManager.statni_kasa])
+		_set_preview_text("Nedostatek peněz: potřebuješ %s, máš %s." % [_format_money_auto(cena, 2), _format_money_auto(GameManager.statni_kasa, 2)])
 		_ukaz_stavbu_info("NEDOSTATEK PENĚZ", "Na tuto stavbu nemáš dost peněz.")
 
 func _ukaz_stavbu_info(title: String, text: String):
@@ -711,7 +728,7 @@ func _on_verbovat_pressed():
 	var prov_data = province_data[aktualni_provincie_id]
 	var dostupni_rekruti = int(prov_data.get("recruitable_population", 0))
 	dostupni_rekruti = _limit_verbovani_v_okupaci(dostupni_rekruti, prov_data)
-	var max_za_penize = int(GameManager.statni_kasa / cena_za_vojaka)
+	var max_za_penize = int(GameManager.statni_kasa / _ziskej_cenu_za_vojaka())
 	var max_mozno = min(dostupni_rekruti, max_za_penize)
 	
 	if max_mozno <= 0: return
@@ -728,11 +745,11 @@ func _on_verbovat_pressed():
 	recruit_popup.popup(rect)
 
 func _on_slider_zmenen(hodnota: float):
-	var cena = hodnota * cena_za_vojaka
+	var cena = hodnota * _ziskej_cenu_za_vojaka()
 	if je_hromadne_verbovani:
-		recruit_info.text = "Hromadně: %d mužů\nCena: %.2f mil." % [int(hodnota), cena]
+		recruit_info.text = "Hromadně: %d mužů\nCena: %s" % [int(hodnota), _format_money_auto(cena, 2)]
 	else:
-		recruit_info.text = "Mužů: %d\nCena: %.2f mil." % [int(hodnota), cena]
+		recruit_info.text = "Mužů: %d\nCena: %s" % [int(hodnota), _format_money_auto(cena, 2)]
 	if hodnota > 0:
 		_set_preview_text(_nahled_verbovani_text(int(hodnota)))
 	else:
@@ -747,7 +764,7 @@ func _on_potvrdit_verbovani():
 		return
 
 	var pocet_vojaku = int(recruit_slider.value)
-	var celkova_cena = pocet_vojaku * cena_za_vojaka
+	var celkova_cena = pocet_vojaku * _ziskej_cenu_za_vojaka()
 	var province_data = _ziskej_provincie_data()
 	if not province_data.has(aktualni_provincie_id):
 		recruit_popup.hide()
@@ -760,7 +777,7 @@ func _on_potvrdit_verbovani():
 		_ukaz_stavbu_info("VERBOVÁNÍ", "Na okupovaném území je momentálně možné verbovat jen velmi omezeně.")
 		return
 	pocet_vojaku = min(pocet_vojaku, max_okupace)
-	celkova_cena = pocet_vojaku * cena_za_vojaka
+	celkova_cena = pocet_vojaku * _ziskej_cenu_za_vojaka()
 	
 	GameManager.statni_kasa -= celkova_cena
 	prov_data["recruitable_population"] -= pocet_vojaku
@@ -800,6 +817,16 @@ func _formatuj_cislo(cislo: int) -> String:
 		if i > 0 and (delka - i) % 3 == 0: vysledek += " "
 		vysledek += text_cisla[i]
 	return vysledek
+
+func _format_money_auto(value: float, mil_decimals: int = 2, signed: bool = false, per_turn: bool = false) -> String:
+	if absf(value) < 0.01:
+		var tis_decimals = max(1, mil_decimals - 1)
+		var fmt_tis = "%" + ("+" if signed else "") + "." + str(tis_decimals) + "f"
+		var txt_tis = fmt_tis % (value * 1000.0)
+		return txt_tis + " tis." + ("/kolo" if per_turn else "")
+	var fmt_mil = "%" + ("+" if signed else "") + "." + str(mil_decimals) + "f"
+	var txt_mil = fmt_mil % value
+	return txt_mil + " mil." + ("/kolo" if per_turn else "")
 
 func zobraz_hromadna_data(ids: Array, all_provinces: Dictionary):
 	if ids.size() <= 1:
@@ -905,7 +932,7 @@ func _otevri_hromadne_verbovani():
 		if not province_data.has(pid):
 			continue
 		total_recruits += _limit_verbovani_v_okupaci(int(province_data[pid].get("recruitable_population", 0)), province_data[pid])
-	var max_za_penize = int(GameManager.statni_kasa / cena_za_vojaka)
+	var max_za_penize = int(GameManager.statni_kasa / _ziskej_cenu_za_vojaka())
 	var max_mozno = min(total_recruits, max_za_penize)
 	if max_mozno <= 0:
 		if total_recruits <= 0:
@@ -951,7 +978,7 @@ func _potvrd_hromadne_verbovani():
 		total_recruited += add
 
 	if total_recruited > 0:
-		GameManager.statni_kasa -= float(total_recruited) * cena_za_vojaka
+		GameManager.statni_kasa -= float(total_recruited) * _ziskej_cenu_za_vojaka()
 	else:
 		_ukaz_stavbu_info("HROMADNÉ VERBOVÁNÍ", "Verbování se neprovedlo (0 přijatých vojáků).")
 

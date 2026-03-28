@@ -43,6 +43,61 @@ const IDEOLOGY_RECRUIT_MULTIPLIERS := {
 	"nacismus": 1.28,
 	"fasismus": 1.28
 }
+const IDEOLOGY_ECONOMIC_MODIFIERS := {
+	"demokracie": {
+		"recruit_cost_mult": 1.08,
+		"upkeep_mult": 0.96,
+		"income_rate_mult": 1.08,
+		"gdp_growth_mult": 1.12,
+		"population_growth_mult": 1.05,
+		"recruit_regen_mult": 0.92
+	},
+	"kralovstvi": {
+		"recruit_cost_mult": 1.00,
+		"upkeep_mult": 0.99,
+		"income_rate_mult": 1.02,
+		"gdp_growth_mult": 1.03,
+		"population_growth_mult": 1.02,
+		"recruit_regen_mult": 1.00
+	},
+	"autokracie": {
+		"recruit_cost_mult": 0.94,
+		"upkeep_mult": 1.08,
+		"income_rate_mult": 0.98,
+		"gdp_growth_mult": 0.98,
+		"population_growth_mult": 0.99,
+		"recruit_regen_mult": 1.12
+	},
+	"komunismus": {
+		"recruit_cost_mult": 0.88,
+		"upkeep_mult": 1.12,
+		"income_rate_mult": 0.94,
+		"gdp_growth_mult": 0.93,
+		"population_growth_mult": 1.03,
+		"recruit_regen_mult": 1.20
+	},
+	"nacismus": {
+		"recruit_cost_mult": 0.82,
+		"upkeep_mult": 1.18,
+		"income_rate_mult": 0.90,
+		"gdp_growth_mult": 0.88,
+		"population_growth_mult": 0.96,
+		"recruit_regen_mult": 1.30
+	},
+	"fasismus": {
+		"recruit_cost_mult": 0.82,
+		"upkeep_mult": 1.18,
+		"income_rate_mult": 0.90,
+		"gdp_growth_mult": 0.88,
+		"population_growth_mult": 0.96,
+		"recruit_regen_mult": 1.30
+	}
+}
+const BASE_RECRUIT_COST_PER_SOLDIER := 0.05
+const BASE_UPKEEP_PER_SOLDIER := 0.001
+const BASE_INCOME_RATE := 0.10
+const BASE_GDP_GROWTH_PER_TURN := 0.5
+const BASE_POP_GROWTH_RATIO := 0.0015
 const PEACE_WAR_COOLDOWN_TURNS := 5
 const RELATION_MIN := -100.0
 const RELATION_MAX := 100.0
@@ -551,6 +606,67 @@ func _ziskej_ideologii_statu(tag: String) -> String:
 			return _normalizuj_ideologii(str(d.get("ideology", "")))
 	return ""
 
+func _ziskej_ekonomicke_modifikatory_ideologie(ideology: String) -> Dictionary:
+	var key = _normalizuj_ideologii(ideology)
+	var base = {
+		"recruit_cost_mult": 1.0,
+		"upkeep_mult": 1.0,
+		"income_rate_mult": 1.0,
+		"gdp_growth_mult": 1.0,
+		"population_growth_mult": 1.0,
+		"recruit_regen_mult": 1.0
+	}
+	if IDEOLOGY_ECONOMIC_MODIFIERS.has(key):
+		var src = IDEOLOGY_ECONOMIC_MODIFIERS[key] as Dictionary
+		for k in src.keys():
+			base[k] = src[k]
+	return base
+
+func ziskej_ekonomicke_modifikatory_statu(state_tag: String) -> Dictionary:
+	return _ziskej_ekonomicke_modifikatory_ideologie(_ziskej_ideologii_statu(state_tag))
+
+func ziskej_cenu_za_vojaka(state_tag: String) -> float:
+	var mods = ziskej_ekonomicke_modifikatory_statu(state_tag)
+	return BASE_RECRUIT_COST_PER_SOLDIER * max(0.01, float(mods.get("recruit_cost_mult", 1.0)))
+
+func ziskej_udrzbu_za_vojaka(state_tag: String) -> float:
+	var mods = ziskej_ekonomicke_modifikatory_statu(state_tag)
+	return BASE_UPKEEP_PER_SOLDIER * max(0.01, float(mods.get("upkeep_mult", 1.0)))
+
+func ziskej_prijmovou_sazbu_hdp(state_tag: String) -> float:
+	var mods = ziskej_ekonomicke_modifikatory_statu(state_tag)
+	return BASE_INCOME_RATE * max(0.01, float(mods.get("income_rate_mult", 1.0)))
+
+func ziskej_ekonomicke_modifikatory_ideologie(ideology: String) -> Dictionary:
+	return _ziskej_ekonomicke_modifikatory_ideologie(ideology)
+
+func ziskej_ideologicky_ekonomicky_profil(ideology: String) -> Dictionary:
+	var mods = _ziskej_ekonomicke_modifikatory_ideologie(ideology)
+	var recruit_cost_mult = max(0.01, float(mods.get("recruit_cost_mult", 1.0)))
+	var upkeep_mult = max(0.01, float(mods.get("upkeep_mult", 1.0)))
+	var income_rate_mult = max(0.01, float(mods.get("income_rate_mult", 1.0)))
+	var gdp_growth_mult = max(0.01, float(mods.get("gdp_growth_mult", 1.0)))
+	var pop_growth_mult = max(0.01, float(mods.get("population_growth_mult", 1.0)))
+	var recruit_regen_mult = max(0.01, float(mods.get("recruit_regen_mult", 1.0)))
+
+	return {
+		"recruit_cost_per_soldier": BASE_RECRUIT_COST_PER_SOLDIER * recruit_cost_mult,
+		"upkeep_per_soldier": BASE_UPKEEP_PER_SOLDIER * upkeep_mult,
+		"income_rate_from_gdp": BASE_INCOME_RATE * income_rate_mult,
+		"gdp_growth_per_turn": BASE_GDP_GROWTH_PER_TURN * gdp_growth_mult,
+		"population_growth_ratio": BASE_POP_GROWTH_RATIO * pop_growth_mult,
+		"recruit_regen_ratio_core": 0.10 * recruit_regen_mult,
+		"recruit_regen_ratio_occupied": 0.025 * recruit_regen_mult,
+		"mods": {
+			"recruit_cost_mult": recruit_cost_mult,
+			"upkeep_mult": upkeep_mult,
+			"income_rate_mult": income_rate_mult,
+			"gdp_growth_mult": gdp_growth_mult,
+			"population_growth_mult": pop_growth_mult,
+			"recruit_regen_mult": recruit_regen_mult
+		}
+	}
+
 func _jsou_ideologie_podobne(ideology_a: String, ideology_b: String) -> bool:
 	var a = _normalizuj_ideologii(ideology_a)
 	var b = _normalizuj_ideologii(ideology_b)
@@ -636,6 +752,8 @@ func _nahled_nebo_aplikace_ideologie_statistik(state: String, old_ideology: Stri
 	var total_new_gdp := 0.0
 	var total_old_recruit := 0
 	var total_new_recruit := 0
+	var total_old_soldiers := 0
+	var total_new_soldiers := 0
 	var modified_provinces := 0
 
 	for p_id in map_data:
@@ -646,6 +764,7 @@ func _nahled_nebo_aplikace_ideologie_statistik(state: String, old_ideology: Stri
 		modified_provinces += 1
 		var old_pop = int(d.get("population", 0))
 		var old_gdp = float(d.get("gdp", 0.0))
+		var old_soldiers = int(d.get("soldiers", 0))
 
 		var old_cap = int(d.get("base_recruitable_population", d.get("recruitable_population", 0)))
 		if old_cap < 0:
@@ -671,12 +790,23 @@ func _nahled_nebo_aplikace_ideologie_statistik(state: String, old_ideology: Stri
 		total_new_gdp += new_gdp
 		total_old_recruit += old_recruit
 		total_new_recruit += new_recruit
+		total_old_soldiers += old_soldiers
+		total_new_soldiers += old_soldiers
 
 		if apply_changes:
 			d["gdp"] = new_gdp
 			d["base_recruitable_population_raw"] = raw_base
 			d["base_recruitable_population"] = new_cap
 			d["recruitable_population"] = new_recruit
+
+	var old_econ = _ziskej_ekonomicke_modifikatory_ideologie(old_ideology)
+	var new_econ = _ziskej_ekonomicke_modifikatory_ideologie(new_ideology)
+	var old_income_rate = BASE_INCOME_RATE * float(old_econ.get("income_rate_mult", 1.0))
+	var new_income_rate = BASE_INCOME_RATE * float(new_econ.get("income_rate_mult", 1.0))
+	var old_upkeep_per_soldier = BASE_UPKEEP_PER_SOLDIER * float(old_econ.get("upkeep_mult", 1.0))
+	var new_upkeep_per_soldier = BASE_UPKEEP_PER_SOLDIER * float(new_econ.get("upkeep_mult", 1.0))
+	var old_income = (total_old_gdp * old_income_rate) - (float(total_old_soldiers) * old_upkeep_per_soldier)
+	var new_income = (total_new_gdp * new_income_rate) - (float(total_new_soldiers) * new_upkeep_per_soldier)
 
 	return {
 		"modified_provinces": modified_provinces,
@@ -688,19 +818,32 @@ func _nahled_nebo_aplikace_ideologie_statistik(state: String, old_ideology: Stri
 		"new_totals": {
 			"population": total_new_pop,
 			"gdp": total_new_gdp,
-			"recruitable_population": total_new_recruit
+			"recruitable_population": total_new_recruit,
+			"soldiers": total_new_soldiers,
+			"income": new_income
 		},
 		"delta": {
 			"population": total_new_pop - total_old_pop,
 			"gdp": total_new_gdp - total_old_gdp,
-			"recruitable_population": total_new_recruit - total_old_recruit
+			"recruitable_population": total_new_recruit - total_old_recruit,
+			"income": new_income - old_income
 		},
 		"modifiers": {
 			"old_gdp_mult": old_gdp_mult,
 			"new_gdp_mult": new_gdp_mult,
 			"gdp_ratio": gdp_ratio,
 			"old_recruit_mult": float(old_mods.get("recruit_mult", 1.0)),
-			"new_recruit_mult": new_recruit_mult
+			"new_recruit_mult": new_recruit_mult,
+			"old_income_rate": old_income_rate,
+			"new_income_rate": new_income_rate,
+			"old_upkeep_per_soldier": old_upkeep_per_soldier,
+			"new_upkeep_per_soldier": new_upkeep_per_soldier,
+			"old_recruit_cost": BASE_RECRUIT_COST_PER_SOLDIER * float(old_econ.get("recruit_cost_mult", 1.0)),
+			"new_recruit_cost": BASE_RECRUIT_COST_PER_SOLDIER * float(new_econ.get("recruit_cost_mult", 1.0)),
+			"old_gdp_growth": BASE_GDP_GROWTH_PER_TURN * float(old_econ.get("gdp_growth_mult", 1.0)),
+			"new_gdp_growth": BASE_GDP_GROWTH_PER_TURN * float(new_econ.get("gdp_growth_mult", 1.0)),
+			"old_pop_growth_ratio": BASE_POP_GROWTH_RATIO * float(old_econ.get("population_growth_mult", 1.0)),
+			"new_pop_growth_ratio": BASE_POP_GROWTH_RATIO * float(new_econ.get("population_growth_mult", 1.0))
 		}
 	}
 
@@ -2371,8 +2514,10 @@ func spocitej_prijem(all_provinces: Dictionary, emit_ui_signal: bool = true):
 			_hrac_kasa_inicializovana = true
 			
 	# Balanced income: 10% GDP minus army upkeep
-	var prijem_z_hdp = celkove_hdp * 0.1
-	var naklady_na_vojaky = celkem_vojaku * 0.001
+	var prijmova_sazba = ziskej_prijmovou_sazbu_hdp(hrac_stat)
+	var upkeep_za_vojaka = ziskej_udrzbu_za_vojaka(hrac_stat)
+	var prijem_z_hdp = celkove_hdp * prijmova_sazba
+	var naklady_na_vojaky = celkem_vojaku * upkeep_za_vojaka
 	celkovy_prijem = prijem_z_hdp - naklady_na_vojaky
 	if lokalni_hraci_staty.size() > 1:
 		hrac_prijmy[hrac_stat] = celkovy_prijem
@@ -2464,10 +2609,24 @@ func ukonci_kolo():
 			var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
 			var core_owner_tag = str(d.get("core_owner", owner_tag)).strip_edges().to_upper()
 			var je_okupace = owner_tag != "" and owner_tag != "SEA" and core_owner_tag != "" and core_owner_tag != owner_tag
+			var econ_mods = ziskej_ekonomicke_modifikatory_statu(owner_tag)
+			var recruit_regen_mult = max(0.01, float(econ_mods.get("recruit_regen_mult", 1.0)))
+			var gdp_growth_mult = max(0.01, float(econ_mods.get("gdp_growth_mult", 1.0)))
+			var pop_growth_mult = max(0.01, float(econ_mods.get("population_growth_mult", 1.0)))
 			var regen_ratio = 0.025 if je_okupace else 0.10
+			regen_ratio *= recruit_regen_mult
 			var regen_per_turn = max(1, int(round(float(base_recruits) * regen_ratio)))
 			d["recruitable_population"] = min(int(d.get("recruitable_population", 0)) + regen_per_turn, cap)
-			d["gdp"] += 0.5 # Passive wealth growth
+			d["gdp"] += BASE_GDP_GROWTH_PER_TURN * gdp_growth_mult
+
+			if owner_tag != "" and owner_tag != "SEA":
+				var pop = int(d.get("population", 0))
+				if pop > 0:
+					var growth_ratio = BASE_POP_GROWTH_RATIO * pop_growth_mult
+					if je_okupace:
+						growth_ratio *= 0.40
+					var pop_growth = max(1, int(round(float(pop) * growth_ratio)))
+					d["population"] = pop + pop_growth
 
 	# AI plans attacks and may declare wars (await for popups)
 	await zpracuj_tah_ai()
@@ -2533,7 +2692,7 @@ func hrac_verbuje(provincie_id: int, pocet: int) -> bool:
 	var d = map_data[provincie_id]
 	if str(d.get("owner", "")).strip_edges().to_upper() != hrac_stat: return false
 		
-	var cena_za_vojaka = 0.01 # 1000 soldiers cost 10.00 mil. USD
+	var cena_za_vojaka = ziskej_cenu_za_vojaka(hrac_stat)
 	var celkova_cena = pocet * cena_za_vojaka
 	
 	if statni_kasa >= celkova_cena:

@@ -60,7 +60,7 @@ var _gift_dialog: PopupPanel
 var _gift_amount_input: LineEdit
 var gift_money_btn: Button
 var ideology_separator: HSeparator
-var ideology_effects_label: Label
+var ideology_effects_label: RichTextLabel
 var ideology_option: OptionButton
 var ideology_apply_btn: Button
 var _ideology_option_values: Array = []
@@ -71,6 +71,7 @@ var _ideology_flag_index_ready: bool = false
 var _updating_ideology_ui: bool = false
 var _ideology_dropdown_open: bool = false
 var _ideology_hover_idx: int = -1
+var _ideology_effects_base_text: String = ""
 
 const POPUP_TOP_MARGIN := 6
 const POPUP_GAP := 6
@@ -489,12 +490,28 @@ func _zajisti_ideology_controls() -> void:
 		ideology_separator.name = "IdeologySeparator"
 		vbox.add_child(ideology_separator)
 
-	ideology_effects_label = get_node_or_null("OverviewPanel/VBoxContainer/IdeologyEffectsLabel") as Label
+	var effects_node = get_node_or_null("OverviewPanel/VBoxContainer/IdeologyEffectsLabel")
+	ideology_effects_label = effects_node as RichTextLabel
 	if ideology_effects_label == null:
-		ideology_effects_label = Label.new()
+		ideology_effects_label = RichTextLabel.new()
 		ideology_effects_label.name = "IdeologyEffectsLabel"
-		ideology_effects_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		vbox.add_child(ideology_effects_label)
+		if effects_node and effects_node.get_parent() == vbox:
+			var idx = effects_node.get_index()
+			vbox.remove_child(effects_node)
+			effects_node.queue_free()
+			vbox.add_child(ideology_effects_label)
+			vbox.move_child(ideology_effects_label, idx)
+		else:
+			vbox.add_child(ideology_effects_label)
+
+	# Keep ideology description inside overview panel bounds on all resolutions.
+	ideology_effects_label.bbcode_enabled = true
+	ideology_effects_label.scroll_active = false
+	ideology_effects_label.fit_content = true
+	ideology_effects_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	ideology_effects_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ideology_effects_label.custom_minimum_size = Vector2(0, 180)
+	ideology_effects_label.add_theme_font_size_override("font_size", 12)
 
 	ideology_option = get_node_or_null("OverviewPanel/VBoxContainer/IdeologyOption") as OptionButton
 	if ideology_option == null:
@@ -583,20 +600,99 @@ func _ziskej_vyhody_nevyhody_ideologie(ideology: String) -> Dictionary:
 func _set_ideology_effects_label(ideology: String) -> void:
 	if ideology_effects_label == null:
 		return
-	var effects = _ziskej_vyhody_nevyhody_ideologie(ideology)
-	var plus = effects.get("plus", []) as Array
-	var minus = effects.get("minus", []) as Array
-	var plus_text = ", ".join(plus)
-	var minus_text = ", ".join(minus)
-	ideology_effects_label.text = "Vyhody: %s\nNevyhody: %s" % [plus_text, minus_text]
+	_ideology_effects_base_text = _sestav_ideology_effects_text(ideology)
+	_set_ideology_effects_text(_ideology_effects_base_text)
 
-func _format_signed_int(value: int) -> String:
-	if value >= 0:
-		return "+%d" % value
-	return str(value)
+func _set_ideology_effects_text(content: String) -> void:
+	if ideology_effects_label == null:
+		return
+	ideology_effects_label.clear()
+	ideology_effects_label.append_text(content)
+
+func _sestav_ideology_effects_text(base_ideology: String, preview_ideology: String = "") -> String:
+	if not GameManager.has_method("ziskej_ideologicky_ekonomicky_profil"):
+		return "Data ideologie nejsou dostupna."
+
+	var base_profile = GameManager.ziskej_ideologicky_ekonomicky_profil(base_ideology) as Dictionary
+	if base_profile.is_empty():
+		return "Data ideologie nejsou dostupna."
+
+	var show_delta = preview_ideology.strip_edges() != "" and _normalizuj_ideologii(preview_ideology) != _normalizuj_ideologii(base_ideology)
+	var preview_profile: Dictionary = {}
+	if show_delta:
+		preview_profile = GameManager.ziskej_ideologicky_ekonomicky_profil(preview_ideology) as Dictionary
+		if preview_profile.is_empty():
+			show_delta = false
+
+	var recruit_cost = float(base_profile.get("recruit_cost_per_soldier", 0.05))
+	var upkeep_cost = float(base_profile.get("upkeep_per_soldier", 0.001))
+	var income_rate_pct = float(base_profile.get("income_rate_from_gdp", 0.1)) * 100.0
+	var gdp_growth = float(base_profile.get("gdp_growth_per_turn", 0.5))
+	var pop_growth_pct = float(base_profile.get("population_growth_ratio", 0.0015)) * 100.0
+	var recruit_regen_core_pct = float(base_profile.get("recruit_regen_ratio_core", 0.10)) * 100.0
+	var recruit_regen_occ_pct = float(base_profile.get("recruit_regen_ratio_occupied", 0.025)) * 100.0
+
+	var d_recruit_cost = 0.0
+	var d_upkeep_cost = 0.0
+	var d_income_rate_pct = 0.0
+	var d_gdp_growth = 0.0
+	var d_pop_growth_pct = 0.0
+	var d_recruit_regen_core_pct = 0.0
+	var d_recruit_regen_occ_pct = 0.0
+	if show_delta:
+		d_recruit_cost = float(preview_profile.get("recruit_cost_per_soldier", recruit_cost)) - recruit_cost
+		d_upkeep_cost = float(preview_profile.get("upkeep_per_soldier", upkeep_cost)) - upkeep_cost
+		d_income_rate_pct = (float(preview_profile.get("income_rate_from_gdp", income_rate_pct / 100.0)) * 100.0) - income_rate_pct
+		d_gdp_growth = float(preview_profile.get("gdp_growth_per_turn", gdp_growth)) - gdp_growth
+		d_pop_growth_pct = (float(preview_profile.get("population_growth_ratio", pop_growth_pct / 100.0)) * 100.0) - pop_growth_pct
+		d_recruit_regen_core_pct = (float(preview_profile.get("recruit_regen_ratio_core", recruit_regen_core_pct / 100.0)) * 100.0) - recruit_regen_core_pct
+		d_recruit_regen_occ_pct = (float(preview_profile.get("recruit_regen_ratio_occupied", recruit_regen_occ_pct / 100.0)) * 100.0) - recruit_regen_occ_pct
+
+	return "Cena / 1 vojak: %s%s\nUdrzba/vojak / kolo: %s%s\nSazba prijmu z HDP: %.2f%%%s\nHDP/rust: %.3f%s\nRust populace / kolo: %.3f%%%s\nObnova rekrutu(core): %.2f%%%s\nObnova rekrutu(occ): %.2f%%%s" % [
+		_format_money_auto(recruit_cost, 4),
+		_format_delta_text_color(d_recruit_cost, 4, " mil") if show_delta else "",
+		_format_money_auto(upkeep_cost, 4),
+		_format_delta_text_color(d_upkeep_cost, 4, " mil") if show_delta else "",
+		income_rate_pct,
+		_format_delta_text_color(d_income_rate_pct, 2, "%") if show_delta else "",
+		gdp_growth,
+		_format_delta_text_color(d_gdp_growth, 3, "") if show_delta else "",
+		pop_growth_pct,
+		_format_delta_text_color(d_pop_growth_pct, 3, "%") if show_delta else "",
+		recruit_regen_core_pct,
+		_format_delta_text_color(d_recruit_regen_core_pct, 2, "%") if show_delta else "",
+		recruit_regen_occ_pct,
+		_format_delta_text_color(d_recruit_regen_occ_pct, 2, "%") if show_delta else ""
+	]
+
+func _format_money_auto(value: float, mil_decimals: int = 2) -> String:
+	if absf(value) < 0.01:
+		return "%.*f tis." % [max(1, mil_decimals - 1), value * 1000.0]
+	return "%.*f mil" % [mil_decimals, value]
+
+func _format_delta_text_color(value: float, decimals: int, suffix: String = "") -> String:
+	var txt := ""
+	if suffix == " mil" and absf(value) < 0.01:
+		# Tiny money changes are easier to read in thousands.
+		txt = "%+.1ftis." % (value * 1000.0)
+	else:
+		var fmt = "%+." + str(decimals) + "f"
+		txt = fmt % value
+		if suffix != "":
+			txt += suffix.strip_edges()
+	var color = "#34c759"
+	if value < 0.0:
+		color = "#ff4d4f"
+	elif is_zero_approx(value):
+		color = "#c0c0c0"
+	return " [color=%s](%s)[/color]" % [color, txt]
 
 func _vycisti_nahled_ideologie_v_ui() -> void:
 	nastav_akce_nahled_delta({})
+	if ideology_effects_label and current_viewed_tag != "":
+		var current_ideo = _ziskej_aktualni_ideologii_statu(current_viewed_tag)
+		if current_ideo != "":
+			_set_ideology_effects_label(current_ideo)
 	var info_ui = get_tree().current_scene.find_child("InfoUI", true, false)
 	if info_ui and info_ui.has_method("vycisti_nahled_ideologie"):
 		info_ui.vycisti_nahled_ideologie()
@@ -636,7 +732,7 @@ func _on_ideology_dropdown_item_focused(index: int) -> void:
 		return
 	_ideology_hover_idx = index
 	var selected = str(_ideology_option_values[index])
-	_set_ideology_effects_label(selected)
+	# Preview ideology changes directly in ideology stats block under separator.
 	_aplikuj_nahled_ideologie_do_ui(current_viewed_tag, selected)
 	if country_flag and current_viewed_tag != "":
 		country_flag.texture = _resolve_flag_texture(current_viewed_tag, selected)
@@ -646,8 +742,7 @@ func _on_ideology_dropdown_closed() -> void:
 	_ideology_dropdown_open = false
 	_ideology_hover_idx = -1
 	set_process(false)
-	_vycisti_nahled_ideologie_v_ui()
-	_obnov_ideology_vizual_z_mapy()
+	_obnov_nahled_ideologie_podle_volby()
 
 func _aplikuj_nahled_ideologie_do_ui(owner_tag: String, selected_ideology: String) -> void:
 	if owner_tag != str(GameManager.hrac_stat).strip_edges().to_upper():
@@ -666,36 +761,70 @@ func _aplikuj_nahled_ideologie_do_ui(owner_tag: String, selected_ideology: Strin
 	var delta = stat_changes.get("delta", {}) as Dictionary
 	var dgdp = float(delta.get("gdp", 0.0))
 	var drecruit = int(delta.get("recruitable_population", 0))
-	var dpop = int(delta.get("population", 0))
+	var old_totals = stat_changes.get("old_totals", {}) as Dictionary
+	var new_totals = stat_changes.get("new_totals", {}) as Dictionary
+	var old_pop = int(old_totals.get("population", 0))
+	var new_pop = int(new_totals.get("population", 0))
+	var old_gdp = float(old_totals.get("gdp", 0.0))
+	var new_gdp = float(new_totals.get("gdp", 0.0))
+	var old_gdp_pc = ((old_gdp * 1000000000.0) / float(old_pop)) if old_pop > 0 else 0.0
+	var new_gdp_pc = ((new_gdp * 1000000000.0) / float(new_pop)) if new_pop > 0 else 0.0
+	var dgdp_pc = new_gdp_pc - old_gdp_pc
 
 	var overview_deltas: Dictionary = {
 		"gdp": {
 			"text": "%+.2f" % dgdp,
 			"color": Color(0.20, 0.85, 0.25) if dgdp >= 0.0 else Color(0.95, 0.35, 0.35)
 		},
-		"recruit": {
-			"text": _format_signed_int(drecruit),
-			"color": Color(0.20, 0.85, 0.25) if drecruit >= 0 else Color(0.95, 0.35, 0.35)
+		"gdp_pc": {
+			"text": "%+.0f" % dgdp_pc,
+			"color": Color(0.20, 0.85, 0.25) if dgdp_pc >= 0.0 else Color(0.95, 0.35, 0.35)
 		},
-		"pop": {
-			"text": _format_signed_int(dpop),
-			"color": Color(0.75, 0.75, 0.75)
+		"recruit": {
+			"text": "%+d" % drecruit,
+			"color": Color(0.20, 0.85, 0.25) if drecruit >= 0 else Color(0.95, 0.35, 0.35)
 		}
 	}
 	nastav_akce_nahled_delta(overview_deltas)
 
 	if ideology_effects_label:
-		var base_text = ideology_effects_label.text
-		ideology_effects_label.text = "%s\nNahled dopadu: HDP %+.2f | Rekruti %s | Populace %s" % [
-			base_text,
-			dgdp,
-			_format_signed_int(drecruit),
-			_format_signed_int(dpop)
-		]
+		var current_ideo = _ziskej_aktualni_ideologii_statu(owner_tag)
+		if current_ideo == "":
+			current_ideo = selected_ideology
+		_set_ideology_effects_text(_sestav_ideology_effects_text(current_ideo, selected_ideology))
 
 	var info_ui = get_tree().current_scene.find_child("InfoUI", true, false)
 	if info_ui and info_ui.has_method("nastav_nahled_ideologie"):
 		info_ui.nastav_nahled_ideologie(preview)
+
+func _obnov_nahled_ideologie_podle_volby() -> void:
+	if current_viewed_tag == "":
+		_vycisti_nahled_ideologie_v_ui()
+		return
+	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
+	if current_viewed_tag != player_tag:
+		_vycisti_nahled_ideologie_v_ui()
+		_obnov_ideology_vizual_z_mapy()
+		return
+	if ideology_option == null or _ideology_option_values.is_empty():
+		_vycisti_nahled_ideologie_v_ui()
+		_obnov_ideology_vizual_z_mapy()
+		return
+	var idx = ideology_option.selected
+	if idx < 0 or idx >= _ideology_option_values.size():
+		_vycisti_nahled_ideologie_v_ui()
+		_obnov_ideology_vizual_z_mapy()
+		return
+	var selected = str(_ideology_option_values[idx])
+	var current_ideo = _ziskej_aktualni_ideologii_statu(current_viewed_tag)
+	if _normalizuj_ideologii(selected) == _normalizuj_ideologii(current_ideo):
+		_vycisti_nahled_ideologie_v_ui()
+		_obnov_ideology_vizual_z_mapy()
+		return
+	_aplikuj_nahled_ideologie_do_ui(current_viewed_tag, selected)
+	if country_flag and current_viewed_tag != "":
+		country_flag.texture = _resolve_flag_texture(current_viewed_tag, selected)
+	ideo_label.text = "Zřízení: " + _display_ideologie(selected)
 
 func _ziskej_vsechny_provincie_pro_prehled() -> Dictionary:
 	var map_loader = _ziskej_map_loader_node()
@@ -792,7 +921,7 @@ func _aktualizuj_ideology_ui(owner_tag: String, current_ideology: String) -> voi
 		return
 
 	ideology_separator.show()
-	ideology_effects_label.hide()
+	ideology_effects_label.show()
 	ideology_option.show()
 	ideology_apply_btn.show()
 
@@ -855,6 +984,7 @@ func _setup_overview_inline_deltas() -> void:
 	_wrap_overview_metric_label("pop", pop_label)
 	_wrap_overview_metric_label("recruit", recruit_label)
 	_wrap_overview_metric_label("gdp", gdp_label)
+	_wrap_overview_metric_label("gdp_pc", gdp_pc_label)
 
 func _set_overview_metric_delta(key: String, text: String, color: Color) -> void:
 	if not _overview_metric_deltas.has(key):
@@ -1096,8 +1226,8 @@ func _on_confirm_gift_money() -> void:
 			_gift_dialog.hide()
 		await zobraz_systemove_hlaseni(
 			"Diplomacie",
-			"Odeslán dar %.2f mil. USD státu %s.\nVztah: %+0.1f" % [
-				float(result.get("amount", amount)),
+			"Odeslán dar %s USD státu %s.\nVztah: %+0.1f" % [
+				_format_money_auto(float(result.get("amount", amount)), 2),
 				current_viewed_tag,
 				float(result.get("relation_delta", 0.0))
 			]
@@ -1686,10 +1816,7 @@ func _on_ideology_option_selected(index: int) -> void:
 		return
 	if index < 0 or index >= _ideology_option_values.size():
 		return
-	var selected = str(_ideology_option_values[index])
-	_set_ideology_effects_label(selected)
-	if not _ideology_dropdown_open:
-		_obnov_ideology_vizual_z_mapy()
+	_obnov_nahled_ideologie_podle_volby()
 
 # Triggered by right-clicking on the map
 func schovej_se():
