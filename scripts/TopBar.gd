@@ -11,6 +11,8 @@ const TooltipUtils = preload("res://scripts/TooltipUtils.gd")
 @onready var player_name = $Panel/HBoxContainer/PlayerInfo/PlayerName
 
 var flag_texture_cache: Dictionary = {}
+var ideology_flag_path_index: Dictionary = {}
+var ideology_flag_index_ready: bool = false
 var _last_seen_player_tag: String = ""
 var _player_focus_tween: Tween
 
@@ -38,6 +40,60 @@ func _normalizuj_ideologii(ideologie: String) -> String:
 			return "kralovstvi"
 		_:
 			return raw
+
+func _ensure_ideology_flag_index() -> void:
+	if ideology_flag_index_ready:
+		return
+	ideology_flag_index_ready = true
+	ideology_flag_path_index.clear()
+
+	var dir = DirAccess.open("res://map_data/FlagsIdeology")
+	if dir == null:
+		return
+
+	dir.list_dir_begin()
+	while true:
+		var file_name = dir.get_next()
+		if file_name == "":
+			break
+		if dir.current_is_dir():
+			continue
+		var lower = file_name.to_lower()
+		if not (lower.ends_with(".svg") or lower.ends_with(".png")):
+			continue
+		if lower.ends_with(".import"):
+			continue
+
+		var tag := ""
+		var ideo_raw := ""
+		var sep_idx = lower.find("__")
+		if sep_idx > 0:
+			tag = lower.substr(0, sep_idx).to_upper()
+			var ext_idx = lower.rfind(".")
+			if ext_idx > sep_idx + 2:
+				ideo_raw = lower.substr(sep_idx + 2, ext_idx - (sep_idx + 2))
+		else:
+			var one_idx = lower.find("_")
+			var ext_idx2 = lower.rfind(".")
+			if one_idx > 0 and ext_idx2 > one_idx + 1:
+				tag = lower.substr(0, one_idx).to_upper()
+				ideo_raw = lower.substr(one_idx + 1, ext_idx2 - (one_idx + 1))
+
+		if tag == "" or ideo_raw == "":
+			continue
+		var ideo = _normalizuj_ideologii(ideo_raw)
+		if ideo == "":
+			continue
+
+		var key = "%s|%s" % [tag, ideo]
+		var path = "res://map_data/FlagsIdeology/%s" % file_name
+		if not ideology_flag_path_index.has(key):
+			ideology_flag_path_index[key] = path
+			continue
+		var current = str(ideology_flag_path_index[key]).to_lower()
+		if current.ends_with(".png") and lower.ends_with(".svg"):
+			ideology_flag_path_index[key] = path
+	dir.list_dir_end()
 
 func _ready():
 	# Connect button clicks and GameManager signals
@@ -77,16 +133,23 @@ func nastav_hrace(tag: String, jmeno_statu: String, ideologie: String = ""):
 		
 	if player_flag:
 		var ideo = _normalizuj_ideologii(ideologie)
-		var candidates: Array = []
+		var cisty_tag = tag.strip_edges().to_upper()
+		if cisty_tag == "DEU":
+			if ideo == "fasismus":
+				ideo = "nacismus"
+			elif ideo == "nacismus":
+				ideo = "fasismus"
 		if ideo != "":
-			candidates.append("res://map_data/FlagsIdeology/%s__%s.svg" % [tag, ideo])
-			candidates.append("res://map_data/FlagsIdeology/%s__%s.png" % [tag, ideo])
-			candidates.append("res://map_data/FlagsIdeology/%s_%s.svg" % [tag, ideo])
-			candidates.append("res://map_data/FlagsIdeology/%s_%s.png" % [tag, ideo])
-		candidates.append("res://map_data/Flags/%s.svg" % tag)
-		candidates.append("res://map_data/Flags/%s.png" % tag)
+			_ensure_ideology_flag_index()
+			var key = "%s|%s" % [cisty_tag, ideo]
+			if ideology_flag_path_index.has(key):
+				var ideol_path = str(ideology_flag_path_index[key])
+				var ideol_tex = _cached_texture(ideol_path)
+				if ideol_tex:
+					player_flag.texture = ideol_tex
+					return
 
-		for path in candidates:
+		for path in ["res://map_data/Flags/%s.svg" % tag, "res://map_data/Flags/%s.png" % tag]:
 			var tex = _cached_texture(path)
 			if tex:
 				player_flag.texture = tex

@@ -569,35 +569,7 @@ func _jsou_ideologie_uplne_odlisne(ideology_a: String, ideology_b: String) -> bo
 	}
 	return opposite_pairs.has(_klic_ideologickeho_paru(a, b))
 
-func zmen_ideologii_statu(state_tag: String, new_ideology: String) -> Dictionary:
-	var state = _normalizuj_tag(state_tag)
-	var target_ideology = _normalizuj_ideologii(new_ideology)
-	if state == "" or state == "SEA":
-		return {"ok": false, "reason": "Neplatný stát."}
-	if target_ideology == "":
-		return {"ok": false, "reason": "Neplatná ideologie."}
-	if not _stat_existuje(state):
-		return {"ok": false, "reason": "Stát neexistuje v aktuální mapě."}
-
-	var old_ideology = _ziskej_ideologii_statu(state)
-	if old_ideology == target_ideology:
-		return {
-			"ok": true,
-			"changed": false,
-			"state": state,
-			"old_ideology": old_ideology,
-			"new_ideology": target_ideology,
-			"relation_changes": []
-		}
-
-	var modified_provinces := 0
-	for p_id in map_data:
-		var d = map_data[p_id]
-		if _normalizuj_tag(str(d.get("owner", ""))) != state:
-			continue
-		d["ideology"] = target_ideology
-		modified_provinces += 1
-
+func _spocitej_zmeny_vztahu_po_ideologii(state: String, target_ideology: String) -> Array:
 	var relation_changes: Array = []
 	for other_state in _ziskej_aktivni_staty():
 		var other = _normalizuj_tag(str(other_state))
@@ -615,14 +587,73 @@ func zmen_ideologii_statu(state_tag: String, new_ideology: String) -> Dictionary
 			continue
 
 		var old_relation = ziskej_vztah_statu(state, other)
-		var new_relation = _uprav_vztah_statu_bez_cooldown(state, other, delta)
 		relation_changes.append({
 			"other_state": other,
 			"other_ideology": other_ideology,
 			"delta": delta,
 			"old_relation": old_relation,
-			"new_relation": new_relation
+			"new_relation": clamp(old_relation + delta, RELATION_MIN, RELATION_MAX)
 		})
+	return relation_changes
+
+func nahled_zmeny_ideologie_statu(state_tag: String, new_ideology: String) -> Dictionary:
+	var state = _normalizuj_tag(state_tag)
+	var target_ideology = _normalizuj_ideologii(new_ideology)
+	if state == "" or state == "SEA":
+		return {"ok": false, "reason": "Neplatný stát."}
+	if target_ideology == "":
+		return {"ok": false, "reason": "Neplatná ideologie."}
+	if not _stat_existuje(state):
+		return {"ok": false, "reason": "Stát neexistuje v aktuální mapě."}
+
+	var old_ideology = _ziskej_ideologii_statu(state)
+	var relation_changes: Array = []
+	if old_ideology != target_ideology:
+		relation_changes = _spocitej_zmeny_vztahu_po_ideologii(state, target_ideology)
+
+	return {
+		"ok": true,
+		"changed": old_ideology != target_ideology,
+		"state": state,
+		"old_ideology": old_ideology,
+		"new_ideology": target_ideology,
+		"relation_changes": relation_changes
+	}
+
+func zmen_ideologii_statu(state_tag: String, new_ideology: String) -> Dictionary:
+	var state = _normalizuj_tag(state_tag)
+	var target_ideology = _normalizuj_ideologii(new_ideology)
+	if state == "" or state == "SEA":
+		return {"ok": false, "reason": "Neplatný stát."}
+	if target_ideology == "":
+		return {"ok": false, "reason": "Neplatná ideologie."}
+	if not _stat_existuje(state):
+		return {"ok": false, "reason": "Stát neexistuje v aktuální mapě."}
+
+	var preview = nahled_zmeny_ideologie_statu(state, target_ideology)
+	if not bool(preview.get("ok", false)):
+		return preview
+
+	var old_ideology = str(preview.get("old_ideology", ""))
+	if not bool(preview.get("changed", false)):
+		return preview
+
+	var modified_provinces := 0
+	for p_id in map_data:
+		var d = map_data[p_id]
+		if _normalizuj_tag(str(d.get("owner", ""))) != state:
+			continue
+		d["ideology"] = target_ideology
+		modified_provinces += 1
+
+	var relation_changes = preview.get("relation_changes", []) as Array
+	for change in relation_changes:
+		var c = change as Dictionary
+		var other = _normalizuj_tag(str(c.get("other_state", "")))
+		if other == "":
+			continue
+		var delta = float(c.get("delta", 0.0))
+		_uprav_vztah_statu_bez_cooldown(state, other, delta)
 
 	_synchronizuj_jmeno_a_ideologii_hrace()
 	_invalidate_turn_cache()

@@ -194,16 +194,18 @@ offset_right = 40.0
 offset_bottom = 40.0
 
 [node name="TitleBox" type="HBoxContainer" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=1641216667]
+custom_minimum_size = Vector2(60, 60)
 layout_mode = 2
 
 [node name="CountryFlag" type="TextureRect" parent="GameUI/OverviewPanel/VBoxContainer/TitleBox" unique_id=1584160832]
-custom_minimum_size = Vector2(40, 26)
+custom_minimum_size = Vector2(40, 0)
 layout_mode = 2
 expand_mode = 1
 stretch_mode = 5
 
 [node name="CountryNameLabel" type="Label" parent="GameUI/OverviewPanel/VBoxContainer/TitleBox" unique_id=306217381]
 layout_mode = 2
+theme_override_font_sizes/font_size = 24
 text = "test"
 
 [node name="IdeologyLabel" type="Label" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=240606362]

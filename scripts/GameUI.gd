@@ -66,6 +66,8 @@ var ideology_apply_btn: Button
 var _ideology_option_values: Array = []
 var _popup_country_link_btn: LinkButton
 var _camera_focus_tween: Tween
+var _ideology_flag_path_index: Dictionary = {}
+var _ideology_flag_index_ready: bool = false
 
 const POPUP_TOP_MARGIN := 6
 const POPUP_GAP := 6
@@ -73,26 +75,89 @@ const MAIN_MENU_SCENE_PATH := "res://scenes/MainMenu.tscn"
 const IDEOLOGY_UI_ORDER := ["demokracie", "kralovstvi", "autokracie", "komunismus", "nacismus", "fasismus"]
 
 func _resolve_flag_texture(owner_tag: String, ideologie: String):
+	var cisty_tag = owner_tag.strip_edges().to_upper()
 	var ideo = _normalizuj_ideologii(ideologie)
-	var candidates: Array = []
-
+	if cisty_tag == "DEU":
+		if ideo == "fasismus":
+			ideo = "nacismus"
+		elif ideo == "nacismus":
+			ideo = "fasismus"
 	if ideo != "" and ideo != "neznamo":
-		candidates.append("res://map_data/FlagsIdeology/%s__%s.svg" % [owner_tag, ideo])
-		candidates.append("res://map_data/FlagsIdeology/%s__%s.png" % [owner_tag, ideo])
-		candidates.append("res://map_data/FlagsIdeology/%s_%s.svg" % [owner_tag, ideo])
-		candidates.append("res://map_data/FlagsIdeology/%s_%s.png" % [owner_tag, ideo])
+		_ensure_ideology_flag_index()
+		var key = "%s|%s" % [cisty_tag, ideo]
+		if _ideology_flag_path_index.has(key):
+			var ideol_path = str(_ideology_flag_path_index[key])
+			if ResourceLoader.exists(ideol_path):
+				if not flag_texture_cache.has(ideol_path):
+					flag_texture_cache[ideol_path] = load(ideol_path)
+				return flag_texture_cache[ideol_path]
 
-	candidates.append("res://map_data/Flags/%s.svg" % owner_tag)
-	candidates.append("res://map_data/Flags/%s.png" % owner_tag)
-
-	for path in candidates:
-		if not ResourceLoader.exists(path):
-			continue
-		if not flag_texture_cache.has(path):
-			flag_texture_cache[path] = load(path)
-		return flag_texture_cache[path]
+	var base_candidates = [
+		"res://map_data/Flags/%s.svg" % owner_tag,
+		"res://map_data/Flags/%s.png" % owner_tag
+	]
+	for path in base_candidates:
+		if ResourceLoader.exists(path):
+			if not flag_texture_cache.has(path):
+				flag_texture_cache[path] = load(path)
+			return flag_texture_cache[path]
 
 	return null
+
+func _ensure_ideology_flag_index() -> void:
+	if _ideology_flag_index_ready:
+		return
+	_ideology_flag_index_ready = true
+	_ideology_flag_path_index.clear()
+
+	var dir = DirAccess.open("res://map_data/FlagsIdeology")
+	if dir == null:
+		return
+
+	dir.list_dir_begin()
+	while true:
+		var file_name = dir.get_next()
+		if file_name == "":
+			break
+		if dir.current_is_dir():
+			continue
+
+		var lower = file_name.to_lower()
+		if not (lower.ends_with(".svg") or lower.ends_with(".png")):
+			continue
+		if lower.ends_with(".import"):
+			continue
+
+		var tag := ""
+		var ideo_raw := ""
+		var sep_idx = lower.find("__")
+		if sep_idx > 0:
+			tag = lower.substr(0, sep_idx).to_upper()
+			var ext_idx = lower.rfind(".")
+			if ext_idx > sep_idx + 2:
+				ideo_raw = lower.substr(sep_idx + 2, ext_idx - (sep_idx + 2))
+		else:
+			var one_idx = lower.find("_")
+			var ext_idx2 = lower.rfind(".")
+			if one_idx > 0 and ext_idx2 > one_idx + 1:
+				tag = lower.substr(0, one_idx).to_upper()
+				ideo_raw = lower.substr(one_idx + 1, ext_idx2 - (one_idx + 1))
+
+		if tag == "" or ideo_raw == "":
+			continue
+		var ideo = _normalizuj_ideologii(ideo_raw)
+		if ideo == "" or IDEOLOGY_UI_ORDER.find(ideo) == -1:
+			continue
+
+		var key = "%s|%s" % [tag, ideo]
+		var path = "res://map_data/FlagsIdeology/%s" % file_name
+		if not _ideology_flag_path_index.has(key):
+			_ideology_flag_path_index[key] = path
+			continue
+		var current = str(_ideology_flag_path_index[key]).to_lower()
+		if current.ends_with(".png") and lower.ends_with(".svg"):
+			_ideology_flag_path_index[key] = path
+	dir.list_dir_end()
 
 func _ziskej_jmeno_statu_podle_tagu(tag: String) -> String:
 	var cisty = tag.strip_edges().to_upper()
@@ -494,12 +559,29 @@ func _ziskej_vyhody_nevyhody_ideologie(ideology: String) -> Dictionary:
 func _set_ideology_effects_label(ideology: String) -> void:
 	if ideology_effects_label == null:
 		return
-	var info = _ziskej_vyhody_nevyhody_ideologie(ideology)
-	var plus: Array = info.get("plus", [])
-	var minus: Array = info.get("minus", [])
-	var plus_txt = " + " + ", + ".join(plus)
-	var minus_txt = " - " + ", - ".join(minus)
-	ideology_effects_label.text = "Ideologie: %s\nVyhody:%s\nNevyhody:%s" % [_display_ideologie(ideology), plus_txt, minus_txt]
+	ideology_effects_label.text = ""
+
+func _ziskej_vsechny_provincie_pro_prehled() -> Dictionary:
+	var map_loader = _ziskej_map_loader_node()
+	if map_loader:
+		var maybe_provinces = map_loader.get("provinces")
+		if maybe_provinces is Dictionary:
+			return maybe_provinces
+	if GameManager and not GameManager.map_data.is_empty():
+		return GameManager.map_data
+	return {}
+
+func _obnov_otevreny_prehled_statu() -> void:
+	if current_viewed_tag == "":
+		return
+	var provinces = _ziskej_vsechny_provincie_pro_prehled()
+	if provinces.is_empty():
+		return
+	for p_id in provinces:
+		var d = provinces[p_id] as Dictionary
+		if str(d.get("owner", "")).strip_edges().to_upper() == current_viewed_tag:
+			zobraz_prehled_statu(d, provinces)
+			return
 
 func _ziskej_dostupne_ideologie_pro_stat(tag: String) -> Array:
 	var out: Array = []
@@ -573,7 +655,7 @@ func _aktualizuj_ideology_ui(owner_tag: String, current_ideology: String) -> voi
 		return
 
 	ideology_separator.show()
-	ideology_effects_label.show()
+	ideology_effects_label.hide()
 	ideology_option.show()
 	ideology_apply_btn.show()
 
@@ -1453,11 +1535,16 @@ func _on_apply_ideology_pressed() -> void:
 			minus_count
 		]
 	)
+	_obnov_otevreny_prehled_statu()
 
 func _on_ideology_option_selected(index: int) -> void:
 	if index < 0 or index >= _ideology_option_values.size():
 		return
-	_set_ideology_effects_label(str(_ideology_option_values[index]))
+	var selected = str(_ideology_option_values[index])
+	_set_ideology_effects_label(selected)
+	if country_flag and current_viewed_tag != "":
+		country_flag.texture = _resolve_flag_texture(current_viewed_tag, selected)
+	ideo_label.text = "Zřízení: " + _display_ideologie(selected)
 
 # Triggered by right-clicking on the map
 func schovej_se():
@@ -1591,6 +1678,7 @@ func _on_kolo_zmeneno():
 	_aktualizuj_popup_diplomatickych_zadosti()
 	if current_viewed_tag == "" or not panel.visible:
 		return
+	_obnov_otevreny_prehled_statu()
 	_aktualizuj_vztah_ui(current_viewed_tag)
 	_aktualizuj_aliance_ui(current_viewed_tag)
 	_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
