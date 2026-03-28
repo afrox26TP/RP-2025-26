@@ -21,6 +21,7 @@ const RIGHT_CLICK_CANCEL_THRESHOLD := 8.0
 var _right_press_active: bool = false
 var _right_press_pos: Vector2 = Vector2.ZERO
 var _right_dragging: bool = false
+var _drag_select_anchor_cache: Dictionary = {}
 
 # Variable to track the last hovered province ID for label popping
 var _posledni_hover_id: int = -1
@@ -228,9 +229,9 @@ func _aplikuj_drag_hromadny_vyber():
 		for p_id in root.provinces.keys():
 			var pid = int(p_id)
 			var p = root.provinces[pid]
-			var pos = Vector2(float(p.get("x", 0.0)), float(p.get("y", 0.0)))
-			if root.has_method("_ziskej_lokalni_pozici_provincie"):
-				pos = root._ziskej_lokalni_pozici_provincie(pid)
+			var pos = _ziskej_drag_select_anchor(root, pid, p)
+			if pos == Vector2.ZERO:
+				continue
 			if clipped_rect.has_point(pos):
 				root.pridej_hromadny_vyber_provincie(pid)
 
@@ -256,6 +257,29 @@ func _aplikuj_drag_hromadny_vyber():
 			var info_ui_single = get_tree().current_scene.find_child("InfoUI", true, false)
 			if info_ui_single and info_ui_single.has_method("zobraz_data"):
 				info_ui_single.zobraz_data(root.provinces[pid])
+
+func _ziskej_drag_select_anchor(root: Node, prov_id: int, prov_data: Dictionary) -> Vector2:
+	if _drag_select_anchor_cache.has(prov_id):
+		return _drag_select_anchor_cache[prov_id]
+
+	# Sea provinces are never valid for box-select of owned land armies and can trigger expensive fallbacks.
+	if root.has_method("_je_more_provincie") and root._je_more_provincie(prov_id):
+		_drag_select_anchor_cache[prov_id] = Vector2.ZERO
+		return Vector2.ZERO
+
+	var pos = Vector2(float(prov_data.get("x", 0.0)), float(prov_data.get("y", 0.0)))
+	if pos != Vector2.ZERO:
+		_drag_select_anchor_cache[prov_id] = pos
+		return pos
+
+	# Fallback only for rare provinces with missing coordinates.
+	if root.has_method("_ziskej_lokalni_pozici_provincie"):
+		pos = root._ziskej_lokalni_pozici_provincie(prov_id)
+		_drag_select_anchor_cache[prov_id] = pos
+		return pos
+
+	_drag_select_anchor_cache[prov_id] = Vector2.ZERO
+	return Vector2.ZERO
 
 # Completely clears the active selection and hides all contextual UI panels
 func _odzanc_vse():

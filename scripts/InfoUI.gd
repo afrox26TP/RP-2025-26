@@ -51,6 +51,7 @@ var likvidace_vynos_za_vojaka: float = 0.01 # Small refund per removed soldier
 var _preview_label: Label
 var _metric_rows: Dictionary = {}
 var _metric_deltas: Dictionary = {}
+var _ideology_preview_active: bool = false
 var _stavba_popup: PopupMenu
 var _stavba_last_focus_idx: int = -2
 
@@ -223,6 +224,65 @@ func _clear_preview_text() -> void:
 	_set_preview_text("")
 	_clear_inline_deltas()
 	_push_overview_deltas({})
+	_ideology_preview_active = false
+
+func nastav_nahled_ideologie(preview: Dictionary) -> void:
+	if aktualni_provincie_id == -1:
+		return
+	if preview.is_empty() or not bool(preview.get("ok", false)):
+		return
+
+	var state_tag = str(preview.get("state", "")).strip_edges().to_upper()
+	if state_tag == "":
+		return
+
+	var province_data = _ziskej_provincie_data()
+	if not province_data.has(aktualni_provincie_id):
+		return
+
+	var d = province_data[aktualni_provincie_id]
+	var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
+	if owner_tag != state_tag:
+		vycisti_nahled_ideologie()
+		return
+
+	var stat_changes = preview.get("stat_changes", {}) as Dictionary
+	var modifiers = stat_changes.get("modifiers", {}) as Dictionary
+	var gdp_ratio = float(modifiers.get("gdp_ratio", 1.0))
+	var new_recruit_mult = float(modifiers.get("new_recruit_mult", 1.0))
+
+	var old_gdp = float(d.get("gdp", 0.0))
+	var new_gdp = max(0.0, old_gdp * gdp_ratio)
+	var delta_gdp = new_gdp - old_gdp
+
+	var old_cap = int(d.get("base_recruitable_population", d.get("recruitable_population", 0)))
+	var old_recruit = int(d.get("recruitable_population", old_cap))
+	old_recruit = clampi(old_recruit, 0, max(0, old_cap))
+	var raw_base = int(d.get("base_recruitable_population_raw", old_cap))
+	if raw_base < 0:
+		raw_base = 0
+
+	var fill_ratio = 0.0
+	if old_cap > 0:
+		fill_ratio = float(old_recruit) / float(old_cap)
+
+	var new_cap = max(0, int(round(float(raw_base) * max(0.01, new_recruit_mult))))
+	var new_recruit = clampi(int(round(float(new_cap) * fill_ratio)), 0, new_cap)
+	var delta_recruit = new_recruit - old_recruit
+	var recruit_delta_text = "+" + _formatuj_cislo(delta_recruit) if delta_recruit >= 0 else _formatuj_cislo(delta_recruit)
+
+	_set_metric_delta("gdp", "%+.2f" % delta_gdp, Color(0.20, 0.85, 0.25) if delta_gdp >= 0.0 else Color(0.95, 0.35, 0.35))
+	_set_metric_delta("recruit", recruit_delta_text, Color(0.20, 0.85, 0.25) if delta_recruit >= 0 else Color(0.95, 0.35, 0.35))
+	_set_metric_delta("pop", "0", Color(0.75, 0.75, 0.75))
+	_ideology_preview_active = true
+
+func vycisti_nahled_ideologie() -> void:
+	if not _ideology_preview_active:
+		return
+	_set_metric_delta("gdp", "", Color.WHITE)
+	_set_metric_delta("recruit", "", Color.WHITE)
+	_set_metric_delta("pop", "", Color.WHITE)
+	_ideology_preview_active = false
 
 func _spocitej_stat_hdp_a_vojaky(owner_tag: String, province_data: Dictionary) -> Dictionary:
 	var hdp := 0.0

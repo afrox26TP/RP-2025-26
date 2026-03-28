@@ -69,6 +69,8 @@ var _camera_focus_tween: Tween
 var _ideology_flag_path_index: Dictionary = {}
 var _ideology_flag_index_ready: bool = false
 var _updating_ideology_ui: bool = false
+var _ideology_dropdown_open: bool = false
+var _ideology_hover_idx: int = -1
 
 const POPUP_TOP_MARGIN := 6
 const POPUP_GAP := 6
@@ -206,6 +208,14 @@ func _ready():
 		gift_money_btn.pressed.connect(_on_gift_money_pressed)
 	if ideology_option and not ideology_option.item_selected.is_connected(_on_ideology_option_selected):
 		ideology_option.item_selected.connect(_on_ideology_option_selected)
+	if ideology_option and ideology_option.get_popup():
+		var popup = ideology_option.get_popup()
+		if popup.has_signal("about_to_popup") and not popup.about_to_popup.is_connected(_on_ideology_dropdown_opened):
+			popup.about_to_popup.connect(_on_ideology_dropdown_opened)
+		if popup.has_signal("id_focused") and not popup.id_focused.is_connected(_on_ideology_dropdown_item_focused):
+			popup.id_focused.connect(_on_ideology_dropdown_item_focused)
+		if popup.has_signal("popup_hide") and not popup.popup_hide.is_connected(_on_ideology_dropdown_closed):
+			popup.popup_hide.connect(_on_ideology_dropdown_closed)
 	if ideology_apply_btn and not ideology_apply_btn.pressed.is_connected(_on_apply_ideology_pressed):
 		ideology_apply_btn.pressed.connect(_on_apply_ideology_pressed)
 	if alliance_level_option and not alliance_level_option.item_selected.is_connected(_on_alliance_level_selected):
@@ -223,6 +233,19 @@ func _ready():
 	_aktualizuj_popup_diplomatickych_zadosti()
 	_vytvor_darovaci_dialog()
 	_nastav_tooltipy_ui()
+
+func _process(_delta: float) -> void:
+	if not _ideology_dropdown_open or ideology_option == null:
+		set_process(false)
+		return
+	var popup = ideology_option.get_popup()
+	if popup == null or not popup.visible:
+		set_process(false)
+		return
+	if popup.has_method("get_focused_item"):
+		var idx = int(popup.get_focused_item())
+		if idx != _ideology_hover_idx:
+			_on_ideology_dropdown_item_focused(idx)
 
 func _setup_popup_country_link() -> void:
 	var hbox = get_node_or_null("DiplomacyRequestPopup/HBoxContainer") as HBoxContainer
@@ -560,7 +583,119 @@ func _ziskej_vyhody_nevyhody_ideologie(ideology: String) -> Dictionary:
 func _set_ideology_effects_label(ideology: String) -> void:
 	if ideology_effects_label == null:
 		return
-	ideology_effects_label.text = ""
+	var effects = _ziskej_vyhody_nevyhody_ideologie(ideology)
+	var plus = effects.get("plus", []) as Array
+	var minus = effects.get("minus", []) as Array
+	var plus_text = ", ".join(plus)
+	var minus_text = ", ".join(minus)
+	ideology_effects_label.text = "Vyhody: %s\nNevyhody: %s" % [plus_text, minus_text]
+
+func _format_signed_int(value: int) -> String:
+	if value >= 0:
+		return "+%d" % value
+	return str(value)
+
+func _vycisti_nahled_ideologie_v_ui() -> void:
+	nastav_akce_nahled_delta({})
+	var info_ui = get_tree().current_scene.find_child("InfoUI", true, false)
+	if info_ui and info_ui.has_method("vycisti_nahled_ideologie"):
+		info_ui.vycisti_nahled_ideologie()
+
+func _ziskej_aktualni_ideologii_statu(owner_tag: String) -> String:
+	var clean = owner_tag.strip_edges().to_upper()
+	if clean == "":
+		return ""
+	var provinces = _ziskej_vsechny_provincie_pro_prehled()
+	for p_id in provinces:
+		var d = provinces[p_id] as Dictionary
+		if str(d.get("owner", "")).strip_edges().to_upper() == clean:
+			return _normalizuj_ideologii(str(d.get("ideology", "")))
+	return ""
+
+func _obnov_ideology_vizual_z_mapy() -> void:
+	if current_viewed_tag == "":
+		return
+	var current_ideo = _ziskej_aktualni_ideologii_statu(current_viewed_tag)
+	if current_ideo == "":
+		return
+	if country_flag:
+		country_flag.texture = _resolve_flag_texture(current_viewed_tag, current_ideo)
+	ideo_label.text = "Zřízení: " + _display_ideologie(current_ideo)
+
+func _on_ideology_dropdown_opened() -> void:
+	_ideology_dropdown_open = true
+	_ideology_hover_idx = -1
+	_vycisti_nahled_ideologie_v_ui()
+	_obnov_ideology_vizual_z_mapy()
+	set_process(true)
+
+func _on_ideology_dropdown_item_focused(index: int) -> void:
+	if not _ideology_dropdown_open:
+		return
+	if index < 0 or index >= _ideology_option_values.size():
+		return
+	_ideology_hover_idx = index
+	var selected = str(_ideology_option_values[index])
+	_set_ideology_effects_label(selected)
+	_aplikuj_nahled_ideologie_do_ui(current_viewed_tag, selected)
+	if country_flag and current_viewed_tag != "":
+		country_flag.texture = _resolve_flag_texture(current_viewed_tag, selected)
+	ideo_label.text = "Zřízení: " + _display_ideologie(selected)
+
+func _on_ideology_dropdown_closed() -> void:
+	_ideology_dropdown_open = false
+	_ideology_hover_idx = -1
+	set_process(false)
+	_vycisti_nahled_ideologie_v_ui()
+	_obnov_ideology_vizual_z_mapy()
+
+func _aplikuj_nahled_ideologie_do_ui(owner_tag: String, selected_ideology: String) -> void:
+	if owner_tag != str(GameManager.hrac_stat).strip_edges().to_upper():
+		_vycisti_nahled_ideologie_v_ui()
+		return
+	if not GameManager.has_method("nahled_zmeny_ideologie_statu"):
+		_vycisti_nahled_ideologie_v_ui()
+		return
+
+	var preview = GameManager.nahled_zmeny_ideologie_statu(owner_tag, selected_ideology)
+	if not bool(preview.get("ok", false)):
+		_vycisti_nahled_ideologie_v_ui()
+		return
+
+	var stat_changes = preview.get("stat_changes", {}) as Dictionary
+	var delta = stat_changes.get("delta", {}) as Dictionary
+	var dgdp = float(delta.get("gdp", 0.0))
+	var drecruit = int(delta.get("recruitable_population", 0))
+	var dpop = int(delta.get("population", 0))
+
+	var overview_deltas: Dictionary = {
+		"gdp": {
+			"text": "%+.2f" % dgdp,
+			"color": Color(0.20, 0.85, 0.25) if dgdp >= 0.0 else Color(0.95, 0.35, 0.35)
+		},
+		"recruit": {
+			"text": _format_signed_int(drecruit),
+			"color": Color(0.20, 0.85, 0.25) if drecruit >= 0 else Color(0.95, 0.35, 0.35)
+		},
+		"pop": {
+			"text": _format_signed_int(dpop),
+			"color": Color(0.75, 0.75, 0.75)
+		}
+	}
+	nastav_akce_nahled_delta(overview_deltas)
+
+	if ideology_effects_label:
+		var base_text = ideology_effects_label.text
+		ideology_effects_label.text = "%s\nNahled dopadu: HDP %+.2f | Rekruti %s | Populace %s" % [
+			base_text,
+			dgdp,
+			_format_signed_int(drecruit),
+			_format_signed_int(dpop)
+		]
+
+	var info_ui = get_tree().current_scene.find_child("InfoUI", true, false)
+	if info_ui and info_ui.has_method("nastav_nahled_ideologie"):
+		info_ui.nastav_nahled_ideologie(preview)
 
 func _ziskej_vsechny_provincie_pro_prehled() -> Dictionary:
 	var map_loader = _ziskej_map_loader_node()
@@ -653,6 +788,7 @@ func _aktualizuj_ideology_ui(owner_tag: String, current_ideology: String) -> voi
 		ideology_effects_label.hide()
 		ideology_option.hide()
 		ideology_apply_btn.hide()
+		_vycisti_nahled_ideologie_v_ui()
 		return
 
 	ideology_separator.show()
@@ -682,6 +818,8 @@ func _aktualizuj_ideology_ui(owner_tag: String, current_ideology: String) -> voi
 	ideology_option.select(selected_idx)
 	ideology_apply_btn.disabled = options.size() <= 1
 	_set_ideology_effects_label(str(options[selected_idx]))
+	_ideology_dropdown_open = false
+	_vycisti_nahled_ideologie_v_ui()
 	_updating_ideology_ui = false
 
 func _wrap_overview_metric_label(key: String, base_label: Label) -> void:
@@ -1519,6 +1657,9 @@ func _on_apply_ideology_pressed() -> void:
 		await zobraz_systemove_hlaseni("Ideologie", "Tato ideologie uz je aktivni.")
 		return
 
+	_ideology_dropdown_open = false
+	_vycisti_nahled_ideologie_v_ui()
+
 	var relation_changes = result.get("relation_changes", []) as Array
 	var plus_count := 0
 	var minus_count := 0
@@ -1547,14 +1688,13 @@ func _on_ideology_option_selected(index: int) -> void:
 		return
 	var selected = str(_ideology_option_values[index])
 	_set_ideology_effects_label(selected)
-	if country_flag and current_viewed_tag != "":
-		country_flag.texture = _resolve_flag_texture(current_viewed_tag, selected)
-	ideo_label.text = "Zřízení: " + _display_ideologie(selected)
+	if not _ideology_dropdown_open:
+		_obnov_ideology_vizual_z_mapy()
 
 # Triggered by right-clicking on the map
 func schovej_se():
 	panel.hide()
-	nastav_akce_nahled_delta({})
+	_vycisti_nahled_ideologie_v_ui()
 
 func _formatuj_cislo(cislo: int) -> String:
 	var text_cisla = str(cislo)

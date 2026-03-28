@@ -40,9 +40,73 @@ var _naval_reachable_cache_from: int = -1
 var _naval_reachable_cache: Dictionary = {}
 var _preview_path_key: String = ""
 var _hromadny_vyber_overlay_key: String = ""
+var _loading_layer: CanvasLayer = null
+var _loading_label: Label = null
+var _loading_bar: ProgressBar = null
 const PORT_ICON_PATH := "res://map_data/port_icon.svg"
 const PORT_ICON_FALLBACK_PATH := "res://map_data/ArmyIcons/ArmyIconTemplate.svg"
 # --------------------------------------------------------
+
+func _vytvor_loading_overlay() -> void:
+	if _loading_layer != null:
+		return
+
+	_loading_layer = CanvasLayer.new()
+	_loading_layer.layer = 200
+	add_child(_loading_layer)
+
+	var bg = ColorRect.new()
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg.color = Color(0.04, 0.06, 0.10, 0.92)
+	_loading_layer.add_child(bg)
+
+	var panel = PanelContainer.new()
+	panel.custom_minimum_size = Vector2(420, 130)
+	panel.anchor_left = 0.5
+	panel.anchor_top = 0.5
+	panel.anchor_right = 0.5
+	panel.anchor_bottom = 0.5
+	panel.offset_left = -210.0
+	panel.offset_top = -65.0
+	panel.offset_right = 210.0
+	panel.offset_bottom = 65.0
+	_loading_layer.add_child(panel)
+
+	var margin = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 18)
+	margin.add_theme_constant_override("margin_top", 14)
+	margin.add_theme_constant_override("margin_right", 18)
+	margin.add_theme_constant_override("margin_bottom", 14)
+	panel.add_child(margin)
+
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	margin.add_child(vbox)
+
+	_loading_label = Label.new()
+	_loading_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_loading_label.text = "Nacitani mapy..."
+	vbox.add_child(_loading_label)
+
+	_loading_bar = ProgressBar.new()
+	_loading_bar.min_value = 0.0
+	_loading_bar.max_value = 100.0
+	_loading_bar.value = 0.0
+	_loading_bar.show_percentage = true
+	vbox.add_child(_loading_bar)
+
+func _nastav_loading_stav(text: String, progress_0_1: float) -> void:
+	if _loading_label:
+		_loading_label.text = text
+	if _loading_bar:
+		_loading_bar.value = clamp(progress_0_1 * 100.0, 0.0, 100.0)
+
+func _skryj_loading_overlay() -> void:
+	if _loading_layer:
+		_loading_layer.queue_free()
+	_loading_layer = null
+	_loading_label = null
+	_loading_bar = null
 
 func nastav_mapovy_mod(mod: String):
 	aktualni_mapovy_mod = mod
@@ -531,11 +595,17 @@ func _ziskej_barvu_overlay_statu(tag: String, is_attack: bool) -> Color:
 	return out_col
 
 func _ready():
+	_vytvor_loading_overlay()
+	_nastav_loading_stav("Nacitani mapy...", 0.03)
+	await get_tree().process_frame
+
+	_nastav_loading_stav("Nacitani provincii...", 0.16)
 	print("[MapInit] 1/6 load_provinces")
 	load_provinces()
 	print("Nacteno provincii z TXT: ", provinces.size())
 	await get_tree().process_frame
 	
+	_nastav_loading_stav("Inicializace kamery a map modu...", 0.30)
 	print("[MapInit] 2/6 camera+map mode")
 	var kamera = $Camera2D 
 	if kamera:
@@ -549,10 +619,12 @@ func _ready():
 	nastav_mapovy_mod("political")
 	await get_tree().process_frame
 	
+	_nastav_loading_stav("Generovani nazvu provincii...", 0.48)
 	print("[MapInit] 3/6 province labels")
 	generuj_nazvy_provincii()
 	await get_tree().process_frame
 	
+	_nastav_loading_stav("Generovani nazvu statu...", 0.63)
 	print("[MapInit] 4/6 country labels")
 	var labels_manager = get_node_or_null("CountryLabelsManager")
 	var prov_labels = get_node_or_null("ProvinceLabels")
@@ -560,6 +632,7 @@ func _ready():
 		labels_manager.aktualizuj_labely_statu(provinces, prov_labels)
 	await get_tree().process_frame
 	
+	_nastav_loading_stav("Priprava ekonomiky a pristavu...", 0.80)
 	print("[MapInit] 5/6 economy+ports")
 	if GameManager.has_method("spocitej_prijem"):
 		if GameManager.has_method("pridej_startovni_pristavy"):
@@ -567,11 +640,15 @@ func _ready():
 		GameManager.spocitej_prijem(provinces)
 	await get_tree().process_frame
 		
+	_nastav_loading_stav("Nacitani armadnich ikon...", 0.93)
 	print("[MapInit] 6/6 army icons")
 	aktualizuj_ikony_armad()
 	if GameManager.has_signal("kolo_zmeneno"):
 		GameManager.kolo_zmeneno.connect(aktualizuj_ikony_armad)
 	set_process(false)
+	_nastav_loading_stav("Hotovo", 1.0)
+	await get_tree().process_frame
+	_skryj_loading_overlay()
 	print("[MapInit] done")
 
 func _process(delta: float):

@@ -27,6 +27,22 @@ const AI_DECLARE_WAR_MIN_ATTACK_FORCE := 1800
 const AI_DECLARE_WAR_MAX_RELATION := -10.0
 const IDEOLOGY_RELATION_SIMILAR_BONUS := 8.0
 const IDEOLOGY_RELATION_OPPOSITE_PENALTY := 12.0
+const IDEOLOGY_GDP_MULTIPLIERS := {
+	"demokracie": 1.10,
+	"kralovstvi": 1.03,
+	"autokracie": 0.98,
+	"komunismus": 0.94,
+	"nacismus": 0.90,
+	"fasismus": 0.90
+}
+const IDEOLOGY_RECRUIT_MULTIPLIERS := {
+	"demokracie": 0.95,
+	"kralovstvi": 1.00,
+	"autokracie": 1.12,
+	"komunismus": 1.20,
+	"nacismus": 1.28,
+	"fasismus": 1.28
+}
 const PEACE_WAR_COOLDOWN_TURNS := 5
 const RELATION_MIN := -100.0
 const RELATION_MAX := 100.0
@@ -596,6 +612,98 @@ func _spocitej_zmeny_vztahu_po_ideologii(state: String, target_ideology: String)
 		})
 	return relation_changes
 
+func _ziskej_statove_modifikatory_ideologie(ideology: String) -> Dictionary:
+	var key = _normalizuj_ideologii(ideology)
+	var gdp_mult = float(IDEOLOGY_GDP_MULTIPLIERS.get(key, 1.0))
+	var recruit_mult = float(IDEOLOGY_RECRUIT_MULTIPLIERS.get(key, 1.0))
+	return {
+		"gdp_mult": gdp_mult,
+		"recruit_mult": recruit_mult
+	}
+
+func _nahled_nebo_aplikace_ideologie_statistik(state: String, old_ideology: String, new_ideology: String, apply_changes: bool) -> Dictionary:
+	var old_mods = _ziskej_statove_modifikatory_ideologie(old_ideology)
+	var new_mods = _ziskej_statove_modifikatory_ideologie(new_ideology)
+
+	var old_gdp_mult = max(0.01, float(old_mods.get("gdp_mult", 1.0)))
+	var new_gdp_mult = max(0.01, float(new_mods.get("gdp_mult", 1.0)))
+	var gdp_ratio = new_gdp_mult / old_gdp_mult
+	var new_recruit_mult = max(0.01, float(new_mods.get("recruit_mult", 1.0)))
+
+	var total_old_pop := 0
+	var total_new_pop := 0
+	var total_old_gdp := 0.0
+	var total_new_gdp := 0.0
+	var total_old_recruit := 0
+	var total_new_recruit := 0
+	var modified_provinces := 0
+
+	for p_id in map_data:
+		var d = map_data[p_id]
+		if _normalizuj_tag(str(d.get("owner", ""))) != state:
+			continue
+
+		modified_provinces += 1
+		var old_pop = int(d.get("population", 0))
+		var old_gdp = float(d.get("gdp", 0.0))
+
+		var old_cap = int(d.get("base_recruitable_population", d.get("recruitable_population", 0)))
+		if old_cap < 0:
+			old_cap = 0
+		var old_recruit = int(d.get("recruitable_population", old_cap))
+		old_recruit = clampi(old_recruit, 0, old_cap)
+
+		var raw_base = int(d.get("base_recruitable_population_raw", old_cap))
+		if raw_base < 0:
+			raw_base = 0
+
+		var recruit_fill_ratio = 0.0
+		if old_cap > 0:
+			recruit_fill_ratio = float(old_recruit) / float(old_cap)
+
+		var new_gdp = max(0.0, old_gdp * gdp_ratio)
+		var new_cap = max(0, int(round(float(raw_base) * new_recruit_mult)))
+		var new_recruit = clampi(int(round(float(new_cap) * recruit_fill_ratio)), 0, new_cap)
+
+		total_old_pop += old_pop
+		total_new_pop += old_pop
+		total_old_gdp += old_gdp
+		total_new_gdp += new_gdp
+		total_old_recruit += old_recruit
+		total_new_recruit += new_recruit
+
+		if apply_changes:
+			d["gdp"] = new_gdp
+			d["base_recruitable_population_raw"] = raw_base
+			d["base_recruitable_population"] = new_cap
+			d["recruitable_population"] = new_recruit
+
+	return {
+		"modified_provinces": modified_provinces,
+		"old_totals": {
+			"population": total_old_pop,
+			"gdp": total_old_gdp,
+			"recruitable_population": total_old_recruit
+		},
+		"new_totals": {
+			"population": total_new_pop,
+			"gdp": total_new_gdp,
+			"recruitable_population": total_new_recruit
+		},
+		"delta": {
+			"population": total_new_pop - total_old_pop,
+			"gdp": total_new_gdp - total_old_gdp,
+			"recruitable_population": total_new_recruit - total_old_recruit
+		},
+		"modifiers": {
+			"old_gdp_mult": old_gdp_mult,
+			"new_gdp_mult": new_gdp_mult,
+			"gdp_ratio": gdp_ratio,
+			"old_recruit_mult": float(old_mods.get("recruit_mult", 1.0)),
+			"new_recruit_mult": new_recruit_mult
+		}
+	}
+
 func nahled_zmeny_ideologie_statu(state_tag: String, new_ideology: String) -> Dictionary:
 	var state = _normalizuj_tag(state_tag)
 	var target_ideology = _normalizuj_ideologii(new_ideology)
@@ -611,13 +719,16 @@ func nahled_zmeny_ideologie_statu(state_tag: String, new_ideology: String) -> Di
 	if old_ideology != target_ideology:
 		relation_changes = _spocitej_zmeny_vztahu_po_ideologii(state, target_ideology)
 
+	var stat_changes = _nahled_nebo_aplikace_ideologie_statistik(state, old_ideology, target_ideology, false)
+
 	return {
 		"ok": true,
 		"changed": old_ideology != target_ideology,
 		"state": state,
 		"old_ideology": old_ideology,
 		"new_ideology": target_ideology,
-		"relation_changes": relation_changes
+		"relation_changes": relation_changes,
+		"stat_changes": stat_changes
 	}
 
 func zmen_ideologii_statu(state_tag: String, new_ideology: String) -> Dictionary:
@@ -637,6 +748,8 @@ func zmen_ideologii_statu(state_tag: String, new_ideology: String) -> Dictionary
 	var old_ideology = str(preview.get("old_ideology", ""))
 	if not bool(preview.get("changed", false)):
 		return preview
+
+	var stat_changes = _nahled_nebo_aplikace_ideologie_statistik(state, old_ideology, target_ideology, true)
 
 	var modified_provinces := 0
 	for p_id in map_data:
@@ -680,7 +793,8 @@ func zmen_ideologii_statu(state_tag: String, new_ideology: String) -> Dictionary
 		"old_ideology": old_ideology,
 		"new_ideology": target_ideology,
 		"modified_provinces": modified_provinces,
-		"relation_changes": relation_changes
+		"relation_changes": relation_changes,
+		"stat_changes": stat_changes
 	}
 
 func _stat_existuje(tag: String) -> bool:
