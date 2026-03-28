@@ -22,6 +22,8 @@ stretch_mode = 5
 [node name="Label" type="Label" parent="HBoxContainer" unique_id=1186857749]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
+theme_override_colors/font_outline_color = Color(0.05, 0.05, 0.05, 0.9)
+theme_override_constants/outline_size = 2
 theme_override_font_sizes/font_size = 12
 text = "test"
 horizontal_alignment = 1

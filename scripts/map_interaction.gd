@@ -243,6 +243,8 @@ func _aplikuj_drag_hromadny_vyber():
 
 	material.set_shader_parameter("selected_id", int(hromadny_ids[hromadny_ids.size() - 1]))
 	material.set_shader_parameter("has_selected", true)
+	if root.has_method("nastav_vybranou_armadu_provincie"):
+		root.nastav_vybranou_armadu_provincie(int(hromadny_ids[hromadny_ids.size() - 1]))
 
 	if hromadny_ids.size() > 1:
 		var info_ui_multi = get_tree().current_scene.find_child("InfoUI", true, false)
@@ -261,6 +263,8 @@ func _odzanc_vse():
 	material.set_shader_parameter("selected_id", -1.0)
 	
 	var root = get_parent()
+	if root and root.has_method("nastav_vybranou_armadu_provincie"):
+		root.nastav_vybranou_armadu_provincie(-1)
 	if "ceka_na_cil_presunu" in root:
 		root.ceka_na_cil_presunu = false
 	if "ceka_na_hromadny_cil_presunu" in root:
@@ -289,6 +293,13 @@ func _odzanc_vse():
 
 func _zpracuj_interakci(_mouse_pos: Vector2, je_kliknuti: bool, shift_held: bool = false):
 	if map_image == null: return
+
+	var root = get_parent()
+	if je_kliknuti and root and root.has_method("ziskej_prov_id_podle_ikony_armady"):
+		var hit_prov_id = int(root.ziskej_prov_id_podle_ikony_armady(get_global_mouse_position()))
+		if hit_prov_id >= 0 and "provinces" in root and root.provinces.has(hit_prov_id):
+			_aktualizuj_vizual(float(hit_prov_id), true, root.provinces[hit_prov_id], shift_held)
+			return
 	
 	var local_pos = to_local(get_global_mouse_position())
 	if centered: local_pos += texture.get_size() / 2.0
@@ -298,7 +309,6 @@ func _zpracuj_interakci(_mouse_pos: Vector2, je_kliknuti: bool, shift_held: bool
 		var pixel_color = map_image.get_pixelv(Vector2i(local_pos))
 		
 		if pixel_color.a > 0.0:
-			var root = get_parent()
 			if root.has_method("get_province_data_by_color"):
 				var data = root.get_province_data_by_color(pixel_color)
 				if data:
@@ -391,6 +401,8 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 		
 		material.set_shader_parameter("selected_id", prov_id)
 		material.set_shader_parameter("has_selected", true)
+		if root.has_method("nastav_vybranou_armadu_provincie"):
+			root.nastav_vybranou_armadu_provincie(int(prov_id))
 		
 		var vsechny_provincie = root.provinces if "provinces" in root else {}
 		

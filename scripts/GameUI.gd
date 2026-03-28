@@ -68,6 +68,7 @@ var _popup_country_link_btn: LinkButton
 var _camera_focus_tween: Tween
 var _ideology_flag_path_index: Dictionary = {}
 var _ideology_flag_index_ready: bool = false
+var _updating_ideology_ui: bool = false
 
 const POPUP_TOP_MARGIN := 6
 const POPUP_GAP := 6
@@ -668,6 +669,7 @@ func _aktualizuj_ideology_ui(owner_tag: String, current_ideology: String) -> voi
 		options = [current if current != "" else "demokracie"]
 
 	_ideology_option_values = options.duplicate()
+	_updating_ideology_ui = true
 	ideology_option.clear()
 
 	var selected_idx := 0
@@ -680,6 +682,7 @@ func _aktualizuj_ideology_ui(owner_tag: String, current_ideology: String) -> voi
 	ideology_option.select(selected_idx)
 	ideology_apply_btn.disabled = options.size() <= 1
 	_set_ideology_effects_label(str(options[selected_idx]))
+	_updating_ideology_ui = false
 
 func _wrap_overview_metric_label(key: String, base_label: Label) -> void:
 	if base_label == null:
@@ -1538,6 +1541,8 @@ func _on_apply_ideology_pressed() -> void:
 	_obnov_otevreny_prehled_statu()
 
 func _on_ideology_option_selected(index: int) -> void:
+	if _updating_ideology_ui:
+		return
 	if index < 0 or index >= _ideology_option_values.size():
 		return
 	var selected = str(_ideology_option_values[index])

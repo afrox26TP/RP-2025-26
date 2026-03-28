@@ -40,6 +40,8 @@ var _naval_reachable_cache_from: int = -1
 var _naval_reachable_cache: Dictionary = {}
 var _preview_path_key: String = ""
 var _hromadny_vyber_overlay_key: String = ""
+const PORT_ICON_PATH := "res://map_data/port_icon.svg"
+const PORT_ICON_FALLBACK_PATH := "res://map_data/ArmyIcons/ArmyIconTemplate.svg"
 # --------------------------------------------------------
 
 func nastav_mapovy_mod(mod: String):
@@ -211,6 +213,92 @@ func _ziskej_lokalni_pozici_z_masky_provincie(prov_id: int) -> Vector2:
 func _ziskej_map_pozici_provincie(prov_id: int, offset: Vector2) -> Vector2:
 	return _ziskej_lokalni_pozici_provincie(prov_id) + offset
 
+func ziskej_prov_id_podle_ikony_armady(global_mouse_pos: Vector2, tolerance: float = 16.0) -> int:
+	if aktivni_armady.is_empty():
+		return -1
+
+	var best_prov_id := -1
+	var best_dist_sq := INF
+
+	for raw_id in aktivni_armady.keys():
+		var prov_id = int(raw_id)
+		var army_node = aktivni_armady[prov_id]
+		if not army_node or not army_node.visible:
+			continue
+
+		var icon = army_node.get_node_or_null("Icon") as Sprite2D
+		var icon_pos = army_node.global_position
+		var radius = tolerance
+
+		if icon:
+			icon_pos = icon.global_position
+			if icon.texture:
+				var tex_size = icon.texture.get_size()
+				var scale_factor = max(absf(icon.global_scale.x), absf(icon.global_scale.y))
+				var tex_radius = (max(tex_size.x, tex_size.y) * 0.5) * scale_factor
+				radius = max(radius, tex_radius + 6.0)
+
+		var dist_sq = icon_pos.distance_squared_to(global_mouse_pos)
+		if dist_sq <= (radius * radius) and dist_sq < best_dist_sq:
+			best_dist_sq = dist_sq
+			best_prov_id = prov_id
+
+	return best_prov_id
+
+func nastav_vybranou_armadu_provincie(selected_prov_id: int):
+	for raw_id in aktivni_armady.keys():
+		var prov_id = int(raw_id)
+		var army_node = aktivni_armady[prov_id]
+		if not army_node:
+			continue
+		var ring = army_node.get_node_or_null("SelectionRing")
+		if ring:
+			var owner_tag = _ziskej_vlastnika_armady_v_provincii(prov_id)
+			var je_moje_armada = owner_tag == GameManager.hrac_stat
+			ring.visible = (prov_id == selected_prov_id) and je_moje_armada
+
+func _aktualizuj_selection_ring_geometrii(army_node: Node2D):
+	if not army_node:
+		return
+
+	var ring = army_node.get_node_or_null("SelectionRing") as Line2D
+	var icon = army_node.get_node_or_null("Icon") as Sprite2D
+	if ring == null or icon == null:
+		return
+	if icon.texture == null:
+		return
+
+	var tex_size = icon.texture.get_size()
+	if tex_size.x <= 0.0 or tex_size.y <= 0.0:
+		return
+
+	var half_w = (tex_size.x * absf(icon.scale.x)) * 0.5
+	var half_h = (tex_size.y * absf(icon.scale.y)) * 0.5
+	var pad = 2.2
+	var ring_half_w = half_w + pad
+	var ring_half_h = half_h + pad
+	var ring_width = clamp(max(ring_half_w, ring_half_h) * 0.14, 1.6, 3.2)
+
+	ring.width = ring_width
+	ring.clear_points()
+	ring.add_point(Vector2(-ring_half_w, -ring_half_h))
+	ring.add_point(Vector2(ring_half_w, -ring_half_h))
+	ring.add_point(Vector2(ring_half_w, ring_half_h))
+	ring.add_point(Vector2(-ring_half_w, ring_half_h))
+	ring.add_point(Vector2(-ring_half_w, -ring_half_h))
+
+func _ziskej_pozici_armady_v_provincii(prov_id: int, offset: Vector2) -> Vector2:
+	var base_pos = _ziskej_map_pozici_provincie(prov_id, offset)
+	# Keep sea fleets centered on sea tile, but move land armies below province names.
+	if _je_more_provincie(prov_id):
+		return base_pos
+
+	# Keep army marker close to province name first; overlap solver can move it if needed.
+	var y_offset = 14.0
+	if provinces.has(prov_id) and bool(provinces[prov_id].get("is_capital", false)):
+		y_offset = 17.0
+	return base_pos + Vector2(0, y_offset)
+
 func _ziskej_lane_index(slot: int) -> int:
 	if slot <= 0:
 		return 0
@@ -238,24 +326,28 @@ func _najdi_volnou_pozici(base_pos: Vector2, occupied_positions: Array, min_dist
 	if occupied_positions.is_empty():
 		return base_pos
 
-	var offsets = [
-		Vector2.ZERO,
-		Vector2(18, 0), Vector2(-18, 0), Vector2(0, 18), Vector2(0, -18),
-		Vector2(14, 14), Vector2(-14, 14), Vector2(14, -14), Vector2(-14, -14),
-		Vector2(28, 0), Vector2(-28, 0), Vector2(0, 28), Vector2(0, -28),
-		Vector2(24, 16), Vector2(-24, 16), Vector2(24, -16), Vector2(-24, -16),
-		Vector2(36, 0), Vector2(-36, 0), Vector2(0, 36), Vector2(0, -36)
-	]
+	var blocked = false
+	for p in occupied_positions:
+		if base_pos.distance_to(p) < min_distance:
+			blocked = true
+			break
+	if not blocked:
+		return base_pos
 
-	for off in offsets:
-		var candidate = base_pos + off
-		var blocked = false
-		for p in occupied_positions:
-			if candidate.distance_to(p) < min_distance:
-				blocked = true
-				break
-		if not blocked:
-			return candidate
+	# If the preferred spot is occupied, search around province center in expanding circles.
+	var radii = [12.0, 18.0, 24.0, 30.0, 38.0]
+	var angles_deg = [0.0, 30.0, -30.0, 60.0, -60.0, 90.0, -90.0, 120.0, -120.0, 150.0, -150.0, 180.0]
+	for r in radii:
+		for deg in angles_deg:
+			var a = deg_to_rad(deg)
+			var candidate = base_pos + Vector2(cos(a), sin(a)) * r
+			var local_blocked = false
+			for p in occupied_positions:
+				if candidate.distance_to(p) < min_distance:
+					local_blocked = true
+					break
+			if not local_blocked:
+				return candidate
 
 	return base_pos + Vector2(42, 0)
 
@@ -404,6 +496,12 @@ func _get_army_icon_texture(owner_tag: String):
 	if icon_tex:
 		return icon_tex
 	return _get_cached_texture(fallback_path, army_icon_texture_cache)
+
+func _get_port_icon_texture():
+	var icon_tex = _get_cached_texture(PORT_ICON_PATH, army_icon_texture_cache)
+	if icon_tex:
+		return icon_tex
+	return _get_cached_texture(PORT_ICON_FALLBACK_PATH, army_icon_texture_cache)
 
 func _ziskej_zakladni_barvu_statu(tag: String) -> Color:
 	if tag == "":
@@ -987,6 +1085,7 @@ func _na_zmenu_zoomu(aktualni_zoom):
 				c_lbl.scale = Vector2(zvetseni, zvetseni)
 
 	_aktualizuj_zoom_armad(aktualni_zoom)
+	_aktualizuj_zoom_pristavu(aktualni_zoom)
 	_aktualizuj_indikatory_kapitulace()
 
 func _formatuj_cislo(cislo: int) -> String:
@@ -1077,6 +1176,17 @@ func _aktualizuj_zoom_armad(aktualni_zoom: float):
 				else:
 					army_node.hide()
 
+func _aktualizuj_zoom_pristavu(aktualni_zoom: float):
+	if aktivni_porty.is_empty():
+		return
+
+	var zvetseni = clamp(1.0 / aktualni_zoom, 0.70, 1.95)
+	for prov_id in aktivni_porty.keys():
+		var port_node = aktivni_porty[prov_id]
+		if not port_node:
+			continue
+		port_node.scale = Vector2(zvetseni, zvetseni)
+
 func aktualizuj_ikony_armad():
 	var container = get_node_or_null("ArmyContainer")
 	if not container:
@@ -1095,13 +1205,21 @@ func aktualizuj_ikony_armad():
 			owner_tag = str(prov_data.get("owner", "")).strip_edges().to_upper()
 		
 		if vojaci > 0:
-			var base_pos = _ziskej_map_pozici_provincie(prov_id, offset)
+			var base_pos = _ziskej_pozici_armady_v_provincii(prov_id, offset)
 			var target_texture = _get_army_icon_texture(owner_tag)
 			
 			if not aktivni_armady.has(prov_id):
 				var army_node = Node2D.new()
 				army_node.position = base_pos
 				army_node.set_meta("base_pos", base_pos)
+
+				var ring = Line2D.new()
+				ring.name = "SelectionRing"
+				ring.width = 2.0
+				ring.default_color = Color(1.0, 0.96, 0.62, 0.95)
+				ring.antialiased = true
+				ring.visible = false
+				ring.z_index = -1
 				
 				var icon = Sprite2D.new()
 				icon.name = "Icon"
@@ -1121,8 +1239,10 @@ func aktualizuj_ikony_armad():
 				lbl.add_theme_font_size_override("font_size", 14)
 				lbl.text = _formatuj_cislo(vojaci)
 				
+				army_node.add_child(ring)
 				army_node.add_child(icon)
 				army_node.add_child(lbl)
+				_aktualizuj_selection_ring_geometrii(army_node)
 				container.add_child(army_node)
 				
 				aktivni_armady[prov_id] = army_node
@@ -1133,6 +1253,11 @@ func aktualizuj_ikony_armad():
 				var icon = army_node.get_node_or_null("Icon")
 				if icon and icon.texture != target_texture:
 					icon.texture = target_texture
+				if icon and icon.texture:
+					var tex_size = icon.texture.get_size()
+					if tex_size.x > 0 and tex_size.y > 0:
+						icon.scale = Vector2(24.0 / tex_size.x, 24.0 / tex_size.y)
+				_aktualizuj_selection_ring_geometrii(army_node)
 					
 				var lbl = army_node.get_node_or_null("TroopCount")
 				if lbl:
@@ -1150,6 +1275,12 @@ func aktualizuj_ikony_armad():
 		aktualizuj_ikony_pristavu()
 	_aktualizuj_aktivni_mapovy_mod()
 	_aktualizuj_indikatory_kapitulace()
+
+	var selected_prov_id = -1
+	var sprite_interaction = $Sprite2D
+	if sprite_interaction and sprite_interaction.material:
+		selected_prov_id = int(sprite_interaction.material.get_shader_parameter("selected_id"))
+	nastav_vybranou_armadu_provincie(selected_prov_id)
 
 # --- CORE MOVEMENT LOGIC ---
 
@@ -1252,13 +1383,25 @@ func _ziskej_pozici_pristavu_v_provincii(prov_id: int) -> Vector2:
 	if sea_neighbors.is_empty():
 		return center + Vector2(18, 0)
 
-	# Keep port marker placement lightweight and deterministic (no expensive sea centroid lookups).
-	var seed_value = int(sea_neighbors[0]) * 73 + prov_id * 17
-	var angle = deg_to_rad(float(seed_value % 360))
-	var dir = Vector2(cos(angle), sin(angle))
+	# Push the icon towards neighboring sea provinces so it visually sits on the coast.
+	var sea_focus = Vector2.ZERO
+	var valid_points := 0
+	for sea_id in sea_neighbors:
+		var sea_pos = _ziskej_lokalni_pozici_provincie(int(sea_id))
+		if sea_pos == Vector2.ZERO:
+			continue
+		sea_focus += sea_pos
+		valid_points += 1
+
+	if valid_points <= 0:
+		return center + Vector2(16, 0)
+
+	sea_focus /= float(valid_points)
+	var dir = sea_focus - center
 	if dir.length() <= 0.001:
-		dir = Vector2.RIGHT
-	return center + dir.normalized() * 12.0
+		return center + Vector2(16, 0)
+
+	return center + dir.normalized() * 16.0
 
 func _ma_nepratelskou_posadku_na_mori(prov_id: int, owner_tag: String) -> bool:
 	if not _je_more_provincie(prov_id):
@@ -1473,27 +1616,15 @@ func aktualizuj_ikony_pristavu():
 				var port_node = Node2D.new()
 				port_node.position = base_pos
 
-				var marker = Polygon2D.new()
+				var marker = Sprite2D.new()
 				marker.name = "PortMarker"
-				marker.polygon = PackedVector2Array([
-					Vector2(0, -5),
-					Vector2(5, 0),
-					Vector2(0, 5),
-					Vector2(-5, 0)
-				])
-				marker.color = Color(0.55, 0.9, 1.0, 1.0)
+				marker.texture = _get_port_icon_texture()
+				marker.centered = true
+				if marker.texture:
+					var tex_size = marker.texture.get_size()
+					if tex_size.x > 0.0 and tex_size.y > 0.0:
+						marker.scale = Vector2(22.0 / tex_size.x, 22.0 / tex_size.y)
 				port_node.add_child(marker)
-
-				var lbl = Label.new()
-				lbl.name = "PortLabel"
-				lbl.text = "PORT"
-				lbl.position = Vector2(7, -18)
-				lbl.add_theme_font_size_override("font_size", 10)
-				lbl.add_theme_color_override("font_color", Color(0.82, 0.95, 1.0, 1.0))
-				lbl.add_theme_color_override("font_outline_color", Color(0.0, 0.2, 0.35, 1.0))
-				lbl.add_theme_constant_override("outline_size", 2)
-
-				port_node.add_child(lbl)
 				container.add_child(port_node)
 				aktivni_porty[prov_id] = port_node
 			else:
@@ -1504,6 +1635,10 @@ func aktualizuj_ikony_pristavu():
 				aktivni_porty.erase(prov_id)
 
 	_port_icons_dirty = false
+
+	var kamera = $Camera2D
+	if kamera:
+		_aktualizuj_zoom_pristavu(kamera.zoom.x)
 
 func oznac_pristavy_k_aktualizaci():
 	_port_icons_dirty = true
