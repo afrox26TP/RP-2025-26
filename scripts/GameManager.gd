@@ -103,6 +103,11 @@ const BASE_UPKEEP_PER_SOLDIER := 0.001
 const BASE_INCOME_RATE := 0.10
 const BASE_GDP_GROWTH_PER_TURN := 0.5
 const BASE_POP_GROWTH_RATIO := 0.0015
+const CAPITAL_RELOCATION_BASE_COST := 25.0
+const CAPITAL_RELOCATION_HDP_RATIO := 0.12
+const CAPITAL_RELOCATION_DISTANCE_STEP := 250.0
+const CAPITAL_RELOCATION_DISTANCE_RATIO_PER_STEP := 0.06
+const CAPITAL_RELOCATION_DISTANCE_MULTIPLIER_MAX := 2.25
 const PEACE_WAR_COOLDOWN_TURNS := 5
 const RELATION_MIN := -100.0
 const RELATION_MAX := 100.0
@@ -133,6 +138,7 @@ const TURN_PROFILE_ENABLED := true
 const TURN_PROFILE_WARN_MS := 1200
 const AI_PROFILE_ENABLED := true
 const AI_PROFILE_WARN_MS := 500
+const TURN_STUCK_WATCHDOG_MS := 15000
 
 # Diplomacy
 var valky: Dictionary = {}
@@ -151,6 +157,8 @@ const DIP_REQUEST_PRIORITY_NON_AGGRESSION := 3
 
 var zpracovava_se_tah: bool = false
 var _last_end_turn_request_ms: int = -1000000
+var _turn_watchdog_token: int = 0
+var _presun_hlavniho_mesta_posledni_kolo: Dictionary = {}
 var _core_state_cache: Dictionary = {}
 var _vztahy_statu: Dictionary = {}
 var _vztahy_nactene: bool = false
@@ -691,6 +699,7 @@ func _vytvor_save_state() -> Dictionary:
 		"povalecne_cooldowny": povalecne_cooldowny.duplicate(true),
 		"cekajici_diplomaticke_zadosti": cekajici_diplomaticke_zadosti.duplicate(true),
 		"cekajici_aliancni_zadosti": cekajici_aliancni_zadosti.duplicate(true),
+		"presun_hlavniho_mesta_posledni_kolo": _presun_hlavniho_mesta_posledni_kolo.duplicate(true),
 		"vztah_akce_posledni_kolo": _vztah_akce_posledni_kolo.duplicate(true),
 		"vztahy_statu": _vztahy_statu.duplicate(true),
 		"vztahy_nactene": _vztahy_nactene,
@@ -746,6 +755,7 @@ func _aplikuj_save_state(state: Dictionary) -> bool:
 	povalecne_cooldowny = (state.get("povalecne_cooldowny", {}) as Dictionary).duplicate(true)
 	cekajici_diplomaticke_zadosti = (state.get("cekajici_diplomaticke_zadosti", {}) as Dictionary).duplicate(true)
 	cekajici_aliancni_zadosti = (state.get("cekajici_aliancni_zadosti", []) as Array).duplicate(true)
+	_presun_hlavniho_mesta_posledni_kolo = (state.get("presun_hlavniho_mesta_posledni_kolo", {}) as Dictionary).duplicate(true)
 	_vztah_akce_posledni_kolo = (state.get("vztah_akce_posledni_kolo", {}) as Dictionary).duplicate(true)
 	_vztahy_statu = (state.get("vztahy_statu", {}) as Dictionary).duplicate(true)
 	_vztahy_nactene = bool(state.get("vztahy_nactene", true))
@@ -801,6 +811,7 @@ func reset_pro_novou_hru() -> void:
 	povalecne_cooldowny.clear()
 	cekajici_diplomaticke_zadosti.clear()
 	cekajici_aliancni_zadosti.clear()
+	_presun_hlavniho_mesta_posledni_kolo.clear()
 
 	_core_state_cache.clear()
 	_vztahy_statu.clear()
@@ -1305,6 +1316,247 @@ func _nastav_kasu_statu(tag: String, value: float) -> void:
 			statni_kasa = safe_value
 	else:
 		ai_kasy[t] = safe_value
+
+func _ziskej_pozici_provincie(province_id: int) -> Vector2:
+	if not map_data.has(province_id):
+		return Vector2.ZERO
+	var d = map_data[province_id] as Dictionary
+	if d.is_empty():
+		return Vector2.ZERO
+	return Vector2(float(d.get("x", 0.0)), float(d.get("y", 0.0)))
+
+func _ziskej_vzdalenostni_nasobic_presunu_hlavniho_mesta(source_province_id: int, target_province_id: int) -> float:
+	if source_province_id <= 0 or target_province_id <= 0:
+		return 1.0
+	if source_province_id == target_province_id:
+		return 1.0
+	if not map_data.has(source_province_id) or not map_data.has(target_province_id):
+		return 1.0
+
+	var source_pos = _ziskej_pozici_provincie(source_province_id)
+	var target_pos = _ziskej_pozici_provincie(target_province_id)
+	var distance = source_pos.distance_to(target_pos)
+	if distance <= 0.0:
+		return 1.0
+
+	var distance_factor = (distance / max(1.0, CAPITAL_RELOCATION_DISTANCE_STEP)) * CAPITAL_RELOCATION_DISTANCE_RATIO_PER_STEP
+	return clamp(1.0 + distance_factor, 1.0, CAPITAL_RELOCATION_DISTANCE_MULTIPLIER_MAX)
+
+func ziskej_cenu_presunu_hlavniho_mesta(state_tag: String, target_province_id: int = -1) -> float:
+	var tag = _normalizuj_tag(state_tag)
+	if tag == "" or tag == "SEA":
+		return 999999.0
+	var hdp = _spocitej_hdp_statu(tag)
+	var base_cost = max(CAPITAL_RELOCATION_BASE_COST, hdp * CAPITAL_RELOCATION_HDP_RATIO)
+	if target_province_id <= 0:
+		return snapped(base_cost, 0.01)
+
+	var current_capital_id = _ziskej_hlavni_mesto_statu(tag)
+	if current_capital_id <= 0:
+		return snapped(base_cost, 0.01)
+
+	var distance_multiplier = _ziskej_vzdalenostni_nasobic_presunu_hlavniho_mesta(current_capital_id, target_province_id)
+	return snapped(base_cost * distance_multiplier, 0.01)
+
+func _ziskej_hlavni_mesto_statu(state_tag: String) -> int:
+	var wanted = _normalizuj_tag(state_tag)
+	if wanted == "" or wanted == "SEA":
+		return -1
+
+	# Prefer currently owned capital if it exists.
+	for p_id in map_data:
+		var d = map_data[p_id]
+		if _normalizuj_tag(str(d.get("owner", ""))) != wanted:
+			continue
+		if bool(d.get("is_capital", false)):
+			return int(p_id)
+
+	# Fallback: occupied capital still marked by core owner.
+	for p_id in map_data:
+		var d = map_data[p_id]
+		if _normalizuj_tag(str(d.get("core_owner", ""))) != wanted:
+			continue
+		if bool(d.get("is_capital", false)):
+			return int(p_id)
+
+	return -1
+
+func _zrus_cekajici_kapitulace_pro_obrance(obrance_tag: String) -> int:
+	var obr = _normalizuj_tag(obrance_tag)
+	if obr == "":
+		return 0
+	var removed := 0
+	for i in range(cekajici_kapitulace.size() - 1, -1, -1):
+		if _normalizuj_tag(str(cekajici_kapitulace[i].get("obrance", ""))) == obr:
+			cekajici_kapitulace.remove_at(i)
+			removed += 1
+	return removed
+
+func _aktualizuj_label_hlavniho_mesta(map_loader: Node, prov_id: int, is_capital: bool, state_tag: String) -> void:
+	var labels = map_loader.get_node_or_null("ProvinceLabels")
+	if labels == null:
+		return
+
+	for lbl in labels.get_children():
+		if int(lbl.get("province_id")) != prov_id:
+			continue
+
+		lbl.set("is_capital", is_capital)
+
+		var d = map_data.get(prov_id, {}) as Dictionary
+		var shown_name = str(d.get("province_name", "Provincie %d" % prov_id)).replace(" Voivodeship", "").replace(" County", "")
+		if is_capital:
+			var city_name = str(d.get("capital_name", "")).strip_edges()
+			if city_name != "":
+				shown_name = city_name
+
+		var label_node = lbl.find_child("Label", true, false)
+		if label_node:
+			label_node.text = shown_name
+		if "plny_nazev" in lbl:
+			lbl.set("plny_nazev", shown_name)
+
+		var flag_node = lbl.find_child("Flag", true, false)
+		if flag_node:
+			if is_capital:
+				flag_node.show()
+				if map_loader.has_method("_get_flag_texture"):
+					var ideology = str(d.get("ideology", ""))
+					var tex = map_loader._get_flag_texture(state_tag, ideology)
+					if tex:
+						flag_node.texture = tex
+			else:
+				flag_node.hide()
+
+		if lbl.has_method("reset_stav"):
+			lbl.reset_stav()
+		break
+
+func _aktualizuj_mapu_po_presunu_hlavniho_mesta(old_capital_id: int, new_capital_id: int, state_tag: String) -> void:
+	var map_loader = _get_map_loader()
+	if map_loader == null:
+		return
+
+	if "provinces" in map_loader:
+		map_loader.provinces = map_data
+
+	_aktualizuj_label_hlavniho_mesta(map_loader, old_capital_id, false, state_tag)
+	_aktualizuj_label_hlavniho_mesta(map_loader, new_capital_id, true, state_tag)
+
+	var labels_manager = map_loader.get_node_or_null("CountryLabelsManager")
+	var province_labels = map_loader.get_node_or_null("ProvinceLabels")
+	if labels_manager and province_labels and labels_manager.has_method("aktualizuj_labely_statu"):
+		labels_manager.aktualizuj_labely_statu(map_data, province_labels)
+
+	if map_loader.has_method("_aktualizuj_aktivni_mapovy_mod"):
+		map_loader._aktualizuj_aktivni_mapovy_mod()
+	if map_loader.has_method("_aktualizuj_indikatory_kapitulace"):
+		map_loader._aktualizuj_indikatory_kapitulace()
+
+func muze_presunout_hlavni_mesto(state_tag: String, target_province_id: int) -> Dictionary:
+	var state = _normalizuj_tag(state_tag)
+	if state == "" or state == "SEA":
+		return {"ok": false, "reason": "Neplatny stat."}
+
+	var last_turn = int(_presun_hlavniho_mesta_posledni_kolo.get(state, -1))
+	if last_turn == aktualni_kolo:
+		return {"ok": false, "reason": "Hlavni mesto lze presunout jen jednou za kolo."}
+
+	if not _stat_existuje(state):
+		return {"ok": false, "reason": "Stat neexistuje v aktualni mape."}
+	if not map_data.has(target_province_id):
+		return {"ok": false, "reason": "Cilova provincie neexistuje."}
+
+	var target = map_data[target_province_id]
+	var target_owner = _normalizuj_tag(str(target.get("owner", "")))
+	if target_owner != state:
+		return {"ok": false, "reason": "Hlavni mesto lze presunout jen do vlastni provincie."}
+	if _normalizuj_tag(str(target.get("core_owner", target_owner))) != state:
+		return {"ok": false, "reason": "Cil musi byt core provincie daneho statu."}
+	if target_owner == "SEA":
+		return {"ok": false, "reason": "Hlavni mesto nelze presunout do more."}
+
+	var current_capital_id = _ziskej_hlavni_mesto_statu(state)
+	if current_capital_id == -1:
+		return {"ok": false, "reason": "Stat nema dostupne hlavni mesto k presunu."}
+	if current_capital_id == target_province_id:
+		return {"ok": false, "reason": "Tato provincie uz je hlavnim mestem."}
+
+	var current_name = "Provincie %d" % current_capital_id
+	if map_data.has(current_capital_id):
+		current_name = str(map_data[current_capital_id].get("province_name", current_name))
+	var target_name = str(target.get("province_name", "Provincie %d" % target_province_id))
+	var cost = ziskej_cenu_presunu_hlavniho_mesta(state, target_province_id)
+	var distance_multiplier = _ziskej_vzdalenostni_nasobic_presunu_hlavniho_mesta(current_capital_id, target_province_id)
+	return {
+		"ok": true,
+		"state": state,
+		"cost": cost,
+		"distance_multiplier": distance_multiplier,
+		"current_capital_id": current_capital_id,
+		"current_capital_name": current_name,
+		"target_capital_id": target_province_id,
+		"target_capital_name": target_name
+	}
+
+func ma_dostupny_cil_presunu_hlavniho_mesta(state_tag: String) -> bool:
+	var state = _normalizuj_tag(state_tag)
+	if state == "" or state == "SEA":
+		return false
+	if not _stat_existuje(state):
+		return false
+
+	for p_id in map_data.keys():
+		var pid = int(p_id)
+		var check = muze_presunout_hlavni_mesto(state, pid)
+		if bool(check.get("ok", false)):
+			return true
+	return false
+
+func presun_hlavni_mesto(state_tag: String, target_province_id: int, pay_cost: bool = true, emit_ui_signal: bool = true) -> Dictionary:
+	var check = muze_presunout_hlavni_mesto(state_tag, target_province_id)
+	if not bool(check.get("ok", false)):
+		return check
+
+	var state = _normalizuj_tag(str(check.get("state", state_tag)))
+	var cost = float(check.get("cost", 0.0))
+	if pay_cost:
+		var cash_now = _ziskej_kasu_statu(state)
+		if cash_now + 0.0001 < cost:
+			return {"ok": false, "reason": "Nedostatek prostredku v kase.", "required": cost, "cash": cash_now}
+		_nastav_kasu_statu(state, cash_now - cost)
+
+	var old_capital_id = int(check.get("current_capital_id", -1))
+	if map_data.has(old_capital_id):
+		map_data[old_capital_id]["is_capital"] = false
+	map_data[target_province_id]["is_capital"] = true
+	_presun_hlavniho_mesta_posledni_kolo[state] = aktualni_kolo
+
+	var canceled_pressure = _zrus_cekajici_kapitulace_pro_obrance(state)
+	_aktualizuj_mapu_po_presunu_hlavniho_mesta(old_capital_id, target_province_id, state)
+	_invalidate_turn_cache()
+
+	var old_name = str(check.get("current_capital_name", "Provincie %d" % old_capital_id))
+	var new_name = str(check.get("target_capital_name", "Provincie %d" % target_province_id))
+	var log_msg = "%s presunulo hlavni mesto z %s do %s." % [state, old_name, new_name]
+	if canceled_pressure > 0:
+		log_msg += " Tim se zrusil tlak na okamzitou kapitulaci."
+	_zaloguj_globalni_zpravu("Valka", log_msg, "war")
+
+	if emit_ui_signal:
+		kolo_zmeneno.emit()
+
+	return {
+		"ok": true,
+		"state": state,
+		"cost": cost,
+		"old_capital_id": old_capital_id,
+		"new_capital_id": target_province_id,
+		"old_capital_name": old_name,
+		"new_capital_name": new_name,
+		"canceled_surrender_pressure": canceled_pressure,
+		"cash_after": _ziskej_kasu_statu(state)
+	}
 
 func daruj_penize_statu(odesilatel: String, prijemce: String, amount: float) -> Dictionary:
 	var from_tag = _normalizuj_tag(odesilatel)
@@ -2084,6 +2336,7 @@ func vycisti_stat_po_kapitulaci(tag: String):
 	var target = tag.strip_edges().to_upper()
 	if target == "":
 		return
+	_presun_hlavniho_mesta_posledni_kolo.erase(target)
 
 	var valky_klice = valky.keys().duplicate()
 	for klic in valky_klice:
@@ -2419,6 +2672,15 @@ func _ma_aktivni_tlak_na_kapitulaci(obrance: String, utocnik: String) -> bool:
 	var uto_tag = utocnik.strip_edges().to_upper()
 	for zaznam in cekajici_kapitulace:
 		if str(zaznam.get("obrance", "")).strip_edges().to_upper() == obr_tag and str(zaznam.get("utocnik", "")).strip_edges().to_upper() == uto_tag:
+			return true
+	return false
+
+func _ma_stat_cekajici_kapitulaci(state_tag: String) -> bool:
+	var wanted = _normalizuj_tag(state_tag)
+	if wanted == "":
+		return false
+	for zaznam in cekajici_kapitulace:
+		if _normalizuj_tag(str(zaznam.get("obrance", ""))) == wanted:
 			return true
 	return false
 
@@ -3140,6 +3402,19 @@ func _nastav_stav_zpracovani_tahu(aktivni: bool) -> void:
 	zpracovava_se_tah = aktivni
 	zpracovani_tahu_zmeneno.emit(aktivni)
 
+func _spust_turn_watchdog(token: int) -> void:
+	await get_tree().create_timer(float(TURN_STUCK_WATCHDOG_MS) / 1000.0).timeout
+	if token != _turn_watchdog_token:
+		return
+	if not zpracovava_se_tah:
+		return
+	print("[TURN_WATCHDOG] Turn processing timeout reached, forcing UI unlock.")
+	_nastav_stav_zpracovani_tahu(false)
+	kolo_zmeneno.emit()
+
+func _zrus_turn_watchdog() -> void:
+	_turn_watchdog_token += 1
+
 func muze_ukoncit_kolo() -> bool:
 	if zpracovava_se_tah:
 		return false
@@ -3213,6 +3488,8 @@ func ukonci_kolo():
 	}
 	_last_end_turn_request_ms = Time.get_ticks_msec()
 	_nastav_stav_zpracovani_tahu(true)
+	_turn_watchdog_token += 1
+	_spust_turn_watchdog(_turn_watchdog_token)
 
 	if lokalni_hraci_staty.size() > 1 and not _je_posledni_hrac_v_poradi():
 		_uloz_finance_aktivniho_hrace()
@@ -3226,6 +3503,7 @@ func ukonci_kolo():
 		phase_start_ms = Time.get_ticks_msec()
 		kolo_zmeneno.emit()
 		turn_phases["ui"] = Time.get_ticks_msec() - phase_start_ms
+		_zrus_turn_watchdog()
 		_nastav_stav_zpracovani_tahu(false)
 		_log_turn_profile(Time.get_ticks_msec() - turn_start_ms, turn_phases)
 		return
@@ -3339,7 +3617,7 @@ func ukonci_kolo():
 	phase_start_ms = Time.get_ticks_msec()
 	kolo_zmeneno.emit()
 	turn_phases["ui"] = int(turn_phases["ui"]) + (Time.get_ticks_msec() - phase_start_ms)
-		
+	_zrus_turn_watchdog()
 	_nastav_stav_zpracovani_tahu(false)
 	_log_turn_profile(Time.get_ticks_msec() - turn_start_ms, turn_phases)
 
@@ -3474,6 +3752,8 @@ func zpracuj_tah_ai():
 			var ai_hdp = _spocitej_hdp_statu(owner_tag)
 			ai_kasy[owner_tag] = ai_hdp * 0.05
 
+		_ai_zvaz_presun_hlavniho_mesta(owner_tag)
+
 		for p_id in owned:
 			if not map_data.has(p_id):
 				continue
@@ -3538,6 +3818,73 @@ func zpracuj_tah_ai():
 	_log_ai_profile(Time.get_ticks_msec() - ai_start_ms, ai_phases)
 				
 	print("--- AI THINKING END ---")
+
+func _vyber_ai_kandidata_pro_presun_hlavniho_mesta(state_tag: String, current_capital_id: int) -> int:
+	var best_id := -1
+	var best_score := -2147483648
+
+	for p_id in map_data:
+		var pid = int(p_id)
+		if pid == current_capital_id:
+			continue
+		var d = map_data[pid]
+		if _normalizuj_tag(str(d.get("owner", ""))) != state_tag:
+			continue
+		if _normalizuj_tag(str(d.get("core_owner", state_tag))) != state_tag:
+			continue
+		if _normalizuj_tag(str(d.get("owner", ""))) == "SEA":
+			continue
+
+		var pop = int(d.get("population", 0))
+		var soldiers = int(d.get("soldiers", 0))
+		var gdp = float(d.get("gdp", 0.0))
+		var enemy_border = _ma_nepratelskeho_souseda(state_tag, pid)
+
+		var score = int(round(gdp * 35.0)) + int(round(float(pop) * 0.003)) + int(round(float(soldiers) * 0.45))
+		if enemy_border:
+			score -= 350
+		else:
+			score += 450
+
+		if score > best_score:
+			best_score = score
+			best_id = pid
+
+	return best_id
+
+func _ai_zvaz_presun_hlavniho_mesta(state_tag: String) -> void:
+	var state = _normalizuj_tag(state_tag)
+	if state == "" or state == "SEA":
+		return
+
+	var current_capital_id = _ziskej_hlavni_mesto_statu(state)
+	if current_capital_id == -1 or not map_data.has(current_capital_id):
+		return
+
+	var cap_data = map_data[current_capital_id]
+	var capital_owner = _normalizuj_tag(str(cap_data.get("owner", "")))
+	var surrender_pressure = _ma_stat_cekajici_kapitulaci(state)
+
+	# Performance guard: evaluate relocation only during direct capitulation pressure
+	# or when the state has already lost ownership of its capital province.
+	if not (surrender_pressure or capital_owner != state):
+		return
+
+	var candidate_id = _vyber_ai_kandidata_pro_presun_hlavniho_mesta(state, current_capital_id)
+	if candidate_id == -1:
+		return
+
+	var relocation_check = muze_presunout_hlavni_mesto(state, candidate_id)
+	if not bool(relocation_check.get("ok", false)):
+		return
+
+	var cost = float(relocation_check.get("cost", 0.0))
+	if _ziskej_kasu_statu(state) + 0.0001 < cost:
+		return
+
+	var result = presun_hlavni_mesto(state, candidate_id, true, false)
+	if bool(result.get("ok", false)):
+		print("[AI] %s presunulo hlavni mesto do provincie %d za %.2f mil. USD." % [state, candidate_id, cost])
 
 func _naplanuj_ai_presuny(map_loader):
 	var ai_staty = _ziskej_ai_staty()

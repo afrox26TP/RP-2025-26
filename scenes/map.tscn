@@ -2,10 +2,10 @@
 
 [ext_resource type="Script" uid="uid://de0rwo7p0eqcp" path="res://scripts/map_loader.gd" id="1_4xfga"]
 [ext_resource type="Shader" uid="uid://173chww7nkdg" path="res://shaders/province_highlight.gdshader" id="2_0cso3"]
-[ext_resource type="Texture2D" uid="uid://xnq7nxqfdaj7" path="res://map_data/PoliticalMap.png" id="2_2klcf"]
-[ext_resource type="Texture2D" uid="uid://cgw4yesrlmpps" path="res://map_data/ProvinceMap.png" id="3_2klcf"]
+[ext_resource type="Texture2D" uid="uid://76qf3w57atlm" path="res://map_data/PoliticalMap.png" id="2_2klcf"]
+[ext_resource type="Texture2D" uid="uid://bq0m8m4v7cg1d" path="res://map_data/ProvinceMap.png" id="3_2klcf"]
 [ext_resource type="Script" uid="uid://btl7b33ji8c5a" path="res://scripts/map_interaction.gd" id="3_gldc4"]
-[ext_resource type="Texture2D" uid="uid://bva1ty4a6bp00" path="res://map_data/ProvinceIDMask.png" id="3_jh32y"]
+[ext_resource type="Texture2D" uid="uid://cvr8ni3tavgod" path="res://map_data/ProvinceIDMask.png" id="3_jh32y"]
 [ext_resource type="Script" uid="uid://b07wygxmoms6q" path="res://scripts/map_camera.gd" id="6_2lpho"]
 [ext_resource type="Script" uid="uid://c6m733k5b7qxd" path="res://scripts/InfoUI.gd" id="7_nakos"]
 [ext_resource type="Script" uid="uid://bcuk57in5kv32" path="res://scripts/GameUI.gd" id="9_be0no"]
@@ -28,10 +28,6 @@ content_margin_top = 18.0
 content_margin_right = 14.0
 content_margin_bottom = 14.0
 bg_color = Color(0.0784314, 0.109804, 0.164706, 0.929412)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
 border_color = Color(0.333333, 0.556863, 0.886275, 0.388235)
 corner_radius_bottom_right = 12
 shadow_color = Color(0, 0, 0, 0.321569)
@@ -219,19 +215,23 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 10
 
-[node name="TitleBox" type="HBoxContainer" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=1641216667]
+[node name="TitleBoxOffset" type="MarginContainer" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=560437193]
+layout_mode = 2
+theme_override_constants/margin_top = -25
+
+[node name="TitleBox" type="HBoxContainer" parent="GameUI/OverviewPanel/VBoxContainer/TitleBoxOffset" unique_id=1641216667]
 custom_minimum_size = Vector2(0, 88)
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="CountryFlag" type="TextureRect" parent="GameUI/OverviewPanel/VBoxContainer/TitleBox" unique_id=1584160832]
+[node name="CountryFlag" type="TextureRect" parent="GameUI/OverviewPanel/VBoxContainer/TitleBoxOffset/TitleBox" unique_id=1584160832]
 custom_minimum_size = Vector2(76, 52)
 layout_mode = 2
 size_flags_vertical = 4
 expand_mode = 1
 stretch_mode = 5
 
-[node name="CountryNameLabel" type="Label" parent="GameUI/OverviewPanel/VBoxContainer/TitleBox" unique_id=306217381]
+[node name="CountryNameLabel" type="Label" parent="GameUI/OverviewPanel/VBoxContainer/TitleBoxOffset/TitleBox" unique_id=306217381]
 custom_minimum_size = Vector2(0, 84)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -408,57 +408,49 @@ grow_vertical = 2
 layout_mode = 2
 theme_override_font_sizes/font_size = 25
 
-[node name="MapModes" type="HBoxContainer" parent="TopBar/Panel/HBoxContainer"]
+[node name="MapModes" type="HBoxContainer" parent="TopBar/Panel/HBoxContainer" unique_id=1532520064]
 layout_mode = 2
 theme_override_constants/separation = 2
 
-[node name="ModePolitical" type="Button" parent="TopBar/Panel/HBoxContainer/MapModes"]
-layout_mode = 2
+[node name="ModePolitical" type="Button" parent="TopBar/Panel/HBoxContainer/MapModes" unique_id=1157676718]
 custom_minimum_size = Vector2(58, 24)
+layout_mode = 2
 theme_override_font_sizes/font_size = 11
-text = ""
 
-[node name="ModePopulation" type="Button" parent="TopBar/Panel/HBoxContainer/MapModes"]
-layout_mode = 2
+[node name="ModePopulation" type="Button" parent="TopBar/Panel/HBoxContainer/MapModes" unique_id=1848552554]
 custom_minimum_size = Vector2(58, 24)
+layout_mode = 2
 theme_override_font_sizes/font_size = 11
-text = ""
 
-[node name="ModeGDP" type="Button" parent="TopBar/Panel/HBoxContainer/MapModes"]
-layout_mode = 2
+[node name="ModeGDP" type="Button" parent="TopBar/Panel/HBoxContainer/MapModes" unique_id=1833852746]
 custom_minimum_size = Vector2(58, 24)
+layout_mode = 2
 theme_override_font_sizes/font_size = 11
-text = ""
 
-[node name="ModeIdeology" type="Button" parent="TopBar/Panel/HBoxContainer/MapModes"]
-layout_mode = 2
+[node name="ModeIdeology" type="Button" parent="TopBar/Panel/HBoxContainer/MapModes" unique_id=1536371953]
 custom_minimum_size = Vector2(58, 24)
+layout_mode = 2
 theme_override_font_sizes/font_size = 11
-text = ""
 
-[node name="ModeRecruits" type="Button" parent="TopBar/Panel/HBoxContainer/MapModes"]
-layout_mode = 2
+[node name="ModeRecruits" type="Button" parent="TopBar/Panel/HBoxContainer/MapModes" unique_id=978555943]
 custom_minimum_size = Vector2(58, 24)
+layout_mode = 2
 theme_override_font_sizes/font_size = 11
-text = ""
 
-[node name="ModeRelations" type="Button" parent="TopBar/Panel/HBoxContainer/MapModes"]
-layout_mode = 2
+[node name="ModeRelations" type="Button" parent="TopBar/Panel/HBoxContainer/MapModes" unique_id=842470976]
 custom_minimum_size = Vector2(58, 24)
+layout_mode = 2
 theme_override_font_sizes/font_size = 11
-text = ""
 
-[node name="ModeTerrain" type="Button" parent="TopBar/Panel/HBoxContainer/MapModes"]
-layout_mode = 2
+[node name="ModeTerrain" type="Button" parent="TopBar/Panel/HBoxContainer/MapModes" unique_id=848293854]
 custom_minimum_size = Vector2(58, 24)
+layout_mode = 2
 theme_override_font_sizes/font_size = 11
-text = ""
 
-[node name="ModeResources" type="Button" parent="TopBar/Panel/HBoxContainer/MapModes"]
-layout_mode = 2
+[node name="ModeResources" type="Button" parent="TopBar/Panel/HBoxContainer/MapModes" unique_id=1230861512]
 custom_minimum_size = Vector2(58, 24)
+layout_mode = 2
 theme_override_font_sizes/font_size = 11
-text = ""
 
 [node name="Spacer" type="Control" parent="TopBar/Panel/HBoxContainer" unique_id=119213241]
 layout_mode = 2

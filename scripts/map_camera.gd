@@ -24,9 +24,11 @@ func _unhandled_input(event):
 	# Handle mouse input for zooming and panning
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			_zoom_camera(1.0 + zoom_speed)
+			if not _is_hovering_scrollable_ui():
+				_zoom_camera(1.0 + zoom_speed)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			_zoom_camera(1.0 - zoom_speed)
+			if not _is_hovering_scrollable_ui():
+				_zoom_camera(1.0 - zoom_speed)
 			
 		if event.button_index == MOUSE_BUTTON_RIGHT:
 			if event.pressed:
@@ -40,6 +42,15 @@ func _unhandled_input(event):
 		var diff = (drag_start - drag_current) * (1.0 / zoom.x)
 		position += diff
 		drag_start = drag_current
+
+func _is_hovering_scrollable_ui() -> bool:
+	var hovered := get_viewport().gui_get_hovered_control()
+	while hovered != null:
+		# Scroll containers should keep mouse wheel for their own content.
+		if hovered is ScrollContainer:
+			return true
+		hovered = hovered.get_parent() as Control
+	return false
 
 func _zoom_camera(factor):
 	zoom = (zoom * factor).clamp(Vector2(min_zoom, min_zoom), Vector2(max_zoom, max_zoom))

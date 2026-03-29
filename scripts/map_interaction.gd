@@ -9,6 +9,10 @@ var occupation_image: Image
 var occupation_texture: ImageTexture
 var selected_multi_image: Image
 var selected_multi_texture: ImageTexture
+var capital_focus_owned_image: Image
+var capital_focus_owned_texture: ImageTexture
+var capital_focus_valid_image: Image
+var capital_focus_valid_texture: ImageTexture
 var total_provinces: int = 5000
 
 var _drag_select_active: bool = false
@@ -82,10 +86,21 @@ func _ready():
 	selected_multi_image = Image.create_empty(total_provinces, 1, false, Image.FORMAT_RGBA8)
 	selected_multi_image.fill(Color(0, 0, 0, 0))
 	selected_multi_texture = ImageTexture.create_from_image(selected_multi_image)
+
+	capital_focus_owned_image = Image.create_empty(total_provinces, 1, false, Image.FORMAT_RGBA8)
+	capital_focus_owned_image.fill(Color(0, 0, 0, 0))
+	capital_focus_owned_texture = ImageTexture.create_from_image(capital_focus_owned_image)
+
+	capital_focus_valid_image = Image.create_empty(total_provinces, 1, false, Image.FORMAT_RGBA8)
+	capital_focus_valid_image.fill(Color(0, 0, 0, 0))
+	capital_focus_valid_texture = ImageTexture.create_from_image(capital_focus_valid_image)
 	
 	material.set_shader_parameter("data_texture", data_texture)
 	material.set_shader_parameter("occupation_texture", occupation_texture)
 	material.set_shader_parameter("selected_multi_texture", selected_multi_texture)
+	material.set_shader_parameter("capital_focus_owned_texture", capital_focus_owned_texture)
+	material.set_shader_parameter("capital_focus_valid_texture", capital_focus_valid_texture)
+	material.set_shader_parameter("capital_focus_mode", false)
 	material.set_shader_parameter("total_provinces", float(total_provinces))
 	
 	material.set_shader_parameter("has_hover", false)
@@ -94,6 +109,38 @@ func _ready():
 	material.set_shader_parameter("selected_id", -1.0)
 	_aktualizuj_hromadny_selection_texture([])
 	_ensure_mode_hover_tooltip()
+
+func nastav_nahled_hlavniho_mesta(owned_ids: Array, valid_ids: Array) -> void:
+	if capital_focus_owned_image == null or capital_focus_valid_image == null:
+		return
+
+	capital_focus_owned_image.fill(Color(0, 0, 0, 0))
+	capital_focus_valid_image.fill(Color(0, 0, 0, 0))
+
+	for raw_id in owned_ids:
+		var pid = int(raw_id)
+		if pid < 0 or pid >= total_provinces:
+			continue
+		capital_focus_owned_image.set_pixel(pid, 0, Color(1, 1, 1, 1))
+
+	for raw_id in valid_ids:
+		var pid2 = int(raw_id)
+		if pid2 < 0 or pid2 >= total_provinces:
+			continue
+		capital_focus_valid_image.set_pixel(pid2, 0, Color(1, 1, 1, 1))
+
+	capital_focus_owned_texture.update(capital_focus_owned_image)
+	capital_focus_valid_texture.update(capital_focus_valid_image)
+	material.set_shader_parameter("capital_focus_mode", true)
+
+func vycisti_nahled_hlavniho_mesta() -> void:
+	if capital_focus_owned_image == null or capital_focus_valid_image == null:
+		return
+	capital_focus_owned_image.fill(Color(0, 0, 0, 0))
+	capital_focus_valid_image.fill(Color(0, 0, 0, 0))
+	capital_focus_owned_texture.update(capital_focus_owned_image)
+	capital_focus_valid_texture.update(capital_focus_valid_image)
+	material.set_shader_parameter("capital_focus_mode", false)
 
 func _ensure_mode_hover_tooltip() -> void:
 	if _mode_hover_layer != null:
@@ -193,6 +240,43 @@ func _format_int_compact(value: int) -> String:
 		return "-" + out
 	return out
 
+func _format_money_compact(value: float) -> String:
+	var rounded = snapped(max(0.0, value), 0.01)
+	var whole = int(floor(rounded))
+	var decimals = int(round((rounded - float(whole)) * 100.0))
+	if decimals >= 100:
+		whole += 1
+		decimals = 0
+	return "%s.%02d" % [_format_int_compact(whole), decimals]
+
+func _show_capital_target_tooltip(province_id: int, data: Dictionary, root: Node) -> void:
+	if _mode_hover_panel == null or _mode_hover_label == null:
+		return
+
+	var state_tag = ""
+	if "stat_presunu_hlavniho_mesta" in root:
+		state_tag = str(root.stat_presunu_hlavniho_mesta).strip_edges().to_upper()
+	if state_tag == "":
+		state_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
+
+	var txt = ""
+	if GameManager.has_method("muze_presunout_hlavni_mesto"):
+		var check = GameManager.muze_presunout_hlavni_mesto(state_tag, province_id)
+		if bool(check.get("ok", false)):
+			var price = float(check.get("cost", 0.0))
+			txt = _format_money_compact(price)
+	if txt == "":
+		_hide_mode_hover_tooltip()
+		return
+
+	_mode_hover_label.text = txt
+	_mode_hover_panel.size = _mode_hover_panel.get_combined_minimum_size()
+	_mode_hover_panel.visible = true
+	if _mode_hover_debug_label:
+		_mode_hover_debug_label.text = txt
+		_mode_hover_debug_label.visible = false
+	_update_mode_hover_tooltip_position(get_global_mouse_position())
+
 func _sestav_text_hover_modu(data: Dictionary, mod: String) -> String:
 	match mod:
 		"population":
@@ -238,7 +322,7 @@ func _show_mode_hover_tooltip(data: Dictionary, root: Node) -> void:
 	_mode_hover_panel.visible = true
 	if _mode_hover_debug_label:
 		_mode_hover_debug_label.text = txt
-		_mode_hover_debug_label.visible = true
+		_mode_hover_debug_label.visible = false
 	if MODE_HOVER_DEBUG_LOG and txt != _last_mode_hover_debug_text:
 		print("[MODE_HOVER] ", txt)
 		_last_mode_hover_debug_text = txt
@@ -292,8 +376,9 @@ func _unhandled_input(event):
 		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 			var root = get_parent()
 			var is_targeting = "ceka_na_cil_presunu" in root and root.ceka_na_cil_presunu
+			var is_capital_targeting = "ceka_na_cil_hlavniho_mesta" in root and root.ceka_na_cil_hlavniho_mesta
 			var is_bulk_targeting = "ceka_na_hromadny_cil_presunu" in root and root.ceka_na_hromadny_cil_presunu
-			if not is_targeting and not is_bulk_targeting:
+			if not is_targeting and not is_bulk_targeting and not is_capital_targeting:
 				_drag_select_active = true
 				_drag_select_started = false
 				_drag_start_local = _ziskej_localni_pozici_mysi(get_global_mouse_position())
@@ -462,6 +547,8 @@ func _odzanc_vse():
 		root.nastav_vybranou_armadu_provincie(-1)
 	if "ceka_na_cil_presunu" in root:
 		root.ceka_na_cil_presunu = false
+	if root.has_method("zrus_rezim_vyberu_hlavniho_mesta"):
+		root.zrus_rezim_vyberu_hlavniho_mesta()
 	if "ceka_na_hromadny_cil_presunu" in root:
 		root.ceka_na_hromadny_cil_presunu = false
 	if root.has_method("vycisti_nahled_presunu"):
@@ -477,6 +564,8 @@ func _odzanc_vse():
 		info_ui.schovej_se()
 		
 	var game_ui = get_tree().current_scene.find_child("GameUI", true, false)
+	if game_ui and game_ui.has_method("zrus_vyber_cile_hlavniho_mesta_ui"):
+		game_ui.zrus_vyber_cile_hlavniho_mesta_ui()
 	if game_ui and game_ui.has_method("schovej_se"):
 		game_ui.schovej_se()
 
@@ -516,6 +605,7 @@ func _zpracuj_interakci(_mouse_pos: Vector2, je_kliknuti: bool, shift_held: bool
 func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shift_held: bool = false):
 	var root = get_parent()
 	var is_targeting = "ceka_na_cil_presunu" in root and root.ceka_na_cil_presunu
+	var is_capital_targeting = "ceka_na_cil_hlavniho_mesta" in root and root.ceka_na_cil_hlavniho_mesta
 	var is_bulk_targeting = "ceka_na_hromadny_cil_presunu" in root and root.ceka_na_hromadny_cil_presunu
 	var multi_ids: Array = []
 	if root.has_method("ziskej_hromadne_vybrane_provincie"):
@@ -524,6 +614,23 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 	
 	if je_kliknuti:
 		# --- TARGET SELECTION MODE FOR ARMY MOVEMENT ---
+		if is_capital_targeting:
+			var target_cap_id = int(prov_id)
+			if not root.has_method("je_platny_cil_hlavniho_mesta") or not root.je_platny_cil_hlavniho_mesta(target_cap_id):
+				return
+
+			var result: Dictionary = {"ok": false, "reason": "Presun hlavniho mesta selhal."}
+			if root.has_method("potvrd_cil_hlavniho_mesta"):
+				result = root.potvrd_cil_hlavniho_mesta(target_cap_id)
+
+			Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+			material.set_shader_parameter("is_target_hover", false)
+
+			var game_ui_cap = get_tree().current_scene.find_child("GameUI", true, false)
+			if game_ui_cap and game_ui_cap.has_method("obsluha_presunu_hlavniho_mesta_z_mapy"):
+				game_ui_cap.obsluha_presunu_hlavniho_mesta_z_mapy(result, target_cap_id)
+			return
+
 		if is_bulk_targeting:
 			var bulk_to_id = int(prov_id)
 			var planned_count = 0
@@ -643,7 +750,17 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 			return
 		
 		# Limit hovering strictly to neighbors if we are in target mode
-		if is_bulk_targeting:
+		if is_capital_targeting:
+			var valid_cap_target = false
+			if root.has_method("je_platny_cil_hlavniho_mesta"):
+				valid_cap_target = root.je_platny_cil_hlavniho_mesta(int(prov_id))
+			if not valid_cap_target:
+				_vymaz_hover()
+				Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+				return
+			Input.set_default_cursor_shape(Input.CURSOR_POINTING_HAND)
+			material.set_shader_parameter("is_target_hover", true)
+		elif is_bulk_targeting:
 			var bulk_valid = false
 			var bulk_hover_path: Array = []
 			if root.has_method("ma_hromadny_platny_cil_presunu"):
@@ -686,7 +803,10 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 			material.set_shader_parameter("is_target_hover", false)
 			
 		if _posledni_hover_id == int(prov_id):
-			_show_mode_hover_tooltip(data, root)
+			if is_capital_targeting:
+				_show_capital_target_tooltip(int(prov_id), data, root)
+			else:
+				_show_mode_hover_tooltip(data, root)
 			return # Already hovering this province, do nothing
 			
 		_vymaz_hover_labely() # Clean up the previously hovered label
@@ -704,7 +824,10 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 					break # Stop searching once found
 					
 		_posledni_hover_id = int(prov_id)
-		_show_mode_hover_tooltip(data, root)
+		if is_capital_targeting:
+			_show_capital_target_tooltip(int(prov_id), data, root)
+		else:
+			_show_mode_hover_tooltip(data, root)
 
 func _vymaz_hover():
 	material.set_shader_parameter("has_hover", false)

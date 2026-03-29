@@ -3,8 +3,8 @@ extends CanvasLayer
 @onready var panel = $OverviewPanel
 
 # Updated paths for the new UI tree structure
-@onready var country_flag = $OverviewPanel/VBoxContainer/TitleBox/CountryFlag
-@onready var name_label = $OverviewPanel/VBoxContainer/TitleBox/CountryNameLabel
+@onready var country_flag = $OverviewPanel/VBoxContainer/TitleBoxOffset/TitleBox/CountryFlag
+@onready var name_label = $OverviewPanel/VBoxContainer/TitleBoxOffset/TitleBox/CountryNameLabel
 
 @onready var ideo_label = $OverviewPanel/VBoxContainer/IdeologyLabel 
 @onready var pop_label = $OverviewPanel/VBoxContainer/TotalPopLabel
@@ -62,7 +62,11 @@ var ideology_separator: HSeparator
 var ideology_effects_label: RichTextLabel
 var ideology_option: OptionButton
 var ideology_apply_btn: Button
+var ideology_relocate_capital_btn: Button
 var _ideology_option_values: Array = []
+var _current_viewed_province_id: int = -1
+var _relocate_capital_action_lock: bool = false
+var _ceka_na_vyber_cile_hlavniho_mesta: bool = false
 var _popup_country_link_btn: LinkButton
 var _camera_focus_tween: Tween
 var _ideology_flag_path_index: Dictionary = {}
@@ -104,6 +108,7 @@ const ZPRAVY_HISTORY_MAX_ITEMS := 500
 const MAIN_MENU_SCENE_PATH := "res://scenes/MainMenu.tscn"
 const IDEOLOGY_UI_ORDER := ["demokracie", "kralovstvi", "autokracie", "komunismus", "nacismus", "fasismus"]
 const TURN_LOADING_FRAMES := ["Zpracovavam tah", "Zpracovavam tah.", "Zpracovavam tah..", "Zpracovavam tah..."]
+const SYSTEM_MESSAGE_TURN_AUTO_ACK_MS := 7000
 
 func _resolve_flag_texture(owner_tag: String, ideologie: String):
 	var cisty_tag = owner_tag.strip_edges().to_upper()
@@ -248,6 +253,8 @@ func _ready():
 			popup.popup_hide.connect(_on_ideology_dropdown_closed)
 	if ideology_apply_btn and not ideology_apply_btn.pressed.is_connected(_on_apply_ideology_pressed):
 		ideology_apply_btn.pressed.connect(_on_apply_ideology_pressed)
+	if ideology_relocate_capital_btn and not ideology_relocate_capital_btn.pressed.is_connected(_on_relocate_capital_pressed):
+		ideology_relocate_capital_btn.pressed.connect(_on_relocate_capital_pressed)
 	if alliance_level_option and not alliance_level_option.item_selected.is_connected(_on_alliance_level_selected):
 		alliance_level_option.item_selected.connect(_on_alliance_level_selected)
 	if GameManager.has_signal("kolo_zmeneno") and not GameManager.kolo_zmeneno.is_connected(_on_kolo_zmeneno):
@@ -359,6 +366,8 @@ func _nastav_tooltipy_ui() -> void:
 		ideology_effects_label.tooltip_text = "Prehled vyhod a nevyhod zvolene ideologie."
 	if ideology_apply_btn:
 		ideology_apply_btn.tooltip_text = "Potvrdi prechod tvého statu na zvolenou ideologii."
+	if ideology_relocate_capital_btn:
+		ideology_relocate_capital_btn.tooltip_text = "Spusti vyber cile na mape. Cena je dynamicka a zobrazi se primo u cilove provincie."
 	improve_rel_btn.tooltip_text = "Zlepsi vztah o 10 bodu."
 	worsen_rel_btn.tooltip_text = "Zhorsi vztah o 10 bodu."
 	if gift_money_btn:
@@ -607,12 +616,20 @@ func _zajisti_ideology_controls() -> void:
 		ideology_apply_btn.text = "Zmenit ideologii"
 		vbox.add_child(ideology_apply_btn)
 
+	ideology_relocate_capital_btn = get_node_or_null("OverviewPanel/VBoxContainer/RelocateCapitalButton") as Button
+	if ideology_relocate_capital_btn == null:
+		ideology_relocate_capital_btn = Button.new()
+		ideology_relocate_capital_btn.name = "RelocateCapitalButton"
+		ideology_relocate_capital_btn.text = "Presunout hlavni mesto"
+		vbox.add_child(ideology_relocate_capital_btn)
+
 	if action_separator and action_separator.get_parent() == vbox:
 		var base_idx = action_separator.get_index()
 		vbox.move_child(ideology_separator, base_idx)
 		vbox.move_child(ideology_effects_label, ideology_separator.get_index() + 1)
 		vbox.move_child(ideology_option, ideology_effects_label.get_index() + 1)
 		vbox.move_child(ideology_apply_btn, ideology_option.get_index() + 1)
+		vbox.move_child(ideology_relocate_capital_btn, ideology_apply_btn.get_index() + 1)
 
 func _normalizuj_ideologii(ideology: String) -> String:
 	var raw = ideology.strip_edges().to_lower()
@@ -989,7 +1006,7 @@ func _ziskej_dostupne_ideologie_pro_stat(tag: String) -> Array:
 	return out
 
 func _aktualizuj_ideology_ui(owner_tag: String, current_ideology: String) -> void:
-	if ideology_separator == null or ideology_option == null or ideology_apply_btn == null or ideology_effects_label == null:
+	if ideology_separator == null or ideology_option == null or ideology_apply_btn == null or ideology_effects_label == null or ideology_relocate_capital_btn == null:
 		return
 
 	var is_player = owner_tag == str(GameManager.hrac_stat).strip_edges().to_upper()
@@ -998,6 +1015,7 @@ func _aktualizuj_ideology_ui(owner_tag: String, current_ideology: String) -> voi
 		ideology_effects_label.hide()
 		ideology_option.hide()
 		ideology_apply_btn.hide()
+		ideology_relocate_capital_btn.hide()
 		_vycisti_nahled_ideologie_v_ui()
 		return
 
@@ -1005,6 +1023,7 @@ func _aktualizuj_ideology_ui(owner_tag: String, current_ideology: String) -> voi
 	ideology_effects_label.show()
 	ideology_option.show()
 	ideology_apply_btn.show()
+	ideology_relocate_capital_btn.show()
 
 	var current = _normalizuj_ideologii(current_ideology)
 	var options = _ziskej_dostupne_ideologie_pro_stat(owner_tag)
@@ -1031,6 +1050,100 @@ func _aktualizuj_ideology_ui(owner_tag: String, current_ideology: String) -> voi
 	_ideology_dropdown_open = false
 	_vycisti_nahled_ideologie_v_ui()
 	_updating_ideology_ui = false
+	_aktualizuj_tlacitko_presunu_hlavniho_mesta(owner_tag)
+
+func _aktualizuj_tlacitko_presunu_hlavniho_mesta(owner_tag: String) -> void:
+	if ideology_relocate_capital_btn == null:
+		return
+
+	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
+	var viewed = owner_tag.strip_edges().to_upper()
+	if viewed == "" or viewed != player_tag:
+		ideology_relocate_capital_btn.hide()
+		return
+
+	ideology_relocate_capital_btn.show()
+	if _ceka_na_vyber_cile_hlavniho_mesta:
+		ideology_relocate_capital_btn.disabled = false
+		ideology_relocate_capital_btn.text = "Zrusit vyber cile hlavniho mesta"
+		return
+	if _relocate_capital_action_lock:
+		ideology_relocate_capital_btn.disabled = true
+		return
+	if not GameManager.has_method("muze_presunout_hlavni_mesto"):
+		ideology_relocate_capital_btn.disabled = true
+		ideology_relocate_capital_btn.text = "Presunout hlavni mesto"
+		return
+
+	var can_start_targeting = true
+	if GameManager.has_method("ma_dostupny_cil_presunu_hlavniho_mesta"):
+		can_start_targeting = bool(GameManager.ma_dostupny_cil_presunu_hlavniho_mesta(viewed))
+	ideology_relocate_capital_btn.text = "Presunout hlavni mesto"
+	ideology_relocate_capital_btn.disabled = not can_start_targeting
+
+func _on_relocate_capital_pressed() -> void:
+	if _relocate_capital_action_lock:
+		return
+	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
+	if current_viewed_tag == "" or current_viewed_tag != player_tag:
+		_aktualizuj_tlacitko_presunu_hlavniho_mesta(player_tag)
+		return
+
+	var map_loader = get_tree().current_scene.find_child("Map", true, false)
+	if map_loader == null and get_tree().current_scene and get_tree().current_scene.has_method("aktivuj_rezim_vyberu_hlavniho_mesta"):
+		map_loader = get_tree().current_scene
+	if map_loader == null:
+		await zobraz_systemove_hlaseni("Hlavni mesto", "Mapovy modul nebyl nalezen, nelze spustit vyber cile.")
+		_aktualizuj_tlacitko_presunu_hlavniho_mesta(player_tag)
+		return
+
+	if _ceka_na_vyber_cile_hlavniho_mesta:
+		if map_loader.has_method("zrus_rezim_vyberu_hlavniho_mesta"):
+			map_loader.zrus_rezim_vyberu_hlavniho_mesta()
+		_ceka_na_vyber_cile_hlavniho_mesta = false
+		_aktualizuj_tlacitko_presunu_hlavniho_mesta(player_tag)
+		return
+
+	if not map_loader.has_method("aktivuj_rezim_vyberu_hlavniho_mesta"):
+		await zobraz_systemove_hlaseni("Hlavni mesto", "Mapovy modul nepodporuje vyber cile pro presun hlavniho mesta.")
+		_aktualizuj_tlacitko_presunu_hlavniho_mesta(player_tag)
+		return
+
+	var activation = map_loader.aktivuj_rezim_vyberu_hlavniho_mesta(player_tag)
+	if not bool((activation as Dictionary).get("ok", false)):
+		await zobraz_systemove_hlaseni("Hlavni mesto", str((activation as Dictionary).get("reason", "Neni zadny dostupny cil pro presun hlavniho mesta.")))
+		_ceka_na_vyber_cile_hlavniho_mesta = false
+		_aktualizuj_tlacitko_presunu_hlavniho_mesta(player_tag)
+		return
+
+	_ceka_na_vyber_cile_hlavniho_mesta = true
+	_aktualizuj_tlacitko_presunu_hlavniho_mesta(player_tag)
+
+func zrus_vyber_cile_hlavniho_mesta_ui() -> void:
+	_ceka_na_vyber_cile_hlavniho_mesta = false
+	_relocate_capital_action_lock = false
+	if current_viewed_tag != "":
+		_aktualizuj_tlacitko_presunu_hlavniho_mesta(current_viewed_tag)
+
+func obsluha_presunu_hlavniho_mesta_z_mapy(result: Dictionary, _target_province_id: int) -> void:
+	_ceka_na_vyber_cile_hlavniho_mesta = false
+	_relocate_capital_action_lock = false
+	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
+
+	if not bool(result.get("ok", false)):
+		await zobraz_systemove_hlaseni("Hlavni mesto", str(result.get("reason", "Presun hlavniho mesta selhal.")))
+		_aktualizuj_tlacitko_presunu_hlavniho_mesta(player_tag)
+		return
+
+	await zobraz_systemove_hlaseni(
+		"Hlavni mesto",
+		"Presunuto: %s -> %s\nCena: %s" % [
+			str(result.get("old_capital_name", "Puvodni hlavni mesto")),
+			str(result.get("new_capital_name", "Nove hlavni mesto")),
+			_format_money_auto(float(result.get("cost", 0.0)), 2)
+		]
+	)
+	_obnov_otevreny_prehled_statu()
 
 func _wrap_overview_metric_label(key: String, base_label: Label) -> void:
 	if base_label == null:
@@ -1654,6 +1767,7 @@ func _aktualizuj_pozice_popupu():
 			msg_y += _zpravy_panel.size.y + POPUP_GAP
 		var max_msg_h = max(110.0, viewport_size.y - msg_y - 12.0)
 		var msg_h = clamp(96.0 + float(approx_lines) * 18.0, 110.0, max_msg_h)
+		msg_y = clamp(msg_y, top_y, max(top_y, viewport_size.y - msg_h - 8.0))
 		system_message_popup.position = Vector2((viewport_size.x - msg_w) * 0.5, msg_y)
 		system_message_popup.size = Vector2(msg_w, msg_h)
 		if system_message_text:
@@ -1671,8 +1785,15 @@ func zobraz_systemove_hlaseni(titulek: String, text: String) -> void:
 	_system_message_ack = false
 	_aktualizuj_pozice_popupu()
 	system_message_popup.show()
+	var wait_start_ms = Time.get_ticks_msec()
 
 	while is_instance_valid(system_message_popup) and system_message_popup.visible and not _system_message_ack:
+		if bool(GameManager.zpracovava_se_tah):
+			var elapsed_ms = Time.get_ticks_msec() - wait_start_ms
+			if elapsed_ms >= SYSTEM_MESSAGE_TURN_AUTO_ACK_MS:
+				print("[UI] Auto-closing system message during turn processing timeout.")
+				_on_system_message_ok_pressed()
+				break
 		await get_tree().process_frame
 
 func _napln_aliance_option():
@@ -2679,6 +2800,7 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 	var owner_tag = str(data.get("owner", "")).strip_edges().to_upper()
 	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
 	current_viewed_tag = owner_tag # Save the tag for button actions
+	_current_viewed_province_id = int(data.get("id", -1))
 	
 	var plne_jmeno = str(data.get("country_name", owner_tag))
 	
@@ -2824,6 +2946,9 @@ func _on_ideology_option_selected(index: int) -> void:
 # Triggered by right-clicking on the map
 func schovej_se():
 	panel.hide()
+	_current_viewed_province_id = -1
+	_ceka_na_vyber_cile_hlavniho_mesta = false
+	_relocate_capital_action_lock = false
 	_vycisti_nahled_ideologie_v_ui()
 
 func _formatuj_cislo(cislo: int) -> String:

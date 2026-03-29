@@ -20,6 +20,9 @@ var _province_pixel_center_cache: Dictionary = {}
 var vybrana_armada_od: int = -1
 var vybrana_armada_max: int = 0
 var ceka_na_cil_presunu: bool = false
+var ceka_na_cil_hlavniho_mesta: bool = false
+var dostupne_cile_hlavniho_mesta: Array = []
+var stat_presunu_hlavniho_mesta: String = ""
 var ceka_na_hromadny_cil_presunu: bool = false
 var hromadny_presun_zdroje: Array = []
 var hromadne_vybrane_provincie: Array = []
@@ -1827,6 +1830,91 @@ func aktivuj_rezim_vyberu_cile(from_id: int, max_troops: int):
 	_invalidate_naval_reachability_cache()
 	vycisti_nahled_presunu()
 	print("Klikni na mapu pro vyber cile presunu.")
+
+func _ziskej_dostupne_cile_hlavniho_mesta(state_tag: String) -> Array:
+	var state = state_tag.strip_edges().to_upper()
+	if state == "" or state == "SEA":
+		return []
+
+	var out: Array = []
+	if not GameManager.has_method("muze_presunout_hlavni_mesto"):
+		return out
+
+	for p_id in provinces.keys():
+		var pid = int(p_id)
+		var d = provinces[pid]
+		var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
+		var core_owner = str(d.get("core_owner", owner_tag)).strip_edges().to_upper()
+		if owner_tag != state:
+			continue
+		if core_owner != state:
+			continue
+		if _je_more_provincie(pid):
+			continue
+
+		var check = GameManager.muze_presunout_hlavni_mesto(state, pid)
+		if bool(check.get("ok", false)):
+			out.append(pid)
+
+	return out
+
+func zrus_rezim_vyberu_hlavniho_mesta() -> void:
+	ceka_na_cil_hlavniho_mesta = false
+	dostupne_cile_hlavniho_mesta.clear()
+	stat_presunu_hlavniho_mesta = ""
+	var sprite = $Sprite2D
+	if sprite and sprite.has_method("vycisti_nahled_hlavniho_mesta"):
+		sprite.vycisti_nahled_hlavniho_mesta()
+
+func aktivuj_rezim_vyberu_hlavniho_mesta(state_tag: String) -> Dictionary:
+	var state = state_tag.strip_edges().to_upper()
+	zrus_rezim_vyberu_hlavniho_mesta()
+
+	if state == "" or state == "SEA":
+		return {"ok": false, "reason": "Neplatny stat."}
+	if not GameManager.has_method("muze_presunout_hlavni_mesto"):
+		return {"ok": false, "reason": "Presun hlavniho mesta neni dostupny."}
+
+	var targets = _ziskej_dostupne_cile_hlavniho_mesta(state)
+	if targets.is_empty():
+		return {"ok": false, "reason": "Neni zadna dostupna provincie pro presun hlavniho mesta."}
+
+	ceka_na_cil_hlavniho_mesta = true
+	stat_presunu_hlavniho_mesta = state
+	dostupne_cile_hlavniho_mesta = targets.duplicate()
+
+	var owned_ids: Array = []
+	for p_id in provinces.keys():
+		var pid = int(p_id)
+		var d = provinces[pid]
+		if _je_more_provincie(pid):
+			continue
+		if str(d.get("owner", "")).strip_edges().to_upper() == state:
+			owned_ids.append(pid)
+
+	var sprite = $Sprite2D
+	if sprite and sprite.has_method("nastav_nahled_hlavniho_mesta"):
+		sprite.nastav_nahled_hlavniho_mesta(owned_ids, targets)
+
+	print("Klikni na mapu pro vyber noveho hlavniho mesta. Cena se ukazuje dynamicky pri najeti na cil.")
+	return {"ok": true, "count": targets.size()}
+
+func je_platny_cil_hlavniho_mesta(prov_id: int) -> bool:
+	if not ceka_na_cil_hlavniho_mesta:
+		return false
+	return dostupne_cile_hlavniho_mesta.has(int(prov_id))
+
+func potvrd_cil_hlavniho_mesta(prov_id: int) -> Dictionary:
+	var pid = int(prov_id)
+	if not je_platny_cil_hlavniho_mesta(pid):
+		return {"ok": false, "reason": "Neplatny cil pro presun hlavniho mesta."}
+	if not GameManager.has_method("presun_hlavni_mesto"):
+		zrus_rezim_vyberu_hlavniho_mesta()
+		return {"ok": false, "reason": "Presun hlavniho mesta neni dostupny."}
+
+	var result = GameManager.presun_hlavni_mesto(stat_presunu_hlavniho_mesta, pid, true, true)
+	zrus_rezim_vyberu_hlavniho_mesta()
+	return result
 
 func zacni_davkovy_presun():
 	_pozastavit_aktualizaci_ikon = true
