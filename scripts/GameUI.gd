@@ -56,7 +56,12 @@ class ArmyTrashBin:
 @onready var gdp_label = $OverviewPanel/VBoxContainer/TotalGdpLabel
 @onready var gdp_pc_label = $OverviewPanel/VBoxContainer/GdpPerCapitaLabel 
 @onready var relationship_label = $OverviewPanel/VBoxContainer/RelationshipLabel
+var _vassals_btn: Button
+var _vassals_dialog: PopupPanel
+var _vassals_list: VBoxContainer
 var army_power_label: Label
+var vassals_label: Label
+var war_reparations_label: Label
 
 # --- NEW: Action nodes ---
 @onready var action_separator = $OverviewPanel/VBoxContainer/ActionSeparator
@@ -103,6 +108,27 @@ var _load_slot_names: Array = []
 var _gift_dialog: PopupPanel
 var _gift_amount_input: LineEdit
 var gift_money_btn: Button
+var _peace_dialog: PopupPanel
+var _peace_title_label: Label
+var _peace_points_label: Label
+var _peace_participants_label: Label
+var _peace_pick_btn: Button
+var _peace_selected_label: Label
+var _peace_take_label: Label
+var _peace_annex_check: CheckBox
+var _peace_vassal_check: CheckBox
+var _peace_reparations_slider: HSlider
+var _peace_reparations_label: Label
+var _peace_cost_label: Label
+var _peace_confirm_btn: Button
+var _active_peace_conference: Dictionary = {}
+var _peace_selected_provinces: Array = []
+var _ceka_na_vyber_miru: bool = false
+var _peace_notice_panel: Panel
+var _peace_notice_label: Label
+var _peace_notice_flag: TextureRect
+var _peace_notice_btn: Button
+var _peace_notice_deferred_conf_id: int = -1
 var ideology_separator: HSeparator
 var ideology_effects_label: RichTextLabel
 var ideology_option: OptionButton
@@ -281,6 +307,8 @@ func _ready():
 	panel.hide()
 	_setup_overview_inline_deltas()
 	_zajisti_label_sily_armady()
+	_zajisti_mirove_overview_labely()
+	_zajisti_tlacitko_vazalu()
 	_zajisti_tlacitko_daru()
 	_zajisti_ideology_controls()
 	_zajisti_vyzkum_controls()
@@ -312,6 +340,8 @@ func _ready():
 		worsen_rel_btn.pressed.connect(_on_worsen_relationship_pressed)
 	if gift_money_btn and not gift_money_btn.pressed.is_connected(_on_gift_money_pressed):
 		gift_money_btn.pressed.connect(_on_gift_money_pressed)
+	if _vassals_btn and not _vassals_btn.pressed.is_connected(_on_vassals_button_pressed):
+		_vassals_btn.pressed.connect(_on_vassals_button_pressed)
 	if ideology_option and not ideology_option.item_selected.is_connected(_on_ideology_option_selected):
 		ideology_option.item_selected.connect(_on_ideology_option_selected)
 	if ideology_option and ideology_option.get_popup():
@@ -357,10 +387,14 @@ func _ready():
 	_aktualizuj_pozice_popupu()
 	_aktualizuj_popup_diplomatickych_zadosti()
 	_vytvor_darovaci_dialog()
+	_vytvor_mirovou_konferenci_dialog()
+	_vytvor_hlaseni_mirove_konference()
+	_vytvor_panel_vazalu()
 	_vytvor_vyzkum_dialog()
 	# Pre-layout research dialog once in hidden mode; fixes broken first open in turn 0.
 	call_deferred("_predhrej_vyzkum_dialog_layout")
 	_nastav_tooltipy_ui()
+	_aktualizuj_hlaseni_mirove_konference()
 
 func _process(_delta: float) -> void:
 	if _research_dialog and _research_dialog.visible:
@@ -441,6 +475,12 @@ func _nastav_tooltipy_ui() -> void:
 		army_power_label.tooltip_text = "Vysledna sila armady po zapocteni bonusu vybavy."
 	gdp_label.tooltip_text = "Celkove HDP statu."
 	gdp_pc_label.tooltip_text = "HDP prepocitane na jednoho obyvatele."
+	if vassals_label:
+		vassals_label.tooltip_text = "Seznam statu, ktere jsou tvymi vazaly."
+	if war_reparations_label:
+		war_reparations_label.tooltip_text = "Pocet aktivnich valecnych reparaci (prichozi/odchozi)."
+	if _vassals_btn:
+		_vassals_btn.tooltip_text = "Otevre seznam tvych vazalu a dostupne interakce."
 	relationship_label.tooltip_text = "Diplomaticky vztah mezi tvym statem a cilem."
 	if ideology_option:
 		ideology_option.tooltip_text = "Vyber nove ideologie pro tvuj stat."
@@ -653,6 +693,284 @@ func _zajisti_tlacitko_daru() -> void:
 	if insert_after and insert_after.get_parent() == vbox:
 		vbox.move_child(gift_money_btn, insert_after.get_index() + 1)
 
+func _zajisti_tlacitko_vazalu() -> void:
+	_vassals_btn = get_node_or_null("OverviewPanel/VBoxContainer/VassalsButton") as Button
+	if _vassals_btn:
+		return
+	var vbox = get_node_or_null("OverviewPanel/VBoxContainer") as VBoxContainer
+	if vbox == null:
+		return
+	_vassals_btn = Button.new()
+	_vassals_btn.name = "VassalsButton"
+	_vassals_btn.text = "Vazalove"
+	_vassals_btn.hide()
+	vbox.add_child(_vassals_btn)
+	if action_separator and action_separator.get_parent() == vbox:
+		vbox.move_child(_vassals_btn, action_separator.get_index() + 1)
+
+func _vytvor_panel_vazalu() -> void:
+	if _vassals_dialog != null:
+		return
+
+	_vassals_dialog = PopupPanel.new()
+	_vassals_dialog.name = "VassalsDialog"
+	_vassals_dialog.size = Vector2(372, 252)
+	_vassals_dialog.exclusive = false
+	_vassals_dialog.popup_window = false
+	add_child(_vassals_dialog)
+	var dialog_style = StyleBoxFlat.new()
+	dialog_style.bg_color = Color(0.06, 0.09, 0.14, 0.96)
+	dialog_style.border_color = Color(0.60, 0.74, 0.92, 0.65)
+	dialog_style.border_width_left = 1
+	dialog_style.border_width_top = 1
+	dialog_style.border_width_right = 1
+	dialog_style.border_width_bottom = 1
+	dialog_style.corner_radius_top_left = 8
+	dialog_style.corner_radius_top_right = 8
+	dialog_style.corner_radius_bottom_left = 8
+	dialog_style.corner_radius_bottom_right = 8
+	_vassals_dialog.add_theme_stylebox_override("panel", dialog_style)
+
+	var margin = MarginContainer.new()
+	margin.offset_left = 8
+	margin.offset_top = 8
+	margin.offset_right = -8
+	margin.offset_bottom = -8
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_vassals_dialog.add_child(margin)
+
+	var root = VBoxContainer.new()
+	root.add_theme_constant_override("separation", 6)
+	margin.add_child(root)
+
+	var header = HBoxContainer.new()
+	header.add_theme_constant_override("separation", 8)
+	root.add_child(header)
+
+	var title = Label.new()
+	title.text = "Moji vazalove"
+	title.add_theme_font_size_override("font_size", 18)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(title)
+
+	var close_top_btn = Button.new()
+	close_top_btn.text = "Zavrit"
+	close_top_btn.custom_minimum_size = Vector2(72, 0)
+	close_top_btn.pressed.connect(func(): _vassals_dialog.hide())
+	header.add_child(close_top_btn)
+
+	var hint = Label.new()
+	hint.text = "Nastav odvod a klikni Ulozit %."
+	hint.autowrap_mode = TextServer.AUTOWRAP_OFF
+	hint.clip_text = true
+	hint.custom_minimum_size = Vector2(0, 18)
+	root.add_child(hint)
+
+	var scroll = ScrollContainer.new()
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_child(scroll)
+
+	_vassals_list = VBoxContainer.new()
+	_vassals_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_vassals_list.add_theme_constant_override("separation", 4)
+	scroll.add_child(_vassals_list)
+
+	_vassals_dialog.hide()
+
+func _pozicuj_a_zmen_velikost_panelu_vazalu(vassal_count: int = -1) -> void:
+	if _vassals_dialog == null:
+		return
+
+	var viewport = get_viewport()
+	if viewport == null:
+		return
+	var vp = viewport.get_visible_rect().size
+	if vp.x <= 0.0 or vp.y <= 0.0:
+		return
+
+	var count: int = maxi(0, vassal_count)
+	if vassal_count < 0 and GameManager.has_method("ziskej_vazaly_statu"):
+		count = (GameManager.ziskej_vazaly_statu(GameManager.hrac_stat) as Array).size()
+
+	var base_w: float = 372.0
+	var base_h: float = 252.0
+	var extra_w: float = minf(90.0, float(count) * 6.0)
+	var extra_h: float = minf(320.0, float(maxi(0, count - 1)) * 32.0)
+
+	var max_w: float = maxf(280.0, vp.x - 24.0)
+	var max_h: float = maxf(180.0, vp.y - 24.0)
+	var w: float = clampf(base_w + extra_w, 320.0, max_w)
+	var h: float = clampf(base_h + extra_h, 220.0, max_h)
+	_vassals_dialog.size = Vector2(w, h)
+
+	var gap: float = 10.0
+	var x: float = 16.0
+	var min_y: float = _topbar_bottom_y() + 8.0
+	var y: float = min_y
+	if panel:
+		var ov = panel.get_global_rect()
+		x = ov.position.x + ov.size.x + gap
+		y = maxf(ov.position.y + 14.0, min_y)
+		if x + w > vp.x - 8.0:
+			x = ov.position.x - w - gap
+
+	x = clampf(x, 8.0, maxf(8.0, vp.x - w - 8.0))
+	y = clampf(y, min_y, maxf(min_y, vp.y - h - 8.0))
+	_vassals_dialog.position = Vector2(x, y)
+
+func _on_vassals_button_pressed() -> void:
+	if _vassals_dialog == null:
+		return
+	_obnov_panel_vazalu()
+	_pozicuj_a_zmen_velikost_panelu_vazalu()
+	_vassals_dialog.show()
+
+func _obnov_panel_vazalu() -> void:
+	if _vassals_list == null:
+		return
+	for ch in _vassals_list.get_children():
+		ch.queue_free()
+
+	var player = str(GameManager.hrac_stat).strip_edges().to_upper()
+	var vassals: Array = []
+	if GameManager.has_method("ziskej_vazaly_statu"):
+		vassals = GameManager.ziskej_vazaly_statu(player) as Array
+
+	if vassals.is_empty():
+		var empty_label = Label.new()
+		empty_label.text = "Zadne aktivni vazaly momentalne nemas."
+		_vassals_list.add_child(empty_label)
+		_pozicuj_a_zmen_velikost_panelu_vazalu(0)
+		return
+
+	for subject_any in vassals:
+		var subject = str(subject_any).strip_edges().to_upper()
+		var card = PanelContainer.new()
+		var card_style = StyleBoxFlat.new()
+		card_style.bg_color = Color(0.10, 0.14, 0.20, 0.88)
+		card_style.border_color = Color(0.45, 0.62, 0.85, 0.45)
+		card_style.border_width_left = 1
+		card_style.border_width_top = 1
+		card_style.border_width_right = 1
+		card_style.border_width_bottom = 1
+		card_style.corner_radius_top_left = 6
+		card_style.corner_radius_top_right = 6
+		card_style.corner_radius_bottom_left = 6
+		card_style.corner_radius_bottom_right = 6
+		card.add_theme_stylebox_override("panel", card_style)
+		_vassals_list.add_child(card)
+
+		var card_margin = MarginContainer.new()
+		card_margin.add_theme_constant_override("margin_left", 6)
+		card_margin.add_theme_constant_override("margin_top", 4)
+		card_margin.add_theme_constant_override("margin_right", 6)
+		card_margin.add_theme_constant_override("margin_bottom", 4)
+		card.add_child(card_margin)
+
+		var card_v = VBoxContainer.new()
+		card_v.add_theme_constant_override("separation", 4)
+		card_margin.add_child(card_v)
+
+		var row = HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		card_v.add_child(row)
+
+		var name_lbl = Label.new()
+		name_lbl.text = _ziskej_jmeno_statu_podle_tagu(subject)
+		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		name_lbl.tooltip_text = subject
+		row.add_child(name_lbl)
+
+		var focus_btn = Button.new()
+		focus_btn.text = "Otevrit"
+		focus_btn.pressed.connect(_on_vassal_focus_pressed.bind(subject))
+		row.add_child(focus_btn)
+
+		var release_btn = Button.new()
+		release_btn.text = "Propustit"
+		release_btn.pressed.connect(_on_vassal_release_pressed.bind(subject))
+		row.add_child(release_btn)
+
+		var tribute_row = HBoxContainer.new()
+		tribute_row.add_theme_constant_override("separation", 8)
+		card_v.add_child(tribute_row)
+
+		var tribute_lbl = Label.new()
+		tribute_lbl.text = "Odvod prijmu"
+		tribute_lbl.custom_minimum_size = Vector2(88, 0)
+		tribute_row.add_child(tribute_lbl)
+
+		var slider = HSlider.new()
+		slider.min_value = 0
+		slider.max_value = 60
+		slider.step = 1
+		slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var current_rate = 15.0
+		if GameManager.has_method("ziskej_vazalsky_odvod"):
+			current_rate = float(GameManager.ziskej_vazalsky_odvod(GameManager.hrac_stat, subject)) * 100.0
+		slider.value = current_rate
+		tribute_row.add_child(slider)
+
+		var pct_label = Label.new()
+		pct_label.text = "%d%%" % int(round(current_rate))
+		pct_label.custom_minimum_size = Vector2(44, 0)
+		slider.value_changed.connect(func(v): pct_label.text = "%d%%" % int(round(v)))
+		tribute_row.add_child(pct_label)
+
+		var apply_btn = Button.new()
+		apply_btn.text = "Ulozit %"
+		apply_btn.pressed.connect(_on_vassal_tribute_apply_pressed.bind(subject, slider))
+		tribute_row.add_child(apply_btn)
+
+		if GameManager.has_method("ziskej_cisty_prijem_statu"):
+			var inc = float(GameManager.ziskej_cisty_prijem_statu(subject))
+			var est = max(0.0, inc) * (float(slider.value) / 100.0)
+			var est_lbl = Label.new()
+			est_lbl.text = "Odhad odvodu/kol: $%.2f" % est
+			est_lbl.modulate = Color(0.86, 0.94, 1.0, 0.92)
+			slider.value_changed.connect(func(v):
+				var est_now = max(0.0, float(GameManager.ziskej_cisty_prijem_statu(subject))) * (float(v) / 100.0)
+				est_lbl.text = "Odhad odvodu/kol: $%.2f" % est_now
+			)
+			card_v.add_child(est_lbl)
+
+	_pozicuj_a_zmen_velikost_panelu_vazalu(vassals.size())
+
+func _on_vassal_tribute_apply_pressed(subject_tag: String, slider: HSlider) -> void:
+	if slider == null or not GameManager.has_method("nastav_vazalsky_odvod"):
+		return
+	var ok = bool(GameManager.nastav_vazalsky_odvod(GameManager.hrac_stat, subject_tag, float(slider.value)))
+	if ok:
+		_aktualizuj_mirove_overview_statistiky(str(GameManager.hrac_stat).strip_edges().to_upper(), true)
+
+func _on_vassal_focus_pressed(subject_tag: String) -> void:
+	_otevri_prehled_statu_podle_tagu(subject_tag)
+
+func _on_vassal_release_pressed(subject_tag: String) -> void:
+	if not GameManager.has_method("propustit_vazala"):
+		return
+	var ok = bool(GameManager.propustit_vazala(GameManager.hrac_stat, subject_tag))
+	if ok:
+		_obnov_panel_vazalu()
+		if current_viewed_tag == str(subject_tag).strip_edges().to_upper():
+			_aktualizuj_vztah_ui(current_viewed_tag)
+		_aktualizuj_mirove_overview_statistiky(str(GameManager.hrac_stat).strip_edges().to_upper(), true)
+
+func _aktualizuj_tlacitko_vazalu(je_hracuv_stat: bool) -> void:
+	if _vassals_btn == null:
+		return
+	if je_hracuv_stat:
+		_vassals_btn.show()
+		var count := 0
+		if GameManager.has_method("ziskej_vazaly_statu"):
+			count = (GameManager.ziskej_vazaly_statu(GameManager.hrac_stat) as Array).size()
+		_vassals_btn.text = "Vazalove (%d)" % count
+	else:
+		_vassals_btn.hide()
+		if _vassals_dialog and _vassals_dialog.visible:
+			_vassals_dialog.hide()
+
 func _zajisti_label_sily_armady() -> void:
 	army_power_label = get_node_or_null("OverviewPanel/VBoxContainer/ArmyPowerLabel") as Label
 	var vbox = get_node_or_null("OverviewPanel/VBoxContainer") as VBoxContainer
@@ -667,6 +985,29 @@ func _zajisti_label_sily_armady() -> void:
 	# Keep army power in the main stats block, directly above action separator.
 	if action_separator and action_separator.get_parent() == vbox:
 		vbox.move_child(army_power_label, action_separator.get_index())
+
+func _zajisti_mirove_overview_labely() -> void:
+	var vbox = get_node_or_null("OverviewPanel/VBoxContainer") as VBoxContainer
+	if vbox == null:
+		return
+
+	vassals_label = get_node_or_null("OverviewPanel/VBoxContainer/VassalsLabel") as Label
+	if vassals_label == null:
+		vassals_label = Label.new()
+		vassals_label.name = "VassalsLabel"
+		vassals_label.text = "Vazalove: -"
+		vbox.add_child(vassals_label)
+
+	war_reparations_label = get_node_or_null("OverviewPanel/VBoxContainer/WarReparationsLabel") as Label
+	if war_reparations_label == null:
+		war_reparations_label = Label.new()
+		war_reparations_label.name = "WarReparationsLabel"
+		war_reparations_label.text = "Valecne reparace: -"
+		vbox.add_child(war_reparations_label)
+
+	if action_separator and action_separator.get_parent() == vbox:
+		vbox.move_child(vassals_label, action_separator.get_index())
+		vbox.move_child(war_reparations_label, action_separator.get_index())
 
 func _zajisti_ideology_controls() -> void:
 	var vbox = get_node_or_null("OverviewPanel/VBoxContainer")
@@ -1796,6 +2137,48 @@ func _ziskej_vsechny_provincie_pro_prehled() -> Dictionary:
 		return GameManager.map_data
 	return {}
 
+func _ziskej_hlavni_mesto_statu_z_mapy(state_tag: String) -> int:
+	var wanted = state_tag.strip_edges().to_upper()
+	if wanted == "" or wanted == "SEA":
+		return -1
+	var provinces = _ziskej_vsechny_provincie_pro_prehled()
+	if provinces.is_empty():
+		return -1
+
+	for p_id_any in provinces.keys():
+		var p_id = int(p_id_any)
+		var d = provinces[p_id] as Dictionary
+		if str(d.get("owner", "")).strip_edges().to_upper() != wanted:
+			continue
+		if bool(d.get("is_capital", false)):
+			return p_id
+
+	# Fallback: if capital is occupied, it can still be marked by core owner.
+	for p_id_any in provinces.keys():
+		var p_id = int(p_id_any)
+		var d = provinces[p_id] as Dictionary
+		if str(d.get("core_owner", "")).strip_edges().to_upper() != wanted:
+			continue
+		if bool(d.get("is_capital", false)):
+			return p_id
+
+	return -1
+
+func _zamer_kameru_na_mirovou_konferenci() -> void:
+	if _active_peace_conference.is_empty():
+		return
+	var loser = str(_active_peace_conference.get("loser", "")).strip_edges().to_upper()
+	if loser == "" or loser == "SEA":
+		return
+
+	var capital_pid = _ziskej_hlavni_mesto_statu_z_mapy(loser)
+	if capital_pid > 0:
+		_posun_kameru_na_stat(loser, true, capital_pid)
+		return
+
+	# If no explicit capital is found, keep existing state-focus fallback behavior.
+	_posun_kameru_na_stat(loser, true)
+
 func _obnov_otevreny_prehled_statu() -> void:
 	if current_viewed_tag == "":
 		return
@@ -2090,12 +2473,20 @@ func _on_viewport_resized():
 	_pozicuj_pause_menu()
 	_pozicuj_save_load_popupy()
 	_pozicuj_gift_dialog()
+	_pozicuj_mirovou_konferenci_dialog()
+	_pozicuj_hlaseni_mirove_konference()
+	if _vassals_dialog and _vassals_dialog.visible:
+		_pozicuj_a_zmen_velikost_panelu_vazalu()
 	if _research_dialog and _research_dialog.visible:
 		_pozicuj_vyzkum_dialog()
 
 func _input(event):
 	if event is InputEventKey and event.pressed and not event.is_echo():
 		if event.keycode == KEY_ESCAPE:
+			if _peace_dialog and _peace_dialog.visible:
+				_on_peace_close_pressed()
+				get_viewport().set_input_as_handled()
+				return
 			if _research_dialog and _research_dialog.visible:
 				_zavri_vyzkum_dialog()
 				get_viewport().set_input_as_handled()
@@ -2254,6 +2645,426 @@ func _pozicuj_gift_dialog() -> void:
 		return
 	var vp = get_viewport().get_visible_rect().size
 	_gift_dialog.position = Vector2((vp.x - _gift_dialog.size.x) * 0.5, (vp.y - _gift_dialog.size.y) * 0.5)
+
+func _vytvor_mirovou_konferenci_dialog() -> void:
+	if _peace_dialog != null:
+		return
+
+	_peace_dialog = PopupPanel.new()
+	_peace_dialog.name = "PeaceConferenceDialog"
+	_peace_dialog.size = Vector2(520, 430)
+	_peace_dialog.exclusive = false
+	_peace_dialog.popup_window = false
+	add_child(_peace_dialog)
+
+	var margin = MarginContainer.new()
+	margin.offset_left = 12
+	margin.offset_top = 12
+	margin.offset_right = -12
+	margin.offset_bottom = -12
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_peace_dialog.add_child(margin)
+
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 8)
+	margin.add_child(vbox)
+
+	_peace_title_label = Label.new()
+	_peace_title_label.text = "Mirova konference"
+	_peace_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_peace_title_label.add_theme_font_size_override("font_size", 22)
+	vbox.add_child(_peace_title_label)
+
+	_peace_points_label = Label.new()
+	_peace_points_label.text = "Body: 0"
+	vbox.add_child(_peace_points_label)
+
+	_peace_participants_label = Label.new()
+	_peace_participants_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vbox.add_child(_peace_participants_label)
+
+	_peace_annex_check = CheckBox.new()
+	_peace_annex_check.text = "Anexovat cely stat"
+	_peace_annex_check.toggled.connect(func(_v): _aktualizuj_mirovou_konferenci_preview())
+	vbox.add_child(_peace_annex_check)
+
+	_peace_pick_btn = Button.new()
+	_peace_pick_btn.text = "Vybrat provincie na mape"
+	_peace_pick_btn.pressed.connect(_on_peace_pick_provinces_pressed)
+	vbox.add_child(_peace_pick_btn)
+
+	_peace_selected_label = Label.new()
+	_peace_selected_label.text = "Vybrano na mape: 0"
+	vbox.add_child(_peace_selected_label)
+
+	_peace_take_label = Label.new()
+	_peace_take_label.text = "Vzít provincie: 0"
+	vbox.add_child(_peace_take_label)
+
+	_peace_vassal_check = CheckBox.new()
+	_peace_vassal_check.text = "Vytvorit vazalsky stat"
+	_peace_vassal_check.toggled.connect(func(_v): _aktualizuj_mirovou_konferenci_preview())
+	vbox.add_child(_peace_vassal_check)
+
+	_peace_reparations_label = Label.new()
+	_peace_reparations_label.text = "Valecne reparace (kol): 0"
+	vbox.add_child(_peace_reparations_label)
+
+	_peace_reparations_slider = HSlider.new()
+	_peace_reparations_slider.min_value = 0
+	_peace_reparations_slider.max_value = 0
+	_peace_reparations_slider.step = 1
+	_peace_reparations_slider.value_changed.connect(func(_v): _aktualizuj_mirovou_konferenci_preview())
+	vbox.add_child(_peace_reparations_slider)
+
+	_peace_cost_label = Label.new()
+	_peace_cost_label.text = "Cena: 0 / 0"
+	vbox.add_child(_peace_cost_label)
+
+	var btn_row = HBoxContainer.new()
+	btn_row.add_theme_constant_override("separation", 8)
+	vbox.add_child(btn_row)
+
+	_peace_confirm_btn = Button.new()
+	_peace_confirm_btn.text = "Potvrdit podminky"
+	_peace_confirm_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_peace_confirm_btn.pressed.connect(_on_potvrdit_mirovou_konferenci)
+	btn_row.add_child(_peace_confirm_btn)
+
+	var cancel_btn = Button.new()
+	cancel_btn.text = "Pozdeji"
+	cancel_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cancel_btn.pressed.connect(_on_peace_close_pressed)
+	btn_row.add_child(cancel_btn)
+
+	_peace_dialog.hide()
+	_pozicuj_mirovou_konferenci_dialog()
+
+func _pozicuj_mirovou_konferenci_dialog() -> void:
+	if not _peace_dialog:
+		return
+	var vp = get_viewport().get_visible_rect().size
+	var margin := 12.0
+	var w = min(520.0, max(320.0, vp.x - margin * 2.0))
+	var h = min(430.0, max(260.0, vp.y - margin * 2.0))
+	_peace_dialog.size = Vector2(w, h)
+	_peace_dialog.position = Vector2(max(0.0, vp.x - w - margin), max(0.0, vp.y - h - margin))
+
+func _vytvor_hlaseni_mirove_konference() -> void:
+	if _peace_notice_panel != null:
+		return
+
+	_peace_notice_panel = Panel.new()
+	_peace_notice_panel.name = "PeaceConferenceNotice"
+	_peace_notice_panel.size = Vector2(500, 48)
+	_peace_notice_panel.visible = false
+	_peace_notice_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_peace_notice_panel.z_index = 120
+	add_child(_peace_notice_panel)
+
+	var margin = MarginContainer.new()
+	margin.offset_left = 8
+	margin.offset_top = 7
+	margin.offset_right = -8
+	margin.offset_bottom = -7
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_peace_notice_panel.add_child(margin)
+
+	var row = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	margin.add_child(row)
+
+	_peace_notice_flag = TextureRect.new()
+	_peace_notice_flag.custom_minimum_size = Vector2(28, 20)
+	_peace_notice_flag.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_peace_notice_flag.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_peace_notice_flag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(_peace_notice_flag)
+
+	_peace_notice_label = Label.new()
+	_peace_notice_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_peace_notice_label.clip_text = true
+	_peace_notice_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_peace_notice_label.text = "Dostupne mirove jednani."
+	if popup_request_text:
+		_peace_notice_label.add_theme_font_size_override("font_size", popup_request_text.get_theme_font_size("font_size"))
+	row.add_child(_peace_notice_label)
+
+	var btn_wrap = MarginContainer.new()
+	btn_wrap.add_theme_constant_override("margin_top", 2)
+	btn_wrap.add_theme_constant_override("margin_bottom", 2)
+	btn_wrap.add_theme_constant_override("margin_right", 6)
+	row.add_child(btn_wrap)
+
+	_peace_notice_btn = Button.new()
+	_peace_notice_btn.text = "Mirove jednani"
+	_peace_notice_btn.custom_minimum_size = Vector2(104, 30)
+	_peace_notice_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_peace_notice_btn.pressed.connect(_on_peace_notice_open_pressed)
+	if popup_accept_btn:
+		for style_name in ["normal", "hover", "pressed", "focus", "disabled"]:
+			var sb = popup_accept_btn.get_theme_stylebox(style_name)
+			if sb:
+				_peace_notice_btn.add_theme_stylebox_override(style_name, sb)
+		_peace_notice_btn.add_theme_font_size_override("font_size", popup_accept_btn.get_theme_font_size("font_size"))
+		for color_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_disabled_color"]:
+			_peace_notice_btn.add_theme_color_override(color_name, popup_accept_btn.get_theme_color(color_name))
+		for const_name in ["h_separation", "outline_size"]:
+			_peace_notice_btn.add_theme_constant_override(const_name, popup_accept_btn.get_theme_constant(const_name))
+	btn_wrap.add_child(_peace_notice_btn)
+
+	_pozicuj_hlaseni_mirove_konference()
+
+func _pozicuj_hlaseni_mirove_konference() -> void:
+	if _peace_notice_panel == null:
+		return
+	var vp = get_viewport().get_visible_rect().size
+	var req_w = clamp(vp.x * 0.50, 500.0, 820.0)
+	var req_h = 48.0
+	if diplomacy_request_popup and diplomacy_request_popup.visible:
+		req_h = float(diplomacy_request_popup.size.y)
+	_peace_notice_panel.size = Vector2(req_w, req_h)
+	var p_size = _peace_notice_panel.size
+	var x = (vp.x - p_size.x) * 0.5
+	var y = _topbar_bottom_y() + POPUP_TOP_MARGIN
+	if diplomacy_request_popup and diplomacy_request_popup.visible:
+		y = diplomacy_request_popup.position.y + diplomacy_request_popup.size.y + POPUP_GAP
+	if _queue_preview_panel and _queue_preview_panel.visible:
+		y = _queue_preview_panel.position.y + _queue_preview_panel.size.y + POPUP_GAP
+	x = clampf(x, 8.0, maxf(8.0, vp.x - p_size.x - 8.0))
+	y = clampf(y, 8.0, maxf(8.0, vp.y - p_size.y - 8.0))
+	_peace_notice_panel.position = Vector2(x, y)
+
+func _aktualizuj_hlaseni_mirove_konference() -> void:
+	if _peace_notice_panel == null:
+		return
+	if _peace_dialog and _peace_dialog.visible:
+		_peace_notice_panel.hide()
+		return
+	if not GameManager or not GameManager.has_method("ziskej_prvni_mirovou_konferenci_pro_hrace"):
+		_peace_notice_panel.hide()
+		return
+
+	var conf = GameManager.ziskej_prvni_mirovou_konferenci_pro_hrace(GameManager.hrac_stat) as Dictionary
+	if conf.is_empty():
+		_peace_notice_deferred_conf_id = -1
+		_peace_notice_panel.hide()
+		return
+	var queue_count := 1
+	if GameManager.has_method("ziskej_pocet_mirovych_konferenci_pro_hrace"):
+		queue_count = maxi(1, int(GameManager.ziskej_pocet_mirovych_konferenci_pro_hrace(GameManager.hrac_stat)))
+
+	var conf_id = int(conf.get("id", -1))
+	var waiting_decision = (conf_id != -1 and conf_id != _peace_notice_deferred_conf_id)
+	var reason = str(conf.get("reason", "peace"))
+	var loser = str(conf.get("loser", "?"))
+	var loser_name = _ziskej_jmeno_statu_podle_tagu(loser)
+	var loser_ideology = _ziskej_aktualni_ideologii_statu(loser)
+	if _peace_notice_flag:
+		_peace_notice_flag.texture = _resolve_flag_texture(loser, loser_ideology)
+	if reason == "capitulation" and waiting_decision:
+		_peace_notice_label.text = "%s kapitulovalo. Mirove jednani je pripraveno." % loser_name
+	elif reason == "capitulation":
+		_peace_notice_label.text = "%s kapitulovalo. Mirove jednani je dostupne v menu." % loser_name
+	elif waiting_decision:
+		_peace_notice_label.text = "S %s je dostupne mirove jednani." % loser_name
+	else:
+		_peace_notice_label.text = "S %s je dostupne mirove jednani v menu." % loser_name
+	if queue_count > 1:
+		_peace_notice_label.text += " | Fronta: %d" % queue_count
+
+	if _peace_notice_btn:
+		_peace_notice_btn.visible = true
+		_peace_notice_btn.text = "Mirove jednani (%d)" % queue_count if queue_count > 1 else "Mirove jednani"
+
+	_peace_notice_panel.show()
+	_pozicuj_hlaseni_mirove_konference()
+
+func _on_peace_notice_open_pressed() -> void:
+	_otevri_mirovou_konferenci_z_fronty()
+
+func ma_otevrene_mirove_jednani() -> bool:
+	return _peace_dialog != null and _peace_dialog.visible
+
+func _spust_vyber_miru_na_mape(show_error_popup: bool) -> bool:
+	if _active_peace_conference.is_empty():
+		return false
+	var map_node = _ziskej_map_node_pro_mir()
+	if map_node == null:
+		if show_error_popup:
+			zobraz_systemove_hlaseni("Mirova konference", "Mapovy modul nebyl nalezen.")
+		return false
+	if not map_node.has_method("aktivuj_rezim_vyberu_miru"):
+		if show_error_popup:
+			zobraz_systemove_hlaseni("Mirova konference", "Mapa nepodporuje vyber provincii pro mir.")
+		return false
+
+	var winner = str(_active_peace_conference.get("winner", ""))
+	var loser = str(_active_peace_conference.get("loser", ""))
+	var activation = map_node.aktivuj_rezim_vyberu_miru(winner, loser, _peace_selected_provinces)
+	if not bool((activation as Dictionary).get("ok", false)):
+		if show_error_popup:
+			zobraz_systemove_hlaseni("Mirova konference", str((activation as Dictionary).get("reason", "Nepodarilo se spustit mapovy vyber.")))
+		return false
+
+	_ceka_na_vyber_miru = true
+	if activation.has("selected"):
+		_peace_selected_provinces = ((activation as Dictionary).get("selected", []) as Array).duplicate()
+	_aktualizuj_mirovou_konferenci_preview()
+	return true
+
+func _aktualizuj_mirovou_konferenci_preview() -> void:
+	if _active_peace_conference.is_empty():
+		return
+	if _peace_reparations_slider == null:
+		return
+
+	var annex_all = bool(_peace_annex_check.button_pressed)
+	var take_count = 0 if annex_all else _peace_selected_provinces.size()
+	var vassal = bool(_peace_vassal_check.button_pressed)
+	var repar_turns = int(_peace_reparations_slider.value)
+
+	var loser = str(_active_peace_conference.get("loser", ""))
+	var points = int(_active_peace_conference.get("points", 0))
+	var cost = 0
+	if GameManager.has_method("spocitej_cenu_mirovych_pozadavku"):
+		cost = int(GameManager.spocitej_cenu_mirovych_pozadavku(loser, take_count, annex_all, vassal, repar_turns))
+	else:
+		cost = take_count * 8
+
+	_peace_take_label.text = "Vzít provincie: %d" % take_count
+	if _peace_selected_label:
+		_peace_selected_label.text = "Vybrano na mape: %d" % _peace_selected_provinces.size()
+	if _peace_pick_btn:
+		_peace_pick_btn.disabled = annex_all
+		_peace_pick_btn.text = "Ukoncit vyber na mape" if _ceka_na_vyber_miru else "Vybrat provincie na mape"
+	_peace_reparations_label.text = "Valecne reparace (kol): %d" % repar_turns
+	_peace_cost_label.text = "Cena: %d / %d bodu" % [cost, points]
+	_peace_confirm_btn.disabled = cost > points
+
+func _ziskej_map_node_pro_mir() -> Node:
+	var map_loader = get_tree().current_scene.find_child("Map", true, false)
+	if map_loader != null:
+		return map_loader
+	if get_tree().current_scene and get_tree().current_scene.has_method("aktivuj_rezim_vyberu_miru"):
+		return get_tree().current_scene
+	return null
+
+func _on_peace_pick_provinces_pressed() -> void:
+	if _active_peace_conference.is_empty():
+		return
+	var map_node = _ziskej_map_node_pro_mir()
+	if map_node == null:
+		zobraz_systemove_hlaseni("Mirova konference", "Mapovy modul nebyl nalezen.")
+		return
+
+	if _ceka_na_vyber_miru:
+		if map_node.has_method("zrus_rezim_vyberu_miru"):
+			map_node.zrus_rezim_vyberu_miru()
+		_ceka_na_vyber_miru = false
+		_aktualizuj_mirovou_konferenci_preview()
+		return
+	_spust_vyber_miru_na_mape(true)
+
+func zrus_vyber_miru_ui() -> void:
+	_ceka_na_vyber_miru = false
+	_aktualizuj_mirovou_konferenci_preview()
+
+func obsluha_vyberu_miru_z_mapy(result: Dictionary, _province_id: int) -> void:
+	if _active_peace_conference.is_empty():
+		return
+	if not bool(result.get("ok", false)):
+		return
+	_peace_selected_provinces = (result.get("selected", []) as Array).duplicate()
+	_aktualizuj_mirovou_konferenci_preview()
+
+func _on_peace_close_pressed() -> void:
+	if not _active_peace_conference.is_empty():
+		_peace_notice_deferred_conf_id = int(_active_peace_conference.get("id", -1))
+	var map_node = _ziskej_map_node_pro_mir()
+	if map_node and map_node.has_method("zrus_rezim_vyberu_miru"):
+		map_node.zrus_rezim_vyberu_miru()
+	_ceka_na_vyber_miru = false
+	if _peace_dialog:
+		_peace_dialog.hide()
+	_aktualizuj_hlaseni_mirove_konference()
+
+func _otevri_mirovou_konferenci_z_fronty() -> void:
+	if not GameManager or not GameManager.has_method("ziskej_prvni_mirovou_konferenci_pro_hrace"):
+		return
+	if _peace_dialog and _peace_dialog.visible:
+		return
+
+	var conf = GameManager.ziskej_prvni_mirovou_konferenci_pro_hrace(GameManager.hrac_stat) as Dictionary
+	if conf.is_empty():
+		_aktualizuj_hlaseni_mirove_konference()
+		return
+
+	_active_peace_conference = conf.duplicate(true)
+	var winner = str(conf.get("winner", ""))
+	var loser = str(conf.get("loser", ""))
+	var points = int(conf.get("points", 0))
+	var max_rep = int(conf.get("max_reparations_turns", 0))
+
+	_peace_points_label.text = "Body: %d" % points
+	_peace_participants_label.text = "Ucastnici valky: %s vs %s" % [winner, loser]
+	_peace_selected_provinces = []
+	_ceka_na_vyber_miru = false
+	_peace_annex_check.button_pressed = false
+	_peace_vassal_check.button_pressed = false
+	_peace_reparations_slider.min_value = 0
+	_peace_reparations_slider.max_value = max(0, max_rep)
+	_peace_reparations_slider.value = 0
+
+	_aktualizuj_mirovou_konferenci_preview()
+	_pozicuj_mirovou_konferenci_dialog()
+	_peace_dialog.show()
+	if _peace_notice_panel:
+		_peace_notice_panel.hide()
+	_zamer_kameru_na_mirovou_konferenci()
+	# Start map focus/selection immediately, just like capital relocation targeting mode.
+	_spust_vyber_miru_na_mape(false)
+
+func _on_potvrdit_mirovou_konferenci() -> void:
+	if _active_peace_conference.is_empty():
+		return
+	if not GameManager.has_method("hrac_uzavri_mirovou_konferenci"):
+		return
+
+	var demands = {
+		"take_provinces": _peace_selected_provinces.size(),
+		"selected_provinces": _peace_selected_provinces.duplicate(),
+		"annex_all": bool(_peace_annex_check.button_pressed),
+		"make_vassal": bool(_peace_vassal_check.button_pressed),
+		"reparations_turns": int(_peace_reparations_slider.value)
+	}
+	var conf_id = int(_active_peace_conference.get("id", -1))
+	var result = GameManager.hrac_uzavri_mirovou_konferenci(GameManager.hrac_stat, conf_id, demands) as Dictionary
+	if not bool(result.get("ok", false)):
+		await zobraz_systemove_hlaseni("Mirova konference", str(result.get("reason", "Nepodarilo se potvrdit podminky.")))
+		return
+
+	if _peace_dialog:
+		_peace_dialog.hide()
+	_peace_notice_deferred_conf_id = -1
+	_aktualizuj_hlaseni_mirove_konference()
+	var map_node = _ziskej_map_node_pro_mir()
+	if map_node and map_node.has_method("zrus_rezim_vyberu_miru"):
+		map_node.zrus_rezim_vyberu_miru()
+	_ceka_na_vyber_miru = false
+	_active_peace_conference = {}
+	_peace_selected_provinces = []
+	_aktualizuj_hlaseni_mirove_konference()
+	await zobraz_systemove_hlaseni(
+		"Mirova konference",
+		"Podminky potvrzeny: prevedeno provincii %d, vazal: %s, reparace: %d kol." % [
+			int(result.get("transferred", 0)),
+			"ano" if bool(result.get("make_vassal", false)) else "ne",
+			int(result.get("reparations_turns", 0))
+		]
+	)
+	_obnov_otevreny_prehled_statu()
+	_aktualizuj_hlaseni_mirove_konference()
 
 func _parse_gift_amount(text: String) -> float:
 	var sanitized = text.strip_edges().replace(",", ".")
@@ -2617,6 +3428,16 @@ func _aktualizuj_pozice_popupu():
 		_zpravy_panel.position = Vector2(x, y)
 		_zpravy_panel.size = Vector2(zpravy_w, zpravy_h)
 
+	if _peace_notice_panel and _peace_notice_panel.visible:
+		_pozicuj_hlaseni_mirove_konference()
+		if _zpravy_panel and _zpravy_panel.visible:
+			var zpravy_rect2 = Rect2(_zpravy_panel.position, _zpravy_panel.size)
+			var peace_rect = Rect2(_peace_notice_panel.position, _peace_notice_panel.size)
+			if zpravy_rect2.intersects(peace_rect):
+				var new_y = peace_rect.position.y + peace_rect.size.y + POPUP_GAP
+				new_y = clampf(new_y, 8.0, maxf(8.0, viewport_size.y - _zpravy_panel.size.y - 8.0))
+				_zpravy_panel.position = Vector2(_zpravy_panel.position.x, new_y)
+
 	if system_message_popup:
 		var msg_w = clamp(viewport_size.x * 0.42, 440.0, 760.0)
 		var text_len = 0
@@ -2632,6 +3453,8 @@ func _aktualizuj_pozice_popupu():
 			msg_y += diplomacy_request_popup.size.y + POPUP_GAP
 		if _queue_preview_panel and _queue_preview_panel.visible:
 			msg_y += _queue_preview_panel.size.y + POPUP_GAP
+		if _peace_notice_panel and _peace_notice_panel.visible:
+			msg_y += _peace_notice_panel.size.y + POPUP_GAP
 		if _zpravy_panel and _zpravy_panel.visible:
 			msg_y += _zpravy_panel.size.y + POPUP_GAP
 		var max_msg_h = max(110.0, viewport_size.y - msg_y - 12.0)
@@ -2654,6 +3477,10 @@ func zobraz_systemove_hlaseni(titulek: String, text: String) -> void:
 	_system_message_ack = false
 	_aktualizuj_pozice_popupu()
 	system_message_popup.show()
+	if bool(GameManager.zpracovava_se_tah):
+		# Never block turn resolution on message acknowledgement.
+		_on_system_message_ok_pressed()
+		return
 	var wait_start_ms = Time.get_ticks_msec()
 
 	while is_instance_valid(system_message_popup) and system_message_popup.visible and not _system_message_ack:
@@ -3735,6 +4562,8 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 		gdp_pc_label.text = "HDP na osobu: $%.0f" % gdp_per_capita
 	else:
 		gdp_pc_label.text = "HDP na osobu: N/A"
+	_aktualizuj_mirove_overview_statistiky(owner_tag, owner_tag == player_tag)
+	_aktualizuj_tlacitko_vazalu(owner_tag == player_tag)
 
 	# Keep action preview inline with current metrics (no extra rows).
 	if owner_tag != player_tag:
@@ -3778,6 +4607,37 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 			if research_btn: research_btn.hide()
 	
 	panel.show()
+
+func _aktualizuj_mirove_overview_statistiky(owner_tag: String, je_hracuv_stat: bool) -> void:
+	if vassals_label == null or war_reparations_label == null:
+		return
+	if not je_hracuv_stat:
+		vassals_label.hide()
+		war_reparations_label.hide()
+		return
+
+	vassals_label.show()
+	war_reparations_label.show()
+
+	var tag = owner_tag.strip_edges().to_upper()
+	if tag == "":
+		vassals_label.text = "Vazalove: -"
+		war_reparations_label.text = "Valecne reparace: -"
+		return
+
+	var vassals_text = "-"
+	if GameManager.has_method("ziskej_vazaly_statu"):
+		var vassals = GameManager.ziskej_vazaly_statu(tag) as Array
+		vassals_text = ", ".join(vassals) if not vassals.is_empty() else "zadni"
+	vassals_label.text = "Vazalove: %s" % vassals_text
+
+	var repar_text = "zadne"
+	if GameManager.has_method("ziskej_aktivni_reparace_statu"):
+		var rep = GameManager.ziskej_aktivni_reparace_statu(tag) as Dictionary
+		var incoming = (rep.get("incoming", []) as Array).size()
+		var outgoing = (rep.get("outgoing", []) as Array).size()
+		repar_text = "+%d / -%d" % [incoming, outgoing]
+	war_reparations_label.text = "Valecne reparace: %s" % repar_text
 
 func _on_apply_ideology_pressed() -> void:
 	if current_viewed_tag == "" or current_viewed_tag != str(GameManager.hrac_stat).strip_edges().to_upper():
@@ -3836,6 +4696,7 @@ func _on_ideology_option_selected(index: int) -> void:
 # Triggered by right-clicking on the map
 func schovej_se():
 	panel.hide()
+	# Keep peace conference open until player exits manually.
 	if _research_dialog and _research_dialog.visible:
 		_zavri_vyzkum_dialog()
 	if research_btn:
@@ -3990,6 +4851,7 @@ func _on_alliance_level_selected(index: int):
 func _on_kolo_zmeneno():
 	_aktualizuj_popup_diplomatickych_zadosti()
 	_aktualizuj_panel_zprav()
+	_aktualizuj_hlaseni_mirove_konference()
 	# Keep research window open; player closes it manually.
 	if _research_dialog and _research_dialog.visible and GameManager:
 		_aktualizuj_vyzkum_dialog(str(GameManager.hrac_stat).strip_edges().to_upper())
@@ -4005,7 +4867,13 @@ func _aktualizuj_vztah_ui(target_tag: String):
 	if not relationship_label or not GameManager.has_method("ziskej_vztah_statu"):
 		return
 	var vztah = GameManager.ziskej_vztah_statu(GameManager.hrac_stat, target_tag)
-	relationship_label.text = "Nas vztah: %.1f" % vztah
+	var relation_suffix = ""
+	if GameManager.has_method("je_vazal_statu"):
+		if bool(GameManager.je_vazal_statu(target_tag, GameManager.hrac_stat)):
+			relation_suffix = " | Tvuj vazal"
+		elif bool(GameManager.je_vazal_statu(GameManager.hrac_stat, target_tag)):
+			relation_suffix = " | Tvuj overlord"
+	relationship_label.text = "Nas vztah: %.1f%s" % [vztah, relation_suffix]
 	relationship_label.show()
 	var zbyle_kola := 0
 	if GameManager.has_method("zbyva_kol_do_upravy_vztahu"):

@@ -111,6 +111,19 @@ const CAPITAL_RELOCATION_DISTANCE_STEP := 250.0
 const CAPITAL_RELOCATION_DISTANCE_RATIO_PER_STEP := 0.06
 const CAPITAL_RELOCATION_DISTANCE_MULTIPLIER_MAX := 2.25
 const PEACE_WAR_COOLDOWN_TURNS := 5
+const PEACE_POINTS_PER_OCCUPIED_CORE := 14
+const PEACE_POINTS_CAPITAL_BONUS := 25
+const PEACE_POINTS_BASE := 20
+const PEACE_COST_PROVINCE := 8
+const PEACE_COST_VASSAL := 40
+const PEACE_COST_REPARATIONS_PER_TURN := 6
+const PEACE_COST_ANNEX_BASE := 18
+const PEACE_MAX_REPARATIONS_TURNS := 12
+const WAR_REPARATIONS_RATE := 0.10
+const WAR_REPARATIONS_MIN_PAYMENT := 0.15
+const VASSAL_TRIBUTE_DEFAULT_RATE := 0.15
+const VASSAL_TRIBUTE_MIN_RATE := 0.0
+const VASSAL_TRIBUTE_MAX_RATE := 0.60
 const RELATION_MIN := -100.0
 const RELATION_MAX := 100.0
 const RELATION_STEP_PLAYER := 10.0
@@ -218,6 +231,11 @@ const VYZKUM_PROJEKTY := {
 var valky: Dictionary = {}
 var cekajici_kapitulace: Array = []
 var cekajici_mirove_nabidky: Array = []
+var cekajici_mirove_konference: Dictionary = {}
+var mirove_konference_seq: int = 0
+var vazalske_vztahy: Dictionary = {}
+var vazalske_odvody: Dictionary = {}
+var valecne_reparace: Array = []
 var aliance_statu: Dictionary = {}
 var neagresivni_smlouvy: Dictionary = {}
 var povalecne_cooldowny: Dictionary = {}
@@ -772,6 +790,11 @@ func _vytvor_save_state() -> Dictionary:
 		"valky": valky.duplicate(true),
 		"cekajici_kapitulace": cekajici_kapitulace.duplicate(true),
 		"cekajici_mirove_nabidky": cekajici_mirove_nabidky.duplicate(true),
+		"cekajici_mirove_konference": cekajici_mirove_konference.duplicate(true),
+		"mirove_konference_seq": mirove_konference_seq,
+		"vazalske_vztahy": vazalske_vztahy.duplicate(true),
+		"vazalske_odvody": vazalske_odvody.duplicate(true),
+		"valecne_reparace": valecne_reparace.duplicate(true),
 		"aliance_statu": aliance_statu.duplicate(true),
 		"neagresivni_smlouvy": neagresivni_smlouvy.duplicate(true),
 		"povalecne_cooldowny": povalecne_cooldowny.duplicate(true),
@@ -830,6 +853,11 @@ func _aplikuj_save_state(state: Dictionary) -> bool:
 	valky = (state.get("valky", {}) as Dictionary).duplicate(true)
 	cekajici_kapitulace = (state.get("cekajici_kapitulace", []) as Array).duplicate(true)
 	cekajici_mirove_nabidky = (state.get("cekajici_mirove_nabidky", []) as Array).duplicate(true)
+	cekajici_mirove_konference = (state.get("cekajici_mirove_konference", {}) as Dictionary).duplicate(true)
+	mirove_konference_seq = int(state.get("mirove_konference_seq", 0))
+	vazalske_vztahy = (state.get("vazalske_vztahy", {}) as Dictionary).duplicate(true)
+	vazalske_odvody = (state.get("vazalske_odvody", {}) as Dictionary).duplicate(true)
+	valecne_reparace = (state.get("valecne_reparace", []) as Array).duplicate(true)
 	aliance_statu = (state.get("aliance_statu", {}) as Dictionary).duplicate(true)
 	neagresivni_smlouvy = (state.get("neagresivni_smlouvy", {}) as Dictionary).duplicate(true)
 	povalecne_cooldowny = (state.get("povalecne_cooldowny", {}) as Dictionary).duplicate(true)
@@ -888,6 +916,11 @@ func reset_pro_novou_hru() -> void:
 	valky.clear()
 	cekajici_kapitulace.clear()
 	cekajici_mirove_nabidky.clear()
+	cekajici_mirove_konference.clear()
+	mirove_konference_seq = 0
+	vazalske_vztahy.clear()
+	vazalske_odvody.clear()
+	valecne_reparace.clear()
 	aliance_statu.clear()
 	neagresivni_smlouvy.clear()
 	povalecne_cooldowny.clear()
@@ -3287,7 +3320,7 @@ func hrac_prijmi_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> boo
 	if req_type == "peace":
 		if not jsou_ve_valce(player_clean, sender):
 			return false
-		_uzavri_mir_mezi(player_clean, sender)
+		uzavri_mir_a_zahaj_konferenci(player_clean, sender, "peace_offer")
 		if je_lidsky_stat(player_clean) or je_lidsky_stat(sender):
 			_pridej_popup_zucastnenym_hracum(player_clean, sender, "Diplomacie", "Mirova nabidka prijata: %s a %s uzavrely mir." % [player_clean, sender])
 		_zaloguj_globalni_zpravu("Diplomacie", "%s prijal od %s %s." % [player_clean, sender, req_name], "diplomacy")
@@ -3427,6 +3460,31 @@ func vycisti_stat_po_kapitulaci(tag: String):
 		var to_tag4 = _normalizuj_tag(str(req.get("to", "")))
 		if from_tag4 == target or to_tag4 == target:
 			cekajici_aliancni_zadosti.remove_at(i)
+
+	for subject_any in vazalske_vztahy.keys().duplicate():
+		var subject = _normalizuj_tag(str(subject_any))
+		var overlord = _normalizuj_tag(str(vazalske_vztahy[subject_any]))
+		if subject == target or overlord == target:
+			vazalske_vztahy.erase(subject_any)
+			vazalske_odvody.erase(subject)
+
+	for i in range(valecne_reparace.size() - 1, -1, -1):
+		var rep = valecne_reparace[i] as Dictionary
+		var from_tag_rep = _normalizuj_tag(str(rep.get("from", "")))
+		var to_tag_rep = _normalizuj_tag(str(rep.get("to", "")))
+		if from_tag_rep == target or to_tag_rep == target:
+			valecne_reparace.remove_at(i)
+
+	for key_any in cekajici_mirove_konference.keys().duplicate():
+		var queue = cekajici_mirove_konference[key_any] as Array
+		for i in range(queue.size() - 1, -1, -1):
+			var conf = queue[i] as Dictionary
+			var winner = _normalizuj_tag(str(conf.get("winner", "")))
+			var loser = _normalizuj_tag(str(conf.get("loser", "")))
+			if winner == target or loser == target:
+				queue.remove_at(i)
+		if queue.is_empty():
+			cekajici_mirove_konference.erase(key_any)
 
 	ai_kasy.erase(target)
 	_core_state_cache.erase(target)
@@ -3624,7 +3682,7 @@ func je_mirova_nabidka_cekajici(odesilatel: String, prijemce: String) -> bool:
 			return true
 	return false
 
-func _uzavri_mir_mezi(tag1: String, tag2: String):
+func _uzavri_mir_mezi(tag1: String, tag2: String, prepis_okupace: bool = true):
 	var cisty_tag1 = tag1.strip_edges().to_upper()
 	var cisty_tag2 = tag2.strip_edges().to_upper()
 	var klic1 = cisty_tag1 + "_" + cisty_tag2
@@ -3634,7 +3692,8 @@ func _uzavri_mir_mezi(tag1: String, tag2: String):
 	valky.erase(klic1)
 	valky.erase(klic2)
 	_nastav_povalecny_cooldown(cisty_tag1, cisty_tag2)
-	_prepis_okupace_po_miru(cisty_tag1, cisty_tag2)
+	if prepis_okupace:
+		_prepis_okupace_po_miru(cisty_tag1, cisty_tag2)
 
 	for i in range(cekajici_kapitulace.size() - 1, -1, -1):
 		var obr = str(cekajici_kapitulace[i].get("obrance", "")).strip_edges().to_upper()
@@ -3712,6 +3771,661 @@ func _ma_stat_cekajici_kapitulaci(state_tag: String) -> bool:
 		if _normalizuj_tag(str(zaznam.get("obrance", ""))) == wanted:
 			return true
 	return false
+
+func _ziskej_statove_provincie(owner_tag: String) -> Array:
+	var owner_clean = _normalizuj_tag(owner_tag)
+	var out: Array = []
+	if owner_clean == "" or owner_clean == "SEA":
+		return out
+	for p_id in map_data:
+		var d = map_data[p_id]
+		if _normalizuj_tag(str(d.get("owner", ""))) == owner_clean:
+			out.append(int(p_id))
+	return out
+
+func _je_mirova_provincie_porazeneho(vitez_tag: String, porazeny_tag: String, d: Dictionary) -> bool:
+	var winner = _normalizuj_tag(vitez_tag)
+	var loser = _normalizuj_tag(porazeny_tag)
+	if winner == "" or loser == "":
+		return false
+	var owner_tag = _normalizuj_tag(str(d.get("owner", "")))
+	if owner_tag == "SEA":
+		return false
+	var core_owner = _normalizuj_tag(str(d.get("core_owner", owner_tag)))
+	if owner_tag == loser:
+		return true
+	if owner_tag == winner and core_owner == loser:
+		return true
+	return false
+
+func _ziskej_mirove_provincie_porazeneho(vitez_tag: String, porazeny_tag: String) -> Array:
+	var out: Array = []
+	for p_id in map_data:
+		var d = map_data[p_id]
+		if _je_mirova_provincie_porazeneho(vitez_tag, porazeny_tag, d):
+			out.append(int(p_id))
+	return out
+
+func _ziskej_potencialni_mirove_provincie_dle_losera(porazeny_tag: String) -> Array:
+	var loser = _normalizuj_tag(porazeny_tag)
+	var out: Array = []
+	if loser == "":
+		return out
+	for p_id in map_data:
+		var d = map_data[p_id]
+		var owner_tag = _normalizuj_tag(str(d.get("owner", "")))
+		if owner_tag == "SEA":
+			continue
+		var core_owner = _normalizuj_tag(str(d.get("core_owner", owner_tag)))
+		if owner_tag == loser or core_owner == loser:
+			out.append(int(p_id))
+	return out
+
+func _spocitej_body_mirove_konference(vitez_tag: String, porazeny_tag: String, reason: String = "") -> int:
+	var vitez = _normalizuj_tag(vitez_tag)
+	var porazeny = _normalizuj_tag(porazeny_tag)
+	if vitez == "" or porazeny == "" or vitez == porazeny:
+		return 0
+
+	var occupied_cores := 0
+	for p_id in map_data:
+		var d = map_data[p_id]
+		if _normalizuj_tag(str(d.get("owner", ""))) != vitez:
+			continue
+		if _normalizuj_tag(str(d.get("core_owner", ""))) == porazeny:
+			occupied_cores += 1
+
+	var body = PEACE_POINTS_BASE + (occupied_cores * PEACE_POINTS_PER_OCCUPIED_CORE)
+	var porazeny_capital = _ziskej_hlavni_mesto_statu(porazeny)
+	if porazeny_capital > 0 and map_data.has(porazeny_capital):
+		if _normalizuj_tag(str(map_data[porazeny_capital].get("owner", ""))) == vitez:
+			body += PEACE_POINTS_CAPITAL_BONUS
+
+	if reason == "capitulation":
+		body += 10
+
+	var sila_vitez = ziskej_silu_armady_statu(vitez) as Dictionary
+	var sila_porazeny = ziskej_silu_armady_statu(porazeny) as Dictionary
+	var v_total = int(sila_vitez.get("total", 0))
+	var p_total = int(sila_porazeny.get("total", 0))
+	if v_total > p_total:
+		body += min(25, int(round(float(v_total - p_total) / 1200.0)))
+
+	return max(12, body)
+
+func _spocitej_cenu_mirovych_pozadavku(porazeny_tag: String, provinces_to_take: int, annex_all: bool, make_vassal: bool, reparations_turns: int) -> int:
+	var loser = _normalizuj_tag(porazeny_tag)
+	var loser_provinces = _ziskej_potencialni_mirove_provincie_dle_losera(loser)
+	var max_take = min(provinces_to_take, loser_provinces.size())
+	var cost := 0
+	if annex_all:
+		cost += PEACE_COST_ANNEX_BASE + (loser_provinces.size() * PEACE_COST_PROVINCE)
+	else:
+		cost += max_take * PEACE_COST_PROVINCE
+	if make_vassal:
+		cost += PEACE_COST_VASSAL
+	var clamped_turns = clampi(reparations_turns, 0, PEACE_MAX_REPARATIONS_TURNS)
+	cost += clamped_turns * PEACE_COST_REPARATIONS_PER_TURN
+	return max(0, cost)
+
+func spocitej_cenu_mirovych_pozadavku(porazeny_tag: String, provinces_to_take: int, annex_all: bool, make_vassal: bool, reparations_turns: int) -> int:
+	return _spocitej_cenu_mirovych_pozadavku(porazeny_tag, provinces_to_take, annex_all, make_vassal, reparations_turns)
+
+func _ziskej_profile_statu_pro_mir(tag: String) -> Dictionary:
+	var wanted = _normalizuj_tag(tag)
+	for p_id in map_data:
+		var d = map_data[p_id]
+		if _normalizuj_tag(str(d.get("owner", ""))) != wanted:
+			continue
+		return {
+			"country_name": str(d.get("country_name", wanted)),
+			"ideology": str(d.get("ideology", ""))
+		}
+	# Fallback when the state has no currently owned land (fully occupied),
+	# but still has core provinces on map.
+	for p_id2 in map_data:
+		var d2 = map_data[p_id2]
+		if _normalizuj_tag(str(d2.get("core_owner", ""))) != wanted:
+			continue
+		return {
+			"country_name": str(d2.get("country_name", wanted)),
+			"ideology": str(d2.get("ideology", ""))
+		}
+	return {
+		"country_name": wanted,
+		"ideology": ""
+	}
+
+func _obnov_okupovana_uzemi_porazeneho(vitez_tag: String, porazeny_tag: String) -> int:
+	var winner = _normalizuj_tag(vitez_tag)
+	var loser = _normalizuj_tag(porazeny_tag)
+	if winner == "" or loser == "" or winner == loser:
+		return 0
+
+	var loser_profile = _ziskej_profile_statu_pro_mir(loser)
+	var restored := 0
+	for p_id in map_data:
+		var d = map_data[p_id]
+		if not _je_mirova_provincie_porazeneho(winner, loser, d):
+			continue
+		if _normalizuj_tag(str(d.get("owner", ""))) == loser:
+			continue
+		d["owner"] = loser
+		d["core_owner"] = loser
+		d["country_name"] = str(loser_profile.get("country_name", loser))
+		d["ideology"] = str(loser_profile.get("ideology", ""))
+		d["army_owner"] = loser if int(d.get("soldiers", 0)) > 0 else ""
+		restored += 1
+
+	return restored
+
+func _anektuj_cely_stat(vitez_tag: String, porazeny_tag: String) -> Dictionary:
+	var vitez = _normalizuj_tag(vitez_tag)
+	var porazeny = _normalizuj_tag(porazeny_tag)
+	var prevedeno := 0
+	var profile = _ziskej_profile_statu_pro_mir(vitez)
+	for p_id in map_data:
+		var d = map_data[p_id]
+		if not _je_mirova_provincie_porazeneho(vitez, porazeny, d):
+			continue
+		d["owner"] = vitez
+		d["core_owner"] = vitez
+		d["country_name"] = str(profile.get("country_name", vitez))
+		d["ideology"] = str(profile.get("ideology", ""))
+		d["army_owner"] = vitez if int(d.get("soldiers", 0)) > 0 else ""
+		if bool(d.get("is_capital", false)):
+			d["is_capital"] = false
+		prevedeno += 1
+
+	# Ensure the winner has exactly one capital.
+	var winner_capital = _ziskej_hlavni_mesto_statu(vitez)
+	if winner_capital <= 0:
+		var provinces = _ziskej_statove_provincie(vitez)
+		if not provinces.is_empty() and map_data.has(int(provinces[0])):
+			map_data[int(provinces[0])]["is_capital"] = true
+
+	return {"transferred": prevedeno}
+
+func _vezmi_cast_provincii(vitez_tag: String, porazeny_tag: String, count: int) -> Dictionary:
+	var vitez = _normalizuj_tag(vitez_tag)
+	var porazeny = _normalizuj_tag(porazeny_tag)
+	var wanted = max(0, count)
+	if wanted <= 0:
+		return {"transferred": 0}
+
+	var candidates: Array = []
+	for p_id in map_data:
+		var d = map_data[p_id]
+		if not _je_mirova_provincie_porazeneho(vitez, porazeny, d):
+			continue
+		var score = float(d.get("gdp", 0.0)) * 1000.0 + float(d.get("population", 0))
+		if bool(d.get("is_capital", false)):
+			score += 5000000.0
+		candidates.append({"id": int(p_id), "score": score})
+
+	candidates.sort_custom(func(a, b):
+		return float((a as Dictionary).get("score", 0.0)) > float((b as Dictionary).get("score", 0.0))
+	)
+
+	var profile = _ziskej_profile_statu_pro_mir(vitez)
+	var transferred := 0
+	for row_any in candidates:
+		if transferred >= wanted:
+			break
+		var row = row_any as Dictionary
+		var pid = int(row.get("id", -1))
+		if pid < 0 or not map_data.has(pid):
+			continue
+		var d = map_data[pid]
+		d["owner"] = vitez
+		d["core_owner"] = vitez
+		d["country_name"] = str(profile.get("country_name", vitez))
+		d["ideology"] = str(profile.get("ideology", ""))
+		d["army_owner"] = vitez if int(d.get("soldiers", 0)) > 0 else ""
+		if bool(d.get("is_capital", false)):
+			d["is_capital"] = false
+		transferred += 1
+
+	return {"transferred": transferred}
+
+func _vezmi_konkretni_provincie(vitez_tag: String, porazeny_tag: String, selected_ids: Array) -> Dictionary:
+	var vitez = _normalizuj_tag(vitez_tag)
+	var porazeny = _normalizuj_tag(porazeny_tag)
+	if selected_ids.is_empty():
+		return {"transferred": 0}
+
+	var profile = _ziskej_profile_statu_pro_mir(vitez)
+	var transferred := 0
+	for raw_id in selected_ids:
+		var pid = int(raw_id)
+		if not map_data.has(pid):
+			continue
+		var d = map_data[pid]
+		if not _je_mirova_provincie_porazeneho(vitez, porazeny, d):
+			continue
+		d["owner"] = vitez
+		d["core_owner"] = vitez
+		d["country_name"] = str(profile.get("country_name", vitez))
+		d["ideology"] = str(profile.get("ideology", ""))
+		d["army_owner"] = vitez if int(d.get("soldiers", 0)) > 0 else ""
+		if bool(d.get("is_capital", false)):
+			d["is_capital"] = false
+		transferred += 1
+
+	return {"transferred": transferred}
+
+func _nastav_vazala(overlord_tag: String, subject_tag: String) -> void:
+	var overlord = _normalizuj_tag(overlord_tag)
+	var subject = _normalizuj_tag(subject_tag)
+	if overlord == "" or subject == "" or overlord == subject:
+		return
+	vazalske_vztahy[subject] = overlord
+	vazalske_odvody[subject] = float(vazalske_odvody.get(subject, VASSAL_TRIBUTE_DEFAULT_RATE))
+	_uprav_vztah_statu_bez_cooldown(overlord, subject, 35.0)
+	nastav_uroven_aliance(overlord, subject, ALLIANCE_FULL, true)
+	if not ma_neagresivni_smlouvu(overlord, subject):
+		uzavrit_neagresivni_smlouvu(overlord, subject)
+
+func _pridej_valecne_reparace(from_tag: String, to_tag: String, turns: int) -> void:
+	var from_clean = _normalizuj_tag(from_tag)
+	var to_clean = _normalizuj_tag(to_tag)
+	var t = clampi(turns, 0, PEACE_MAX_REPARATIONS_TURNS)
+	if from_clean == "" or to_clean == "" or from_clean == to_clean or t <= 0:
+		return
+	valecne_reparace.append({
+		"from": from_clean,
+		"to": to_clean,
+		"remaining_turns": t,
+		"rate": WAR_REPARATIONS_RATE
+	})
+
+func _spocitej_cisty_prijem_statu(tag: String) -> float:
+	var state = _normalizuj_tag(tag)
+	if state == "" or state == "SEA":
+		return 0.0
+	var hdp := 0.0
+	var soldiers := 0
+	for p_id in map_data:
+		var d = map_data[p_id]
+		if _normalizuj_tag(str(d.get("owner", ""))) != state:
+			continue
+		hdp += float(d.get("gdp", 0.0))
+		soldiers += int(d.get("soldiers", 0))
+	var income_rate = ziskej_prijmovou_sazbu_hdp(state)
+	var upkeep = ziskej_udrzbu_za_vojaka(state)
+	return (hdp * income_rate) - (float(soldiers) * upkeep)
+
+func ziskej_cisty_prijem_statu(tag: String) -> float:
+	return _spocitej_cisty_prijem_statu(tag)
+
+func ziskej_vazalsky_odvod(overlord_tag: String, subject_tag: String) -> float:
+	var overlord = _normalizuj_tag(overlord_tag)
+	var subject = _normalizuj_tag(subject_tag)
+	if overlord == "" or subject == "":
+		return 0.0
+	if ziskej_overlorda_statu(subject) != overlord:
+		return 0.0
+	var rate = float(vazalske_odvody.get(subject, VASSAL_TRIBUTE_DEFAULT_RATE))
+	return clamp(rate, VASSAL_TRIBUTE_MIN_RATE, VASSAL_TRIBUTE_MAX_RATE)
+
+func nastav_vazalsky_odvod(overlord_tag: String, subject_tag: String, procenta: float) -> bool:
+	var overlord = _normalizuj_tag(overlord_tag)
+	var subject = _normalizuj_tag(subject_tag)
+	if overlord == "" or subject == "":
+		return false
+	if ziskej_overlorda_statu(subject) != overlord:
+		return false
+	var rate = clamp(float(procenta) / 100.0, VASSAL_TRIBUTE_MIN_RATE, VASSAL_TRIBUTE_MAX_RATE)
+	vazalske_odvody[subject] = rate
+	return true
+
+func _zpracuj_vazalske_odvody_za_kolo() -> void:
+	if vazalske_vztahy.is_empty():
+		return
+	for subject_any in vazalske_vztahy.keys().duplicate():
+		var subject = _normalizuj_tag(str(subject_any))
+		var overlord = _normalizuj_tag(str(vazalske_vztahy[subject_any]))
+		if subject == "" or overlord == "" or subject == overlord:
+			continue
+		if not _stat_existuje(subject) or not _stat_existuje(overlord):
+			continue
+
+		var rate = clamp(float(vazalske_odvody.get(subject, VASSAL_TRIBUTE_DEFAULT_RATE)), VASSAL_TRIBUTE_MIN_RATE, VASSAL_TRIBUTE_MAX_RATE)
+		var subject_income = max(0.0, _spocitej_cisty_prijem_statu(subject))
+		var planned = subject_income * rate
+		if planned <= 0.0:
+			continue
+		var subject_cash = _ziskej_kasu_statu(subject)
+		var paid = clamp(planned, 0.0, max(0.0, subject_cash))
+		if paid <= 0.0:
+			continue
+		_nastav_kasu_statu(subject, subject_cash - paid)
+		_nastav_kasu_statu(overlord, _ziskej_kasu_statu(overlord) + paid)
+
+func _zpracuj_valecne_reparace_za_kolo() -> void:
+	if valecne_reparace.is_empty():
+		return
+
+	var active: Array = []
+	for rep_any in valecne_reparace:
+		var rep = rep_any as Dictionary
+		var from_tag = _normalizuj_tag(str(rep.get("from", "")))
+		var to_tag = _normalizuj_tag(str(rep.get("to", "")))
+		var remaining = int(rep.get("remaining_turns", 0))
+		if from_tag == "" or to_tag == "" or from_tag == to_tag or remaining <= 0:
+			continue
+		if not _stat_existuje(from_tag) or not _stat_existuje(to_tag):
+			continue
+
+		var rate = clamp(float(rep.get("rate", WAR_REPARATIONS_RATE)), 0.01, 0.50)
+		var base_income = max(0.0, _spocitej_cisty_prijem_statu(from_tag))
+		var planned = max(WAR_REPARATIONS_MIN_PAYMENT, base_income * rate)
+		var from_cash = _ziskej_kasu_statu(from_tag)
+		var paid = clamp(planned, 0.0, max(0.0, from_cash + 100.0))
+		if paid > 0.0:
+			_nastav_kasu_statu(from_tag, from_cash - paid)
+			_nastav_kasu_statu(to_tag, _ziskej_kasu_statu(to_tag) + paid)
+
+		rep["remaining_turns"] = remaining - 1
+		if int(rep.get("remaining_turns", 0)) > 0:
+			active.append(rep)
+
+	valecne_reparace = active
+
+func _odstran_neplatne_mirove_konference() -> void:
+	var keys = cekajici_mirove_konference.keys().duplicate()
+	for k in keys:
+		var player_tag = _normalizuj_tag(str(k))
+		if player_tag == "" or not cekajici_mirove_konference.has(k):
+			cekajici_mirove_konference.erase(k)
+			continue
+		var queue = cekajici_mirove_konference[k] as Array
+		for i in range(queue.size() - 1, -1, -1):
+			var item = queue[i] as Dictionary
+			var winner = _normalizuj_tag(str(item.get("winner", "")))
+			var loser = _normalizuj_tag(str(item.get("loser", "")))
+			if winner == "" or loser == "" or winner == loser:
+				queue.remove_at(i)
+				continue
+			if not _stat_existuje(winner) and not _stat_existuje(loser):
+				queue.remove_at(i)
+		if queue.is_empty():
+			cekajici_mirove_konference.erase(k)
+
+func _vytvor_mirovou_konferenci(vitez_tag: String, porazeny_tag: String, reason: String = "peace") -> Dictionary:
+	var winner = _normalizuj_tag(vitez_tag)
+	var loser = _normalizuj_tag(porazeny_tag)
+	if winner == "" or loser == "" or winner == loser:
+		return {}
+
+	mirove_konference_seq += 1
+	var points = _spocitej_body_mirove_konference(winner, loser, reason)
+	var loser_provinces = _ziskej_mirove_provincie_porazeneho(winner, loser)
+	return {
+		"id": mirove_konference_seq,
+		"winner": winner,
+		"loser": loser,
+		"reason": reason,
+		"points": points,
+		"loser_province_count": loser_provinces.size(),
+		"max_reparations_turns": PEACE_MAX_REPARATIONS_TURNS
+	}
+
+func _auto_navrh_mirovych_podminek(conf: Dictionary) -> Dictionary:
+	var points = int(conf.get("points", 0))
+	var loser_count = int(conf.get("loser_province_count", 0))
+	var take_count = min(loser_count, int(points / max(1, PEACE_COST_PROVINCE)))
+	var annex_cost = _spocitej_cenu_mirovych_pozadavku(str(conf.get("loser", "")), 0, true, false, 0)
+	var annex_all = points >= annex_cost and loser_count <= 7
+	var vassal = (not annex_all) and points >= (PEACE_COST_VASSAL + PEACE_COST_PROVINCE)
+	var remaining = max(0, points - _spocitej_cenu_mirovych_pozadavku(str(conf.get("loser", "")), take_count if not annex_all else 0, annex_all, vassal, 0))
+	var repar_turns = min(PEACE_MAX_REPARATIONS_TURNS, int(remaining / max(1, PEACE_COST_REPARATIONS_PER_TURN)))
+	return {
+		"take_provinces": 0 if annex_all else take_count,
+		"annex_all": annex_all,
+		"make_vassal": vassal,
+		"reparations_turns": repar_turns
+	}
+
+func _proved_mirovou_konferenci(conf: Dictionary, demands: Dictionary) -> Dictionary:
+	var winner = _normalizuj_tag(str(conf.get("winner", "")))
+	var loser = _normalizuj_tag(str(conf.get("loser", "")))
+	if winner == "" or loser == "" or winner == loser:
+		return {"ok": false, "reason": "Neplatna mirova konference."}
+
+	var points = int(conf.get("points", 0))
+	var annex_all = bool(demands.get("annex_all", false))
+	var take_count = int(demands.get("take_provinces", 0))
+	var selected_raw = (demands.get("selected_provinces", []) as Array).duplicate()
+	var selected_provinces: Array = []
+	for raw_id in selected_raw:
+		var pid = int(raw_id)
+		if not map_data.has(pid):
+			continue
+		if selected_provinces.has(pid):
+			continue
+		var pd = map_data[pid]
+		if not _je_mirova_provincie_porazeneho(winner, loser, pd):
+			continue
+		selected_provinces.append(pid)
+	var make_vassal = bool(demands.get("make_vassal", false))
+	var repar_turns = int(demands.get("reparations_turns", 0))
+	if not annex_all and not selected_provinces.is_empty():
+		take_count = selected_provinces.size()
+
+	var cost = _spocitej_cenu_mirovych_pozadavku(loser, take_count, annex_all, make_vassal, repar_turns)
+	if cost > points:
+		return {"ok": false, "reason": "Nedostatek bodu konference.", "cost": cost, "points": points}
+
+	var transferred := 0
+	if annex_all:
+		var annex_result = _anektuj_cely_stat(winner, loser)
+		transferred = int(annex_result.get("transferred", 0))
+	else:
+		# Return occupied provinces to the loser first, then apply exact player demands.
+		# This allows shaping peace terms (including giving back occupied capital).
+		_obnov_okupovana_uzemi_porazeneho(winner, loser)
+		var partial_result: Dictionary
+		if not selected_provinces.is_empty():
+			partial_result = _vezmi_konkretni_provincie(winner, loser, selected_provinces)
+		else:
+			partial_result = _vezmi_cast_provincii(winner, loser, take_count)
+		transferred = int(partial_result.get("transferred", 0))
+
+	if make_vassal and _stat_existuje(loser):
+		_nastav_vazala(winner, loser)
+	if repar_turns > 0 and _stat_existuje(loser):
+		_pridej_valecne_reparace(loser, winner, repar_turns)
+
+	if not _stat_existuje(loser):
+		vycisti_stat_po_kapitulaci(loser)
+
+	var map_loader = _get_map_loader()
+	if map_loader:
+		if "provinces" in map_loader:
+			map_loader.provinces = map_data
+		if map_loader.has_method("_aktualizuj_aktivni_mapovy_mod"):
+			map_loader._aktualizuj_aktivni_mapovy_mod()
+		if map_loader.has_method("aktualizuj_ikony_armad"):
+			map_loader.aktualizuj_ikony_armad()
+
+	_invalidate_turn_cache()
+	if not map_data.is_empty():
+		spocitej_prijem(map_data, false)
+	kolo_zmeneno.emit()
+
+	var msg = "%s vyuzilo mirove body proti %s (cena %d/%d)." % [winner, loser, cost, points]
+	_zaloguj_globalni_zpravu("Valka", msg, "war")
+	return {
+		"ok": true,
+		"winner": winner,
+		"loser": loser,
+		"points": points,
+		"cost": cost,
+		"transferred": transferred,
+		"annex_all": annex_all,
+		"make_vassal": make_vassal,
+		"reparations_turns": repar_turns
+	}
+
+func uzavri_mir_a_zahaj_konferenci(tag1: String, tag2: String, reason: String = "peace") -> Dictionary:
+	var a = _normalizuj_tag(tag1)
+	var b = _normalizuj_tag(tag2)
+	if a == "" or b == "" or a == b:
+		return {"ok": false, "reason": "Neplatne staty."}
+
+	var conf_a = _vytvor_mirovou_konferenci(a, b, reason)
+	var conf_b = _vytvor_mirovou_konferenci(b, a, reason)
+	# Keep occupation/core state intact until conference demands are finalized,
+	# so the winner can return occupied land (including captured capitals).
+	_uzavri_mir_mezi(a, b, false)
+	var winner_conf = conf_a if int(conf_a.get("points", 0)) >= int(conf_b.get("points", 0)) else conf_b
+	if winner_conf.is_empty():
+		return {"ok": false, "reason": "Mirovou konferenci se nepodarilo pripravit."}
+
+	var winner = _normalizuj_tag(str(winner_conf.get("winner", "")))
+	if je_lidsky_stat(winner):
+		if not cekajici_mirove_konference.has(winner):
+			cekajici_mirove_konference[winner] = []
+		(cekajici_mirove_konference[winner] as Array).append(winner_conf)
+		_pridej_popup_hraci(winner, "Mirova konference", "Po valce s %s muzes rozdelit pozadavky (body: %d)." % [str(winner_conf.get("loser", "?")), int(winner_conf.get("points", 0))])
+		return {"ok": true, "queued_for_player": true, "conference": winner_conf}
+
+	var auto_demands = _auto_navrh_mirovych_podminek(winner_conf)
+	var result = _proved_mirovou_konferenci(winner_conf, auto_demands)
+	result["queued_for_player"] = false
+	return result
+
+func ziskej_prvni_mirovou_konferenci_pro_hrace(hrac_tag: String) -> Dictionary:
+	_odstran_neplatne_mirove_konference()
+	var player = _normalizuj_tag(hrac_tag)
+	if player == "" or not cekajici_mirove_konference.has(player):
+		return {}
+	var queue = cekajici_mirove_konference[player] as Array
+	if queue.is_empty():
+		return {}
+	return (queue[0] as Dictionary).duplicate(true)
+
+func ziskej_pocet_mirovych_konferenci_pro_hrace(hrac_tag: String) -> int:
+	_odstran_neplatne_mirove_konference()
+	var player = _normalizuj_tag(hrac_tag)
+	if player == "" or not cekajici_mirove_konference.has(player):
+		return 0
+	var queue = cekajici_mirove_konference[player] as Array
+	return queue.size()
+
+func hrac_uzavri_mirovou_konferenci(hrac_tag: String, conference_id: int, demands: Dictionary) -> Dictionary:
+	var player = _normalizuj_tag(hrac_tag)
+	if player == "" or not cekajici_mirove_konference.has(player):
+		return {"ok": false, "reason": "Nenalezena cekajici mirova konference."}
+	var queue = cekajici_mirove_konference[player] as Array
+	var idx := -1
+	for i in range(queue.size()):
+		if int((queue[i] as Dictionary).get("id", -1)) == conference_id:
+			idx = i
+			break
+	if idx < 0:
+		return {"ok": false, "reason": "Konference uz neni dostupna."}
+
+	var conf = queue[idx] as Dictionary
+	if _normalizuj_tag(str(conf.get("winner", ""))) != player:
+		return {"ok": false, "reason": "Pouze vitez konference muze potvrdit podminky."}
+
+	var result = _proved_mirovou_konferenci(conf, demands)
+	if bool(result.get("ok", false)):
+		queue.remove_at(idx)
+		if queue.is_empty():
+			cekajici_mirove_konference.erase(player)
+	return result
+
+func ziskej_vazaly_statu(overlord_tag: String) -> Array:
+	var overlord = _normalizuj_tag(overlord_tag)
+	var out: Array = []
+	if overlord == "":
+		return out
+	for subject_any in vazalske_vztahy.keys():
+		var subject = _normalizuj_tag(str(subject_any))
+		var lord = _normalizuj_tag(str(vazalske_vztahy[subject_any]))
+		if subject == "" or lord == "":
+			continue
+		if lord == overlord:
+			out.append(subject)
+	out.sort()
+	return out
+
+func ziskej_overlorda_statu(subject_tag: String) -> String:
+	var subject = _normalizuj_tag(subject_tag)
+	if subject == "":
+		return ""
+	return _normalizuj_tag(str(vazalske_vztahy.get(subject, "")))
+
+func je_vazal_statu(subject_tag: String, overlord_tag: String = "") -> bool:
+	var subject = _normalizuj_tag(subject_tag)
+	if subject == "":
+		return false
+	var current_lord = ziskej_overlorda_statu(subject)
+	if current_lord == "":
+		return false
+	if _normalizuj_tag(overlord_tag) == "":
+		return true
+	return current_lord == _normalizuj_tag(overlord_tag)
+
+func jsou_vazalsky_spojeni(tag_a: String, tag_b: String) -> bool:
+	var a = _normalizuj_tag(tag_a)
+	var b = _normalizuj_tag(tag_b)
+	if a == "" or b == "" or a == b:
+		return false
+	return je_vazal_statu(a, b) or je_vazal_statu(b, a)
+
+func muze_vstoupit_na_uzemi(actor_tag: String, owner_tag: String) -> bool:
+	var actor = _normalizuj_tag(actor_tag)
+	var owner_state = _normalizuj_tag(owner_tag)
+	if actor == "" or owner_state == "":
+		return false
+	if owner_state == "SEA":
+		return true
+	if actor == owner_state:
+		return true
+	if jsou_vazalsky_spojeni(actor, owner_state):
+		return true
+	if ziskej_uroven_aliance(actor, owner_state) >= ALLIANCE_DEFENSE:
+		return true
+	return false
+
+func propustit_vazala(overlord_tag: String, subject_tag: String) -> bool:
+	var overlord = _normalizuj_tag(overlord_tag)
+	var subject = _normalizuj_tag(subject_tag)
+	if overlord == "" or subject == "" or overlord == subject:
+		return false
+	if ziskej_overlorda_statu(subject) != overlord:
+		return false
+	vazalske_vztahy.erase(subject)
+	vazalske_odvody.erase(subject)
+	_uprav_vztah_statu_bez_cooldown(overlord, subject, -20.0)
+	if ziskej_uroven_aliance(overlord, subject) > ALLIANCE_NONE:
+		nastav_uroven_aliance(overlord, subject, ALLIANCE_NONE, true)
+	return true
+
+func ziskej_aktivni_reparace_statu(state_tag: String) -> Dictionary:
+	var state = _normalizuj_tag(state_tag)
+	var incoming: Array = []
+	var outgoing: Array = []
+	if state == "":
+		return {"incoming": incoming, "outgoing": outgoing}
+
+	for rep_any in valecne_reparace:
+		var rep = rep_any as Dictionary
+		var from_tag = _normalizuj_tag(str(rep.get("from", "")))
+		var to_tag = _normalizuj_tag(str(rep.get("to", "")))
+		var remaining = int(rep.get("remaining_turns", 0))
+		if remaining <= 0:
+			continue
+		if to_tag == state:
+			incoming.append(rep.duplicate(true))
+		elif from_tag == state:
+			outgoing.append(rep.duplicate(true))
+
+	return {"incoming": incoming, "outgoing": outgoing}
 
 func _spocitej_silu_statu(tag: String) -> int:
 	var hledany = tag.strip_edges().to_upper()
@@ -4242,7 +4956,7 @@ func _vyhodnot_mirove_nabidky_pred_ai():
 			continue
 
 		if _ma_ai_prijmout_mir(prijemce, odesilatel):
-			_uzavri_mir_mezi(odesilatel, prijemce)
+			uzavri_mir_a_zahaj_konferenci(odesilatel, prijemce, "peace_offer")
 			var ok_msg = "Mirova nabidka prijata: %s a %s uzavrely mir." % [odesilatel, prijemce]
 			print(ok_msg)
 			_zaloguj_globalni_zpravu("Diplomacie", ok_msg, "diplomacy")
@@ -4566,6 +5280,8 @@ func ukonci_kolo():
 	phase_start_ms = Time.get_ticks_msec()
 
 	aktualni_kolo += 1
+	_zpracuj_valecne_reparace_za_kolo()
+	_zpracuj_vazalske_odvody_za_kolo()
 	
 	var hotove_stavby = []
 	var hlaseni_dokoncene_stavby: Dictionary = {}

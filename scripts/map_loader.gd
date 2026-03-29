@@ -23,6 +23,11 @@ var ceka_na_cil_presunu: bool = false
 var ceka_na_cil_hlavniho_mesta: bool = false
 var dostupne_cile_hlavniho_mesta: Array = []
 var stat_presunu_hlavniho_mesta: String = ""
+var ceka_na_cil_miru: bool = false
+var stat_mirove_konference_vitez: String = ""
+var stat_mirove_konference_porazeny: String = ""
+var dostupne_cile_miru: Array = []
+var vybrane_cile_miru: Array = []
 var ceka_na_hromadny_cil_presunu: bool = false
 var hromadny_presun_zdroje: Array = []
 var hromadne_vybrane_provincie: Array = []
@@ -1227,12 +1232,10 @@ func je_platna_provincie_pro_hromadny_vyber(prov_id: int) -> bool:
 		return false
 
 	var d = provinces[prov_id]
-	var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
-	var armada_owner = str(d.get("army_owner", "")).strip_edges().to_upper()
-	var je_more = _je_more_provincie(prov_id)
-	var je_moje = (owner_tag == GameManager.hrac_stat)
-	var je_moje_more = (je_more and armada_owner == GameManager.hrac_stat)
-	return je_moje or je_moje_more
+	var owner_tag = _ziskej_vlastnika_armady_v_provincii(prov_id)
+	if owner_tag != GameManager.hrac_stat:
+		return false
+	return int(d.get("soldiers", 0)) > 0
 
 func aktivuj_rezim_hromadneho_presunu(from_ids: Array) -> bool:
 	hromadny_presun_zdroje.clear()
@@ -1615,9 +1618,25 @@ func _ma_pobrezni_pristup_k_dostupnemu_mori(land_id: int, reachable_sea: Diction
 func _ziskej_vlastnika_armady_v_provincii(prov_id: int) -> String:
 	if not provinces.has(prov_id):
 		return ""
+	var army_owner = str(provinces[prov_id].get("army_owner", "")).strip_edges().to_upper()
+	if army_owner != "":
+		return army_owner
 	if _je_more_provincie(prov_id):
-		return str(provinces[prov_id].get("army_owner", "")).strip_edges().to_upper()
+		return ""
 	return str(provinces[prov_id].get("owner", "")).strip_edges().to_upper()
+
+func _ziskej_braniciho_vlastnika_v_provincii(prov_id: int) -> String:
+	if not provinces.has(prov_id):
+		return ""
+	var p = provinces[prov_id]
+	if _je_more_provincie(prov_id):
+		return str(p.get("army_owner", "")).strip_edges().to_upper()
+	var owner_tag = str(p.get("owner", "")).strip_edges().to_upper()
+	var army_owner = str(p.get("army_owner", "")).strip_edges().to_upper()
+	var soldiers = int(p.get("soldiers", 0))
+	if soldiers > 0 and army_owner != "":
+		return army_owner
+	return owner_tag
 
 func _ziskej_pozici_pristavu_v_provincii(prov_id: int) -> Vector2:
 	var center = _ziskej_lokalni_pozici_provincie(prov_id)
@@ -1664,8 +1683,12 @@ func _je_pruchozi_mezikrok_presunu(prov_id: int, owner_tag: String) -> bool:
 		return false
 	if _je_more_provincie(prov_id):
 		return not _ma_nepratelskou_posadku_na_mori(prov_id, owner_tag)
-	var prov_owner = str(provinces[prov_id].get("owner", "")).strip_edges().to_upper()
-	return prov_owner == owner_tag
+	var land_owner = str(provinces[prov_id].get("owner", "")).strip_edges().to_upper()
+	if land_owner == "":
+		return false
+	if GameManager.has_method("muze_vstoupit_na_uzemi"):
+		return bool(GameManager.muze_vstoupit_na_uzemi(owner_tag, land_owner))
+	return land_owner == owner_tag
 
 func _ziskej_krokove_sousedy_presunu(from_id: int) -> Array:
 	var sousedi: Array = []
@@ -1788,10 +1811,7 @@ func zobraz_nahled_presunu(path: Array):
 	var owner_tag = _ziskej_vlastnika_armady_v_provincii(from_id)
 	var target_owner_tag = ""
 	if provinces.has(to_id):
-		if _je_more_provincie(to_id):
-			target_owner_tag = str(provinces[to_id].get("army_owner", "")).strip_edges().to_upper()
-		else:
-			target_owner_tag = str(provinces[to_id].get("owner", "")).strip_edges().to_upper()
+		target_owner_tag = _ziskej_braniciho_vlastnika_v_provincii(to_id)
 	var is_attack_preview = (target_owner_tag != "" and owner_tag != "" and owner_tag != target_owner_tag and target_owner_tag != "SEA")
 	var col = _ziskej_barvu_overlay_statu(owner_tag, is_attack_preview)
 	var width = 2.2
@@ -1901,6 +1921,134 @@ func aktivuj_rezim_vyberu_cile(from_id: int, max_troops: int):
 	_invalidate_naval_reachability_cache()
 	vycisti_nahled_presunu()
 	print("Klikni na mapu pro vyber cile presunu.")
+
+func _ziskej_provincie_statu_v_mape(state_tag: String) -> Array:
+	var out: Array = []
+	var wanted = state_tag.strip_edges().to_upper()
+	if wanted == "" or wanted == "SEA":
+		return out
+	for p_id_any in provinces.keys():
+		var p_id = int(p_id_any)
+		if not provinces.has(p_id):
+			continue
+		var d = provinces[p_id]
+		if str(d.get("owner", "")).strip_edges().to_upper() != wanted:
+			continue
+		if _je_more_provincie(p_id):
+			continue
+		out.append(p_id)
+	return out
+
+func _ziskej_dostupne_cile_miru(vitez: String, porazeny: String) -> Array:
+	var win = vitez.strip_edges().to_upper()
+	var lose = porazeny.strip_edges().to_upper()
+	var out: Array = []
+	if win == "" or lose == "" or win == lose:
+		return out
+
+	for p_id_any in provinces.keys():
+		var p_id = int(p_id_any)
+		if not provinces.has(p_id):
+			continue
+		if _je_more_provincie(p_id):
+			continue
+		var d = provinces[p_id]
+		var owner = str(d.get("owner", "")).strip_edges().to_upper()
+		var core_owner = str(d.get("core_owner", owner)).strip_edges().to_upper()
+		var je_primy_loser = owner == lose
+		var je_okupovana_vitezem = owner == win and core_owner == lose
+		if not je_primy_loser and not je_okupovana_vitezem:
+			continue
+		out.append(p_id)
+
+	return out
+
+func zrus_rezim_vyberu_miru() -> void:
+	ceka_na_cil_miru = false
+	stat_mirove_konference_vitez = ""
+	stat_mirove_konference_porazeny = ""
+	dostupne_cile_miru.clear()
+	vybrane_cile_miru.clear()
+	var sprite = $Sprite2D
+	if sprite and sprite.has_method("vycisti_nahled_hlavniho_mesta"):
+		sprite.vycisti_nahled_hlavniho_mesta()
+	if sprite and sprite.has_method("vycisti_nahled_mirovych_cilu"):
+		sprite.vycisti_nahled_mirovych_cilu()
+	if sprite and sprite.has_method("_aktualizuj_hromadny_selection_texture"):
+		sprite._aktualizuj_hromadny_selection_texture([])
+
+func aktivuj_rezim_vyberu_miru(vitez_tag: String, porazeny_tag: String, preselected_ids: Array = []) -> Dictionary:
+	var vitez = vitez_tag.strip_edges().to_upper()
+	var porazeny = porazeny_tag.strip_edges().to_upper()
+	zrus_rezim_vyberu_miru()
+
+	if vitez == "" or porazeny == "" or vitez == porazeny:
+		return {"ok": false, "reason": "Neplatni ucastnici mirove konference."}
+
+	var targets = _ziskej_dostupne_cile_miru(vitez, porazeny)
+	if targets.is_empty():
+		return {"ok": false, "reason": "Porazeny stat nema zadne provincie k vyberu."}
+
+	ceka_na_cil_miru = true
+	stat_mirove_konference_vitez = vitez
+	stat_mirove_konference_porazeny = porazeny
+	dostupne_cile_miru = targets.duplicate()
+
+	for raw_id in preselected_ids:
+		var pid = int(raw_id)
+		if dostupne_cile_miru.has(pid) and not vybrane_cile_miru.has(pid):
+			vybrane_cile_miru.append(pid)
+
+	var participants: Array = _ziskej_provincie_statu_v_mape(vitez)
+	for pid_any in _ziskej_provincie_statu_v_mape(porazeny):
+		var pid = int(pid_any)
+		if not participants.has(pid):
+			participants.append(pid)
+
+	var sprite = $Sprite2D
+	if sprite and sprite.has_method("nastav_nahled_hlavniho_mesta"):
+		sprite.nastav_nahled_hlavniho_mesta(participants, dostupne_cile_miru)
+	if sprite and sprite.has_method("nastav_nahled_mirovych_cilu"):
+		sprite.nastav_nahled_mirovych_cilu(porazeny)
+	if sprite and sprite.has_method("_aktualizuj_hromadny_selection_texture"):
+		sprite._aktualizuj_hromadny_selection_texture(vybrane_cile_miru)
+
+	return {
+		"ok": true,
+		"count": dostupne_cile_miru.size(),
+		"selected": vybrane_cile_miru.duplicate()
+	}
+
+func je_platna_provincie_pro_mir(prov_id: int) -> bool:
+	if not ceka_na_cil_miru:
+		return false
+	return dostupne_cile_miru.has(int(prov_id))
+
+func je_provincie_vybrana_v_miru(prov_id: int) -> bool:
+	return vybrane_cile_miru.has(int(prov_id))
+
+func prepni_vyber_mirove_provincie(prov_id: int) -> Dictionary:
+	var pid = int(prov_id)
+	if not je_platna_provincie_pro_mir(pid):
+		return {"ok": false, "reason": "Tuto provincii nelze v miru vybrat."}
+	if vybrane_cile_miru.has(pid):
+		vybrane_cile_miru.erase(pid)
+	else:
+		vybrane_cile_miru.append(pid)
+
+	var sprite = $Sprite2D
+	if sprite and sprite.has_method("_aktualizuj_hromadny_selection_texture"):
+		sprite._aktualizuj_hromadny_selection_texture(vybrane_cile_miru)
+
+	return {
+		"ok": true,
+		"province_id": pid,
+		"selected": vybrane_cile_miru.duplicate(),
+		"selected_count": vybrane_cile_miru.size()
+	}
+
+func ziskej_vybrane_mirove_provincie() -> Array:
+	return vybrane_cile_miru.duplicate()
 
 func _ziskej_dostupne_cile_hlavniho_mesta(state_tag: String) -> Array:
 	var state = state_tag.strip_edges().to_upper()
@@ -2241,11 +2389,7 @@ func _vykresli_indikaci_cekajicich_presunu():
 			continue
 
 		var amount = max(0, int(move.get("amount", 0)))
-		var target_owner_tag = ""
-		if _je_more_provincie(to_id):
-			target_owner_tag = str(provinces[to_id].get("army_owner", "")).strip_edges().to_upper()
-		else:
-			target_owner_tag = str(provinces[to_id].get("owner", "")).strip_edges().to_upper()
+		var target_owner_tag = _ziskej_braniciho_vlastnika_v_provincii(to_id)
 		var is_attack = (target_owner_tag != "" and owner_tag != target_owner_tag and target_owner_tag != "SEA")
 
 		var zbyvajici_path = _ziskej_zbyvajici_cestu_presunu(move)
@@ -2342,7 +2486,7 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int, vykreslit_
 		move_path = najdi_nejrychlejsi_cestu_presunu(from_id, to_id)
 	if move_path.size() < 2:
 		if _ziskej_vlastnika_armady_v_provincii(from_id) == GameManager.hrac_stat:
-			_ukaz_bitevni_popup("NEPLATNÝ PŘESUN", "Pro tento cíl nebyla nalezena průchozí trasa. Přesun může vést jen přes vlastní/bezpečná území, dokud nedorazí do cíle.")
+			_ukaz_bitevni_popup("NEPLATNÝ PŘESUN", "Pro tento cíl nebyla nalezena průchozí trasa.")
 		ceka_na_cil_presunu = false
 		vycisti_nahled_presunu()
 		var invalid_root = get_parent()
@@ -2367,15 +2511,17 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int, vykreslit_
 				continue
 			cekajici_presuny.remove_at(i)
 
-	var target_owner_tag = ""
-	if _je_more_provincie(to_id):
-		target_owner_tag = str(provinces[to_id].get("army_owner", "")).strip_edges().to_upper()
-	else:
-		target_owner_tag = str(provinces[to_id]["owner"]).strip_edges().to_upper()
+	var target_owner_tag = _ziskej_braniciho_vlastnika_v_provincii(to_id)
+	var target_land_owner_tag = str(provinces[to_id].get("owner", "")).strip_edges().to_upper() if not _je_more_provincie(to_id) else ""
+	var ma_pristup = false
+	if target_owner_tag != "" and owner_tag != target_owner_tag and target_owner_tag != "SEA" and GameManager.has_method("muze_vstoupit_na_uzemi"):
+		ma_pristup = bool(GameManager.muze_vstoupit_na_uzemi(owner_tag, target_owner_tag))
+	if target_land_owner_tag != "" and owner_tag != target_land_owner_tag and GameManager.has_method("muze_vstoupit_na_uzemi"):
+		ma_pristup = ma_pristup or bool(GameManager.muze_vstoupit_na_uzemi(owner_tag, target_land_owner_tag))
 	
 	# Block illegal attacks
 	if target_owner_tag != "" and owner_tag != target_owner_tag and target_owner_tag != "SEA":
-		if not GameManager.jsou_ve_valce(owner_tag, target_owner_tag):
+		if not ma_pristup and not GameManager.jsou_ve_valce(owner_tag, target_owner_tag):
 			if owner_tag == GameManager.hrac_stat:
 				_ukaz_bitevni_popup("NEPOVOLENÝ ÚTOK", "Nemůžeš zaútočit! Nejdřív musíš státu %s vyhlásit válku přes State Overview." % target_owner_tag)
 			
@@ -2388,15 +2534,18 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int, vykreslit_
 			return 
 	
 	provinces[from_id]["soldiers"] -= amount
-	if _je_more_provincie(from_id) and provinces[from_id]["soldiers"] <= 0:
+	if provinces[from_id]["soldiers"] <= 0:
 		provinces[from_id]["soldiers"] = 0
-		provinces[from_id]["army_owner"] = ""
+		if _je_more_provincie(from_id):
+			provinces[from_id]["army_owner"] = ""
+		else:
+			provinces[from_id]["army_owner"] = str(provinces[from_id].get("owner", "")).strip_edges().to_upper()
 	if not _pozastavit_aktualizaci_ikon:
 		aktualizuj_ikony_armad()
 	
 	if not vykreslit_trajektorii:
 		if _pozastavit_aktualizaci_ikon:
-			var is_attack = (target_owner_tag != "" and owner_tag != target_owner_tag and target_owner_tag != "SEA")
+			var is_attack = (target_owner_tag != "" and owner_tag != target_owner_tag and target_owner_tag != "SEA" and not ma_pristup)
 			_zaregistruj_minimalni_ai_tah_s_mnozstvim(from_id, to_id, owner_tag, is_attack, amount)
 
 		cekajici_presuny.append({
@@ -2420,7 +2569,7 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int, vykreslit_
 			root2.ceka_na_cil_presunu = false
 		return
 
-	var is_attack_player = (target_owner_tag != "" and owner_tag != target_owner_tag and target_owner_tag != "SEA")
+	var is_attack_player = (target_owner_tag != "" and owner_tag != target_owner_tag and target_owner_tag != "SEA" and not ma_pristup)
 	if move_path.size() >= 3:
 		_zobraz_minimalni_presun_po_ceste(move_path, owner_tag, is_attack_player, amount, 1)
 	else:
@@ -2491,63 +2640,89 @@ func zpracuj_tah_armad():
 			continue
 
 		provinces[from_id]["soldiers"] = available - moved_amount
-		if _je_more_provincie(from_id) and int(provinces[from_id]["soldiers"]) <= 0:
+		if int(provinces[from_id]["soldiers"]) <= 0:
 			provinces[from_id]["soldiers"] = 0
-			provinces[from_id]["army_owner"] = ""
+			if _je_more_provincie(from_id):
+				provinces[from_id]["army_owner"] = ""
+			else:
+				provinces[from_id]["army_owner"] = str(provinces[from_id].get("owner", "")).strip_edges().to_upper()
 
 		move["amount"] = moved_amount
 		tahy_k_zpracovani[i] = move
 	
 	var celkovy_report = "" 
 	var bitevni_udalosti: Array = []
+	var protivne_smery: Dictionary = {}
+	for idx in range(tahy_k_zpracovani.size()):
+		var base_move = tahy_k_zpracovani[idx]
+		if int(base_move.get("amount", 0)) <= 0:
+			continue
+		var pair_key = "%d>%d" % [int(base_move.get("from", -1)), int(base_move.get("to", -1))]
+		if not protivne_smery.has(pair_key):
+			protivne_smery[pair_key] = []
+		(protivne_smery[pair_key] as Array).append(idx)
 
 	# --- NEW: FIELD BATTLES (CROSS-MOVEMENT RESOLUTION) ---
 	# Pokud dvě armády táhnou proti sobě, setkají se na půli cesty
 	for i in range(tahy_k_zpracovani.size()):
 		var utok1 = tahy_k_zpracovani[i]
-		if utok1["amount"] <= 0: continue
-		
-		for j in range(i + 1, tahy_k_zpracovani.size()):
-			var utok2 = tahy_k_zpracovani[j]
-			if utok2["amount"] <= 0: continue
-			
-			# Check if they cross paths (A -> B and B -> A)
-			if utok1["from"] == utok2["to"] and utok1["to"] == utok2["from"]:
-				# Make sure they are enemies
-				if utok1["owner"] != utok2["owner"]:
-					var hrac_zapojen = GameManager.je_lidsky_stat(str(utok1["owner"])) or GameManager.je_lidsky_stat(str(utok2["owner"]))
-					var souboj_pole = _vyres_souboj_podle_sily(str(utok1["owner"]), int(utok1["amount"]), str(utok2["owner"]), int(utok2["amount"]))
+		if int(utok1.get("amount", 0)) <= 0:
+			continue
 
-					if bool(souboj_pole.get("attacker_won", false)):
-						utok1["amount"] = int(souboj_pole.get("attacker_survivors", 0))
-						utok2["amount"] = 0 # Destroyed
-						if hrac_zapojen:
-							bitevni_udalosti.append({
-								"title": "Polní bitva",
-								"text": "⚔️ Armáda %s smetla při přesunu armádu %s." % [str(utok1["owner"]), str(utok2["owner"])],
-								"province_id": int(utok1["to"])
-							})
-					elif bool(souboj_pole.get("defender_won", false)):
-						utok2["amount"] = int(souboj_pole.get("defender_survivors", 0))
-						utok1["amount"] = 0 # Destroyed
-						if hrac_zapojen:
-							bitevni_udalosti.append({
-								"title": "Polní bitva",
-								"text": "⚔️ Armáda %s smetla při přesunu armádu %s." % [str(utok2["owner"]), str(utok1["owner"])],
-								"province_id": int(utok2["to"])
-							})
-						break # utok1 is dead, stop checking it
-					else:
-						# Mutual annihilation
-						utok1["amount"] = 0
-						utok2["amount"] = 0
-						if hrac_zapojen:
-							bitevni_udalosti.append({
-								"title": "Polní bitva",
-								"text": "⚔️ Krvavý masakr: naše i nepřátelská armáda se při přesunu navzájem vyhladily.",
-								"province_id": int(utok1["to"])
-							})
-						break
+		var reverse_key = "%d>%d" % [int(utok1.get("to", -1)), int(utok1.get("from", -1))]
+		if not protivne_smery.has(reverse_key):
+			continue
+
+		var reverse_indices: Array = protivne_smery[reverse_key]
+		for j_raw in reverse_indices:
+			var j = int(j_raw)
+			if j <= i:
+				continue
+
+			var utok2 = tahy_k_zpracovani[j]
+			if int(utok2.get("amount", 0)) <= 0:
+				continue
+			if str(utok1.get("owner", "")) == str(utok2.get("owner", "")):
+				continue
+
+			var hrac_zapojen = GameManager.je_lidsky_stat(str(utok1["owner"])) or GameManager.je_lidsky_stat(str(utok2["owner"]))
+			var souboj_pole = _vyres_souboj_podle_sily(str(utok1["owner"]), int(utok1["amount"]), str(utok2["owner"]), int(utok2["amount"]))
+
+			if bool(souboj_pole.get("attacker_won", false)):
+				utok1["amount"] = int(souboj_pole.get("attacker_survivors", 0))
+				utok2["amount"] = 0 # Destroyed
+				if hrac_zapojen:
+					bitevni_udalosti.append({
+						"title": "Polní bitva",
+						"text": "⚔️ Armáda %s smetla při přesunu armádu %s." % [str(utok1["owner"]), str(utok2["owner"])],
+						"province_id": int(utok1["to"])
+					})
+			elif bool(souboj_pole.get("defender_won", false)):
+				utok2["amount"] = int(souboj_pole.get("defender_survivors", 0))
+				utok1["amount"] = 0 # Destroyed
+				if hrac_zapojen:
+					bitevni_udalosti.append({
+						"title": "Polní bitva",
+						"text": "⚔️ Armáda %s smetla při přesunu armádu %s." % [str(utok2["owner"]), str(utok1["owner"])],
+						"province_id": int(utok2["to"])
+					})
+			else:
+				# Mutual annihilation
+				utok1["amount"] = 0
+				utok2["amount"] = 0
+				if hrac_zapojen:
+					bitevni_udalosti.append({
+						"title": "Polní bitva",
+						"text": "⚔️ Krvavý masakr: naše i nepřátelská armáda se při přesunu navzájem vyhladily.",
+						"province_id": int(utok1["to"])
+					})
+
+			tahy_k_zpracovani[i] = utok1
+			tahy_k_zpracovani[j] = utok2
+			if int(utok1.get("amount", 0)) <= 0:
+				break
+
+		tahy_k_zpracovani[i] = utok1
 	# ----------------------------------------------------
 	
 	# Only process surviving attacks against provinces
@@ -2564,11 +2739,15 @@ func zpracuj_tah_armad():
 		var moved_survivors := 0
 		
 		var target_is_sea = _je_more_provincie(to_id)
-		var target_owner = ""
-		if target_is_sea:
-			target_owner = str(provinces[to_id].get("army_owner", "")).strip_edges().to_upper()
-		else:
-			target_owner = str(provinces[to_id]["owner"]).strip_edges().to_upper()
+		var target_owner = _ziskej_braniciho_vlastnika_v_provincii(to_id)
+		var target_land_owner = str(provinces[to_id].get("owner", "")).strip_edges().to_upper() if not target_is_sea else ""
+		var ma_pristup_do_cile = false
+		if not target_is_sea and attacker_tag != "":
+			if target_land_owner != "" and target_land_owner != attacker_tag and GameManager.has_method("muze_vstoupit_na_uzemi"):
+				ma_pristup_do_cile = bool(GameManager.muze_vstoupit_na_uzemi(attacker_tag, target_land_owner))
+			if not ma_pristup_do_cile and target_owner != "" and target_owner != attacker_tag and GameManager.has_method("muze_vstoupit_na_uzemi"):
+				ma_pristup_do_cile = bool(GameManager.muze_vstoupit_na_uzemi(attacker_tag, target_owner))
+		var je_mirovy_vstup = (not target_is_sea and ma_pristup_do_cile and (target_owner == "" or not GameManager.jsou_ve_valce(attacker_tag, target_owner)))
 		var jmeno_provincie = str(provinces[to_id].get("province_name", "Neznámá provincie"))
 		
 		var hrac_zapojen = GameManager.je_lidsky_stat(attacker_tag) or GameManager.je_lidsky_stat(target_owner)
@@ -2598,6 +2777,23 @@ func zpracuj_tah_armad():
 					provinces[to_id]["army_owner"] = ""
 					moved_survivors = 0
 
+			if ma_dalsi_krok and moved_survivors > 0:
+				pokracujici_presuny.append({
+					"from": to_id,
+					"to": int(path[path_index + 2]),
+					"path": path,
+					"path_index": path_index + 1,
+					"deduct_on_resolve": true,
+					"amount": moved_survivors,
+					"owner": attacker_tag
+				})
+			continue
+
+		if je_mirovy_vstup:
+			var cilovi_vojaci = int(provinces[to_id].get("soldiers", 0))
+			provinces[to_id]["soldiers"] = max(0, cilovi_vojaci) + utocnici
+			provinces[to_id]["army_owner"] = attacker_tag
+			moved_survivors = utocnici
 			if ma_dalsi_krok and moved_survivors > 0:
 				pokracujici_presuny.append({
 					"from": to_id,
@@ -3037,6 +3233,16 @@ func _zpracuj_odlozene_kapitulace(celkovy_report: String) -> String:
 		if target_owner == "" or winner_tag == "" or target_owner == winner_tag:
 			continue
 
+		if GameManager.has_method("uzavri_mir_a_zahaj_konferenci"):
+			GameManager.map_data = provinces
+			var conf_result = GameManager.uzavri_mir_a_zahaj_konferenci(winner_tag, target_owner, "capitulation")
+			if bool(conf_result.get("ok", false)):
+				provinces = GameManager.map_data
+				if GameManager.je_lidsky_stat(winner_tag) or GameManager.je_lidsky_stat(target_owner):
+					celkovy_report += "💥 KAPITULACE: %s udrzelo hlavni mesto statu %s. Mirova konference urci podminky valky.\n\n" % [winner_tag, target_owner]
+				continue
+
+		# Fallback to legacy split when conference API is unavailable.
 		var vysledek = _kapituluj_stat_rozdelenim(target_owner, winner_tag)
 		if not bool(vysledek.get("provedeno", false)):
 			continue

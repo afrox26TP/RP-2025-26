@@ -7,6 +7,10 @@ uniform sampler2D selected_multi_texture : filter_nearest;
 uniform sampler2D capital_focus_owned_texture : filter_nearest;
 uniform sampler2D capital_focus_valid_texture : filter_nearest;
 uniform float total_provinces = 5000.0;
+uniform vec4 selected_multi_color : source_color = vec4(0.95, 0.85, 0.25, 1.0);
+uniform bool peace_selection_player_color_mode = false;
+uniform bool peace_target_visual_mode = false;
+uniform vec4 peace_target_owner_color : source_color = vec4(0.8, 0.2, 0.2, 1.0);
 
 uniform float hovered_id = -1.0;
 uniform float selected_id = -1.0;
@@ -75,7 +79,11 @@ void fragment() {
 			if (m_d.a > 0.1 && abs(_decode_province_id(m_d) - prov_id) > 0.1) border = 1.0;
 
 			if (is_valid_target) {
-				base_color.rgb = mix(base_color.rgb, vec3(0.98, 0.90, 0.35), 0.10);
+				if (peace_target_visual_mode) {
+					base_color.rgb = mix(base_color.rgb, peace_target_owner_color.rgb, 0.78);
+				} else {
+					base_color.rgb = mix(base_color.rgb, vec3(0.98, 0.90, 0.35), 0.10);
+				}
 			}
 
 			if (is_owned_state && border > 0.5) {
@@ -87,10 +95,15 @@ void fragment() {
 			}
 		}
 
-		// Hover/selection keep the original province color and only change luminance.
+		// Keep original default selection style; peace conference can use player color.
 		if ((has_selected && abs(prov_id - selected_id) < 0.1) || multi_selected_flag.a > 0.5) {
-			float select_dim = 0.88;
-			COLOR.rgb = base_color.rgb * select_dim;
+			if (peace_selection_player_color_mode) {
+				float tint_amount = 0.62;
+				COLOR.rgb = mix(base_color.rgb, selected_multi_color.rgb, tint_amount);
+			} else {
+				float select_dim = 0.88;
+				COLOR.rgb = base_color.rgb * select_dim;
+			}
 			COLOR.a = base_color.a;
 		} else if (has_hover && abs(prov_id - hovered_id) < 0.1) {
 			float hover_boost = is_target_hover ? 0.14 : 0.10;
