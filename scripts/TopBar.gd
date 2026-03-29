@@ -176,11 +176,11 @@ func _ready():
 
 func _nastav_tooltipy_ui() -> void:
 	money_label.tooltip_text = ""
-	turn_label.tooltip_text = "Aktualni cislo kola."
-	next_btn.tooltip_text = "Ukonci tve kolo a spusti dalsi tah."
-	zpravy_btn.tooltip_text = "Otevre centrum zprav (moje zeme / globalni)."
-	player_flag.tooltip_text = "Vlajka prave ovladaneho statu."
-	player_name.tooltip_text = "Nazev statu, za ktery prave hrajes."
+	turn_label.tooltip_text = "Current turn number."
+	next_btn.tooltip_text = "End your turn and process the next one."
+	zpravy_btn.tooltip_text = "Open the messages center (my country / global)."
+	player_flag.tooltip_text = "Flag of the country you currently control."
+	player_name.tooltip_text = "Name of the country you currently play as."
 	_nastav_tooltipy_mapovych_modu()
 	TooltipUtils.apply_default_tooltips(self)
 	# Money label uses only custom hover panel, never default Godot tooltip.
@@ -420,8 +420,8 @@ func _on_mode_resources_pressed() -> void:
 
 func aktualizuj_ui():
 	# Update money and turn counters
-	money_label.text = "Kasa: %.2f mil. USD (+%.2f)" % [GameManager.statni_kasa, GameManager.celkovy_prijem]
-	turn_label.text = "Kolo: %d" % GameManager.aktualni_kolo
+	money_label.text = "Treasury: %.2f M USD (+%.2f)" % [GameManager.statni_kasa, GameManager.celkovy_prijem]
+	turn_label.text = "Turn: %d" % GameManager.aktualni_kolo
 	if _finance_tooltip_visible:
 		_aktualizuj_financni_tooltip_text()
 		_aktualizuj_financni_tooltip_pozici()
@@ -536,10 +536,10 @@ func _on_money_label_mouse_exited() -> void:
 		_finance_tooltip_panel.hide()
 
 func _format_finance_value(value: float) -> String:
-	return "%.2f mil. USD" % value
+	return "%.2f M USD" % value
 
 func _format_finance_signed(value: float) -> String:
-	return "%+.2f mil. USD" % value
+	return "%+.2f M USD" % value
 
 func _aktualizuj_financni_tooltip_text() -> void:
 	if _finance_tooltip_text == null:
@@ -550,7 +550,7 @@ func _aktualizuj_financni_tooltip_text() -> void:
 		finance = GameManager.ziskej_financni_rozpad_statu(str(GameManager.hrac_stat))
 
 	if not bool(finance.get("ok", false)):
-		_finance_tooltip_text.text = "[color=#FFFFFF]Finance: data nejsou dostupna.[/color]"
+		_finance_tooltip_text.text = "[color=#FFFFFF]Finance: data unavailable.[/color]"
 		return
 
 	var income = finance.get("income", {}) as Dictionary
@@ -558,18 +558,18 @@ func _aktualizuj_financni_tooltip_text() -> void:
 	var profit = float(finance.get("profit", 0.0))
 
 	var t := ""
-	t += "[b][color=#FFFFFF]PRIJEM[/color][/b]\n"
-	t += "[color=#65D96E]HDP: %s[/color]\n" % _format_finance_value(float(income.get("gdp", 0.0)))
-	t += "[color=#65D96E]Vazalove: %s[/color]\n" % _format_finance_value(float(income.get("vassals", 0.0)))
-	t += "[color=#65D96E]Reparace: %s[/color]\n" % _format_finance_value(float(income.get("reparations", 0.0)))
-	t += "[color=#65D96E]Ostatni: %s[/color]\n\n" % _format_finance_value(float(income.get("other", 0.0)))
+	t += "[b][color=#FFFFFF]INCOME[/color][/b]\n"
+	t += "[color=#65D96E]GDP: %s[/color]\n" % _format_finance_value(float(income.get("gdp", 0.0)))
+	t += "[color=#65D96E]Vassals: %s[/color]\n" % _format_finance_value(float(income.get("vassals", 0.0)))
+	t += "[color=#65D96E]Reparations: %s[/color]\n" % _format_finance_value(float(income.get("reparations", 0.0)))
+	t += "[color=#65D96E]Other: %s[/color]\n\n" % _format_finance_value(float(income.get("other", 0.0)))
 
-	t += "[b][color=#FFFFFF]VYDAJE[/color][/b]\n"
-	t += "[color=#FF6666]Udrzba armady: %s[/color]\n" % _format_finance_value(float(expenses.get("army_upkeep", 0.0)))
-	t += "[color=#FF6666]Investice: %s[/color]\n" % _format_finance_value(float(expenses.get("investments", 0.0)))
-	t += "[color=#FF6666]Ostatni: %s[/color]\n\n" % _format_finance_value(float(expenses.get("other", 0.0)))
+	t += "[b][color=#FFFFFF]EXPENSES[/color][/b]\n"
+	t += "[color=#FF6666]Army upkeep: %s[/color]\n" % _format_finance_value(float(expenses.get("army_upkeep", 0.0)))
+	t += "[color=#FF6666]Investments: %s[/color]\n" % _format_finance_value(float(expenses.get("investments", 0.0)))
+	t += "[color=#FF6666]Other: %s[/color]\n\n" % _format_finance_value(float(expenses.get("other", 0.0)))
 
-	t += "[b][color=#FFFFFF]ZUSTATEK (PROFIT): %s[/color][/b]" % _format_finance_signed(profit)
+	t += "[b][color=#FFFFFF]BALANCE (PROFIT): %s[/color][/b]" % _format_finance_signed(profit)
 	_finance_tooltip_text.text = t
 
 func _aktualizuj_financni_tooltip_pozici() -> void:

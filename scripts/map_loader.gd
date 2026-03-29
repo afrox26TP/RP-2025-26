@@ -834,12 +834,12 @@ func _ready():
 	nastav_mapovy_mod("political")
 	await get_tree().process_frame
 	
-	_nastav_loading_stav("Generovani nazvu provincii...", 0.48)
+	_nastav_loading_stav("Generating province names...", 0.48)
 	print("[MapInit] 3/6 province labels")
 	generuj_nazvy_provincii()
 	await get_tree().process_frame
 	
-	_nastav_loading_stav("Generovani nazvu statu...", 0.63)
+	_nastav_loading_stav("Generating country names...", 0.63)
 	print("[MapInit] 4/6 country labels")
 	var labels_manager = get_node_or_null("CountryLabelsManager")
 	var prov_labels = get_node_or_null("ProvinceLabels")
@@ -847,7 +847,7 @@ func _ready():
 		labels_manager.aktualizuj_labely_statu(provinces, prov_labels)
 	await get_tree().process_frame
 	
-	_nastav_loading_stav("Priprava ekonomiky a pristavu...", 0.80)
+	_nastav_loading_stav("Preparing economy and ports...", 0.80)
 	print("[MapInit] 5/6 economy+ports")
 	if GameManager.has_method("spocitej_prijem"):
 		if GameManager.has_method("pridej_startovni_pristavy"):
@@ -2003,7 +2003,7 @@ func aktivuj_rezim_vyberu_cile(from_id: int, max_troops: int):
 	ceka_na_cil_presunu = true
 	_invalidate_naval_reachability_cache()
 	vycisti_nahled_presunu()
-	print("Klikni na mapu pro vyber cile presunu.")
+	print("Click on the map to select a move target.")
 
 func _ziskej_provincie_statu_v_mape(state_tag: String) -> Array:
 	var out: Array = []
@@ -2066,11 +2066,11 @@ func aktivuj_rezim_vyberu_miru(vitez_tag: String, porazeny_tag: String, preselec
 	zrus_rezim_vyberu_miru()
 
 	if vitez == "" or porazeny == "" or vitez == porazeny:
-		return {"ok": false, "reason": "Neplatni ucastnici mirove konference."}
+		return {"ok": false, "reason": "Invalid peace conference participants."}
 
 	var targets = _ziskej_dostupne_cile_miru(vitez, porazeny)
 	if targets.is_empty():
-		return {"ok": false, "reason": "Porazeny stat nema zadne provincie k vyberu."}
+		return {"ok": false, "reason": "Defeated state has no provinces available for selection."}
 
 	ceka_na_cil_miru = true
 	stat_mirove_konference_vitez = vitez
@@ -2113,7 +2113,7 @@ func je_provincie_vybrana_v_miru(prov_id: int) -> bool:
 func prepni_vyber_mirove_provincie(prov_id: int) -> Dictionary:
 	var pid = int(prov_id)
 	if not je_platna_provincie_pro_mir(pid):
-		return {"ok": false, "reason": "Tuto provincii nelze v miru vybrat."}
+		return {"ok": false, "reason": "This province cannot be selected in peace terms."}
 	if vybrane_cile_miru.has(pid):
 		vybrane_cile_miru.erase(pid)
 	else:
@@ -2173,13 +2173,13 @@ func aktivuj_rezim_vyberu_hlavniho_mesta(state_tag: String) -> Dictionary:
 	zrus_rezim_vyberu_hlavniho_mesta()
 
 	if state == "" or state == "SEA":
-		return {"ok": false, "reason": "Neplatny stat."}
+		return {"ok": false, "reason": "Invalid state."}
 	if not GameManager.has_method("muze_presunout_hlavni_mesto"):
-		return {"ok": false, "reason": "Presun hlavniho mesta neni dostupny."}
+		return {"ok": false, "reason": "Capital relocation is not available."}
 
 	var targets = _ziskej_dostupne_cile_hlavniho_mesta(state)
 	if targets.is_empty():
-		return {"ok": false, "reason": "Neni zadna dostupna provincie pro presun hlavniho mesta."}
+		return {"ok": false, "reason": "No available province for capital relocation."}
 
 	ceka_na_cil_hlavniho_mesta = true
 	stat_presunu_hlavniho_mesta = state
@@ -2198,7 +2198,7 @@ func aktivuj_rezim_vyberu_hlavniho_mesta(state_tag: String) -> Dictionary:
 	if sprite and sprite.has_method("nastav_nahled_hlavniho_mesta"):
 		sprite.nastav_nahled_hlavniho_mesta(owned_ids, targets)
 
-	print("Klikni na mapu pro vyber noveho hlavniho mesta. Cena se ukazuje dynamicky pri najeti na cil.")
+	print("Click on the map to choose a new capital. The cost is shown dynamically when hovering a target.")
 	return {"ok": true, "count": targets.size()}
 
 func je_platny_cil_hlavniho_mesta(prov_id: int) -> bool:
@@ -2209,10 +2209,10 @@ func je_platny_cil_hlavniho_mesta(prov_id: int) -> bool:
 func potvrd_cil_hlavniho_mesta(prov_id: int) -> Dictionary:
 	var pid = int(prov_id)
 	if not je_platny_cil_hlavniho_mesta(pid):
-		return {"ok": false, "reason": "Neplatny cil pro presun hlavniho mesta."}
+		return {"ok": false, "reason": "Invalid target for capital relocation."}
 	if not GameManager.has_method("presun_hlavni_mesto"):
 		zrus_rezim_vyberu_hlavniho_mesta()
-		return {"ok": false, "reason": "Presun hlavniho mesta neni dostupny."}
+		return {"ok": false, "reason": "Capital relocation is not available."}
 
 	var result = GameManager.presun_hlavni_mesto(stat_presunu_hlavniho_mesta, pid, true, true)
 	zrus_rezim_vyberu_hlavniho_mesta()
@@ -2569,7 +2569,7 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int, vykreslit_
 		move_path = najdi_nejrychlejsi_cestu_presunu(from_id, to_id)
 	if move_path.size() < 2:
 		if _ziskej_vlastnika_armady_v_provincii(from_id) == GameManager.hrac_stat:
-			_ukaz_bitevni_popup("NEPLATNÝ PŘESUN", "Pro tento cíl nebyla nalezena průchozí trasa.")
+			_ukaz_bitevni_popup("INVALID MOVE", "No valid traversable route was found for this destination.")
 		ceka_na_cil_presunu = false
 		vycisti_nahled_presunu()
 		var invalid_root = get_parent()
@@ -2606,7 +2606,7 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int, vykreslit_
 	if target_owner_tag != "" and owner_tag != target_owner_tag and target_owner_tag != "SEA":
 		if not ma_pristup and not GameManager.jsou_ve_valce(owner_tag, target_owner_tag):
 			if owner_tag == GameManager.hrac_stat:
-				_ukaz_bitevni_popup("NEPOVOLENÝ ÚTOK", "Nemůžeš zaútočit! Nejdřív musíš státu %s vyhlásit válku přes State Overview." % target_owner_tag)
+				_ukaz_bitevni_popup("ATTACK NOT ALLOWED", "You cannot attack yet. First declare war on %s via State Overview." % target_owner_tag)
 			
 			ceka_na_cil_presunu = false
 			vycisti_nahled_presunu()
@@ -2776,8 +2776,8 @@ func zpracuj_tah_armad():
 				utok2["amount"] = 0 # Destroyed
 				if hrac_zapojen:
 					bitevni_udalosti.append({
-						"title": "Polní bitva",
-						"text": "⚔️ Armáda %s smetla při přesunu armádu %s." % [str(utok1["owner"]), str(utok2["owner"])],
+						"title": "Field battle",
+						"text": "Attacking army %s overwhelmed moving army %s." % [str(utok1["owner"]), str(utok2["owner"])],
 						"province_id": int(utok1["to"])
 					})
 			elif bool(souboj_pole.get("defender_won", false)):
@@ -2785,8 +2785,8 @@ func zpracuj_tah_armad():
 				utok1["amount"] = 0 # Destroyed
 				if hrac_zapojen:
 					bitevni_udalosti.append({
-						"title": "Polní bitva",
-						"text": "⚔️ Armáda %s smetla při přesunu armádu %s." % [str(utok2["owner"]), str(utok1["owner"])],
+						"title": "Field battle",
+						"text": "Attacking army %s overwhelmed moving army %s." % [str(utok2["owner"]), str(utok1["owner"])],
 						"province_id": int(utok2["to"])
 					})
 			else:
@@ -2795,8 +2795,8 @@ func zpracuj_tah_armad():
 				utok2["amount"] = 0
 				if hrac_zapojen:
 					bitevni_udalosti.append({
-						"title": "Polní bitva",
-						"text": "⚔️ Krvavý masakr: naše i nepřátelská armáda se při přesunu navzájem vyhladily.",
+						"title": "Field battle",
+						"text": "Mutual annihilation: both moving armies destroyed each other.",
 						"province_id": int(utok1["to"])
 					})
 
@@ -2831,7 +2831,7 @@ func zpracuj_tah_armad():
 			if not ma_pristup_do_cile and target_owner != "" and target_owner != attacker_tag and GameManager.has_method("muze_vstoupit_na_uzemi"):
 				ma_pristup_do_cile = bool(GameManager.muze_vstoupit_na_uzemi(attacker_tag, target_owner))
 		var je_mirovy_vstup = (not target_is_sea and ma_pristup_do_cile and (target_owner == "" or not GameManager.jsou_ve_valce(attacker_tag, target_owner)))
-		var jmeno_provincie = str(provinces[to_id].get("province_name", "Neznámá provincie"))
+		var jmeno_provincie = str(provinces[to_id].get("province_name", "Unknown province"))
 		
 		var hrac_zapojen = GameManager.je_lidsky_stat(attacker_tag) or GameManager.je_lidsky_stat(target_owner)
 
@@ -2940,21 +2940,21 @@ func zpracuj_tah_armad():
 				if hrac_zapojen:
 					if attacker_tag == capital_core_owner:
 						bitevni_udalosti.append({
-							"title": "Hlavní město znovudobyto",
-							"text": "🏛️ %s znovu dobylo své hlavní město." % attacker_tag,
+							"title": "Capital recaptured",
+							"text": "%s recaptured its capital." % attacker_tag,
 							"province_id": to_id
 						})
 					else:
 						bitevni_udalosti.append({
-							"title": "Hlavní město obsazeno",
-							"text": "🏛️ %s dobylo hlavní město státu %s. Kapitulace nastane jen pokud město udrží celé jedno kolo." % [attacker_tag, capital_core_owner],
+							"title": "Capital occupied",
+							"text": "%s captured the capital of %s. Capitulation triggers only if it is held for a full turn." % [attacker_tag, capital_core_owner],
 							"province_id": to_id
 						})
 			
 			if hrac_zapojen and not was_capital:
 				bitevni_udalosti.append({
-					"title": "Změna fronty",
-					"text": "⚔️ %s dobylo provincii %s. Přežilo %d útočníků." % [attacker_tag, jmeno_provincie, prezivsi],
+					"title": "Frontline changed",
+					"text": "%s captured province %s. %d attackers survived." % [attacker_tag, jmeno_provincie, prezivsi],
 					"province_id": to_id
 				})
 					
@@ -2966,8 +2966,8 @@ func zpracuj_tah_armad():
 			
 			if hrac_zapojen:
 				bitevni_udalosti.append({
-					"title": "Obrana",
-					"text": "🛡️ Obrana provincie %s uspěla. %s udrželo území s %d vojáky." % [jmeno_provincie, target_owner, prezivsi],
+					"title": "Defense",
+					"text": "Defense of province %s succeeded. %s held the area with %d soldiers." % [jmeno_provincie, target_owner, prezivsi],
 					"province_id": to_id
 				})
 
@@ -3000,7 +3000,7 @@ func zpracuj_tah_armad():
 			await _obnov_bitevni_kameru()
 	
 	if celkovy_report != "":
-		await _ukaz_bitevni_popup("Hlášení z fronty", celkovy_report)
+		await _ukaz_bitevni_popup("Frontline report", celkovy_report)
 
 	if not pokracujici_presuny.is_empty():
 		for p_move in pokracujici_presuny:
@@ -3037,7 +3037,7 @@ func _ukaz_souhrn_bitevnich_udalosti(udalosti: Array) -> void:
 	if remaining > 0:
 		lines.append("- ... a dalsich %d bitevnich udalosti" % remaining)
 
-	await _ukaz_bitevni_popup("Hlaseni z fronty", "\n".join(lines))
+	await _ukaz_bitevni_popup("Frontline Report", "\n".join(lines))
 
 func _ukaz_bitevni_popup(titulek: String, text: String):
 	var game_ui = get_tree().current_scene.find_child("GameUI", true, false)
@@ -3297,11 +3297,11 @@ func _zpracuj_automaticke_kapitulace(celkovy_report: String) -> String:
 					hrac_zapojen = true
 					break
 		if hrac_zapojen:
-			celkovy_report += "💥 AUTOMATICKÁ KAPITULACE: %s ztratilo všechna neokupovaná území. Rozdělení dle okupace: %s.\n\n" % [target_owner, ", ".join(casti)]
+			celkovy_report += "Automatic capitulation: %s lost all non-occupied territory. Occupation split: %s.\n\n" % [target_owner, ", ".join(casti)]
 		if GameManager.has_method("_zaloguj_globalni_zpravu"):
 			GameManager._zaloguj_globalni_zpravu(
-				"Valka",
-				"Automaticka kapitulace statu %s. Rozdeleni dle okupace: %s." % [target_owner, ", ".join(casti)],
+				"War",
+				"Automatic capitulation of %s. Occupation split: %s." % [target_owner, ", ".join(casti)],
 				"war"
 			)
 
@@ -3324,7 +3324,7 @@ func _zpracuj_odlozene_kapitulace(celkovy_report: String) -> String:
 			if bool(conf_result.get("ok", false)):
 				provinces = GameManager.map_data
 				if GameManager.je_lidsky_stat(winner_tag) or GameManager.je_lidsky_stat(target_owner):
-					celkovy_report += "💥 KAPITULACE: %s udrzelo hlavni mesto statu %s. Mirova konference urci podminky valky.\n\n" % [winner_tag, target_owner]
+					celkovy_report += "Capitulation: %s held the capital of %s. Peace conference will determine war terms.\n\n" % [winner_tag, target_owner]
 				continue
 
 		# Fallback to legacy split when conference API is unavailable.
@@ -3340,11 +3340,11 @@ func _zpracuj_odlozene_kapitulace(celkovy_report: String) -> String:
 			var casti: Array = []
 			for okupant in okupanti.keys():
 				casti.append("%s: %d" % [okupant, int(okupanti[okupant])])
-			celkovy_report += "💥 KAPITULACE: %s udrželo hlavní město státu %s celé jedno kolo. Rozdělení dle okupace: %s.\n\n" % [winner_tag, target_owner, ", ".join(casti)]
+			celkovy_report += "Capitulation: %s held the capital of %s for one full turn. Occupation split: %s.\n\n" % [winner_tag, target_owner, ", ".join(casti)]
 			if GameManager.has_method("_zaloguj_globalni_zpravu"):
 				GameManager._zaloguj_globalni_zpravu(
-					"Valka",
-					"Kapitulace statu %s po udrzeni hlavniho mesta. Rozdeleni dle okupace: %s." % [target_owner, ", ".join(casti)],
+					"War",
+					"Capitulation of %s after capital hold. Occupation split: %s." % [target_owner, ", ".join(casti)],
 					"war"
 				)
 
@@ -3419,7 +3419,7 @@ func _aktualizuj_indikatory_kapitulace():
 		lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1.0))
 		lbl.add_theme_constant_override("outline_size", 3)
 		lbl.add_theme_font_size_override("font_size", 12)
-		lbl.text = "%s drzi cap (%s): %d kolo" % [utocnik, obrance, max(1, remain)]
+		lbl.text = "%s holds capital (%s): %d turn" % [utocnik, obrance, max(1, remain)]
 		node.add_child(lbl)
 
 		container.add_child(node)

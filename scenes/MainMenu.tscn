@@ -71,7 +71,7 @@ horizontal_alignment = 1
 layout_mode = 2
 theme_override_colors/font_color = Color(0.768627, 0.843137, 0.956863, 1)
 theme_override_font_sizes/font_size = 18
-text = "Tahova grand strategy hra | Rocnikovy projekt 2025-26"
+text = "Turn-based grand strategy game | School project 2025-26"
 horizontal_alignment = 1
 
 [node name="HeaderSeparator" type="HSeparator" parent="CenterPanel/MarginContainer/VBoxContainer" unique_id=340904287]
@@ -82,13 +82,13 @@ visible = false
 layout_mode = 2
 theme_override_colors/font_color = Color(0.694118, 0.831373, 1, 1)
 theme_override_font_sizes/font_size = 19
-text = "Vybrany stat:"
+text = "Selected country:"
 
 [node name="MenuHint" type="Label" parent="CenterPanel/MarginContainer/VBoxContainer" unique_id=1834597637]
 visible = false
 layout_mode = 2
 theme_override_colors/font_color = Color(0.760784, 0.823529, 0.917647, 1)
-text = "Nova hra: vyber 1+ statu pro local multiplayer. Pokracovat: posledni vyber."
+text = "New Game: pick 1+ countries for local multiplayer. Continue: last save."
 horizontal_alignment = 1
 autowrap_mode = 3
 
@@ -99,12 +99,12 @@ theme_override_constants/separation = 10
 [node name="NewGameButton" type="Button" parent="CenterPanel/MarginContainer/VBoxContainer/MainButtons" unique_id=909067166]
 custom_minimum_size = Vector2(0, 52)
 layout_mode = 2
-text = "Nova hra (vyber statu)"
+text = "New Game (country selection)"
 
 [node name="ContinueButton" type="Button" parent="CenterPanel/MarginContainer/VBoxContainer/MainButtons" unique_id=909067167]
 custom_minimum_size = Vector2(0, 52)
 layout_mode = 2
-text = "Pokracovat v rozehrane hre"
+text = "Continue saved game"
 
 [node name="SecondaryButtons" type="HBoxContainer" parent="CenterPanel/MarginContainer/VBoxContainer" unique_id=1834597635]
 layout_mode = 2
@@ -114,50 +114,50 @@ theme_override_constants/separation = 8
 custom_minimum_size = Vector2(0, 46)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Nastaveni"
+text = "Settings"
 
 [node name="CreditsButton" type="Button" parent="CenterPanel/MarginContainer/VBoxContainer/SecondaryButtons" unique_id=909067169]
 custom_minimum_size = Vector2(0, 46)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Autori"
+text = "Credits"
 
 [node name="ExitButton" type="Button" parent="CenterPanel/MarginContainer/VBoxContainer" unique_id=909067170]
 custom_minimum_size = Vector2(0, 46)
 layout_mode = 2
-text = "Ukoncit hru"
+text = "Quit game"
 
 [node name="FooterLabel" type="Label" parent="CenterPanel/MarginContainer/VBoxContainer" unique_id=1834597636]
 visible = false
 layout_mode = 2
 theme_override_colors/font_color = Color(0.713726, 0.756863, 0.847059, 1)
-text = "Tip: Ve hre klikej na provincie pro diplomacii a statistiky. Mezernik ukonci tah."
+text = "Tip: Click provinces for diplomacy and stats. Space ends the turn."
 horizontal_alignment = 1
 autowrap_mode = 3
 
 [node name="Dialogs" type="Node" parent="." unique_id=179100005]
 
 [node name="SettingsDialog" type="AcceptDialog" parent="Dialogs" unique_id=179100006]
-title = "Nastaveni"
-dialog_text = "Nastaveni budou doplnena v dalsi iteraci.
+title = "Settings"
+dialog_text = "Settings will be expanded in a future update.
 
-OVLADANI:
-- Zoom koleckem
-- Posouvat mapu WSAD
-- Ukoncit kolo mezernikem
-- Pravim tlacitkem cancelovat akce a zavirat dialogy
-- DEv simple conquer tool: C"
+CONTROLS:
+- Mouse wheel: zoom
+- WASD: move map
+- Space: end turn
+- Right click: cancel actions and close dialogs
+- Dev simple conquer tool: C"
 
 [node name="CreditsDialog" type="AcceptDialog" parent="Dialogs" unique_id=179100007]
-title = "Kredity"
+title = "Credits"
 dialog_text = "RP-2025-26
 
-Design a gameplay: JA (Afrox26TP)
-Mapa a data: interni dataset (Muj)"
+Design and gameplay: ME (Afrox26TP)
+Map and data: internal dataset (mine)"
 
 [node name="ExitDialog" type="ConfirmationDialog" parent="Dialogs" unique_id=179100008]
-title = "Potvrzeni"
-dialog_text = "Opravdu chces ukoncit hru?"
+title = "Confirmation"
+dialog_text = "Do you really want to quit the game?"
 
 [node name="CountryBrowserPanel" type="PanelContainer" parent="." unique_id=179100009]
 visible = false
@@ -206,7 +206,7 @@ theme_override_constants/separation = 8
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 30
-text = "Vyber statu"
+text = "Country selection"
 
 [node name="CloseHeaderButton" type="Button" parent="CountryBrowserPanel/MarginContainer/RootVBox/HeaderRow" unique_id=179100045]
 custom_minimum_size = Vector2(34, 34)
@@ -221,13 +221,13 @@ flat = true
 [node name="BrowserSubtitle" type="Label" parent="CountryBrowserPanel/MarginContainer/RootVBox" unique_id=179100013]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.694118, 0.831373, 1, 1)
-text = "Vyber stat pro solo nebo pridej vice statu pro local multiplayer"
+text = "Pick one country for solo or add more for local multiplayer"
 horizontal_alignment = 1
 
 [node name="BrowserFlowHint" type="Label" parent="CountryBrowserPanel/MarginContainer/RootVBox" unique_id=179100037]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.8, 0.870588, 0.964706, 1)
-text = "Rezim solo: vyber stat a potvrd."
+text = "Solo mode: choose a country and confirm."
 horizontal_alignment = 1
 autowrap_mode = 3
 
@@ -248,12 +248,12 @@ theme_override_constants/separation = 4
 [node name="SelectedPlayersTitle" type="Label" parent="CountryBrowserPanel/MarginContainer/RootVBox/SelectedPlayersPanel/SelectedPlayersMargin/SelectedPlayersVBox" unique_id=179100041]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.733333, 0.858824, 1, 1)
-text = "Vybrani hraci"
+text = "Selected players"
 
 [node name="SelectedPlayersList" type="Label" parent="CountryBrowserPanel/MarginContainer/RootVBox/SelectedPlayersPanel/SelectedPlayersMargin/SelectedPlayersVBox" unique_id=179100042]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.894118, 0.929412, 0.984314, 1)
-text = "Zatim nikdo"
+text = "Nobody yet"
 autowrap_mode = 3
 
 [node name="Content" type="HSplitContainer" parent="CountryBrowserPanel/MarginContainer/RootVBox" unique_id=179100014]
@@ -279,7 +279,7 @@ theme_override_constants/separation = 8
 [node name="ListHint" type="Label" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/ListPanel/ListMargin/ListVBox" unique_id=179100018]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.8, 0.862745, 0.952941, 1)
-text = "Klikni na stat pro detail a pak potvrd vyber"
+text = "Click a country for details, then confirm selection"
 
 [node name="CountryListScroll" type="ScrollContainer" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/ListPanel/ListMargin/ListVBox" unique_id=179100019]
 custom_minimum_size = Vector2(0, 500)
@@ -323,34 +323,34 @@ text = "Tag: -"
 
 [node name="DetailIdeology" type="Label" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/DetailPanel/DetailMargin/DetailVBox" unique_id=179100027]
 layout_mode = 2
-text = "Ideologie: -"
+text = "Ideology: -"
 
 [node name="DetailPopulation" type="Label" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/DetailPanel/DetailMargin/DetailVBox" unique_id=179100028]
 layout_mode = 2
-text = "Populace: -"
+text = "Population: -"
 
 [node name="DetailGdp" type="Label" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/DetailPanel/DetailMargin/DetailVBox" unique_id=179100029]
 layout_mode = 2
-text = "HDP: -"
+text = "GDP: -"
 
 [node name="DetailRecruits" type="Label" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/DetailPanel/DetailMargin/DetailVBox" unique_id=179100030]
 layout_mode = 2
-text = "Rekruti: -"
+text = "Recruits: -"
 
 [node name="DetailSoldiers" type="Label" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/DetailPanel/DetailMargin/DetailVBox" unique_id=179100031]
 layout_mode = 2
-text = "Vojaci: -"
+text = "Soldiers: -"
 
 [node name="DetailProvinceCount" type="Label" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/DetailPanel/DetailMargin/DetailVBox" unique_id=179100032]
 layout_mode = 2
-text = "Provincie: -"
+text = "Provinces: -"
 
 [node name="DetailInfo" type="RichTextLabel" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/DetailPanel/DetailMargin/DetailVBox" unique_id=179100033]
 custom_minimum_size = Vector2(0, 120)
 layout_mode = 2
 size_flags_vertical = 3
 bbcode_enabled = true
-text = "Vyber stat v levem panelu."
+text = "Pick a country in the left panel."
 fit_content = true
 
 [node name="BrowserButtons" type="HBoxContainer" parent="CountryBrowserPanel/MarginContainer/RootVBox" unique_id=179100034]
@@ -361,10 +361,10 @@ theme_override_constants/separation = 10
 custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Potvrdit vyber"
+text = "Confirm selection"
 
 [node name="CloseBrowserButton" type="Button" parent="CountryBrowserPanel/MarginContainer/RootVBox/BrowserButtons" unique_id=179100036]
 custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Zavrit"
+text = "Close"

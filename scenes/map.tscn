@@ -149,25 +149,25 @@ theme_override_constants/separation = 4
 custom_minimum_size = Vector2(107, 43)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "presunout"
+text = "Move"
 
 [node name="VerbovatButton" type="Button" parent="InfoUI/ActionMenu/HBoxContainer" unique_id=1888448357]
 custom_minimum_size = Vector2(107, 43)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "Verbovat"
+text = "Recruit"
 
 [node name="StavetMenuButton" type="MenuButton" parent="InfoUI/ActionMenu/HBoxContainer" unique_id=1012339346]
 custom_minimum_size = Vector2(107, 43)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "Stavet"
+text = "Build"
 
 [node name="LikvidovatButton" type="Button" parent="InfoUI/ActionMenu/HBoxContainer" unique_id=998880142]
 custom_minimum_size = Vector2(107, 43)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "Likvidovat"
+text = "Disband"
 
 [node name="RecruitPopup" type="PopupPanel" parent="InfoUI/ActionMenu" unique_id=64537540]
 oversampling_override = 1.0
@@ -194,13 +194,13 @@ layout_mode = 2
 custom_minimum_size = Vector2(124, 40)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "Najmout"
+text = "Recruit"
 
 [node name="ZrusitBtn" type="Button" parent="InfoUI/ActionMenu/RecruitPopup/VBoxContainer/HBoxContainer" unique_id=1650903378]
 custom_minimum_size = Vector2(124, 40)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "Zrusit"
+text = "Cancel"
 
 [node name="MovePopup" type="PopupPanel" parent="InfoUI/ActionMenu" unique_id=1084574176]
 oversampling_override = 1.0
@@ -224,11 +224,11 @@ layout_mode = 2
 
 [node name="PotvrditButton" type="Button" parent="InfoUI/ActionMenu/MovePopup/VBoxContainer/HBoxContainer" unique_id=808602565]
 layout_mode = 2
-text = "Presunout"
+text = "Move"
 
 [node name="ZrusitButton" type="Button" parent="InfoUI/ActionMenu/MovePopup/VBoxContainer/HBoxContainer" unique_id=1558374511]
 layout_mode = 2
-text = "Zrusit"
+text = "Cancel"
 
 [node name="LikvidacePopup" type="PopupPanel" parent="InfoUI/ActionMenu" unique_id=204560911]
 oversampling_override = 1.0
@@ -255,13 +255,13 @@ layout_mode = 2
 custom_minimum_size = Vector2(134, 40)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "Likvidovat"
+text = "Disband"
 
 [node name="ZrusitButton" type="Button" parent="InfoUI/ActionMenu/LikvidacePopup/VBoxContainer/HBoxContainer" unique_id=204560917]
 custom_minimum_size = Vector2(110, 40)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "Zrusit"
+text = "Cancel"
 
 [node name="GameUI" type="CanvasLayer" parent="." unique_id=1271783973]
 script = ExtResource("9_be0no")
@@ -327,7 +327,7 @@ layout_mode = 2
 
 [node name="RelationshipLabel" type="Label" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=1756128001]
 layout_mode = 2
-text = "Nas vztah: 0.0"
+text = "Our relation: 0.0"
 
 [node name="ActionSeparator" type="HSeparator" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=1733721634]
 layout_mode = 2
@@ -335,26 +335,26 @@ theme_override_constants/separation = 15
 
 [node name="ImproveRelationButton" type="Button" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=798541221]
 layout_mode = 2
-text = "Zlepsit vztah (+10)"
+text = "Improve relation (+10)"
 
 [node name="WorsenRelationButton" type="Button" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=798541222]
 layout_mode = 2
-text = "Zhorsit vztah (-10)"
+text = "Worsen relation (-10)"
 
 [node name="AllianceLevelOption" type="OptionButton" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=160004522]
 layout_mode = 2
 
 [node name="DeclareWarButton" type="Button" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=1283108261]
 layout_mode = 2
-text = "Vyhlasit valku"
+text = "Declare war"
 
 [node name="ProposePeaceButton" type="Button" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=119482377]
 layout_mode = 2
-text = "Nabidnout mir"
+text = "Offer peace"
 
 [node name="NonAggressionButton" type="Button" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=1428863001]
 layout_mode = 2
-text = "Neagresivni smlouva (10 kol)"
+text = "Non-aggression pact (10 turns)"
 
 [node name="IncomingRequestLabel" type="Label" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=1419987804]
 layout_mode = 2
@@ -364,11 +364,11 @@ layout_mode = 2
 
 [node name="AcceptRequestButton" type="Button" parent="GameUI/OverviewPanel/VBoxContainer/RespondRequestButtons" unique_id=210190771]
 layout_mode = 2
-text = "Prijmout"
+text = "Accept"
 
 [node name="DeclineRequestButton" type="Button" parent="GameUI/OverviewPanel/VBoxContainer/RespondRequestButtons" unique_id=195504409]
 layout_mode = 2
-text = "Odmitnout"
+text = "Decline"
 
 [node name="DiplomacyRequestPopup" type="Panel" parent="GameUI" unique_id=204884301]
 anchors_preset = 10
@@ -400,20 +400,20 @@ stretch_mode = 5
 [node name="RequestText" type="Label" parent="GameUI/DiplomacyRequestPopup/HBoxContainer" unique_id=204884304]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Diplomaticka zadost"
+text = "Diplomatic request"
 autowrap_mode = 3
 
 [node name="AcceptButton" type="Button" parent="GameUI/DiplomacyRequestPopup/HBoxContainer" unique_id=204884305]
 layout_mode = 2
-text = "Prijmout"
+text = "Accept"
 
 [node name="DeclineButton" type="Button" parent="GameUI/DiplomacyRequestPopup/HBoxContainer" unique_id=204884306]
 layout_mode = 2
-text = "Odmitnout"
+text = "Decline"
 
 [node name="DeclineAllButton" type="Button" parent="GameUI/DiplomacyRequestPopup/HBoxContainer" unique_id=2067714431]
 layout_mode = 2
-text = "Odmitnout vse"
+text = "Decline all"
 
 [node name="SystemMessagePopup" type="Panel" parent="GameUI" unique_id=204884307]
 anchors_preset = 10
@@ -438,12 +438,12 @@ grow_vertical = 2
 
 [node name="MessageTitle" type="Label" parent="GameUI/SystemMessagePopup/VBoxContainer" unique_id=204884309]
 layout_mode = 2
-text = "Hlaseni"
+text = "Message"
 
 [node name="MessageText" type="Label" parent="GameUI/SystemMessagePopup/VBoxContainer" unique_id=204884310]
 layout_mode = 2
 size_flags_vertical = 3
-text = "Text hlaseni"
+text = "Message text"
 autowrap_mode = 3
 
 [node name="MessageOkButton" type="Button" parent="GameUI/SystemMessagePopup/VBoxContainer" unique_id=204884311]
@@ -551,14 +551,14 @@ theme_override_font_sizes/font_size = 31
 [node name="NextTurnButton" type="Button" parent="TopBar/Panel/HBoxContainer" unique_id=285170616]
 layout_mode = 2
 theme_override_font_sizes/font_size = 31
-text = "Dalsi tah
+text = "Next turn
 "
 
 [node name="ZpravyButton" type="Button" parent="TopBar/Panel/HBoxContainer" unique_id=1135072334]
 custom_minimum_size = Vector2(175, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 26
-text = "Zpravy"
+text = "Messages"
 
 [node name="CountryLabelsManager" type="Node2D" parent="." unique_id=1947757198]
 script = ExtResource("11_mlgqr")

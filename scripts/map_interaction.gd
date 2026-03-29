@@ -303,15 +303,15 @@ func _show_peace_target_tooltip(province_id: int, data: Dictionary, root: Node) 
 	if _mode_hover_panel == null or _mode_hover_label == null:
 		return
 
-	var province_name = str(data.get("province_name", "Provincie %d" % province_id)).strip_edges()
+	var province_name = str(data.get("province_name", "Province %d" % province_id)).strip_edges()
 	if province_name == "":
-		province_name = "Provincie %d" % province_id
+		province_name = "Province %d" % province_id
 
 	var selected = false
 	if root.has_method("je_provincie_vybrana_v_miru"):
 		selected = bool(root.je_provincie_vybrana_v_miru(province_id))
 
-	_mode_hover_label.text = "%s | %s" % [province_name, "VYBRANO" if selected else "klik pro vyber"]
+	_mode_hover_label.text = "%s | %s" % [province_name, "SELECTED" if selected else "click to select"]
 	_mode_hover_panel.size = _mode_hover_panel.get_combined_minimum_size()
 	_mode_hover_panel.visible = true
 	if _mode_hover_debug_label:
@@ -337,9 +337,9 @@ func _show_attack_target_tooltip(from_id: int, province_id: int, data: Dictionar
 	if not bool(preview.get("is_attack", false)):
 		return false
 
-	var prov_name = str(data.get("province_name", "Provincie %d" % province_id)).strip_edges()
+	var prov_name = str(data.get("province_name", "Province %d" % province_id)).strip_edges()
 	if prov_name == "":
-		prov_name = "Provincie %d" % province_id
+		prov_name = "Province %d" % province_id
 
 	var atk_bonus_txt = _format_pct_signed(float(preview.get("attacker_bonus_pct", 0.0)))
 	var def_bonus_txt = _format_pct_signed(float(preview.get("defender_bonus_pct", 0.0)))
@@ -350,7 +350,7 @@ func _show_attack_target_tooltip(from_id: int, province_id: int, data: Dictionar
 	var atk_total = float(preview.get("attacker_total_mult", 1.0))
 	var def_total = float(preview.get("defender_total_mult", 1.0))
 
-	_mode_hover_label.text = "Utok: %s\nBonus U/O: %s / %s\nSila U/O: x%.2f / x%.2f (%s)" % [
+	_mode_hover_label.text = "Attack: %s\nA/D Bonus: %s / %s\nA/D Power: x%.2f / x%.2f (%s)" % [
 		prov_name,
 		atk_bonus_txt,
 		def_bonus_txt,
@@ -734,7 +734,7 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 			if not root.has_method("je_platna_provincie_pro_mir") or not root.je_platna_provincie_pro_mir(target_peace_id):
 				return
 
-			var result_peace: Dictionary = {"ok": false, "reason": "Vyber provincie do miru selhal."}
+			var result_peace: Dictionary = {"ok": false, "reason": "Failed to select province for peace terms."}
 			if root.has_method("prepni_vyber_mirove_provincie"):
 				result_peace = root.prepni_vyber_mirove_provincie(target_peace_id)
 
@@ -774,7 +774,7 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 				if not map_loader and get_parent().has_method("_ukaz_bitevni_popup"):
 					map_loader = get_parent()
 				if map_loader and map_loader.has_method("_ukaz_bitevni_popup"):
-					map_loader._ukaz_bitevni_popup("HROMADNÝ PŘESUN", "Naplánováno přesunů: %d" % planned_count)
+					map_loader._ukaz_bitevni_popup("BULK MOVE", "Planned moves: %d" % planned_count)
 				Input.set_default_cursor_shape(Input.CURSOR_ARROW)
 				material.set_shader_parameter("is_target_hover", false)
 			return

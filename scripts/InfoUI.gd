@@ -129,9 +129,9 @@ func _ready():
 	var popup_stavba = btn_stavet.get_popup()
 	_stavba_popup = popup_stavba
 	popup_stavba.clear()
-	popup_stavba.add_item("Civilní továrna (150 mil.)", 0)
-	popup_stavba.add_item("Zbrojovka (200 mil.)", 1)
-	popup_stavba.add_item("Přístav (250 mil.)", 2)
+	popup_stavba.add_item("Civilian Factory (150M)", 0)
+	popup_stavba.add_item("Arms Factory (200M)", 1)
+	popup_stavba.add_item("Port (250M)", 2)
 	popup_stavba.id_pressed.connect(_on_stavba_vybrana)
 	popup_stavba.about_to_popup.connect(_posun_stavba_menu)
 	if popup_stavba.has_signal("popup_hide"):
@@ -157,30 +157,30 @@ func _ready():
 	_nastav_tooltipy_ui()
 
 func _nastav_tooltipy_ui() -> void:
-	id_label.tooltip_text = "Nazev vybrane provincie."
-	owner_label.tooltip_text = "Aktualni vlastnik provincie."
-	terrain_label.tooltip_text = "Typ terenu v teto provincii."
-	pop_label.tooltip_text = "Pocet obyvatel provincie."
-	recruit_label.tooltip_text = "Dostupni rekruti v provincii."
-	gdp_label.tooltip_text = "Ekonomicka sila provincie."
-	income_label.tooltip_text = "Prijem provincie pro vlastnika."
-	soldiers_label.tooltip_text = "Pocet vojaku nebo flotily."
-	btn_stavet.tooltip_text = "Postavi budovu v teto provincii."
-	btn_presunout.tooltip_text = "Naplanuje presun vojaku do jine provincie."
-	btn_verbovat.tooltip_text = "Naverbuje nove vojaky za penize."
-	btn_likvidovat.tooltip_text = "Sizi armadu v provincii a vrati cast nakladu."
-	recruit_info.tooltip_text = "Kolik vojaku je mozne naverbovat."
-	recruit_slider.tooltip_text = "Nastav pocet rekrutu k naboru."
-	btn_potvrdit.tooltip_text = "Potvrdi nabor vojaku."
-	btn_zrusit.tooltip_text = "Zavre okno naboru bez zmen."
-	move_count_label.tooltip_text = "Kolik vojaku bude presunuto."
-	move_slider.tooltip_text = "Nastav pocet vojaku pro presun."
-	btn_move_potvrdit.tooltip_text = "Potvrdi presun armady."
-	btn_move_zrusit.tooltip_text = "Zrusi presun armady."
-	likvidace_info.tooltip_text = "Kolik vojaku bude odstraneno."
-	likvidace_slider.tooltip_text = "Nastav pocet vojaku k odstraneni."
-	btn_likvidace_potvrdit.tooltip_text = "Potvrdi likvidaci casti armady."
-	btn_likvidace_zrusit.tooltip_text = "Zavre likvidacni okno bez zmen."
+	id_label.tooltip_text = "Name of the selected province."
+	owner_label.tooltip_text = "Current owner of the province."
+	terrain_label.tooltip_text = "Terrain type in this province."
+	pop_label.tooltip_text = "Province population."
+	recruit_label.tooltip_text = "Available recruits in this province."
+	gdp_label.tooltip_text = "Economic strength of this province."
+	income_label.tooltip_text = "Province income for the owner."
+	soldiers_label.tooltip_text = "Number of soldiers or fleet units."
+	btn_stavet.tooltip_text = "Build a structure in this province."
+	btn_presunout.tooltip_text = "Plan troop movement to another province."
+	btn_verbovat.tooltip_text = "Recruit new soldiers for money."
+	btn_likvidovat.tooltip_text = "Disband troops in this province and refund part of the cost."
+	recruit_info.tooltip_text = "How many soldiers can be recruited."
+	recruit_slider.tooltip_text = "Set number of recruits."
+	btn_potvrdit.tooltip_text = "Confirm recruitment."
+	btn_zrusit.tooltip_text = "Close recruitment window without changes."
+	move_count_label.tooltip_text = "How many soldiers will be moved."
+	move_slider.tooltip_text = "Set soldier amount for movement."
+	btn_move_potvrdit.tooltip_text = "Confirm army movement."
+	btn_move_zrusit.tooltip_text = "Cancel army movement."
+	likvidace_info.tooltip_text = "How many soldiers will be removed."
+	likvidace_slider.tooltip_text = "Set number of soldiers to remove."
+	btn_likvidace_potvrdit.tooltip_text = "Confirm partial army disband."
+	btn_likvidace_zrusit.tooltip_text = "Close disband window without changes."
 	TooltipUtils.apply_default_tooltips(self)
 
 func _vytvor_preview_label() -> void:
@@ -263,7 +263,7 @@ func _set_preview_text(text: String) -> void:
 		_preview_label.visible = false
 		_preview_label.text = ""
 		return
-	_preview_label.text = "Náhled: " + clean
+	_preview_label.text = "Preview: " + clean
 	_preview_label.visible = true
 
 func _push_overview_deltas(deltas: Dictionary) -> void:
@@ -364,20 +364,20 @@ func _nahled_stavby_text(building_id: int, cena: float, prov_data: Dictionary) -
 	match building_id:
 		0:
 			delta_income = 10.0 * prijmova_sazba
-			bonus_text = "Civilní továrna: +10 HDP"
+			bonus_text = "Civilian Factory: +10 GDP"
 		1:
-			bonus_text = "Zbrojovka: +2 000 rekrutů"
+			bonus_text = "Arms Factory: +2,000 recruits"
 		2:
-			bonus_text = "Přístav: otevře námořní možnosti"
+			bonus_text = "Port: unlocks naval options"
 
 	var income_after = base_income + delta_income
 	var cash_after = GameManager.statni_kasa - cena
 	if building_id == 0:
 		_set_metric_delta("gdp", "+10.00", Color(0.20, 0.85, 0.25))
-		_set_metric_delta("income", "+1.00 / kolo", Color(0.20, 0.85, 0.25))
+		_set_metric_delta("income", "+1.00 / turn", Color(0.20, 0.85, 0.25))
 		overview_deltas["gdp"] = {"text": "+10.00", "color": Color(0.20, 0.85, 0.25)}
 		_push_overview_deltas(overview_deltas)
-		return "%s | Cena: %s | Kasa po nákupu: %s | Příjem po dokončení (3 kola): %s (Δ %s)" % [bonus_text, _format_money_auto(cena, 2), _format_money_auto(cash_after, 2), _format_money_auto(income_after, 2, false, true), _format_money_auto(delta_income, 2, true, true)]
+		return "%s | Cost: %s | Treasury after purchase: %s | Income after completion (3 turns): %s (Delta %s)" % [bonus_text, _format_money_auto(cena, 2), _format_money_auto(cash_after, 2), _format_money_auto(income_after, 2, false, true), _format_money_auto(delta_income, 2, true, true)]
 	if building_id == 1:
 		_set_metric_delta("recruit", "+2 000", Color(0.20, 0.85, 0.25))
 		overview_deltas["recruit"] = {"text": "+2 000", "color": Color(0.20, 0.85, 0.25)}
@@ -385,7 +385,7 @@ func _nahled_stavby_text(building_id: int, cena: float, prov_data: Dictionary) -
 		_set_metric_delta("income", "0.00", Color(0.75, 0.75, 0.75))
 		overview_deltas["gdp"] = {"text": "0.00", "color": Color(0.75, 0.75, 0.75)}
 	_push_overview_deltas(overview_deltas)
-	return "%s | Cena: %s | Kasa po nákupu: %s | Bez přímé změny příjmu" % [bonus_text, _format_money_auto(cena, 2), _format_money_auto(cash_after, 2)]
+	return "%s | Cost: %s | Treasury after purchase: %s | No direct income change" % [bonus_text, _format_money_auto(cena, 2), _format_money_auto(cash_after, 2)]
 
 func _nahled_verbovani_text(pocet: int) -> String:
 	_clear_inline_deltas()
@@ -395,19 +395,19 @@ func _nahled_verbovani_text(pocet: int) -> String:
 	var cash_after = GameManager.statni_kasa - cena
 	_set_metric_delta("soldiers", "+%s" % _formatuj_cislo(pocet), Color(0.20, 0.85, 0.25))
 	_set_metric_delta("recruit", "-%s" % _formatuj_cislo(pocet), Color(0.95, 0.35, 0.35))
-	_set_metric_delta("income", "%+.2f / kolo" % upkeep_delta, Color(0.95, 0.35, 0.35))
+	_set_metric_delta("income", "%+.2f / turn" % upkeep_delta, Color(0.95, 0.35, 0.35))
 	_push_overview_deltas({
 		"recruit": {"text": "-%s" % _formatuj_cislo(pocet), "color": Color(0.95, 0.35, 0.35)},
-		"gdp": {"text": "%+.2f / kolo" % upkeep_delta, "color": Color(0.95, 0.35, 0.35)}
+		"gdp": {"text": "%+.2f / turn" % upkeep_delta, "color": Color(0.95, 0.35, 0.35)}
 	})
-	return "Nábor: %s vojáků | Cena: %s | Kasa po nákupu: %s | Údržba: %s | Nový čistý příjem: %s" % [_formatuj_cislo(pocet), _format_money_auto(cena, 2), _format_money_auto(cash_after, 2), _format_money_auto(upkeep_delta, 2, true, true), _format_money_auto(projected_income, 2, false, true)]
+	return "Recruitment: %s soldiers | Cost: %s | Treasury after purchase: %s | Upkeep: %s | New net income: %s" % [_formatuj_cislo(pocet), _format_money_auto(cena, 2), _format_money_auto(cash_after, 2), _format_money_auto(upkeep_delta, 2, true, true), _format_money_auto(projected_income, 2, false, true)]
 
 func _posun_stavba_menu():
 	var p = btn_stavet.get_popup()
 	p.position.y = btn_stavet.global_position.y - p.size.y - 5
 	_stavba_last_focus_idx = -2
 	set_process(true)
-	_set_preview_text("Stavba se dokončí za 3 kola. Civilní továrna zvýší příjem, zbrojovka zvedne rekruty, přístav otevře námořní přístup.")
+	_set_preview_text("Construction finishes in 3 turns. Civilian Factory increases income, Arms Factory boosts recruits, Port unlocks naval access.")
 
 func _on_stavba_zvyraznena(id: int) -> void:
 	_nastav_nahled_stavby_podle_id(id)
@@ -490,20 +490,20 @@ func zobraz_data(data: Dictionary):
 	var ma_pristav = bool(data.get("has_port", false))
 	
 	var province_name = str(data.get("province_name", "Neznamo"))
-	id_label.text = "Provincie: %s - PORT" % province_name if (not je_more and ma_pristav) else "Provincie: " + province_name
+	id_label.text = "Province: %s - PORT" % province_name if (not je_more and ma_pristav) else "Province: " + province_name
 	if je_more and armada_owner != "":
-		owner_label.text = "Vlastnik: SEA (námořní armáda: %s)" % armada_owner
+		owner_label.text = "Owner: SEA (naval army: %s)" % armada_owner
 	elif core_owner != "" and core_owner != owner_tag:
-		owner_label.text = "Vlastnik: %s (okupace, core: %s)" % [owner_tag, core_owner]
+		owner_label.text = "Owner: %s (occupation, core: %s)" % [owner_tag, core_owner]
 	else:
-		owner_label.text = "Vlastnik: " + owner_tag
+		owner_label.text = "Owner: " + owner_tag
 
 	terrain_label.visible = true
 	var terrain_raw = str(data.get("terrain", "")).strip_edges()
 	if terrain_raw == "":
 		terrain_raw = "unknown"
 	var terrain_def_bonus = _ziskej_terenni_obranny_bonus_pro_data(data, terrain_raw)
-	terrain_label.text = "Terrain: %s (obrana %s)" % [terrain_raw, _format_pct_signed(terrain_def_bonus)]
+	terrain_label.text = "Terrain: %s (defense %s)" % [terrain_raw, _format_pct_signed(terrain_def_bonus)]
 	
 	if je_more:
 		_set_metric_visible("pop", false)
@@ -513,9 +513,9 @@ func zobraz_data(data: Dictionary):
 		if vojaci > 0:
 			_set_metric_visible("soldiers", true)
 			if armada_owner != "":
-				soldiers_label.text = "Flotila (%s): %s mužů" % [armada_owner, _formatuj_cislo(vojaci)]
+				soldiers_label.text = "Fleet (%s): %s men" % [armada_owner, _formatuj_cislo(vojaci)]
 			else:
-				soldiers_label.text = "Flotila: " + _formatuj_cislo(vojaci) + " mužů"
+				soldiers_label.text = "Fleet: " + _formatuj_cislo(vojaci) + " men"
 		else:
 			_set_metric_visible("soldiers", false)
 	else:
@@ -525,19 +525,19 @@ func zobraz_data(data: Dictionary):
 		_set_metric_visible("soldiers", true)
 		
 		var pop = int(data.get("population", 0))
-		pop_label.text = "Populace: " + _formatuj_cislo(pop)
+		pop_label.text = "Population: " + _formatuj_cislo(pop)
 		
 		var rekruti = int(data.get("recruitable_population", 0))
-		recruit_label.text = "Rekruti: " + _formatuj_cislo(rekruti)
+		recruit_label.text = "Recruits: " + _formatuj_cislo(rekruti)
 		
 		var gdp = float(data.get("gdp", 0.0))
-		gdp_label.text = "HDP: %.2f mld. USD" % gdp
+		gdp_label.text = "GDP: %.2f bn USD" % gdp
 		
-		soldiers_label.text = "Posádka: " + _formatuj_cislo(vojaci) + " mužů"
+		soldiers_label.text = "Army: " + _formatuj_cislo(vojaci) + " men"
 		
 		if je_moje:
 			_set_metric_visible("income", true)
-			income_label.text = "Příjem: +%s USD" % _format_money_auto(gdp * 0.05, 2)
+			income_label.text = "Income: +%s USD" % _format_money_auto(gdp * 0.05, 2)
 		else:
 			_set_metric_visible("income", false)
 
@@ -550,7 +550,7 @@ func zobraz_data(data: Dictionary):
 
 		if not muze_stavet:
 			btn_stavet.disabled = true
-			btn_stavet.text = "Stavět"
+			btn_stavet.text = "Build"
 			btn_verbovat.disabled = true
 			btn_likvidovat.disabled = not ma_armadu
 
@@ -558,10 +558,10 @@ func zobraz_data(data: Dictionary):
 			if GameManager.provincie_cooldowny.has(aktualni_provincie_id):
 				var zbyva_kol = GameManager.provincie_cooldowny[aktualni_provincie_id]["zbyva"]
 				btn_stavet.disabled = true
-				btn_stavet.text = "Staví se (%d kol)" % zbyva_kol
+				btn_stavet.text = "Building (%d turns)" % zbyva_kol
 			else:
 				btn_stavet.disabled = false
-				btn_stavet.text = "Stavět"
+				btn_stavet.text = "Build"
 			
 		if btn_presunout:
 			btn_presunout.visible = (vojaci > 0)
@@ -611,7 +611,7 @@ func _on_likvidace_slider_zmenen(hodnota: float):
 		return
 	var pocet = int(hodnota)
 	var refundace = float(pocet) * likvidace_vynos_za_vojaka
-	likvidace_info.text = "Likvidovat: %s vojáků\nZisk: +%s" % [_formatuj_cislo(pocet), _format_money_auto(refundace, 2)]
+	likvidace_info.text = "Disband: %s soldiers\nRefund: +%s" % [_formatuj_cislo(pocet), _format_money_auto(refundace, 2)]
 	if btn_likvidace_potvrdit:
 		btn_likvidace_potvrdit.disabled = (pocet <= 0)
 
@@ -650,7 +650,7 @@ func _on_potvrdit_likvidaci():
 		prov_data["recruitable_population"] = int(prov_data.get("recruitable_population", 0)) + pocet_vojaku
 
 	likvidace_popup.hide()
-	_ukaz_stavbu_info("LIKVIDACE ARMADY", "Rozpuštěno %s vojáků. Do kasy se vrátilo %s USD." % [_formatuj_cislo(pocet_vojaku), _format_money_auto(refundace, 2)])
+	_ukaz_stavbu_info("ARMY DISBAND", "Disbanded %s soldiers. %s USD was returned to the treasury." % [_formatuj_cislo(pocet_vojaku), _format_money_auto(refundace, 2)])
 	zobraz_data(prov_data)
 	GameManager.kolo_zmeneno.emit()
 
@@ -690,7 +690,7 @@ func zobraz_presun_slider(from_id: int, to_id: int, max_troops: int, path: Array
 	
 	move_slider.min_value = 1
 	move_slider.max_value = max_troops
-	move_slider.value = max_troops # Základně navolí všechny vojáky
+	move_slider.value = max_troops
 	
 	_on_move_slider_zmenen(max_troops)
 	
@@ -702,7 +702,7 @@ func zobraz_presun_slider(from_id: int, to_id: int, max_troops: int, path: Array
 
 func _on_move_slider_zmenen(hodnota: float):
 	if move_count_label:
-		move_count_label.text = _formatuj_cislo(int(hodnota)) + " vojáků"
+		move_count_label.text = _formatuj_cislo(int(hodnota)) + " soldiers"
 
 func _on_potvrdit_presun():
 	var amount = int(move_slider.value)
@@ -730,8 +730,8 @@ func _on_stavba_vybrana(id: int):
 
 	if id == 2:
 		if not GameManager.muze_postavit_pristav(aktualni_provincie_id):
-			_set_preview_text("Přístav nelze postavit: provincie musí být tvoje, pobřežní a bez aktivního cooldownu.")
-			_ukaz_stavbu_info("PŘÍSTAV", "Přístav lze stavět pouze ve vlastní pobřežní provincii sousedící s mořem a jen jednou.")
+			_set_preview_text("Port cannot be built: province must be yours, coastal, and not on cooldown.")
+			_ukaz_stavbu_info("PORT", "A port can only be built in your own coastal province adjacent to sea, and only once.")
 			return
 
 	var province_data = _ziskej_provincie_data()
@@ -743,12 +743,12 @@ func _on_stavba_vybrana(id: int):
 		GameManager.statni_kasa -= cena
 		GameManager.provincie_cooldowny[aktualni_provincie_id] = {"zbyva": 3, "budova": id}
 		btn_stavet.disabled = true
-		btn_stavet.text = "Staví se (3 kola)"
-		_ukaz_stavbu_info("STAVBA ZAHÁJENA", _nahled_stavby_text(id, cena, province_data[aktualni_provincie_id]))
+		btn_stavet.text = "Building (3 turns)"
+		_ukaz_stavbu_info("CONSTRUCTION STARTED", _nahled_stavby_text(id, cena, province_data[aktualni_provincie_id]))
 		GameManager.kolo_zmeneno.emit()
 	else:
-		_set_preview_text("Nedostatek peněz: potřebuješ %s, máš %s." % [_format_money_auto(cena, 2), _format_money_auto(GameManager.statni_kasa, 2)])
-		_ukaz_stavbu_info("NEDOSTATEK PENĚZ", "Na tuto stavbu nemáš dost peněz.")
+		_set_preview_text("Insufficient funds: you need %s, you have %s." % [_format_money_auto(cena, 2), _format_money_auto(GameManager.statni_kasa, 2)])
+		_ukaz_stavbu_info("INSUFFICIENT FUNDS", "You do not have enough money for this construction.")
 
 func _ukaz_stavbu_info(title: String, text: String):
 	var map_loader = get_tree().current_scene.find_child("Map", true, false)
@@ -775,7 +775,7 @@ func _on_verbovat_pressed():
 	var max_mozno = min(dostupni_rekruti, max_za_penize)
 	
 	if max_mozno <= 0: return
-	_set_preview_text("Nábor zvýší armádní údržbu (sníží čistý příjem za kolo).")
+	_set_preview_text("Recruitment increases army upkeep (reduces net income per turn).")
 		
 	recruit_slider.min_value = 0
 	recruit_slider.max_value = max_mozno
@@ -790,15 +790,15 @@ func _on_verbovat_pressed():
 func _on_slider_zmenen(hodnota: float):
 	var cena = hodnota * _ziskej_cenu_za_vojaka()
 	if je_hromadne_verbovani:
-		recruit_info.text = "Hromadně: %d mužů\nCena: %s" % [int(hodnota), _format_money_auto(cena, 2)]
+		recruit_info.text = "Bulk: %d men\nCost: %s" % [int(hodnota), _format_money_auto(cena, 2)]
 	else:
-		recruit_info.text = "Mužů: %d\nCena: %s" % [int(hodnota), _format_money_auto(cena, 2)]
+		recruit_info.text = "Men: %d\nCost: %s" % [int(hodnota), _format_money_auto(cena, 2)]
 	if hodnota > 0:
 		_set_preview_text(_nahled_verbovani_text(int(hodnota)))
 	else:
 		_clear_inline_deltas()
 		_push_overview_deltas({})
-		_set_preview_text("Nábor zvýší armádní údržbu (sníží čistý příjem za kolo).")
+		_set_preview_text("Recruitment increases army upkeep (reduces net income per turn).")
 	btn_potvrdit.disabled = (hodnota == 0)
 
 func _on_potvrdit_verbovani():
@@ -817,7 +817,7 @@ func _on_potvrdit_verbovani():
 	if max_okupace <= 0:
 		recruit_popup.hide()
 		_clear_preview_text()
-		_ukaz_stavbu_info("VERBOVÁNÍ", "Na okupovaném území je momentálně možné verbovat jen velmi omezeně.")
+		_ukaz_stavbu_info("RECRUITMENT", "Recruitment in occupied territory is currently heavily limited.")
 		return
 	pocet_vojaku = min(pocet_vojaku, max_okupace)
 	celkova_cena = pocet_vojaku * _ziskej_cenu_za_vojaka()
@@ -866,10 +866,10 @@ func _format_money_auto(value: float, mil_decimals: int = 2, signed: bool = fals
 		var tis_decimals = max(1, mil_decimals - 1)
 		var fmt_tis = "%" + ("+" if signed else "") + "." + str(tis_decimals) + "f"
 		var txt_tis = fmt_tis % (value * 1000.0)
-		return txt_tis + " tis." + ("/kolo" if per_turn else "")
+		return txt_tis + "k" + ("/turn" if per_turn else "")
 	var fmt_mil = "%" + ("+" if signed else "") + "." + str(mil_decimals) + "f"
 	var txt_mil = fmt_mil % value
-	return txt_mil + " mil." + ("/kolo" if per_turn else "")
+	return txt_mil + "M" + ("/turn" if per_turn else "")
 
 func zobraz_hromadna_data(ids: Array, all_provinces: Dictionary):
 	if ids.size() <= 1:
@@ -912,18 +912,18 @@ func zobraz_hromadna_data(ids: Array, all_provinces: Dictionary):
 			vlastni_s_armadou.append(pid)
 			total_soldiers += int(d.get("soldiers", 0))
 
-	id_label.text = "Hromadný výběr: %d provincií" % hromadny_vyber_ids.size()
-	owner_label.text = "Akce pro stát: %s" % GameManager.hrac_stat
+	id_label.text = "Bulk selection: %d provinces" % hromadny_vyber_ids.size()
+	owner_label.text = "Actions for country: %s" % GameManager.hrac_stat
 	terrain_label.visible = false
 	_set_metric_visible("pop", true)
 	_set_metric_visible("recruit", true)
 	_set_metric_visible("gdp", true)
 	_set_metric_visible("income", false)
 	_set_metric_visible("soldiers", true)
-	pop_label.text = "Celkem populace: %s" % _formatuj_cislo(total_pop)
-	recruit_label.text = "Celkem rekruti: %s" % _formatuj_cislo(total_recruits)
-	gdp_label.text = "Celkové HDP: %.2f mld. USD" % total_gdp
-	soldiers_label.text = "Celkem vojáků: %s" % _formatuj_cislo(total_soldiers)
+	pop_label.text = "Total population: %s" % _formatuj_cislo(total_pop)
+	recruit_label.text = "Total recruits: %s" % _formatuj_cislo(total_recruits)
+	gdp_label.text = "Total GDP: %.2f bn USD" % total_gdp
+	soldiers_label.text = "Total soldiers: %s" % _formatuj_cislo(total_soldiers)
 
 	btn_likvidovat.hide()
 	btn_stavet.show()
@@ -932,7 +932,7 @@ func zobraz_hromadna_data(ids: Array, all_provinces: Dictionary):
 	btn_stavet.disabled = vlastni_pozemni.is_empty()
 	btn_verbovat.disabled = vlastni_pozemni.is_empty()
 	btn_presunout.disabled = vlastni_s_armadou.is_empty()
-	btn_stavet.text = "Stavět"
+	btn_stavet.text = "Build"
 
 func _ziskej_hromadne_vlastni_pozemni() -> Array:
 	var out: Array = []
@@ -967,7 +967,7 @@ func _ziskej_hromadne_zdroje_s_armadou() -> Array:
 func _otevri_hromadne_verbovani():
 	var pozemni = _ziskej_hromadne_vlastni_pozemni()
 	if pozemni.is_empty():
-		_ukaz_stavbu_info("HROMADNÉ VERBOVÁNÍ", "Ve výběru není žádná tvoje pozemní provincie.")
+		_ukaz_stavbu_info("BULK RECRUITMENT", "No owned land province is selected.")
 		return
 
 	var total_recruits := 0
@@ -980,9 +980,9 @@ func _otevri_hromadne_verbovani():
 	var max_mozno = min(total_recruits, max_za_penize)
 	if max_mozno <= 0:
 		if total_recruits <= 0:
-			_ukaz_stavbu_info("HROMADNÉ VERBOVÁNÍ", "Vybrané provincie nemají dostupné rekruty.")
+			_ukaz_stavbu_info("BULK RECRUITMENT", "Selected provinces have no available recruits.")
 		else:
-			_ukaz_stavbu_info("HROMADNÉ VERBOVÁNÍ", "Nedostatek peněz pro hromadné verbování.")
+			_ukaz_stavbu_info("BULK RECRUITMENT", "Not enough money for bulk recruitment.")
 		return
 
 	je_hromadne_verbovani = true
@@ -1024,7 +1024,7 @@ func _potvrd_hromadne_verbovani():
 	if total_recruited > 0:
 		GameManager.statni_kasa -= float(total_recruited) * _ziskej_cenu_za_vojaka()
 	else:
-		_ukaz_stavbu_info("HROMADNÉ VERBOVÁNÍ", "Verbování se neprovedlo (0 přijatých vojáků).")
+		_ukaz_stavbu_info("BULK RECRUITMENT", "Recruitment was not performed (0 soldiers recruited).")
 
 	je_hromadne_verbovani = false
 	recruit_popup.hide()
@@ -1063,4 +1063,4 @@ func _postav_hromadne(building_id: int):
 	if postaveno > 0:
 		GameManager.kolo_zmeneno.emit()
 
-	_ukaz_stavbu_info("HROMADNÁ STAVBA", "Postaveno: %d | Přeskočeno: %d" % [postaveno, preskoceno])
+	_ukaz_stavbu_info("BULK CONSTRUCTION", "Built: %d | Skipped: %d" % [postaveno, preskoceno])

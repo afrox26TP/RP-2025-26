@@ -33,13 +33,13 @@ static func _guess_tooltip(control: Control) -> String:
 			return menu_text
 
 	if control is OptionButton:
-		return "Vyber moznost"
+		return "Select option"
 
 	if control is LineEdit:
 		var placeholder := (control as LineEdit).placeholder_text.strip_edges()
 		if placeholder != "":
 			return placeholder
-		return "Zadej hodnotu"
+		return "Enter value"
 
 	if control is RichTextLabel:
 		var rt_text := (control as RichTextLabel).text.strip_edges()
@@ -53,8 +53,8 @@ static func _guess_tooltip(control: Control) -> String:
 
 	if control is TextureRect:
 		if control.name.to_lower().find("flag") != -1:
-			return "Vlajka statu"
-		return "Graficky prvek"
+			return "Country flag"
+		return "Graphic element"
 
 	var fallback := control.name.replace("_", " ").strip_edges()
 	if fallback != "":

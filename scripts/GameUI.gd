@@ -466,53 +466,53 @@ func _setup_popup_country_link() -> void:
 		popup_request_flag.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 
 func _nastav_tooltipy_ui() -> void:
-	name_label.tooltip_text = "Nazev vybraneho statu."
-	country_flag.tooltip_text = "Vlajka vybraneho statu."
-	ideo_label.tooltip_text = "Aktualni politicke zrizeni statu."
-	pop_label.tooltip_text = "Celkova populace statu."
-	recruit_label.tooltip_text = "Dostupni rekruti celeho statu."
+	name_label.tooltip_text = "Name of the selected country."
+	country_flag.tooltip_text = "Flag of the selected country."
+	ideo_label.tooltip_text = "Current political system of the country."
+	pop_label.tooltip_text = "Total population of the country."
+	recruit_label.tooltip_text = "Available recruits in the whole country."
 	if army_power_label:
-		army_power_label.tooltip_text = "Vysledna sila armady po zapocteni bonusu vybavy."
-	gdp_label.tooltip_text = "Celkove HDP statu."
-	gdp_pc_label.tooltip_text = "HDP prepocitane na jednoho obyvatele."
+		army_power_label.tooltip_text = "Final army strength after equipment bonuses."
+	gdp_label.tooltip_text = "Total GDP of the country."
+	gdp_pc_label.tooltip_text = "GDP per capita."
 	if vassals_label:
-		vassals_label.tooltip_text = "Seznam statu, ktere jsou tvymi vazaly."
+		vassals_label.tooltip_text = "List of countries that are your vassals."
 	if war_reparations_label:
-		war_reparations_label.tooltip_text = "Pocet aktivnich valecnych reparaci (prichozi/odchozi)."
+		war_reparations_label.tooltip_text = "Number of active war reparations (incoming/outgoing)."
 	if _vassals_btn:
-		_vassals_btn.tooltip_text = "Otevre seznam tvych vazalu a dostupne interakce."
-	relationship_label.tooltip_text = "Diplomaticky vztah mezi tvym statem a cilem."
+		_vassals_btn.tooltip_text = "Open your vassal list and available interactions."
+	relationship_label.tooltip_text = "Diplomatic relation between your country and the target."
 	if ideology_option:
-		ideology_option.tooltip_text = "Vyber nove ideologie pro tvuj stat."
+		ideology_option.tooltip_text = "Choose a new ideology for your country."
 	if ideology_effects_label:
-		ideology_effects_label.tooltip_text = "Prehled vyhod a nevyhod zvolene ideologie."
+		ideology_effects_label.tooltip_text = "Overview of pros and cons of the selected ideology."
 	if ideology_apply_btn:
-		ideology_apply_btn.tooltip_text = "Potvrdi prechod tvého statu na zvolenou ideologii."
+		ideology_apply_btn.tooltip_text = "Confirm switching your country to the selected ideology."
 	if ideology_relocate_capital_btn:
-		ideology_relocate_capital_btn.tooltip_text = "Spusti vyber cile na mape. Cena je dynamicka a zobrazi se primo u cilove provincie."
+		ideology_relocate_capital_btn.tooltip_text = "Start target selection on map. Cost is dynamic and shown directly at the target province."
 	if research_btn:
-		research_btn.tooltip_text = "Otevre armadni lab: rozsiritelna mrizka, itemy a rerolly."
-	improve_rel_btn.tooltip_text = "Zlepsi vztah o 10 bodu."
-	worsen_rel_btn.tooltip_text = "Zhorsi vztah o 10 bodu."
+		research_btn.tooltip_text = "Open Army Lab: expandable grid, items, and rerolls."
+	improve_rel_btn.tooltip_text = "Improve relations by 10 points."
+	worsen_rel_btn.tooltip_text = "Worsen relations by 10 points."
 	if gift_money_btn:
-		gift_money_btn.tooltip_text = "Posle cilovemu statu financni dar."
-	declare_war_btn.tooltip_text = "Vyhlasi valku vybranemu statu."
-	propose_peace_btn.tooltip_text = "Posle navrh na uzavreni miru."
-	non_aggression_btn.tooltip_text = "Uzavre neagresivni smlouvu na 10 kol."
-	incoming_request_label.tooltip_text = "Zobrazuje prichozi diplomatickou zadost."
-	accept_request_btn.tooltip_text = "Prijme zobrazenou diplomatickou zadost."
-	decline_request_btn.tooltip_text = "Odmita zobrazenou diplomatickou zadost."
-	popup_request_flag.tooltip_text = "Klikni pro otevreni prehledu tohoto statu."
+		gift_money_btn.tooltip_text = "Send a financial gift to the target country."
+	declare_war_btn.tooltip_text = "Declare war on the selected country."
+	propose_peace_btn.tooltip_text = "Send a peace proposal."
+	non_aggression_btn.tooltip_text = "Sign a non-aggression pact for 10 turns."
+	incoming_request_label.tooltip_text = "Shows incoming diplomatic request."
+	accept_request_btn.tooltip_text = "Accept displayed diplomatic request."
+	decline_request_btn.tooltip_text = "Decline displayed diplomatic request."
+	popup_request_flag.tooltip_text = "Click to open this country overview."
 	if _popup_country_link_btn:
-		_popup_country_link_btn.tooltip_text = "Klikni pro otevreni prehledu tohoto statu."
-	popup_request_text.tooltip_text = "Strucny popis diplomaticke nabidky."
-	popup_accept_btn.tooltip_text = "Prijme vsechny cekajici nabidky."
-	popup_decline_btn.tooltip_text = "Odmitne vsechny cekajici nabidky."
+		_popup_country_link_btn.tooltip_text = "Click to open this country overview."
+	popup_request_text.tooltip_text = "Short description of diplomatic offer."
+	popup_accept_btn.tooltip_text = "Accept all pending offers."
+	popup_decline_btn.tooltip_text = "Decline all pending offers."
 	if popup_decline_all_btn:
-		popup_decline_all_btn.tooltip_text = "Odmítne všechny čekající diplomatické nabídky."
-	system_message_title.tooltip_text = "Titulek systemoveho hlaseni."
-	system_message_text.tooltip_text = "Detailni text systemoveho hlaseni."
-	system_message_ok_btn.tooltip_text = "Potvrdi a zavre hlaseni."
+		popup_decline_all_btn.tooltip_text = "Decline all pending diplomatic offers."
+	system_message_title.tooltip_text = "System message title."
+	system_message_text.tooltip_text = "Detailed system message text."
+	system_message_ok_btn.tooltip_text = "Confirm and close message."
 	TooltipUtils.apply_default_tooltips(self)
 
 func _on_popup_flag_gui_input(event: InputEvent) -> void:
@@ -688,7 +688,7 @@ func _zajisti_tlacitko_daru() -> void:
 	var insert_after = worsen_rel_btn
 	gift_money_btn = Button.new()
 	gift_money_btn.name = "GiftMoneyButton"
-	gift_money_btn.text = "Poslat dar"
+	gift_money_btn.text = "Send gift"
 	vbox.add_child(gift_money_btn)
 	if insert_after and insert_after.get_parent() == vbox:
 		vbox.move_child(gift_money_btn, insert_after.get_index() + 1)
@@ -702,7 +702,7 @@ func _zajisti_tlacitko_vazalu() -> void:
 		return
 	_vassals_btn = Button.new()
 	_vassals_btn.name = "VassalsButton"
-	_vassals_btn.text = "Vazalove"
+	_vassals_btn.text = "Vassals"
 	_vassals_btn.hide()
 	vbox.add_child(_vassals_btn)
 	if action_separator and action_separator.get_parent() == vbox:
@@ -748,19 +748,19 @@ func _vytvor_panel_vazalu() -> void:
 	root.add_child(header)
 
 	var title = Label.new()
-	title.text = "Moji vazalove"
+	title.text = "My vassals"
 	title.add_theme_font_size_override("font_size", 18)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
 
 	var close_top_btn = Button.new()
-	close_top_btn.text = "Zavrit"
+	close_top_btn.text = "Close"
 	close_top_btn.custom_minimum_size = Vector2(72, 0)
 	close_top_btn.pressed.connect(func(): _vassals_dialog.hide())
 	header.add_child(close_top_btn)
 
 	var hint = Label.new()
-	hint.text = "Nastav odvod a klikni Ulozit %."
+	hint.text = "Set tribute and click Apply %."
 	hint.autowrap_mode = TextServer.AUTOWRAP_OFF
 	hint.clip_text = true
 	hint.custom_minimum_size = Vector2(0, 18)
@@ -839,7 +839,7 @@ func _obnov_panel_vazalu() -> void:
 
 	if vassals.is_empty():
 		var empty_label = Label.new()
-		empty_label.text = "Zadne aktivni vazaly momentalne nemas."
+		empty_label.text = "You currently have no active vassals."
 		_vassals_list.add_child(empty_label)
 		_pozicuj_a_zmen_velikost_panelu_vazalu(0)
 		return
@@ -883,12 +883,12 @@ func _obnov_panel_vazalu() -> void:
 		row.add_child(name_lbl)
 
 		var focus_btn = Button.new()
-		focus_btn.text = "Otevrit"
+		focus_btn.text = "Open"
 		focus_btn.pressed.connect(_on_vassal_focus_pressed.bind(subject))
 		row.add_child(focus_btn)
 
 		var release_btn = Button.new()
-		release_btn.text = "Propustit"
+		release_btn.text = "Release"
 		release_btn.pressed.connect(_on_vassal_release_pressed.bind(subject))
 		row.add_child(release_btn)
 
@@ -897,7 +897,7 @@ func _obnov_panel_vazalu() -> void:
 		card_v.add_child(tribute_row)
 
 		var tribute_lbl = Label.new()
-		tribute_lbl.text = "Odvod prijmu"
+		tribute_lbl.text = "Tribute"
 		tribute_lbl.custom_minimum_size = Vector2(88, 0)
 		tribute_row.add_child(tribute_lbl)
 
@@ -919,7 +919,7 @@ func _obnov_panel_vazalu() -> void:
 		tribute_row.add_child(pct_label)
 
 		var apply_btn = Button.new()
-		apply_btn.text = "Ulozit %"
+		apply_btn.text = "Apply %"
 		apply_btn.pressed.connect(_on_vassal_tribute_apply_pressed.bind(subject, slider))
 		tribute_row.add_child(apply_btn)
 
@@ -927,11 +927,11 @@ func _obnov_panel_vazalu() -> void:
 			var inc = float(GameManager.ziskej_cisty_prijem_statu(subject))
 			var est = max(0.0, inc) * (float(slider.value) / 100.0)
 			var est_lbl = Label.new()
-			est_lbl.text = "Odhad odvodu/kol: $%.2f" % est
+			est_lbl.text = "Estimated tribute/turn: $%.2f" % est
 			est_lbl.modulate = Color(0.86, 0.94, 1.0, 0.92)
 			slider.value_changed.connect(func(v):
 				var est_now = max(0.0, float(GameManager.ziskej_cisty_prijem_statu(subject))) * (float(v) / 100.0)
-				est_lbl.text = "Odhad odvodu/kol: $%.2f" % est_now
+				est_lbl.text = "Estimated tribute/turn: $%.2f" % est_now
 			)
 			card_v.add_child(est_lbl)
 
@@ -965,7 +965,7 @@ func _aktualizuj_tlacitko_vazalu(je_hracuv_stat: bool) -> void:
 		var count := 0
 		if GameManager.has_method("ziskej_vazaly_statu"):
 			count = (GameManager.ziskej_vazaly_statu(GameManager.hrac_stat) as Array).size()
-		_vassals_btn.text = "Vazalove (%d)" % count
+		_vassals_btn.text = "Vassals (%d)" % count
 	else:
 		_vassals_btn.hide()
 		if _vassals_dialog and _vassals_dialog.visible:
@@ -979,7 +979,7 @@ func _zajisti_label_sily_armady() -> void:
 	if army_power_label == null:
 		army_power_label = Label.new()
 		army_power_label.name = "ArmyPowerLabel"
-		army_power_label.text = "Sila armady: 1.00x (+0 | +0.00%)"
+		army_power_label.text = "Army strength: 1.00x (+0 | +0.00%)"
 		vbox.add_child(army_power_label)
 
 	# Keep army power in the main stats block, directly above action separator.
@@ -995,14 +995,14 @@ func _zajisti_mirove_overview_labely() -> void:
 	if vassals_label == null:
 		vassals_label = Label.new()
 		vassals_label.name = "VassalsLabel"
-		vassals_label.text = "Vazalove: -"
+		vassals_label.text = "Vassals: -"
 		vbox.add_child(vassals_label)
 
 	war_reparations_label = get_node_or_null("OverviewPanel/VBoxContainer/WarReparationsLabel") as Label
 	if war_reparations_label == null:
 		war_reparations_label = Label.new()
 		war_reparations_label.name = "WarReparationsLabel"
-		war_reparations_label.text = "Valecne reparace: -"
+		war_reparations_label.text = "War reparations: -"
 		vbox.add_child(war_reparations_label)
 
 	if action_separator and action_separator.get_parent() == vbox:
@@ -1053,14 +1053,14 @@ func _zajisti_ideology_controls() -> void:
 	if ideology_apply_btn == null:
 		ideology_apply_btn = Button.new()
 		ideology_apply_btn.name = "ChangeIdeologyButton"
-		ideology_apply_btn.text = "Zmenit ideologii"
+		ideology_apply_btn.text = "Change ideology"
 		vbox.add_child(ideology_apply_btn)
 
 	ideology_relocate_capital_btn = get_node_or_null("OverviewPanel/VBoxContainer/RelocateCapitalButton") as Button
 	if ideology_relocate_capital_btn == null:
 		ideology_relocate_capital_btn = Button.new()
 		ideology_relocate_capital_btn.name = "RelocateCapitalButton"
-		ideology_relocate_capital_btn.text = "Presunout hlavni mesto"
+		ideology_relocate_capital_btn.text = "Relocate capital"
 		vbox.add_child(ideology_relocate_capital_btn)
 
 	if action_separator and action_separator.get_parent() == vbox:
@@ -1081,7 +1081,7 @@ func _zajisti_vyzkum_controls() -> void:
 
 	research_btn = Button.new()
 	research_btn.name = "ResearchButton"
-	research_btn.text = "Armada"
+	research_btn.text = "Army"
 	vbox.add_child(research_btn)
 
 	# Keep research action close to ideology controls for player's own state.
@@ -1113,17 +1113,17 @@ func _vytvor_vyzkum_dialog() -> void:
 	margin.add_child(root)
 
 	var title = Label.new()
-	title.text = "Armadni vyzkum"
+	title.text = "Army research"
 	title.add_theme_font_size_override("font_size", 24)
 	root.add_child(title)
 
 	_research_money_label = Label.new()
-	_research_money_label.text = "Kasa: -"
+	_research_money_label.text = "Treasury: -"
 	root.add_child(_research_money_label)
 
 	_army_research_summary_label = Label.new()
 	_army_research_summary_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_army_research_summary_label.text = "Bonus armady: +0"
+	_army_research_summary_label.text = "Army bonus: +0"
 	root.add_child(_army_research_summary_label)
 
 	var scroll = ScrollContainer.new()
@@ -1137,13 +1137,13 @@ func _vytvor_vyzkum_dialog() -> void:
 	scroll.add_child(_research_list)
 
 	var grid_title = Label.new()
-	grid_title.text = "Mrizka vybavy"
+	grid_title.text = "Equipment grid"
 	grid_title.add_theme_font_size_override("font_size", 18)
 	_research_list.add_child(grid_title)
 
 	_army_research_grid = GridContainer.new()
 	_army_research_grid.columns = 3
-	_army_research_grid.tooltip_text = "Kazde kolo spadnou 3 itemy. Nakup funguje jen drag & drop do mrizky. Pretazenim itemu na stejny item stejneho levelu je sloucis."
+	_army_research_grid.tooltip_text = "Each turn, 3 items drop. Buying works via drag and drop into the grid. Dragging onto the same item at the same level merges them."
 	_army_research_grid.add_theme_constant_override("h_separation", 6)
 	_army_research_grid.add_theme_constant_override("v_separation", 6)
 	_research_list.add_child(_army_research_grid)
@@ -1160,7 +1160,7 @@ func _vytvor_vyzkum_dialog() -> void:
 	controls_row.add_child(_army_research_reroll_btn)
 
 	_army_research_quality_btn = Button.new()
-	_army_research_quality_btn.text = "Vylepsit kvalitu"
+	_army_research_quality_btn.text = "Upgrade quality"
 	_army_research_quality_btn.pressed.connect(_on_army_research_quality_upgrade_pressed)
 	controls_row.add_child(_army_research_quality_btn)
 
@@ -1172,14 +1172,14 @@ func _vytvor_vyzkum_dialog() -> void:
 
 	var trash_label = Label.new()
 	trash_label.name = "TrashLabel"
-	trash_label.text = "Kos (prodej 75%)"
+	trash_label.text = "Trash (sell 75%)"
 	trash_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	trash_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	trash_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_army_research_trash.add_child(trash_label)
 
 	var offers_title = Label.new()
-	offers_title.text = "Nabidka tohoto kola"
+	offers_title.text = "This turn's offers"
 	offers_title.add_theme_font_size_override("font_size", 18)
 	_research_list.add_child(offers_title)
 
@@ -1192,7 +1192,7 @@ func _vytvor_vyzkum_dialog() -> void:
 	root.add_child(footer)
 
 	var close_btn = Button.new()
-	close_btn.text = "Zavrit"
+	close_btn.text = "Close"
 	close_btn.pressed.connect(func(): _zavri_vyzkum_dialog())
 	footer.add_child(close_btn)
 
@@ -1273,25 +1273,41 @@ func _item_short_name(item_name: String) -> String:
 		return item_name.to_upper()
 	return item_name.substr(0, 3).to_upper()
 
+func _display_army_item_name(item_name: String) -> String:
+	var raw = item_name.strip_edges().to_lower()
+	match raw:
+		"zbran":
+			return "Weapon"
+		"granat":
+			return "Grenade"
+		"auto":
+			return "Truck"
+		"raketomet":
+			return "Rocket Launcher"
+		"tezky tank":
+			return "Heavy Tank"
+		_:
+			return item_name
+
 func _aktualizuj_vyzkum_dialog(state_tag: String) -> void:
 	if _research_dialog == null or _research_list == null:
 		return
 	if not GameManager.has_method("ziskej_armadni_lab_statu"):
 		if _army_research_summary_label:
-			_army_research_summary_label.text = "Armadni lab zatim neni dostupny."
+			_army_research_summary_label.text = "Army Lab is not available yet."
 		return
 
 	var info = GameManager.ziskej_armadni_lab_statu(state_tag) as Dictionary
 	if not bool(info.get("ok", false)):
 		if _army_research_summary_label:
-			_army_research_summary_label.text = str(info.get("reason", "Armadni lab se nepodarilo nacist."))
+			_army_research_summary_label.text = str(info.get("reason", "Failed to load Army Lab."))
 		return
 	_army_research_last_info = info.duplicate(true)
 	_army_cell_drag_uid.clear()
 
 	var treasury = float(info.get("treasury", 0.0))
 	if _research_money_label:
-		_research_money_label.text = "Kasa statu: $%.2f mld." % treasury
+		_research_money_label.text = "State treasury: $%.2f bn" % treasury
 
 	var power_flat = int(info.get("power_flat", 0))
 	var power_pct = float(info.get("power_pct", 0.0)) * 100.0
@@ -1307,7 +1323,7 @@ func _aktualizuj_vyzkum_dialog(state_tag: String) -> void:
 	var unlocked = _army_unlocked_dict()
 	var plus_candidates = _army_plus_candidates(unlocked, grid_max_w, grid_max_h)
 	if _army_research_summary_label:
-		_army_research_summary_label.text = "Bonus armady: +%d a +%.2f%% ze zakladni sily" % [power_flat, power_pct]
+		_army_research_summary_label.text = "Army bonus: +%d and +%.2f%% from base power" % [power_flat, power_pct]
 
 	var cell_texts: Array = []
 	cell_texts.resize(_army_research_view_w * _army_research_view_h)
@@ -1321,9 +1337,7 @@ func _aktualizuj_vyzkum_dialog(state_tag: String) -> void:
 		var y = int(item.get("y", 0))
 		var w = int(item.get("w", 1))
 		var h = int(item.get("h", 1))
-		var short = _item_short_name(str(item.get("name", "?")))
-		var lvl = int(item.get("level", 1))
-		short += str(lvl)
+		var short = _item_short_name(_display_army_item_name(str(item.get("name", "?"))))
 		var uid = str(item.get("offer_uid", ""))
 		for yy in range(y, y + h):
 			for xx in range(x, x + w):
@@ -1391,8 +1405,8 @@ func _aktualizuj_vyzkum_dialog(state_tag: String) -> void:
 	if _army_research_quality_btn:
 		var quality_level = int(info.get("quality_level", 0))
 		var quality_cost = float(info.get("quality_upgrade_cost", 0.0))
-		_army_research_quality_btn.text = "Vylepsit kvalitu dropu Q%d -> Q%d ($%.2f)" % [quality_level, quality_level + 1, quality_cost]
-		_army_research_quality_btn.tooltip_text = "Vyssi Q zveda sanci na vyssi level itemu a posunuje i minimalni kvalitu nabidek."
+		_army_research_quality_btn.text = "Upgrade drop quality Q%d -> Q%d ($%.2f)" % [quality_level, quality_level + 1, quality_cost]
+		_army_research_quality_btn.tooltip_text = "Higher Q increases chance for higher-level items and raises the minimum offer quality."
 		_army_research_quality_btn.disabled = quality_level >= 8 or treasury < quality_cost
 
 	if _army_research_offers:
@@ -1430,22 +1444,21 @@ func _aktualizuj_vyzkum_dialog(state_tag: String) -> void:
 		var w = int(offer.get("w", 1))
 		var h = int(offer.get("h", 1))
 		var cost = float(offer.get("cost", 0.0))
-		var level = int(offer.get("level", 1))
 		var power_item_flat = int(offer.get("power_flat", 0))
 		var power_item_pct = float(offer.get("power_pct", 0.0)) * 100.0
 
 		var title = Label.new()
-		title.text = "%d) %s | L%d | %dx%d | $%.2f" % [i + 1, str(offer.get("name", "Item")), level, w, h, cost]
+		title.text = "%d) %s | %dx%d | $%.2f" % [i + 1, _display_army_item_name(str(offer.get("name", "Item"))), w, h, cost]
 		left.add_child(title)
 
 		var desc = Label.new()
-		desc.text = "Efekt: +%d sily, +%.2f%% ze zakladu" % [power_item_flat, power_item_pct]
+		desc.text = "Effect: +%d power, +%.2f%% from base" % [power_item_flat, power_item_pct]
 		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		left.add_child(desc)
 
 		if treasury < cost:
 			card.modulate = Color(1, 1, 1, 0.65)
-		card.tooltip_text = "Nákup funguje pouze drag & drop do mrizky."
+		card.tooltip_text = "Buying works only via drag and drop into the grid."
 
 func _vytvor_army_drag_preview(w: int, h: int, level: int = 1) -> Control:
 	var iw = max(1, w)
@@ -1480,14 +1493,6 @@ func _vytvor_army_drag_preview(w: int, h: int, level: int = 1) -> Control:
 		block.custom_minimum_size = Vector2(cell_w, cell_h)
 		block.color = Color(0.78, 0.89, 1.0, 0.70)
 		grid.add_child(block)
-
-	if level > 1:
-		var lvl = Label.new()
-		lvl.text = "L%d" % level
-		lvl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		lvl.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-		lvl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		preview.add_child(lvl)
 
 	var root = Control.new()
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1724,7 +1729,7 @@ func _army_grid_cell_drop(cell_index: int, data) -> void:
 	else:
 		return
 	if not bool(result.get("ok", false)):
-		zobraz_systemove_hlaseni("Armada", str(result.get("reason", "Sem item nelze polozit.")))
+		zobraz_systemove_hlaseni("Army", str(result.get("reason", "Item cannot be placed here.")))
 	_aktualizuj_vyzkum_dialog(player_tag)
 	_obnov_otevreny_prehled_statu()
 
@@ -1779,7 +1784,7 @@ func _army_trash_drop(data) -> void:
 		return
 	var result = GameManager.prodej_armadni_item(player_tag, item_uid) as Dictionary
 	if not bool(result.get("ok", false)):
-		zobraz_systemove_hlaseni("Armada", str(result.get("reason", "Prodej selhal.")))
+		zobraz_systemove_hlaseni("Army", str(result.get("reason", "Sale failed.")))
 	_aktualizuj_vyzkum_dialog(player_tag)
 	_obnov_otevreny_prehled_statu()
 
@@ -1792,7 +1797,7 @@ func _on_army_research_buy_offer_pressed(offer_index: int) -> void:
 		return
 	var result = GameManager.kup_armadni_nabidku(player_tag, offer_index) as Dictionary
 	if not bool(result.get("ok", false)):
-		await zobraz_systemove_hlaseni("Armada", str(result.get("reason", "Nakup selhal.")))
+		await zobraz_systemove_hlaseni("Army", str(result.get("reason", "Purchase failed.")))
 		_aktualizuj_vyzkum_dialog(player_tag)
 		return
 	_aktualizuj_vyzkum_dialog(player_tag)
@@ -1806,7 +1811,7 @@ func _on_army_research_buy_cell_pressed(x: int, y: int) -> void:
 		return
 	var result = GameManager.koupit_armadni_bunku(player_tag, x, y) as Dictionary
 	if not bool(result.get("ok", false)):
-		await zobraz_systemove_hlaseni("Armada", str(result.get("reason", "Nakup bunky selhal.")))
+		await zobraz_systemove_hlaseni("Army", str(result.get("reason", "Cell purchase failed.")))
 	_aktualizuj_vyzkum_dialog(player_tag)
 	_obnov_otevreny_prehled_statu()
 
@@ -1818,7 +1823,7 @@ func _on_army_research_reroll_pressed() -> void:
 		return
 	var result = GameManager.reroll_armadni_nabidky(player_tag) as Dictionary
 	if not bool(result.get("ok", false)):
-		await zobraz_systemove_hlaseni("Armada", str(result.get("reason", "Reroll selhal.")))
+		await zobraz_systemove_hlaseni("Army", str(result.get("reason", "Reroll failed.")))
 	_aktualizuj_vyzkum_dialog(player_tag)
 	_obnov_otevreny_prehled_statu()
 
@@ -1830,7 +1835,7 @@ func _on_army_research_quality_upgrade_pressed() -> void:
 		return
 	var result = GameManager.vylepsi_kvalitu_dropu_armady(player_tag) as Dictionary
 	if not bool(result.get("ok", false)):
-		await zobraz_systemove_hlaseni("Armada", str(result.get("reason", "Upgrade kvality selhal.")))
+		await zobraz_systemove_hlaseni("Army", str(result.get("reason", "Quality upgrade failed.")))
 	_aktualizuj_vyzkum_dialog(player_tag)
 	_obnov_otevreny_prehled_statu()
 
@@ -1861,41 +1866,55 @@ func _normalizuj_ideologii(ideology: String) -> String:
 func _display_ideologie(ideology: String) -> String:
 	var raw = _normalizuj_ideologii(ideology)
 	if raw == "":
-		return "Neznamo"
-	return raw.capitalize()
+		return "Unknown"
+	match raw:
+		"demokracie":
+			return "Democracy"
+		"kralovstvi":
+			return "Kingdom"
+		"autokracie":
+			return "Autocracy"
+		"komunismus":
+			return "Communism"
+		"nacismus":
+			return "Nazism"
+		"fasismus":
+			return "Fascism"
+		_:
+			return raw.capitalize()
 
 func _ziskej_vyhody_nevyhody_ideologie(ideology: String) -> Dictionary:
 	var ideo = _normalizuj_ideologii(ideology)
 	match ideo:
 		"demokracie":
 			return {
-				"plus": ["stabilni ekonomika", "lepsi vztahy s podobnymi rezimy"],
-				"minus": ["pomalejsi rozhodovani", "mensi tolerance k agresi"]
+				"plus": ["stable economy", "better relations with similar regimes"],
+				"minus": ["slower decision-making", "lower tolerance for aggression"]
 			}
 		"kralovstvi":
 			return {
-				"plus": ["silna legitimita moci", "snazsi diplomaticke vazby s tradicnimi staty"],
-				"minus": ["riziko konzervativni stagnace", "horsi vztahy s revolucnimi rezimy"]
+				"plus": ["strong legitimacy of power", "easier diplomatic ties with traditional states"],
+				"minus": ["risk of conservative stagnation", "worse relations with revolutionary regimes"]
 			}
 		"autokracie":
 			return {
-				"plus": ["rychle centralni rozhodovani", "pevna vnitrni kontrola"],
-				"minus": ["slabsi mezinarodni duvera", "napeti s demokratickymi staty"]
+				"plus": ["fast centralized decision-making", "strong internal control"],
+				"minus": ["lower international trust", "tension with democratic states"]
 			}
 		"komunismus":
 			return {
-				"plus": ["silna mobilizace statu", "duraz na tezky prumysl"],
-				"minus": ["slabsi vztahy s monarchiemi a demokraciemi", "vyssi geopoliticke napeti"]
+				"plus": ["strong national mobilization", "focus on heavy industry"],
+				"minus": ["weaker relations with monarchies and democracies", "higher geopolitical tension"]
 			}
 		"nacismus", "fasismus":
 			return {
-				"plus": ["agresivni militarni mobilizace", "vysoka kontrola moci"],
-				"minus": ["silne diplomaticke sankce", "rychle zhorsovani vztahu s oponenty"]
+				"plus": ["aggressive military mobilization", "high power control"],
+				"minus": ["heavy diplomatic sanctions", "rapid deterioration of relations with opponents"]
 			}
 		_:
 			return {
-				"plus": ["zmena vlajky a diplomatickeho profilu"],
-				"minus": ["nejista reakce zahranici"]
+				"plus": ["flag and diplomatic profile change"],
+				"minus": ["uncertain foreign reaction"]
 			}
 
 func _set_ideology_effects_label(ideology: String) -> void:
@@ -1912,11 +1931,11 @@ func _set_ideology_effects_text(content: String) -> void:
 
 func _sestav_ideology_effects_text(base_ideology: String, preview_ideology: String = "") -> String:
 	if not GameManager.has_method("ziskej_ideologicky_ekonomicky_profil"):
-		return "Data ideologie nejsou dostupna."
+		return "Ideology data is unavailable."
 
 	var base_profile = GameManager.ziskej_ideologicky_ekonomicky_profil(base_ideology) as Dictionary
 	if base_profile.is_empty():
-		return "Data ideologie nejsou dostupna."
+		return "Ideology data is unavailable."
 
 	var show_delta = preview_ideology.strip_edges() != "" and _normalizuj_ideologii(preview_ideology) != _normalizuj_ideologii(base_ideology)
 	var preview_profile: Dictionary = {}
@@ -1949,11 +1968,11 @@ func _sestav_ideology_effects_text(base_ideology: String, preview_ideology: Stri
 		d_recruit_regen_core_pct = (float(preview_profile.get("recruit_regen_ratio_core", recruit_regen_core_pct / 100.0)) * 100.0) - recruit_regen_core_pct
 		d_recruit_regen_occ_pct = (float(preview_profile.get("recruit_regen_ratio_occupied", recruit_regen_occ_pct / 100.0)) * 100.0) - recruit_regen_occ_pct
 
-	return "Cena/vojak: %s%s\nUdrzba/vojak / kolo: %s%s\nSazba prijmu z HDP: %.2f%%%s\nHDP/rust: %.3f%s\nRust populace / kolo: %.3f%%%s\nObnova rekrutu(core): %.2f%%%s\nObnova rekrutu(occ): %.2f%%%s" % [
+	return "Cost/soldier: %s%s\nUpkeep/soldier / turn: %s%s\nIncome rate from GDP: %.2f%%%s\nGDP growth: %.3f%s\nPopulation growth / turn: %.3f%%%s\nRecruit regen (core): %.2f%%%s\nRecruit regen (occupied): %.2f%%%s" % [
 		_format_money_auto(recruit_cost, 4),
-		_format_delta_text_color(d_recruit_cost, 4, " mil") if show_delta else "",
+		_format_delta_text_color(d_recruit_cost, 4, " M") if show_delta else "",
 		_format_money_auto(upkeep_cost, 4),
-		_format_delta_text_color(d_upkeep_cost, 4, " mil") if show_delta else "",
+		_format_delta_text_color(d_upkeep_cost, 4, " M") if show_delta else "",
 		income_rate_pct,
 		_format_delta_text_color(d_income_rate_pct, 2, "%") if show_delta else "",
 		gdp_growth,
@@ -1968,14 +1987,14 @@ func _sestav_ideology_effects_text(base_ideology: String, preview_ideology: Stri
 
 func _format_money_auto(value: float, mil_decimals: int = 2) -> String:
 	if absf(value) < 0.01:
-		return "%.*f tis." % [max(1, mil_decimals - 1), value * 1000.0]
-	return "%.*f mil" % [mil_decimals, value]
+		return "%.*fk" % [max(1, mil_decimals - 1), value * 1000.0]
+	return "%.*fM" % [mil_decimals, value]
 
 func _format_delta_text_color(value: float, decimals: int, suffix: String = "") -> String:
 	var txt := ""
-	if suffix == " mil" and absf(value) < 0.01:
+	if suffix == " M" and absf(value) < 0.01:
 		# Tiny money changes are easier to read in thousands.
-		txt = "%+.1ftis." % (value * 1000.0)
+		txt = "%+.1fk" % (value * 1000.0)
 	else:
 		var fmt = "%+." + str(decimals) + "f"
 		txt = fmt % value
@@ -2017,7 +2036,7 @@ func _obnov_ideology_vizual_z_mapy() -> void:
 		return
 	if country_flag:
 		country_flag.texture = _resolve_flag_texture(current_viewed_tag, current_ideo)
-	ideo_label.text = "Zřízení: " + _display_ideologie(current_ideo)
+	ideo_label.text = "Regime: " + _display_ideologie(current_ideo)
 
 func _on_ideology_dropdown_opened() -> void:
 	_ideology_dropdown_open = true
@@ -2037,7 +2056,7 @@ func _on_ideology_dropdown_item_focused(index: int) -> void:
 	_aplikuj_nahled_ideologie_do_ui(current_viewed_tag, selected)
 	if country_flag and current_viewed_tag != "":
 		country_flag.texture = _resolve_flag_texture(current_viewed_tag, selected)
-	ideo_label.text = "Zřízení: " + _display_ideologie(selected)
+	ideo_label.text = "Regime: " + _display_ideologie(selected)
 
 func _on_ideology_dropdown_closed() -> void:
 	_ideology_dropdown_open = false
@@ -2125,7 +2144,7 @@ func _obnov_nahled_ideologie_podle_volby() -> void:
 	_aplikuj_nahled_ideologie_do_ui(current_viewed_tag, selected)
 	if country_flag and current_viewed_tag != "":
 		country_flag.texture = _resolve_flag_texture(current_viewed_tag, selected)
-	ideo_label.text = "Zřízení: " + _display_ideologie(selected)
+	ideo_label.text = "Regime: " + _display_ideologie(selected)
 
 func _ziskej_vsechny_provincie_pro_prehled() -> Dictionary:
 	var map_loader = _ziskej_map_loader_node()
@@ -2310,20 +2329,20 @@ func _aktualizuj_tlacitko_presunu_hlavniho_mesta(owner_tag: String) -> void:
 	ideology_relocate_capital_btn.show()
 	if _ceka_na_vyber_cile_hlavniho_mesta:
 		ideology_relocate_capital_btn.disabled = false
-		ideology_relocate_capital_btn.text = "Zrusit vyber cile hlavniho mesta"
+		ideology_relocate_capital_btn.text = "Cancel capital target selection"
 		return
 	if _relocate_capital_action_lock:
 		ideology_relocate_capital_btn.disabled = true
 		return
 	if not GameManager.has_method("muze_presunout_hlavni_mesto"):
 		ideology_relocate_capital_btn.disabled = true
-		ideology_relocate_capital_btn.text = "Presunout hlavni mesto"
+		ideology_relocate_capital_btn.text = "Relocate capital"
 		return
 
 	var can_start_targeting = true
 	if GameManager.has_method("ma_dostupny_cil_presunu_hlavniho_mesta"):
 		can_start_targeting = bool(GameManager.ma_dostupny_cil_presunu_hlavniho_mesta(viewed))
-	ideology_relocate_capital_btn.text = "Presunout hlavni mesto"
+	ideology_relocate_capital_btn.text = "Relocate capital"
 	ideology_relocate_capital_btn.disabled = not can_start_targeting
 
 func _on_relocate_capital_pressed() -> void:
@@ -2338,7 +2357,7 @@ func _on_relocate_capital_pressed() -> void:
 	if map_loader == null and get_tree().current_scene and get_tree().current_scene.has_method("aktivuj_rezim_vyberu_hlavniho_mesta"):
 		map_loader = get_tree().current_scene
 	if map_loader == null:
-		await zobraz_systemove_hlaseni("Hlavni mesto", "Mapovy modul nebyl nalezen, nelze spustit vyber cile.")
+		await zobraz_systemove_hlaseni("Capital", "Map module not found, cannot start target selection.")
 		_aktualizuj_tlacitko_presunu_hlavniho_mesta(player_tag)
 		return
 
@@ -2350,13 +2369,13 @@ func _on_relocate_capital_pressed() -> void:
 		return
 
 	if not map_loader.has_method("aktivuj_rezim_vyberu_hlavniho_mesta"):
-		await zobraz_systemove_hlaseni("Hlavni mesto", "Mapovy modul nepodporuje vyber cile pro presun hlavniho mesta.")
+		await zobraz_systemove_hlaseni("Capital", "Map module does not support target selection for capital relocation.")
 		_aktualizuj_tlacitko_presunu_hlavniho_mesta(player_tag)
 		return
 
 	var activation = map_loader.aktivuj_rezim_vyberu_hlavniho_mesta(player_tag)
 	if not bool((activation as Dictionary).get("ok", false)):
-		await zobraz_systemove_hlaseni("Hlavni mesto", str((activation as Dictionary).get("reason", "Neni zadny dostupny cil pro presun hlavniho mesta.")))
+		await zobraz_systemove_hlaseni("Capital", str((activation as Dictionary).get("reason", "No valid target is available for capital relocation.")))
 		_ceka_na_vyber_cile_hlavniho_mesta = false
 		_aktualizuj_tlacitko_presunu_hlavniho_mesta(player_tag)
 		return
@@ -2376,15 +2395,15 @@ func obsluha_presunu_hlavniho_mesta_z_mapy(result: Dictionary, _target_province_
 	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
 
 	if not bool(result.get("ok", false)):
-		await zobraz_systemove_hlaseni("Hlavni mesto", str(result.get("reason", "Presun hlavniho mesta selhal.")))
+		await zobraz_systemove_hlaseni("Capital", str(result.get("reason", "Capital relocation failed.")))
 		_aktualizuj_tlacitko_presunu_hlavniho_mesta(player_tag)
 		return
 
 	await zobraz_systemove_hlaseni(
-		"Hlavni mesto",
-		"Presunuto: %s -> %s\nCena: %s" % [
-			str(result.get("old_capital_name", "Puvodni hlavni mesto")),
-			str(result.get("new_capital_name", "Nove hlavni mesto")),
+		"Capital",
+		"Moved: %s -> %s\nCost: %s" % [
+			str(result.get("old_capital_name", "Old capital")),
+			str(result.get("new_capital_name", "New capital")),
 			_format_money_auto(float(result.get("cost", 0.0)), 2)
 		]
 	)
@@ -2606,18 +2625,18 @@ func _vytvor_darovaci_dialog() -> void:
 	margin.add_child(vbox)
 
 	var title = Label.new()
-	title.text = "Poslat finanční dar"
+	title.text = "Send financial gift"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 20)
 	vbox.add_child(title)
 
 	var hint = Label.new()
-	hint.text = "Částka v mil. USD"
+	hint.text = "Amount in M USD"
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(hint)
 
 	_gift_amount_input = LineEdit.new()
-	_gift_amount_input.placeholder_text = "např. 50"
+	_gift_amount_input.placeholder_text = "e.g. 50"
 	_gift_amount_input.text_submitted.connect(func(_t): _on_confirm_gift_money())
 	vbox.add_child(_gift_amount_input)
 
@@ -2626,13 +2645,13 @@ func _vytvor_darovaci_dialog() -> void:
 	vbox.add_child(btn_row)
 
 	var confirm_btn = Button.new()
-	confirm_btn.text = "Poslat"
+	confirm_btn.text = "Send"
 	confirm_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	confirm_btn.pressed.connect(_on_confirm_gift_money)
 	btn_row.add_child(confirm_btn)
 
 	var cancel_btn = Button.new()
-	cancel_btn.text = "Zrušit"
+	cancel_btn.text = "Cancel"
 	cancel_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cancel_btn.pressed.connect(func(): _gift_dialog.hide())
 	btn_row.add_child(cancel_btn)
@@ -2670,13 +2689,13 @@ func _vytvor_mirovou_konferenci_dialog() -> void:
 	margin.add_child(vbox)
 
 	_peace_title_label = Label.new()
-	_peace_title_label.text = "Mirova konference"
+	_peace_title_label.text = "Peace conference"
 	_peace_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_peace_title_label.add_theme_font_size_override("font_size", 22)
 	vbox.add_child(_peace_title_label)
 
 	_peace_points_label = Label.new()
-	_peace_points_label.text = "Body: 0"
+	_peace_points_label.text = "Points: 0"
 	vbox.add_child(_peace_points_label)
 
 	_peace_participants_label = Label.new()
@@ -2684,30 +2703,30 @@ func _vytvor_mirovou_konferenci_dialog() -> void:
 	vbox.add_child(_peace_participants_label)
 
 	_peace_annex_check = CheckBox.new()
-	_peace_annex_check.text = "Anexovat cely stat"
+	_peace_annex_check.text = "Annex whole country"
 	_peace_annex_check.toggled.connect(func(_v): _aktualizuj_mirovou_konferenci_preview())
 	vbox.add_child(_peace_annex_check)
 
 	_peace_pick_btn = Button.new()
-	_peace_pick_btn.text = "Vybrat provincie na mape"
+	_peace_pick_btn.text = "Select provinces on map"
 	_peace_pick_btn.pressed.connect(_on_peace_pick_provinces_pressed)
 	vbox.add_child(_peace_pick_btn)
 
 	_peace_selected_label = Label.new()
-	_peace_selected_label.text = "Vybrano na mape: 0"
+	_peace_selected_label.text = "Selected on map: 0"
 	vbox.add_child(_peace_selected_label)
 
 	_peace_take_label = Label.new()
-	_peace_take_label.text = "Vzít provincie: 0"
+	_peace_take_label.text = "Take provinces: 0"
 	vbox.add_child(_peace_take_label)
 
 	_peace_vassal_check = CheckBox.new()
-	_peace_vassal_check.text = "Vytvorit vazalsky stat"
+	_peace_vassal_check.text = "Create vassal state"
 	_peace_vassal_check.toggled.connect(func(_v): _aktualizuj_mirovou_konferenci_preview())
 	vbox.add_child(_peace_vassal_check)
 
 	_peace_reparations_label = Label.new()
-	_peace_reparations_label.text = "Valecne reparace (kol): 0"
+	_peace_reparations_label.text = "War reparations (turns): 0"
 	vbox.add_child(_peace_reparations_label)
 
 	_peace_reparations_slider = HSlider.new()
@@ -2718,7 +2737,7 @@ func _vytvor_mirovou_konferenci_dialog() -> void:
 	vbox.add_child(_peace_reparations_slider)
 
 	_peace_cost_label = Label.new()
-	_peace_cost_label.text = "Cena: 0 / 0"
+	_peace_cost_label.text = "Cost: 0 / 0"
 	vbox.add_child(_peace_cost_label)
 
 	var btn_row = HBoxContainer.new()
@@ -2726,13 +2745,13 @@ func _vytvor_mirovou_konferenci_dialog() -> void:
 	vbox.add_child(btn_row)
 
 	_peace_confirm_btn = Button.new()
-	_peace_confirm_btn.text = "Potvrdit podminky"
+	_peace_confirm_btn.text = "Confirm terms"
 	_peace_confirm_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_peace_confirm_btn.pressed.connect(_on_potvrdit_mirovou_konferenci)
 	btn_row.add_child(_peace_confirm_btn)
 
 	var cancel_btn = Button.new()
-	cancel_btn.text = "Pozdeji"
+	cancel_btn.text = "Later"
 	cancel_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cancel_btn.pressed.connect(_on_peace_close_pressed)
 	btn_row.add_child(cancel_btn)
@@ -2785,7 +2804,7 @@ func _vytvor_hlaseni_mirove_konference() -> void:
 	_peace_notice_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_peace_notice_label.clip_text = true
 	_peace_notice_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_peace_notice_label.text = "Dostupne mirove jednani."
+	_peace_notice_label.text = "Peace negotiation available."
 	if popup_request_text:
 		_peace_notice_label.add_theme_font_size_override("font_size", popup_request_text.get_theme_font_size("font_size"))
 	row.add_child(_peace_notice_label)
@@ -2797,7 +2816,7 @@ func _vytvor_hlaseni_mirove_konference() -> void:
 	row.add_child(btn_wrap)
 
 	_peace_notice_btn = Button.new()
-	_peace_notice_btn.text = "Mirove jednani"
+	_peace_notice_btn.text = "Peace negotiation"
 	_peace_notice_btn.custom_minimum_size = Vector2(104, 30)
 	_peace_notice_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_peace_notice_btn.pressed.connect(_on_peace_notice_open_pressed)
@@ -2863,19 +2882,19 @@ func _aktualizuj_hlaseni_mirove_konference() -> void:
 	if _peace_notice_flag:
 		_peace_notice_flag.texture = _resolve_flag_texture(loser, loser_ideology)
 	if reason == "capitulation" and waiting_decision:
-		_peace_notice_label.text = "%s kapitulovalo. Mirove jednani je pripraveno." % loser_name
+		_peace_notice_label.text = "%s capitulated. Peace negotiations are ready." % loser_name
 	elif reason == "capitulation":
-		_peace_notice_label.text = "%s kapitulovalo. Mirove jednani je dostupne v menu." % loser_name
+		_peace_notice_label.text = "%s capitulated. Peace negotiations are available in the menu." % loser_name
 	elif waiting_decision:
-		_peace_notice_label.text = "S %s je dostupne mirove jednani." % loser_name
+		_peace_notice_label.text = "Peace negotiations with %s are available." % loser_name
 	else:
-		_peace_notice_label.text = "S %s je dostupne mirove jednani v menu." % loser_name
+		_peace_notice_label.text = "Peace negotiations with %s are available in the menu." % loser_name
 	if queue_count > 1:
-		_peace_notice_label.text += " | Fronta: %d" % queue_count
+		_peace_notice_label.text += " | Queue: %d" % queue_count
 
 	if _peace_notice_btn:
 		_peace_notice_btn.visible = true
-		_peace_notice_btn.text = "Mirove jednani (%d)" % queue_count if queue_count > 1 else "Mirove jednani"
+		_peace_notice_btn.text = "Peace negotiation (%d)" % queue_count if queue_count > 1 else "Peace negotiation"
 
 	_peace_notice_panel.show()
 	_pozicuj_hlaseni_mirove_konference()
@@ -2892,11 +2911,11 @@ func _spust_vyber_miru_na_mape(show_error_popup: bool) -> bool:
 	var map_node = _ziskej_map_node_pro_mir()
 	if map_node == null:
 		if show_error_popup:
-			zobraz_systemove_hlaseni("Mirova konference", "Mapovy modul nebyl nalezen.")
+			zobraz_systemove_hlaseni("Peace conference", "Map module was not found.")
 		return false
 	if not map_node.has_method("aktivuj_rezim_vyberu_miru"):
 		if show_error_popup:
-			zobraz_systemove_hlaseni("Mirova konference", "Mapa nepodporuje vyber provincii pro mir.")
+			zobraz_systemove_hlaseni("Peace conference", "Map does not support province selection for peace.")
 		return false
 
 	var winner = str(_active_peace_conference.get("winner", ""))
@@ -2904,7 +2923,7 @@ func _spust_vyber_miru_na_mape(show_error_popup: bool) -> bool:
 	var activation = map_node.aktivuj_rezim_vyberu_miru(winner, loser, _peace_selected_provinces)
 	if not bool((activation as Dictionary).get("ok", false)):
 		if show_error_popup:
-			zobraz_systemove_hlaseni("Mirova konference", str((activation as Dictionary).get("reason", "Nepodarilo se spustit mapovy vyber.")))
+			zobraz_systemove_hlaseni("Peace conference", str((activation as Dictionary).get("reason", "Failed to start map selection.")))
 		return false
 
 	_ceka_na_vyber_miru = true
@@ -2932,14 +2951,14 @@ func _aktualizuj_mirovou_konferenci_preview() -> void:
 	else:
 		cost = take_count * 8
 
-	_peace_take_label.text = "Vzít provincie: %d" % take_count
+	_peace_take_label.text = "Take provinces: %d" % take_count
 	if _peace_selected_label:
-		_peace_selected_label.text = "Vybrano na mape: %d" % _peace_selected_provinces.size()
+		_peace_selected_label.text = "Selected on map: %d" % _peace_selected_provinces.size()
 	if _peace_pick_btn:
 		_peace_pick_btn.disabled = annex_all
-		_peace_pick_btn.text = "Ukoncit vyber na mape" if _ceka_na_vyber_miru else "Vybrat provincie na mape"
-	_peace_reparations_label.text = "Valecne reparace (kol): %d" % repar_turns
-	_peace_cost_label.text = "Cena: %d / %d bodu" % [cost, points]
+		_peace_pick_btn.text = "Finish map selection" if _ceka_na_vyber_miru else "Select provinces on map"
+	_peace_reparations_label.text = "War reparations (turns): %d" % repar_turns
+	_peace_cost_label.text = "Cost: %d / %d points" % [cost, points]
 	_peace_confirm_btn.disabled = cost > points
 
 func _ziskej_map_node_pro_mir() -> Node:
@@ -2955,7 +2974,7 @@ func _on_peace_pick_provinces_pressed() -> void:
 		return
 	var map_node = _ziskej_map_node_pro_mir()
 	if map_node == null:
-		zobraz_systemove_hlaseni("Mirova konference", "Mapovy modul nebyl nalezen.")
+		zobraz_systemove_hlaseni("Peace conference", "Map module was not found.")
 		return
 
 	if _ceka_na_vyber_miru:
@@ -3006,8 +3025,8 @@ func _otevri_mirovou_konferenci_z_fronty() -> void:
 	var points = int(conf.get("points", 0))
 	var max_rep = int(conf.get("max_reparations_turns", 0))
 
-	_peace_points_label.text = "Body: %d" % points
-	_peace_participants_label.text = "Ucastnici valky: %s vs %s" % [winner, loser]
+	_peace_points_label.text = "Points: %d" % points
+	_peace_participants_label.text = "War participants: %s vs %s" % [winner, loser]
 	_peace_selected_provinces = []
 	_ceka_na_vyber_miru = false
 	_peace_annex_check.button_pressed = false
@@ -3041,7 +3060,7 @@ func _on_potvrdit_mirovou_konferenci() -> void:
 	var conf_id = int(_active_peace_conference.get("id", -1))
 	var result = GameManager.hrac_uzavri_mirovou_konferenci(GameManager.hrac_stat, conf_id, demands) as Dictionary
 	if not bool(result.get("ok", false)):
-		await zobraz_systemove_hlaseni("Mirova konference", str(result.get("reason", "Nepodarilo se potvrdit podminky.")))
+		await zobraz_systemove_hlaseni("Peace conference", str(result.get("reason", "Failed to confirm terms.")))
 		return
 
 	if _peace_dialog:
@@ -3056,10 +3075,10 @@ func _on_potvrdit_mirovou_konferenci() -> void:
 	_peace_selected_provinces = []
 	_aktualizuj_hlaseni_mirove_konference()
 	await zobraz_systemove_hlaseni(
-		"Mirova konference",
-		"Podminky potvrzeny: prevedeno provincii %d, vazal: %s, reparace: %d kol." % [
+		"Peace conference",
+		"Terms confirmed: transferred provinces %d, vassal: %s, reparations: %d turns." % [
 			int(result.get("transferred", 0)),
-			"ano" if bool(result.get("make_vassal", false)) else "ne",
+			"yes" if bool(result.get("make_vassal", false)) else "no",
 			int(result.get("reparations_turns", 0))
 		]
 	)
@@ -3098,8 +3117,8 @@ func _on_confirm_gift_money() -> void:
 		if _gift_dialog:
 			_gift_dialog.hide()
 		await zobraz_systemove_hlaseni(
-			"Diplomacie",
-			"Odeslán dar %s USD státu %s.\nVztah: %+0.1f" % [
+			"Diplomacy",
+			"Gift of %s USD sent to %s.\nRelation: %+0.1f" % [
 				_format_money_auto(float(result.get("amount", amount)), 2),
 				current_viewed_tag,
 				float(result.get("relation_delta", 0.0))
@@ -3111,7 +3130,7 @@ func _on_confirm_gift_money() -> void:
 		_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
 		return
 
-	await zobraz_systemove_hlaseni("Diplomacie", str(result.get("reason", "Dar se nepodařilo odeslat.")))
+	await zobraz_systemove_hlaseni("Diplomacy", str(result.get("reason", "Failed to send gift.")))
 
 func _pozicuj_pause_menu() -> void:
 	if not _pause_menu_panel:
@@ -3165,12 +3184,12 @@ func _vytvor_save_load_dialogy() -> void:
 	save_vbox.add_child(save_title)
 
 	var save_hint = Label.new()
-	save_hint.text = "Zadej jmeno save slotu"
+	save_hint.text = "Enter save slot name"
 	save_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	save_vbox.add_child(save_hint)
 
 	_save_name_input = LineEdit.new()
-	_save_name_input.placeholder_text = "napr. france_turn12"
+	_save_name_input.placeholder_text = "e.g. france_turn12"
 	_save_name_input.text_submitted.connect(func(_t): _on_save_dialog_confirm_pressed())
 	save_vbox.add_child(_save_name_input)
 
@@ -3179,13 +3198,13 @@ func _vytvor_save_load_dialogy() -> void:
 	save_vbox.add_child(save_btns)
 
 	var save_confirm_btn = Button.new()
-	save_confirm_btn.text = "Ulozit"
+	save_confirm_btn.text = "Save"
 	save_confirm_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	save_confirm_btn.pressed.connect(_on_save_dialog_confirm_pressed)
 	save_btns.add_child(save_confirm_btn)
 
 	var save_cancel_btn = Button.new()
-	save_cancel_btn.text = "Zrusit"
+	save_cancel_btn.text = "Cancel"
 	save_cancel_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	save_cancel_btn.pressed.connect(func(): _save_dialog.hide())
 	save_btns.add_child(save_cancel_btn)
@@ -3229,19 +3248,19 @@ func _vytvor_save_load_dialogy() -> void:
 	load_vbox.add_child(load_btns)
 
 	_load_confirm_btn = Button.new()
-	_load_confirm_btn.text = "Nacist"
+	_load_confirm_btn.text = "Load"
 	_load_confirm_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_load_confirm_btn.pressed.connect(_on_load_dialog_confirm_pressed)
 	load_btns.add_child(_load_confirm_btn)
 
 	var load_refresh_btn = Button.new()
-	load_refresh_btn.text = "Obnovit"
+	load_refresh_btn.text = "Refresh"
 	load_refresh_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	load_refresh_btn.pressed.connect(_obnov_load_sloty)
 	load_btns.add_child(load_refresh_btn)
 
 	var load_cancel_btn = Button.new()
-	load_cancel_btn.text = "Zrusit"
+	load_cancel_btn.text = "Cancel"
 	load_cancel_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	load_cancel_btn.pressed.connect(func(): _load_dialog.hide())
 	load_btns.add_child(load_cancel_btn)
@@ -3310,10 +3329,10 @@ func _pridej_radek_load_slotu(slot_name: String, display_name: String) -> void:
 	_load_slot_row_buttons[slot_name] = select_btn
 
 	var delete_btn = Button.new()
-	delete_btn.text = "🗑"
+	delete_btn.text = "Delete"
 	delete_btn.custom_minimum_size = Vector2(34, 0)
 	delete_btn.focus_mode = Control.FOCUS_NONE
-	delete_btn.tooltip_text = "Smazat save slot"
+	delete_btn.tooltip_text = "Delete save slot"
 	delete_btn.pressed.connect(_on_load_slot_row_delete_pressed.bind(slot_name))
 	row.add_child(delete_btn)
 
@@ -3353,9 +3372,9 @@ func _on_save_dialog_confirm_pressed() -> void:
 
 	if ok:
 		_save_dialog.hide()
-		await zobraz_systemove_hlaseni("Save", "Hra byla ulozena do slotu: %s" % slot_name)
+		await zobraz_systemove_hlaseni("Save", "Game was saved to slot: %s" % slot_name)
 	else:
-		await zobraz_systemove_hlaseni("Save", "Ulozeni se nepodarilo.")
+		await zobraz_systemove_hlaseni("Save", "Save failed.")
 
 func _on_load_dialog_confirm_pressed() -> void:
 	if _load_selected_slot_name == "":
@@ -3372,9 +3391,9 @@ func _on_load_dialog_confirm_pressed() -> void:
 	if ok:
 		_zavri_vyzkum_dialog()
 		_load_dialog.hide()
-		await zobraz_systemove_hlaseni("Load", "Hra byla nactena ze slotu: %s" % slot_name)
+		await zobraz_systemove_hlaseni("Load", "Game was loaded from slot: %s" % slot_name)
 	else:
-		await zobraz_systemove_hlaseni("Load", "Nacteni se nepodarilo.")
+		await zobraz_systemove_hlaseni("Load", "Load failed.")
 
 func _smaz_load_slot(slot_name: String) -> void:
 	var ok = false
@@ -3385,19 +3404,19 @@ func _smaz_load_slot(slot_name: String) -> void:
 
 	if ok:
 		_obnov_load_sloty()
-		await zobraz_systemove_hlaseni("Load", "Save slot byl smazan: %s" % slot_name)
+		await zobraz_systemove_hlaseni("Load", "Save slot deleted: %s" % slot_name)
 	else:
-		await zobraz_systemove_hlaseni("Load", "Smazani save slotu se nepodarilo.")
+		await zobraz_systemove_hlaseni("Load", "Failed to delete save slot.")
 
 func _on_pause_resume_pressed() -> void:
 	_zavri_pause_menu()
 
 func _on_pause_options_pressed() -> void:
 	_zavri_pause_menu()
-	await zobraz_systemove_hlaseni("Options", "Nastaveni bude doplneno v dalsi iteraci.")
+	await zobraz_systemove_hlaseni("Options", "Settings will be expanded in a future update.")
 
 func _on_pause_surrender_pressed() -> void:
-	_zobraz_pause_confirm("surrender", "Surrender", "Opravdu se chces vzdat za aktualni stat?")
+	_zobraz_pause_confirm("surrender", "Surrender", "Do you really want to surrender as the current country?")
 
 func _on_pause_save_pressed() -> void:
 	_zavri_pause_menu()
@@ -3418,7 +3437,7 @@ func _on_pause_load_pressed() -> void:
 		_load_dialog.popup()
 
 func _on_pause_quit_pressed() -> void:
-	_zobraz_pause_confirm("quit", "Quit", "Opravdu se chces vratit do hlavniho menu?")
+	_zobraz_pause_confirm("quit", "Quit", "Do you really want to return to the main menu?")
 
 func _on_pause_confirmed() -> void:
 	var action = _pause_pending_action
@@ -3432,12 +3451,12 @@ func _on_pause_confirmed() -> void:
 			if GameManager.has_method("odeber_lidsky_stat"):
 				GameManager.odeber_lidsky_stat(current_tag)
 			if GameManager.lokalni_hraci_staty.is_empty():
-				await zobraz_systemove_hlaseni("Surrender", "Vzdal ses. Vracim se do hlavniho menu.")
+				await zobraz_systemove_hlaseni("Surrender", "You surrendered. Returning to main menu.")
 				get_tree().change_scene_to_file(MAIN_MENU_SCENE_PATH)
 				return
-			await zobraz_systemove_hlaseni("Surrender", "Stat %s kapituloval." % current_tag)
+			await zobraz_systemove_hlaseni("Surrender", "Country %s capitulated." % current_tag)
 		else:
-			await zobraz_systemove_hlaseni("Surrender", "Vzdat se se nepodarilo.")
+			await zobraz_systemove_hlaseni("Surrender", "Surrender failed.")
 		return
 
 	if action == "quit":
@@ -3533,7 +3552,7 @@ func zobraz_systemove_hlaseni(titulek: String, text: String) -> void:
 	if not system_message_popup:
 		return
 	if system_message_title:
-		system_message_title.text = titulek if titulek.strip_edges() != "" else "Hlaseni"
+		system_message_title.text = titulek if titulek.strip_edges() != "" else "Report"
 	if system_message_text:
 		system_message_text.text = text
 
@@ -3559,10 +3578,10 @@ func _napln_aliance_option():
 	if not alliance_level_option:
 		return
 	alliance_level_option.clear()
-	alliance_level_option.add_item("[ ] Bez aliance", 0)
-	alliance_level_option.add_item("[D] Obranna (obrana spojence)", 1)
-	alliance_level_option.add_item("[O] Utocna (spolecny utok)", 2)
-	alliance_level_option.add_item("[F] Plna (obrana + utok)", 3)
+	alliance_level_option.add_item("[ ] No alliance", 0)
+	alliance_level_option.add_item("[D] Defensive (ally defense)", 1)
+	alliance_level_option.add_item("[O] Offensive (joint attack)", 2)
+	alliance_level_option.add_item("[F] Full (defense + attack)", 3)
 
 func _aktualizuj_zadost_ui(_target_tag: String):
 	_current_incoming_request = {}
@@ -3605,12 +3624,12 @@ func _aktualizuj_popup_diplomatickych_zadosti():
 	if popup_request_flag:
 		popup_request_flag.texture = _resolve_flag_texture(from_tag, "")
 	if popup_request_text:
-		popup_request_text.text = "Diplomacie (%d)" % pending_count
+		popup_request_text.text = "Diplomacy (%d)" % pending_count
 
 	if popup_accept_btn:
-		popup_accept_btn.text = "Prijmout vse"
+		popup_accept_btn.text = "Accept all"
 	if popup_decline_btn:
-		popup_decline_btn.text = "Odmitnout vse"
+		popup_decline_btn.text = "Decline all"
 
 	diplomacy_request_popup.show()
 	_aktualizuj_vizual_fronty_diplomacii(pending_count)
@@ -3632,11 +3651,11 @@ func _zajisti_rozbaleni_fronty_popupu() -> void:
 		if _queue_preview_toggle_btn == null:
 			_queue_preview_toggle_btn = Button.new()
 			_queue_preview_toggle_btn.name = "QueuePreviewToggleButton"
-			_queue_preview_toggle_btn.text = "Fronta"
+			_queue_preview_toggle_btn.text = "Queue"
 			_queue_preview_toggle_btn.toggle_mode = true
 			_queue_preview_toggle_btn.focus_mode = Control.FOCUS_NONE
 			_queue_preview_toggle_btn.custom_minimum_size = Vector2(88, 0)
-			_queue_preview_toggle_btn.tooltip_text = "Rozbali/skryje nahled cekajicich nabidek."
+			_queue_preview_toggle_btn.tooltip_text = "Expand/hide preview of pending offers."
 			_queue_preview_toggle_btn.pressed.connect(_on_queue_preview_toggle_pressed)
 			hbox.add_child(_queue_preview_toggle_btn)
 			hbox.move_child(_queue_preview_toggle_btn, max(0, hbox.get_child_count() - 1))
@@ -3684,8 +3703,8 @@ func _zajisti_panel_zprav() -> void:
 		_zpravy_toggle_btn.toggle_mode = true
 		_zpravy_toggle_btn.focus_mode = Control.FOCUS_NONE
 		_zpravy_toggle_btn.custom_minimum_size = Vector2(120, 30)
-		_zpravy_toggle_btn.text = "Zpravy"
-		_zpravy_toggle_btn.tooltip_text = "Rozbali centrum zprav (moje zeme / globalni)."
+		_zpravy_toggle_btn.text = "Messages"
+		_zpravy_toggle_btn.tooltip_text = "Expand messages center (my country / global)."
 		_zpravy_toggle_btn.pressed.connect(_on_zpravy_toggle_pressed)
 		add_child(_zpravy_toggle_btn)
 
@@ -3721,7 +3740,7 @@ func _zajisti_panel_zprav() -> void:
 		content_box.add_child(top)
 
 		_zpravy_title_label = Label.new()
-		_zpravy_title_label.text = "Zpravy"
+		_zpravy_title_label.text = "Messages"
 		_zpravy_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		top.add_child(_zpravy_title_label)
 
@@ -3730,7 +3749,7 @@ func _zajisti_panel_zprav() -> void:
 		top.add_child(mode_tabs)
 
 		_zpravy_mode_local_btn = Button.new()
-		_zpravy_mode_local_btn.text = "Moje zeme"
+		_zpravy_mode_local_btn.text = "My country"
 		_zpravy_mode_local_btn.toggle_mode = true
 		_zpravy_mode_local_btn.button_pressed = true
 		_zpravy_mode_local_btn.focus_mode = Control.FOCUS_NONE
@@ -3738,7 +3757,7 @@ func _zajisti_panel_zprav() -> void:
 		mode_tabs.add_child(_zpravy_mode_local_btn)
 
 		_zpravy_mode_global_btn = Button.new()
-		_zpravy_mode_global_btn.text = "Globalni"
+		_zpravy_mode_global_btn.text = "Global"
 		_zpravy_mode_global_btn.toggle_mode = true
 		_zpravy_mode_global_btn.focus_mode = Control.FOCUS_NONE
 		_zpravy_mode_global_btn.pressed.connect(_on_zpravy_mode_global_pressed)
@@ -3746,8 +3765,8 @@ func _zajisti_panel_zprav() -> void:
 
 		_zpravy_historie_checkbox = CheckBox.new()
 		_zpravy_historie_checkbox.focus_mode = Control.FOCUS_NONE
-		_zpravy_historie_checkbox.text = "Historie"
-		_zpravy_historie_checkbox.tooltip_text = "Zobrazi zpravy z minulych kol."
+		_zpravy_historie_checkbox.text = "History"
+		_zpravy_historie_checkbox.tooltip_text = "Show messages from previous turns."
 		_zpravy_historie_checkbox.toggled.connect(_on_zpravy_historie_toggled)
 		top.add_child(_zpravy_historie_checkbox)
 
@@ -3910,7 +3929,7 @@ func _sestav_skupiny_zprav(entries: Array) -> Dictionary:
 func _format_zprava_radek(entry: Dictionary, historical: bool) -> String:
 	var base = _format_zprava(entry)
 	if historical:
-		return "[Kolo %d] %s" % [int(entry.get("turn", 0)), base]
+		return "[Turn %d] %s" % [int(entry.get("turn", 0)), base]
 	return base
 
 func _vykresli_skupiny_zprav(current_entries: Array, history_entries: Array) -> void:
@@ -3922,7 +3941,7 @@ func _vykresli_skupiny_zprav(current_entries: Array, history_entries: Array) -> 
 
 	if current_entries.is_empty() and history_entries.is_empty():
 		var empty_lbl = Label.new()
-		empty_lbl.text = "(zadne zpravy)"
+		empty_lbl.text = "(no messages)"
 		_zpravy_groups_list.add_child(empty_lbl)
 		return
 
@@ -4020,17 +4039,17 @@ func _vykresli_skupiny_zprav(current_entries: Array, history_entries: Array) -> 
 
 	if not rendered_any:
 		var empty_lbl2 = Label.new()
-		empty_lbl2.text = "(zadne zpravy pro aktualni filtr)"
+		empty_lbl2.text = "(no messages for current filter)"
 		_zpravy_groups_list.add_child(empty_lbl2)
 
 func _aktualizuj_tlacitko_zprav() -> void:
 	if _zpravy_toggle_btn == null:
 		return
 	var count = _ziskej_aktivni_zpravy().size()
-	_zpravy_toggle_btn.text = "Zpravy (%d)" % count
+	_zpravy_toggle_btn.text = "Messages (%d)" % count
 	_zpravy_toggle_btn.disabled = false
 	if _zpravy_anchor_control and is_instance_valid(_zpravy_anchor_control) and _zpravy_anchor_control is Button:
-		(_zpravy_anchor_control as Button).text = "Zpravy (%d)" % count
+		(_zpravy_anchor_control as Button).text = "Messages (%d)" % count
 
 func _pozicuj_tlacitko_zprav() -> void:
 	if _zpravy_toggle_btn == null:
@@ -4275,12 +4294,12 @@ func _aktualizuj_panel_zprav() -> void:
 	var hist_arr = _ziskej_historicke_zpravy()
 	if _zpravy_title_label:
 		if _zpravy_mode == 0 and GameManager:
-			_zpravy_title_label.text = "Zpravy - kolo %d" % int(GameManager.aktualni_kolo)
+			_zpravy_title_label.text = "Messages - turn %d" % int(GameManager.aktualni_kolo)
 		else:
-			_zpravy_title_label.text = "Zpravy - globalni"
+			_zpravy_title_label.text = "Messages - global"
 	if _zpravy_historie_checkbox:
 		_zpravy_historie_checkbox.disabled = hist_arr.is_empty()
-		_zpravy_historie_checkbox.text = "Historie (%d)" % hist_arr.size()
+		_zpravy_historie_checkbox.text = "History (%d)" % hist_arr.size()
 		if hist_arr.is_empty():
 			_zpravy_historie_expanded = false
 			_zpravy_historie_checkbox.button_pressed = false
@@ -4327,12 +4346,12 @@ func _aktualizuj_text_rozbaleni_fronty(pending_count: int) -> void:
 	if _queue_preview_toggle_btn == null:
 		return
 	if pending_count <= 0:
-		_queue_preview_toggle_btn.text = "Fronta"
+		_queue_preview_toggle_btn.text = "Queue"
 		_queue_preview_toggle_btn.disabled = true
 		_queue_preview_expanded = false
 		_queue_preview_toggle_btn.button_pressed = false
 		return
-	_queue_preview_toggle_btn.text = "Fronta (%d)" % pending_count
+	_queue_preview_toggle_btn.text = "Queue (%d)" % pending_count
 	_queue_preview_toggle_btn.disabled = false
 
 func _formatuj_text_zadosti(req: Dictionary) -> String:
@@ -4340,17 +4359,17 @@ func _formatuj_text_zadosti(req: Dictionary) -> String:
 	if req_type == "alliance":
 		match int(req.get("level", 0)):
 			1:
-				return "Obranna aliance"
+				return "Defensive alliance"
 			2:
-				return "Utocna aliance"
+				return "Offensive alliance"
 			3:
-				return "Plna aliance"
-		return "Aliance"
+				return "Full alliance"
+		return "Alliance"
 	if req_type == "peace":
-		return "Navrh na uzavreni miru"
+		return "Peace proposal"
 	if req_type == "non_aggression":
-		return "Neagresivni smlouva (10 kol)"
-	return "Diplomaticka nabidka"
+		return "Non-aggression pact (10 turns)"
+	return "Diplomatic offer"
 
 func _aktualizuj_panel_rozbalene_fronty(queue: Array) -> void:
 	if _queue_preview_panel == null or _queue_preview_list == null:
@@ -4386,6 +4405,7 @@ func _aktualizuj_panel_rozbalene_fronty(queue: Array) -> void:
 
 		var row_content = HBoxContainer.new()
 		row_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row_content.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		row_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row_content.add_theme_constant_override("separation", 10)
 		row.add_child(row_content)
@@ -4409,21 +4429,23 @@ func _aktualizuj_panel_rozbalene_fronty(queue: Array) -> void:
 
 		var label = Label.new()
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		label.custom_minimum_size = Vector2(220, 0)
 		label.clip_text = true
 		label.autowrap_mode = TextServer.AUTOWRAP_OFF
-		label.text = "%d. %s - %s" % [i + 1, _ziskej_jmeno_statu_podle_tagu(from_tag), _formatuj_text_zadosti(req)]
-		label.tooltip_text = "Klik na vlajku presune kameru na stat %s." % from_tag
+		label.text = "%d. %s | Offer: %s" % [i + 1, _ziskej_jmeno_statu_podle_tagu(from_tag), _formatuj_text_zadosti(req)]
+		label.add_theme_color_override("font_color", Color(0.94, 0.96, 1.0, 1.0))
+		label.tooltip_text = "Click the flag to move camera to country %s." % from_tag
 		row_content.add_child(label)
 
 		var btn_accept = Button.new()
-		btn_accept.text = "Prijmout"
+		btn_accept.text = "Accept"
 		btn_accept.custom_minimum_size = Vector2(82, 0)
 		btn_accept.focus_mode = Control.FOCUS_NONE
 		btn_accept.pressed.connect(_on_queue_row_accept_pressed.bind(from_tag))
 		row_content.add_child(btn_accept)
 
 		var btn_decline = Button.new()
-		btn_decline.text = "Odmitnout"
+		btn_decline.text = "Decline"
 		btn_decline.custom_minimum_size = Vector2(86, 0)
 		btn_decline.focus_mode = Control.FOCUS_NONE
 		btn_decline.pressed.connect(_on_queue_row_decline_pressed.bind(from_tag))
@@ -4434,7 +4456,7 @@ func _aktualizuj_panel_rozbalene_fronty(queue: Array) -> void:
 	var remaining = queue.size() - limit
 	if remaining > 0:
 		var more_label = Label.new()
-		more_label.text = "+%d dalsich nabidek..." % remaining
+		more_label.text = "+%d more offers..." % remaining
 		_queue_preview_list.add_child(more_label)
 
 	_queue_preview_rows = max(1, min(queue.size(), QUEUE_PREVIEW_MAX_ITEMS) + (1 if remaining > 0 else 0))
@@ -4560,17 +4582,17 @@ func _aktualizuj_aliance_ui(target_tag: String):
 	alliance_level_option.select(clamp(level, 0, 3))
 	alliance_level_option.disabled = at_war or alliance_request_pending
 	if at_war:
-		alliance_level_option.tooltip_text = "Během války nelze měnit alianci."
+		alliance_level_option.tooltip_text = "Alliance cannot be changed during war."
 	elif alliance_request_pending:
-		alliance_level_option.tooltip_text = "Žádost o alianci už byla odeslána. Čeká se na odpověď."
+		alliance_level_option.tooltip_text = "Alliance request already sent. Waiting for response."
 	elif rel < 60.0:
-		alliance_level_option.tooltip_text = "Pro obrannou alianci je potřeba vztah alespoň 60."
+		alliance_level_option.tooltip_text = "Defensive alliance requires relation at least 60."
 	elif rel < 75.0:
-		alliance_level_option.tooltip_text = "Pro útočnou alianci je potřeba vztah alespoň 75."
+		alliance_level_option.tooltip_text = "Offensive alliance requires relation at least 75."
 	elif rel < 90.0:
-		alliance_level_option.tooltip_text = "Pro plnou alianci je potřeba vztah alespoň 90."
+		alliance_level_option.tooltip_text = "Full alliance requires relation at least 90."
 	else:
-		alliance_level_option.tooltip_text = "Vyšší úroveň aliance odemyká širší call-to-war podporu."
+		alliance_level_option.tooltip_text = "Higher alliance level unlocks broader call-to-war support."
 	_updating_alliance_ui = false
 
 func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
@@ -4615,15 +4637,15 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 			total_soldiers += int(p.get("soldiers", 0))
 			
 	name_label.text = plne_jmeno
-	ideo_label.text = "Zřízení: " + ideologie.capitalize()
-	pop_label.text = "Celková populace: " + _formatuj_cislo(total_pop)
+	ideo_label.text = "Regime: " + ideologie.capitalize()
+	pop_label.text = "Total population: " + _formatuj_cislo(total_pop)
 	
 	# Calculate recruitable population percentage
 	var procento = 0.0
 	if total_pop > 0:
 		procento = (float(total_recruits) / float(total_pop)) * 100.0
 		
-	recruit_label.text = "Celkoví rekruti: " + _formatuj_cislo(total_recruits) + " (%.2f %%)" % procento
+	recruit_label.text = "Total recruits: " + _formatuj_cislo(total_recruits) + " (%.2f %%)" % procento
 	if army_power_label:
 		var army_total = total_soldiers
 		var bonus_flat = 0
@@ -4638,15 +4660,15 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 			mult = float(army_total) / float(total_soldiers)
 		else:
 			mult = 1.0 + (bonus_pct / 100.0)
-		army_power_label.text = "Sila armady: %.3fx (+%d | +%.2f%%)" % [mult, bonus_flat, bonus_pct]
-	gdp_label.text = "Celkové HDP: %.2f mld. USD" % total_gdp
+		army_power_label.text = "Army strength: %.3fx (+%d | +%.2f%%)" % [mult, bonus_flat, bonus_pct]
+	gdp_label.text = "Total GDP: %.2f bn USD" % total_gdp
 	
 	# Calculate GDP per capita
 	if total_pop > 0:
 		var gdp_per_capita = (total_gdp * 1000000000.0) / float(total_pop)
-		gdp_pc_label.text = "HDP na osobu: $%.0f" % gdp_per_capita
+		gdp_pc_label.text = "GDP per capita: $%.0f" % gdp_per_capita
 	else:
-		gdp_pc_label.text = "HDP na osobu: N/A"
+		gdp_pc_label.text = "GDP per capita: N/A"
 	_aktualizuj_mirove_overview_statistiky(owner_tag, owner_tag == player_tag)
 	_aktualizuj_tlacitko_vazalu(owner_tag == player_tag)
 
@@ -4706,23 +4728,23 @@ func _aktualizuj_mirove_overview_statistiky(owner_tag: String, je_hracuv_stat: b
 
 	var tag = owner_tag.strip_edges().to_upper()
 	if tag == "":
-		vassals_label.text = "Vazalove: -"
-		war_reparations_label.text = "Valecne reparace: -"
+		vassals_label.text = "Vassals: -"
+		war_reparations_label.text = "War reparations: -"
 		return
 
 	var vassals_text = "-"
 	if GameManager.has_method("ziskej_vazaly_statu"):
 		var vassals = GameManager.ziskej_vazaly_statu(tag) as Array
-		vassals_text = ", ".join(vassals) if not vassals.is_empty() else "zadni"
-	vassals_label.text = "Vazalove: %s" % vassals_text
+		vassals_text = ", ".join(vassals) if not vassals.is_empty() else "none"
+	vassals_label.text = "Vassals: %s" % vassals_text
 
-	var repar_text = "zadne"
+	var repar_text = "none"
 	if GameManager.has_method("ziskej_aktivni_reparace_statu"):
 		var rep = GameManager.ziskej_aktivni_reparace_statu(tag) as Dictionary
 		var incoming = (rep.get("incoming", []) as Array).size()
 		var outgoing = (rep.get("outgoing", []) as Array).size()
 		repar_text = "+%d / -%d" % [incoming, outgoing]
-	war_reparations_label.text = "Valecne reparace: %s" % repar_text
+	war_reparations_label.text = "War reparations: %s" % repar_text
 
 func _on_apply_ideology_pressed() -> void:
 	if current_viewed_tag == "" or current_viewed_tag != str(GameManager.hrac_stat).strip_edges().to_upper():
@@ -4739,12 +4761,12 @@ func _on_apply_ideology_pressed() -> void:
 	var selected_ideology = str(_ideology_option_values[idx])
 	var result = GameManager.zmen_ideologii_statu(GameManager.hrac_stat, selected_ideology)
 	if not bool(result.get("ok", false)):
-		await zobraz_systemove_hlaseni("Ideologie", str(result.get("reason", "Zmena ideologie selhala.")))
+		await zobraz_systemove_hlaseni("Ideology", str(result.get("reason", "Ideology change failed.")))
 		return
 
 	var changed = bool(result.get("changed", true))
 	if not changed:
-		await zobraz_systemove_hlaseni("Ideologie", "Tato ideologie uz je aktivni.")
+		await zobraz_systemove_hlaseni("Ideology", "This ideology is already active.")
 		return
 
 	_ideology_dropdown_open = false
@@ -4761,8 +4783,8 @@ func _on_apply_ideology_pressed() -> void:
 			minus_count += 1
 
 	await zobraz_systemove_hlaseni(
-		"Ideologie",
-		"Stat %s presel na ideologii %s.\nZlepsene vztahy: %d\nZhorske vztahy: %d" % [
+		"Ideology",
+		"Country %s switched to ideology %s.\nImproved relations: %d\nWorsened relations: %d" % [
 			str(result.get("state", current_viewed_tag)),
 			_display_ideologie(str(result.get("new_ideology", selected_ideology))),
 			plus_count,
@@ -4955,10 +4977,10 @@ func _aktualizuj_vztah_ui(target_tag: String):
 	var relation_suffix = ""
 	if GameManager.has_method("je_vazal_statu"):
 		if bool(GameManager.je_vazal_statu(target_tag, GameManager.hrac_stat)):
-			relation_suffix = " | Tvuj vazal"
+			relation_suffix = " | Your vassal"
 		elif bool(GameManager.je_vazal_statu(GameManager.hrac_stat, target_tag)):
-			relation_suffix = " | Tvuj overlord"
-	relationship_label.text = "Nas vztah: %.1f%s" % [vztah, relation_suffix]
+			relation_suffix = " | Your overlord"
+	relationship_label.text = "Our relation: %.1f%s" % [vztah, relation_suffix]
 	relationship_label.show()
 	var zbyle_kola := 0
 	if GameManager.has_method("zbyva_kol_do_upravy_vztahu"):
@@ -4966,13 +4988,13 @@ func _aktualizuj_vztah_ui(target_tag: String):
 	var je_cooldown = zbyle_kola > 0
 
 	if improve_rel_btn:
-		improve_rel_btn.text = "Zlepsit vztah (%d kol)" % zbyle_kola if je_cooldown else "Zlepsit vztah (+10)"
+		improve_rel_btn.text = "Improve relation (%d turns)" % zbyle_kola if je_cooldown else "Improve relation (+10)"
 		improve_rel_btn.disabled = je_cooldown or vztah >= 100.0
 	if worsen_rel_btn:
-		worsen_rel_btn.text = "Zhorsit vztah (%d kol)" % zbyle_kola if je_cooldown else "Zhorsit vztah (-10)"
+		worsen_rel_btn.text = "Worsen relation (%d turns)" % zbyle_kola if je_cooldown else "Worsen relation (-10)"
 		worsen_rel_btn.disabled = je_cooldown or vztah <= -100.0
 	if gift_money_btn:
-		gift_money_btn.text = "Poslat dar"
+		gift_money_btn.text = "Send gift"
 		gift_money_btn.disabled = current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat
 
 	_aktualizuj_aliance_ui(target_tag)
@@ -4993,13 +5015,13 @@ func _aktualizuj_diplomacii_tlacitka(target_tag: String):
 		return
 
 	if GameManager.jsou_ve_valce(GameManager.hrac_stat, target):
-		declare_war_btn.text = "VE VALCE"
+		declare_war_btn.text = "AT WAR"
 		declare_war_btn.disabled = true
 		declare_war_btn.modulate = Color(1, 0.5, 0.5)
 		declare_war_btn.show()
 
 		var ceka_na_odpoved = GameManager.je_mirova_nabidka_cekajici(GameManager.hrac_stat, target)
-		propose_peace_btn.text = "Nabidka odeslana" if ceka_na_odpoved else "Nabidnout mir"
+		propose_peace_btn.text = "Proposal sent" if ceka_na_odpoved else "Offer peace"
 		propose_peace_btn.disabled = ceka_na_odpoved
 		propose_peace_btn.modulate = Color(1, 1, 1)
 		propose_peace_btn.show()
@@ -5007,7 +5029,7 @@ func _aktualizuj_diplomacii_tlacitka(target_tag: String):
 		if alliance_level_option:
 			alliance_level_option.disabled = true
 		if non_aggression_btn:
-			non_aggression_btn.text = "Neagresivni smlouva (nelze ve valce)"
+			non_aggression_btn.text = "Non-aggression pact (war locked)"
 			non_aggression_btn.disabled = true
 			non_aggression_btn.modulate = Color(1, 1, 1)
 	else:
@@ -5029,9 +5051,9 @@ func _aktualizuj_diplomacii_tlacitka(target_tag: String):
 			war_blocked_by_peace_cooldown = peace_cooldown_turns_left > 0
 
 		if war_blocked_by_peace_cooldown:
-			declare_war_btn.text = "Povalecny cooldown (%d kol)" % peace_cooldown_turns_left
+			declare_war_btn.text = "War cooldown (%dT)" % peace_cooldown_turns_left
 		else:
-			declare_war_btn.text = "Vyhlasit valku"
+			declare_war_btn.text = "Declare war"
 		declare_war_btn.disabled = war_blocked_by_alliance or war_blocked_by_non_aggression or war_blocked_by_peace_cooldown
 		declare_war_btn.modulate = Color(1, 1, 1)
 		declare_war_btn.show()
@@ -5046,10 +5068,10 @@ func _aktualizuj_diplomacii_tlacitka(target_tag: String):
 			if GameManager.has_method("ziskej_vztah_statu"):
 				rel = float(GameManager.ziskej_vztah_statu(GameManager.hrac_stat, target))
 			if has_non_aggression:
-				non_aggression_btn.text = "Neagresivni smlouva (%d kol)" % non_aggression_turns_left
+				non_aggression_btn.text = "Non-aggression pact (%dT)" % non_aggression_turns_left
 				non_aggression_btn.disabled = true
 				non_aggression_btn.modulate = Color(1, 1, 1)
 			else:
-				non_aggression_btn.text = "Neagresivni smlouva (10 kol)"
+				non_aggression_btn.text = "Non-aggression pact (10T)"
 				non_aggression_btn.disabled = rel < 10.0
 				non_aggression_btn.modulate = Color(1, 1, 1)

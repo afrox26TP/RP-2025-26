@@ -38,48 +38,48 @@ const TooltipUtils = preload("res://scripts/TooltipUtils.gd")
 
 # List of playable countries (Display Name : Tag)
 var hratelne_staty = {
-	"Albánie": "ALB",
-	"Rakousko": "AUT",
-	"Belgie": "BEL",
-	"Bulharsko": "BGR",
-	"Bosna a Hercegovina": "BIH",
-	"Bělorusko": "BLR",
-	"Švýcarsko": "CHE",
-	"Kypr": "CYP",
-	"Česká republika": "CZE",
-	"Německo": "DEU",
-	"Dánsko": "DNK",
-	"Španělsko": "ESP",
-	"Estonsko": "EST",
-	"Finsko": "FIN",
-	"Francie": "FRA",
-	"Velká Británie": "GBR",
-	"Gruzie": "GEO",
-	"Řecko": "GRC",
-	"Chorvatsko": "HRV",
-	"Maďarsko": "HUN",
-	"Irsko": "IRL",
+	"Albania": "ALB",
+	"Austria": "AUT",
+	"Belgium": "BEL",
+	"Bulgaria": "BGR",
+	"Bosnia and Herzegovina": "BIH",
+	"Belarus": "BLR",
+	"Switzerland": "CHE",
+	"Cyprus": "CYP",
+	"Czech Republic": "CZE",
+	"Germany": "DEU",
+	"Denmark": "DNK",
+	"Spain": "ESP",
+	"Estonia": "EST",
+	"Finland": "FIN",
+	"France": "FRA",
+	"United Kingdom": "GBR",
+	"Georgia": "GEO",
+	"Greece": "GRC",
+	"Croatia": "HRV",
+	"Hungary": "HUN",
+	"Ireland": "IRL",
 	"Island": "ISL",
-	"Itálie": "ITA",
+	"Italy": "ITA",
 	"Kosovo": "KOS",
-	"Litva": "LTU",
-	"Lucembursko": "LUX",
-	"Lotyšsko": "LVA",
-	"Moldavsko": "MDA",
-	"Severní Makedonie": "MKD",
-	"Černá Hora": "MNE",
-	"Nizozemsko": "NLD",
-	"Norsko": "NOR",
-	"Polsko": "POL",
-	"Portugalsko": "PRT",
-	"Rumunsko": "ROU",
-	"Rusko": "RUS",
-	"Srbsko": "SRB",
-	"Slovensko": "SVK",
-	"Slovinsko": "SVN",
-	"Švédsko": "SWE",
-	"Turecko": "TUR",
-	"Ukrajina": "UKR"
+	"Lithuania": "LTU",
+	"Luxembourg": "LUX",
+	"Latvia": "LVA",
+	"Moldova": "MDA",
+	"North Macedonia": "MKD",
+	"Montenegro": "MNE",
+	"Netherlands": "NLD",
+	"Norway": "NOR",
+	"Poland": "POL",
+	"Portugal": "PRT",
+	"Romania": "ROU",
+	"Russia": "RUS",
+	"Serbia": "SRB",
+	"Slovakia": "SVK",
+	"Slovenia": "SVN",
+	"Sweden": "SWE",
+	"Turkey": "TUR",
+	"Ukraine": "UKR"
 }
 
 const MAP_SCENE_PATH := "res://scenes/map.tscn"
@@ -89,12 +89,12 @@ const PROVINCES_DATA_PATHS := [
 	"res://map_data/Province.txt",
 	"res://map_data/Provinces.txt"
 ]
-const SETTINGS_DIALOG_TITLE := "Nastaveni"
-const SETTINGS_DIALOG_TEXT := "Nastaveni budou doplnena v dalsi iteraci.\n\nOVLADANI:\n- Zoom koleckem\n- Posouvat mapu WSAD\n- Ukoncit kolo mezernikem\n- Pravim tlacitkem cancelovat akce a zavirat dialogy\n- DEv simple conquer tool: C"
-const CREDITS_DIALOG_TITLE := "Kredity"
-const CREDITS_DIALOG_TEXT := "RP-2025-26\n\nDesign a gameplay: JA (Afrox26TP)\nMapa a data: interni dataset (Muj)"
-const EXIT_DIALOG_TITLE := "Potvrzeni"
-const EXIT_DIALOG_TEXT := "Opravdu chces ukoncit hru?"
+const SETTINGS_DIALOG_TITLE := "Settings"
+const SETTINGS_DIALOG_TEXT := "Settings will be expanded in a future update.\n\nCONTROLS:\n- Mouse wheel: zoom\n- WASD: move map\n- Space: end turn\n- Right click: cancel actions and close dialogs\n- Dev simple conquer tool: C"
+const CREDITS_DIALOG_TITLE := "Credits"
+const CREDITS_DIALOG_TEXT := "RP-2025-26\n\nDesign and gameplay: ME (Afrox26TP)\nMap and data: internal dataset (mine)"
+const EXIT_DIALOG_TITLE := "Confirmation"
+const EXIT_DIALOG_TEXT := "Do you really want to quit the game?"
 
 var country_stats: Dictionary = {}
 var flag_texture_cache: Dictionary = {}
@@ -105,10 +105,10 @@ var selected_country_tag: String = "ALB"
 var new_game_browser_flow: bool = false
 var local_player_tags: Array = []
 var setup_active_player_index: int = 0
-const BROWSER_CONFIRM_DEFAULT_TEXT := "Potvrdit vyber"
-const BROWSER_CONFIRM_ADD_PLAYER_TEXT := "Pridat hrace"
-const BROWSER_CLOSE_DEFAULT_TEXT := "Zavrit"
-const BROWSER_CLOSE_START_TEXT := "Spustit hru"
+const BROWSER_CONFIRM_DEFAULT_TEXT := "Confirm selection"
+const BROWSER_CONFIRM_ADD_PLAYER_TEXT := "Add player"
+const BROWSER_CLOSE_DEFAULT_TEXT := "Close"
+const BROWSER_CLOSE_START_TEXT := "Start game"
 
 func _load_texture_cached(path: String):
 	if path == "" or not ResourceLoader.exists(path):
@@ -174,24 +174,24 @@ func _ready():
 	_nastav_tooltipy_ui()
 
 func _nastav_tooltipy_ui() -> void:
-	btn_new_game.tooltip_text = "Spusti novou hru a otevre vyber statu."
-	btn_continue.tooltip_text = "Nacte posledni ulozenou hru."
-	btn_settings.tooltip_text = "Otevre nastaveni hry."
-	btn_credits.tooltip_text = "Zobrazi autory a info o projektu."
-	btn_exit.tooltip_text = "Ukonci hru."
-	btn_confirm_country.tooltip_text = "Potvrdi aktualni vyber statu."
-	btn_close_browser.tooltip_text = "Zavre vyber statu, v multiplayer flow spusti hru."
-	btn_close_corner.tooltip_text = "Rychle zavre panel vyberu statu."
-	selected_country_label.tooltip_text = "Aktualne zvoleny stat nebo seznam lokalnich hracu."
-	menu_hint_label.tooltip_text = "Strucna napoveda k dalsimu kroku."
-	browser_subtitle.tooltip_text = "Popisuje logiku vyberu statu."
-	browser_flow_hint.tooltip_text = "Ukazuje, co mas v tomto kroku udelat."
-	selected_players_title.tooltip_text = "Panel se seznamem lokalnich hracu."
-	selected_players_list.tooltip_text = "Aktualne zvolene staty pro hrace."
-	list_hint.tooltip_text = "Napoveda k ovladani seznamu statu."
-	detail_flag.tooltip_text = "Vlajka detailu vybraneho statu."
-	detail_name.tooltip_text = "Nazev vybraneho statu."
-	detail_info.tooltip_text = "Strucny souhrn silnych stran a rizik statu."
+	btn_new_game.tooltip_text = "Start a new game and open country selection."
+	btn_continue.tooltip_text = "Load the latest saved game."
+	btn_settings.tooltip_text = "Open game settings."
+	btn_credits.tooltip_text = "Show authors and project info."
+	btn_exit.tooltip_text = "Quit the game."
+	btn_confirm_country.tooltip_text = "Confirm the current country selection."
+	btn_close_browser.tooltip_text = "Close country selection, or start the game in multiplayer flow."
+	btn_close_corner.tooltip_text = "Quickly close the country selection panel."
+	selected_country_label.tooltip_text = "Currently selected country or local player list."
+	menu_hint_label.tooltip_text = "Short hint for the next step."
+	browser_subtitle.tooltip_text = "Explains country selection behavior."
+	browser_flow_hint.tooltip_text = "Shows what to do in the current step."
+	selected_players_title.tooltip_text = "Panel with local player list."
+	selected_players_list.tooltip_text = "Currently selected countries for players."
+	list_hint.tooltip_text = "Hint for controlling the country list."
+	detail_flag.tooltip_text = "Flag of the selected country."
+	detail_name.tooltip_text = "Name of the selected country."
+	detail_info.tooltip_text = "Short summary of country strengths and risks."
 	TooltipUtils.apply_default_tooltips(self)
 
 func _nastav_texty_dialogu():
@@ -260,7 +260,7 @@ func _nacti_data_statu_pro_browser():
 	var data_path = _resolve_provinces_data_path()
 	var file = FileAccess.open(data_path, FileAccess.READ)
 	if file == null:
-		push_warning("Nepodarilo se nacist dataset provincii pro browser statu.")
+		push_warning("Failed to load province dataset for country browser.")
 		return
 
 	if file.eof_reached():
@@ -348,7 +348,7 @@ func _vytvor_radek_statu(tag: String) -> Button:
 		row_btn.icon = icon_tex
 		row_btn.expand_icon = false
 	row_btn.text = _sestav_text_radku_statu(tag)
-	row_btn.tooltip_text = "%s (%s) | Populace: %s | HDP: %.1f" % [
+	row_btn.tooltip_text = "%s (%s) | Population: %s | GDP: %.1f" % [
 		_zobrazene_jmeno_statu(tag), tag, _formatuj_cislo(int(stats["population"])), float(stats["gdp"])
 	]
 	row_btn.pressed.connect(func(): _on_country_row_pressed(tag))
@@ -362,20 +362,20 @@ func _sestav_text_radku_statu(tag: String) -> String:
 	var badges: Array = []
 
 	if selected_country_tag_in_browser == tag:
-		badges.append("VYBRAN")
+		badges.append("SELECTED")
 
 	var idx = local_player_tags.find(tag)
 	if idx != -1:
-		badges.append("OBSAZENO")
-		badges.append("HRAC %d" % (idx + 1))
+		badges.append("TAKEN")
+		badges.append("PLAYER %d" % (idx + 1))
 		if new_game_browser_flow and idx == setup_active_player_index:
-			badges.append("AKTIVNI")
+			badges.append("ACTIVE")
 
 	var prefix = ""
 	if not badges.is_empty():
 		prefix = "[%s] " % " | ".join(badges)
 
-	return "%s%s (%s)\nPop: %s  |  HDP: %.1f" % [
+	return "%s%s (%s)\nPop: %s  |  GDP: %.1f" % [
 		prefix,
 		_zobrazene_jmeno_statu(tag),
 		tag,
@@ -407,9 +407,9 @@ func _aktualizuj_panel_vyberu_hracu() -> void:
 		return
 
 	if new_game_browser_flow:
-		selected_players_title.text = "Vybrani hraci pro local multiplayer"
+		selected_players_title.text = "Selected players for local multiplayer"
 		if local_player_tags.is_empty():
-			selected_players_list.text = "Zatim nikdo"
+			selected_players_list.text = "Nobody yet"
 		else:
 			var lines: Array = []
 			for i in range(local_player_tags.size()):
@@ -420,9 +420,9 @@ func _aktualizuj_panel_vyberu_hracu() -> void:
 				lines.append("%s %s (%s)" % [prefix, _zobrazene_jmeno_statu(tag), tag])
 			selected_players_list.text = "\n".join(lines)
 	else:
-		selected_players_title.text = "Aktualni vyber"
+		selected_players_title.text = "Current selection"
 		if selected_country_tag == "":
-			selected_players_list.text = "Zatim nikdo"
+			selected_players_list.text = "Nobody yet"
 		else:
 			selected_players_list.text = "%s (%s)" % [_zobrazene_jmeno_statu(selected_country_tag), selected_country_tag]
 
@@ -448,12 +448,12 @@ func _nastav_detail_statu(tag: String):
 
 	detail_name.text = jmeno
 	detail_tag.text = "Tag: %s" % tag
-	detail_ideology.text = "Ideologie: %s" % str(s["ideology"]).capitalize()
-	detail_population.text = "Populace: %s" % _formatuj_cislo(int(s["population"]))
-	detail_gdp.text = "HDP: %.2f mld. USD" % float(s["gdp"])
-	detail_recruits.text = "Rekruti: %s" % _formatuj_cislo(int(s["recruitable_population"]))
-	detail_soldiers.text = "Vojaci: %s" % _formatuj_cislo(int(s["soldiers"]))
-	detail_provinces.text = "Provincie: %d" % int(s["province_count"])
+	detail_ideology.text = "Ideology: %s" % str(s["ideology"]).capitalize()
+	detail_population.text = "Population: %s" % _formatuj_cislo(int(s["population"]))
+	detail_gdp.text = "GDP: %.2f bn USD" % float(s["gdp"])
+	detail_recruits.text = "Recruits: %s" % _formatuj_cislo(int(s["recruitable_population"]))
+	detail_soldiers.text = "Soldiers: %s" % _formatuj_cislo(int(s["soldiers"]))
+	detail_provinces.text = "Provinces: %d" % int(s["province_count"])
 	detail_info.text = _vytvor_souhrn_statu(jmeno, s)
 
 	var flag_tex = _load_normalized_flag_texture("res://map_data/Flags/%s.svg" % tag, 240, 150)
@@ -470,53 +470,53 @@ func _vytvor_souhrn_statu(jmeno: String, s: Dictionary) -> String:
 	var mobilizace = float(vojaci) / float(populace)
 	var rekrut_podil = float(rekruti) / float(populace)
 
-	var vyspelost = "nizsi"
+	var vyspelost = "lower"
 	if hdp_na_osobu >= 45000.0:
-		vyspelost = "vysoka"
+		vyspelost = "high"
 	elif hdp_na_osobu >= 25000.0:
-		vyspelost = "stredni"
+		vyspelost = "medium"
 
-	var velikost = "mensi"
+	var velikost = "smaller"
 	if provincie >= 35:
-		velikost = "velmi rozsahla"
+		velikost = "very large"
 	elif provincie >= 18:
-		velikost = "stredne velka"
+		velikost = "mid-sized"
 
-	var vojenska_sila = "omezena"
+	var vojenska_sila = "limited"
 	if mobilizace >= 0.015:
-		vojenska_sila = "vysoka"
+		vojenska_sila = "high"
 	elif mobilizace >= 0.007:
-		vojenska_sila = "solidni"
+		vojenska_sila = "solid"
 
 	var silne = []
 	var slabiny = []
 
-	if vyspelost == "vysoka":
-		silne.append("silna ekonomika a stabilni zaklad pro dlouhodobou expanzi")
-	elif vyspelost == "stredni":
-		silne.append("vyvazena ekonomika vhodna pro univerzalni strategii")
+	if vyspelost == "high":
+		silne.append("strong economy and stable foundation for long-term expansion")
+	elif vyspelost == "medium":
+		silne.append("balanced economy suitable for flexible strategy")
 	else:
-		slabiny.append("nizsi ekonomicky vykon, pomalejsi tempo modernizace")
+		slabiny.append("lower economic output and slower modernization pace")
 
 	if provincie >= 25:
-		silne.append("siroke uzemi, vic moznosti manevru a obrany")
+		silne.append("wide territory with more maneuver and defense options")
 	elif provincie <= 8:
-		slabiny.append("male uzemi, citlivost na rychly tlak nepratele")
+		slabiny.append("small territory, vulnerable to early pressure")
 
 	if rekrut_podil >= 0.09:
-		silne.append("nadprumerny zasobnik rekrutu pro posilovani armady")
+		silne.append("above-average recruit pool for army reinforcement")
 	elif rekrut_podil <= 0.04:
-		slabiny.append("omezeny rust armady kvuli nizsimu podilu rekrutu")
+		slabiny.append("limited army growth due to low recruit share")
 
-	if vojenska_sila == "vysoka":
-		silne.append("silna okamzita bojova pripravenost")
-	elif vojenska_sila == "omezena":
-		slabiny.append("slabsi vychozi armada, vhodnejsi opatrny start")
+	if vojenska_sila == "high":
+		silne.append("strong immediate combat readiness")
+	elif vojenska_sila == "limited":
+		slabiny.append("weaker starting army, safer to play a cautious opening")
 
-	var silne_text = ", ".join(silne) if not silne.is_empty() else "flexibilni start bez vyraznych extremu"
-	var slabiny_text = ", ".join(slabiny) if not slabiny.is_empty() else "zadna kriticka slabina na startu"
+	var silne_text = ", ".join(silne) if not silne.is_empty() else "flexible start without major extremes"
+	var slabiny_text = ", ".join(slabiny) if not slabiny.is_empty() else "no critical weakness at game start"
 
-	return "%s je %s zeme s %s zakladnou a %s vojenskou pripravenosti. Silne stranky: %s. Rizika: %s." % [jmeno, velikost, vyspelost, vojenska_sila, silne_text, slabiny_text]
+	return "%s is a %s country with a %s base and %s military readiness. Strengths: %s. Risks: %s." % [jmeno, velikost, vyspelost, vojenska_sila, silne_text, slabiny_text]
 
 func _on_country_row_pressed(tag: String):
 	if new_game_browser_flow:
@@ -555,7 +555,7 @@ func _prirad_stat_aktivnimu_hraci(tag: String) -> void:
 	var idx_obsazeni = local_player_tags.find(tag)
 	if idx_obsazeni != -1 and idx_obsazeni != setup_active_player_index:
 		if browser_flow_hint:
-			browser_flow_hint.text = "Stat %s je uz obsazeny jinym hracem." % tag
+			browser_flow_hint.text = "Country %s is already taken by another player." % tag
 		return
 
 	local_player_tags[setup_active_player_index] = tag
@@ -571,7 +571,7 @@ func _pridej_dalsiho_hrace_do_setupu() -> void:
 	var novy_tag = _najdi_prvni_volny_tag()
 	if novy_tag == "":
 		if browser_flow_hint:
-			browser_flow_hint.text = "Neni dostupny dalsi volny stat pro noveho hrace."
+			browser_flow_hint.text = "No additional free country is available for a new player."
 		return
 
 	local_player_tags.append(novy_tag)
@@ -637,20 +637,20 @@ func _on_close_browser_corner_pressed():
 
 func _obnov_text_vyberu():
 	if local_player_tags.size() > 1:
-		selected_country_label.text = "Lokalni hraci: %s" % ", ".join(local_player_tags)
+		selected_country_label.text = "Local players: %s" % ", ".join(local_player_tags)
 		if menu_hint_label:
-			menu_hint_label.text = "Pripraveno: %d hraci. Klikni Nova hra pro upravu vyberu nebo Pokracovat pro rychly start." % local_player_tags.size()
+			menu_hint_label.text = "Ready: %d players. Click New Game to edit selection or Continue for a quick start." % local_player_tags.size()
 		_aktualizuj_panel_vyberu_hracu()
 		return
 
 	if selected_country_tag == "":
-		selected_country_label.text = "Vybrany stat: zadny"
+		selected_country_label.text = "Selected country: none"
 		return
 
 	var nazev_statu = _zobrazene_jmeno_statu(selected_country_tag)
-	selected_country_label.text = "Vybrany stat: %s (%s)" % [nazev_statu, selected_country_tag]
+	selected_country_label.text = "Selected country: %s (%s)" % [nazev_statu, selected_country_tag]
 	if menu_hint_label:
-		menu_hint_label.text = "Pro multiplayer pridej v Nove hre dalsi staty."
+		menu_hint_label.text = "For multiplayer, add more countries in New Game."
 	if country_stats.has(selected_country_tag):
 		_nastav_detail_statu(selected_country_tag)
 	_aktualizuj_panel_vyberu_hracu()
@@ -660,18 +660,18 @@ func _aktualizuj_browser_napovedu():
 		return
 
 	if new_game_browser_flow:
-		browser_subtitle.text = "Hrac 1 je automaticky pridan. Klikanim volis stat aktivnimu hraci."
-		list_hint.text = "Spustit hru = solo nebo start vice hracu. Pridat hrace = dalsi hrac."
+		browser_subtitle.text = "Player 1 is added automatically. Click to assign a country to the active player."
+		list_hint.text = "Start game = solo or start with multiple players. Add player = next player."
 		if local_player_tags.is_empty():
-			browser_flow_hint.text = "Pripravuje se vyber hracu..."
+			browser_flow_hint.text = "Preparing player selection..."
 		else:
 			var cislo_hrace = setup_active_player_index + 1
 			var aktivni_tag = _ziskej_setup_tag_aktivniho_hrace()
-			browser_flow_hint.text = "Vybiras stat pro HRACE %d. Aktualne: %s" % [cislo_hrace, aktivni_tag]
+			browser_flow_hint.text = "Selecting country for PLAYER %d. Current: %s" % [cislo_hrace, aktivni_tag]
 	else:
-		browser_subtitle.text = "Vyber stat pro solo nebo pridej vice statu pro local multiplayer"
-		list_hint.text = "Klikni na stat pro detail a pak potvrd vyber"
-		browser_flow_hint.text = "Rezim solo: vyber stat a potvrd."
+		browser_subtitle.text = "Pick one country for solo or add more for local multiplayer"
+		list_hint.text = "Click a country for details, then confirm selection"
+		browser_flow_hint.text = "Solo mode: choose a country and confirm."
 
 func _nastav_stav_pokracovani():
 	var ma_save = FileAccess.file_exists(SAVE_FILE_PATH)
@@ -679,9 +679,9 @@ func _nastav_stav_pokracovani():
 		ma_save = bool(GameManager.ma_ulozene_hry())
 	btn_continue.disabled = not ma_save
 	if ma_save:
-		btn_continue.text = "Pokracovat"
+		btn_continue.text = "Continue"
 	else:
-		btn_continue.text = "Pokracovat (bez save)"
+		btn_continue.text = "Continue (no save)"
 
 func _spust_hru_vyberem(player_tags: Array = []):
 	var final_tags = player_tags.duplicate()
@@ -701,7 +701,7 @@ func _spust_hru_vyberem(player_tags: Array = []):
 	else:
 		GameManager.hrac_stat = selected_country_tag
 
-	print("Lokalni hraci: ", final_tags)
+	print("Local players: ", final_tags)
 	
 	# Load the main map scene
 	get_tree().change_scene_to_file(MAP_SCENE_PATH)
@@ -742,17 +742,17 @@ func _on_continue_pressed():
 
 	var err = get_tree().change_scene_to_file(MAP_SCENE_PATH)
 	if err != OK:
-		push_warning("Nepodarilo se otevrit mapu pro Continue. Chyba: %s" % str(err))
+		push_warning("Failed to open map for Continue. Error: %s" % str(err))
 		return
 
 	# Wait for map scene setup, then override runtime state with saved data.
 	await get_tree().process_frame
 	if GameManager and GameManager.has_method("nacti_posledni_hru"):
 		if not bool(GameManager.nacti_posledni_hru()):
-			push_warning("Continue selhalo: save se nepodarilo nacist.")
+			push_warning("Continue failed: save could not be loaded.")
 	elif GameManager and GameManager.has_method("nacti_hru"):
 		if not bool(GameManager.nacti_hru()):
-			push_warning("Continue selhalo: save se nepodarilo nacist.")
+			push_warning("Continue failed: save could not be loaded.")
 
 func _on_settings_pressed():
 	settings_dialog.popup_centered()
