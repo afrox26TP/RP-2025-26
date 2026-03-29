@@ -319,6 +319,53 @@ func _show_peace_target_tooltip(province_id: int, data: Dictionary, root: Node) 
 		_mode_hover_debug_label.visible = false
 	_update_mode_hover_tooltip_position(get_global_mouse_position())
 
+func _format_pct_signed(value: float) -> String:
+	var pct = int(round(value * 100.0))
+	if pct >= 0:
+		return "+%d%%" % pct
+	return "%d%%" % pct
+
+func _show_attack_target_tooltip(from_id: int, province_id: int, data: Dictionary, root: Node) -> bool:
+	if _mode_hover_panel == null or _mode_hover_label == null:
+		return false
+	if root == null or not root.has_method("ziskej_nahled_bojovych_modifikatoru"):
+		return false
+
+	var preview = root.ziskej_nahled_bojovych_modifikatoru(from_id, province_id) as Dictionary
+	if not bool(preview.get("ok", false)):
+		return false
+	if not bool(preview.get("is_attack", false)):
+		return false
+
+	var prov_name = str(data.get("province_name", "Provincie %d" % province_id)).strip_edges()
+	if prov_name == "":
+		prov_name = "Provincie %d" % province_id
+
+	var atk_bonus_txt = _format_pct_signed(float(preview.get("attacker_bonus_pct", 0.0)))
+	var def_bonus_txt = _format_pct_signed(float(preview.get("defender_bonus_pct", 0.0)))
+	var terrain_name = str(preview.get("terrain", "unknown")).strip_edges()
+	if terrain_name == "":
+		terrain_name = "unknown"
+
+	var atk_total = float(preview.get("attacker_total_mult", 1.0))
+	var def_total = float(preview.get("defender_total_mult", 1.0))
+
+	_mode_hover_label.text = "Utok: %s\nBonus U/O: %s / %s\nSila U/O: x%.2f / x%.2f (%s)" % [
+		prov_name,
+		atk_bonus_txt,
+		def_bonus_txt,
+		atk_total,
+		def_total,
+		terrain_name
+	]
+	_mode_hover_panel.size = _mode_hover_panel.get_combined_minimum_size()
+	_mode_hover_panel.visible = true
+	if _mode_hover_debug_label:
+		_mode_hover_debug_label.text = _mode_hover_label.text
+		_mode_hover_debug_label.visible = false
+	_update_mode_hover_tooltip_position(get_global_mouse_position())
+	return true
+
 func _sestav_text_hover_modu(data: Dictionary, mod: String) -> String:
 	match mod:
 		"population":
@@ -902,6 +949,9 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 				_show_peace_target_tooltip(int(prov_id), data, root)
 			elif is_capital_targeting:
 				_show_capital_target_tooltip(int(prov_id), data, root)
+			elif is_targeting:
+				if not _show_attack_target_tooltip(int(root.vybrana_armada_od), int(prov_id), data, root):
+					_show_mode_hover_tooltip(data, root)
 			else:
 				_show_mode_hover_tooltip(data, root)
 			return # Already hovering this province, do nothing
@@ -925,6 +975,9 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 			_show_peace_target_tooltip(int(prov_id), data, root)
 		elif is_capital_targeting:
 			_show_capital_target_tooltip(int(prov_id), data, root)
+		elif is_targeting:
+			if not _show_attack_target_tooltip(int(root.vybrana_armada_od), int(prov_id), data, root):
+				_show_mode_hover_tooltip(data, root)
 		else:
 			_show_mode_hover_tooltip(data, root)
 

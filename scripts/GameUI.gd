@@ -103,8 +103,12 @@ var _save_dialog: PopupPanel
 var _save_name_input: LineEdit
 var _load_dialog: PopupPanel
 var _load_slot_list: ItemList
+var _load_slot_scroll: ScrollContainer
+var _load_slots_vbox: VBoxContainer
 var _load_confirm_btn: Button
 var _load_slot_names: Array = []
+var _load_selected_slot_name: String = ""
+var _load_slot_row_buttons: Dictionary = {}
 var _gift_dialog: PopupPanel
 var _gift_amount_input: LineEdit
 var gift_money_btn: Button
@@ -174,6 +178,7 @@ var _queue_preview_expanded: bool = false
 var _queue_preview_rows: int = 0
 var _zpravy_toggle_btn: Button
 var _zpravy_panel: Panel
+var _zpravy_anchor_control: Control
 var _zpravy_mode_local_btn: Button
 var _zpravy_mode_global_btn: Button
 var _zpravy_mode: int = 0 # 0 = moje zeme, 1 = globalni
@@ -299,11 +304,6 @@ func _ziskej_jmeno_statu_podle_tagu(tag: String) -> String:
 	return cisty
 
 func _ready():
-	if panel:
-		panel.offset_left = 0.0
-		panel.offset_top = 0.0
-		panel.offset_right = panel.offset_left + 324.0
-		panel.offset_bottom = panel.offset_top + 760.0
 	panel.hide()
 	_setup_overview_inline_deltas()
 	_zajisti_label_sily_armady()
@@ -3214,10 +3214,15 @@ func _vytvor_save_load_dialogy() -> void:
 	load_title.add_theme_font_size_override("font_size", 20)
 	load_vbox.add_child(load_title)
 
-	_load_slot_list = ItemList.new()
-	_load_slot_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_load_slot_list.allow_reselect = true
-	load_vbox.add_child(_load_slot_list)
+	_load_slot_scroll = ScrollContainer.new()
+	_load_slot_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_load_slot_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	load_vbox.add_child(_load_slot_scroll)
+
+	_load_slots_vbox = VBoxContainer.new()
+	_load_slots_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_load_slots_vbox.add_theme_constant_override("separation", 4)
+	_load_slot_scroll.add_child(_load_slots_vbox)
 
 	var load_btns = HBoxContainer.new()
 	load_btns.add_theme_constant_override("separation", 8)
@@ -3256,11 +3261,14 @@ func _vygeneruj_default_jmeno_save() -> String:
 	return "save_%s" % Time.get_datetime_string_from_system().replace("T", "_").replace(":", "-")
 
 func _obnov_load_sloty() -> void:
-	if not _load_slot_list:
+	if _load_slots_vbox == null:
 		return
 
-	_load_slot_list.clear()
+	for ch in _load_slots_vbox.get_children():
+		ch.queue_free()
+	_load_slot_row_buttons.clear()
 	_load_slot_names.clear()
+	_load_selected_slot_name = ""
 	var sloty: Array = []
 	if GameManager and GameManager.has_method("ziskej_save_sloty"):
 		sloty = GameManager.ziskej_save_sloty()
@@ -3270,17 +3278,64 @@ func _obnov_load_sloty() -> void:
 		var slot_name = str(d.get("name", ""))
 		if slot_name == "":
 			continue
-		_load_slot_list.add_item(slot_name)
 		_load_slot_names.append(slot_name)
+		_pridej_radek_load_slotu(slot_name, slot_name)
 
-	if _load_slot_list.get_item_count() == 0 and FileAccess.file_exists("user://savegame.dat"):
-		_load_slot_list.add_item("quicksave (legacy)")
+	if _load_slot_names.is_empty() and FileAccess.file_exists("user://savegame.dat"):
 		_load_slot_names.append("__legacy__")
+		_pridej_radek_load_slotu("__legacy__", "quicksave (legacy)")
 
-	if _load_slot_list.get_item_count() > 0:
-		_load_slot_list.select(0)
+	if not _load_slot_names.is_empty():
+		_nastav_vybrany_load_slot(str(_load_slot_names[0]))
 	if _load_confirm_btn:
-		_load_confirm_btn.disabled = _load_slot_list.get_item_count() == 0
+		_load_confirm_btn.disabled = _load_slot_names.is_empty()
+
+func _pridej_radek_load_slotu(slot_name: String, display_name: String) -> void:
+	if _load_slots_vbox == null:
+		return
+
+	var row = HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 6)
+	_load_slots_vbox.add_child(row)
+
+	var select_btn = Button.new()
+	select_btn.text = display_name
+	select_btn.toggle_mode = true
+	select_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	select_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	select_btn.focus_mode = Control.FOCUS_NONE
+	select_btn.pressed.connect(_on_load_slot_row_pressed.bind(slot_name))
+	row.add_child(select_btn)
+	_load_slot_row_buttons[slot_name] = select_btn
+
+	var delete_btn = Button.new()
+	delete_btn.text = "🗑"
+	delete_btn.custom_minimum_size = Vector2(34, 0)
+	delete_btn.focus_mode = Control.FOCUS_NONE
+	delete_btn.tooltip_text = "Smazat save slot"
+	delete_btn.pressed.connect(_on_load_slot_row_delete_pressed.bind(slot_name))
+	row.add_child(delete_btn)
+
+func _nastav_vybrany_load_slot(slot_name: String) -> void:
+	_load_selected_slot_name = slot_name
+	for key_any in _load_slot_row_buttons.keys():
+		var key = str(key_any)
+		var btn = _load_slot_row_buttons[key_any] as Button
+		if btn:
+			btn.button_pressed = (key == _load_selected_slot_name)
+	if _load_confirm_btn:
+		_load_confirm_btn.disabled = _load_selected_slot_name == ""
+
+func _on_load_slot_row_pressed(slot_name: String) -> void:
+	_nastav_vybrany_load_slot(slot_name)
+
+func _on_load_slot_row_delete_pressed(slot_name: String) -> void:
+	await _smaz_load_slot(slot_name)
+
+func _on_load_slot_selected(_index: int) -> void:
+	# Deprecated path (ItemList was replaced by custom row list).
+	pass
 
 func _on_save_dialog_confirm_pressed() -> void:
 	if not _save_name_input:
@@ -3303,17 +3358,9 @@ func _on_save_dialog_confirm_pressed() -> void:
 		await zobraz_systemove_hlaseni("Save", "Ulozeni se nepodarilo.")
 
 func _on_load_dialog_confirm_pressed() -> void:
-	if not _load_slot_list:
+	if _load_selected_slot_name == "":
 		return
-	var selected = _load_slot_list.get_selected_items()
-	if selected.is_empty():
-		return
-
-	var idx = int(selected[0])
-	if idx < 0 or idx >= _load_slot_names.size():
-		return
-
-	var slot_name = str(_load_slot_names[idx])
+	var slot_name = _load_selected_slot_name
 	var ok = false
 	if slot_name == "__legacy__" and GameManager and GameManager.has_method("nacti_hru"):
 		ok = bool(GameManager.nacti_hru())
@@ -3328,6 +3375,19 @@ func _on_load_dialog_confirm_pressed() -> void:
 		await zobraz_systemove_hlaseni("Load", "Hra byla nactena ze slotu: %s" % slot_name)
 	else:
 		await zobraz_systemove_hlaseni("Load", "Nacteni se nepodarilo.")
+
+func _smaz_load_slot(slot_name: String) -> void:
+	var ok = false
+	if slot_name == "__legacy__" and GameManager and GameManager.has_method("smaz_legacy_save"):
+		ok = bool(GameManager.smaz_legacy_save())
+	elif GameManager and GameManager.has_method("smaz_save_slot"):
+		ok = bool(GameManager.smaz_save_slot(slot_name))
+
+	if ok:
+		_obnov_load_sloty()
+		await zobraz_systemove_hlaseni("Load", "Save slot byl smazan: %s" % slot_name)
+	else:
+		await zobraz_systemove_hlaseni("Load", "Smazani save slotu se nepodarilo.")
 
 func _on_pause_resume_pressed() -> void:
 	_zavri_pause_menu()
@@ -3413,11 +3473,14 @@ func _aktualizuj_pozice_popupu():
 			var panel_w = req_w
 			_queue_preview_panel.position = Vector2((viewport_size.x - panel_w) * 0.5, top_y + req_h + 6.0)
 			_queue_preview_panel.size = Vector2(panel_w, panel_h)
-	if _zpravy_panel and _zpravy_toggle_btn:
-		var zpravy_w = clamp(viewport_size.x * 0.36, 460.0, 690.0)
+	if _zpravy_panel:
+		var zpravy_anchor = _ziskej_rect_anchoru_zprav()
+		if zpravy_anchor.size == Vector2.ZERO:
+			return
+		var zpravy_w = clamp(viewport_size.x * 0.30, 360.0, 540.0)
 		var zpravy_h = clamp(viewport_size.y * 0.34, 180.0, 380.0)
-		var x = viewport_size.x - zpravy_w - 10.0
-		var y = _zpravy_toggle_btn.global_position.y + _zpravy_toggle_btn.size.y + 6.0
+		var x = clampf(zpravy_anchor.position.x + zpravy_anchor.size.x - zpravy_w, 10.0, viewport_size.x - zpravy_w - 10.0)
+		var y = zpravy_anchor.position.y + zpravy_anchor.size.y + 6.0
 		if diplomacy_request_popup and diplomacy_request_popup.visible:
 			var zpravy_rect = Rect2(Vector2(x, y), Vector2(zpravy_w, zpravy_h))
 			var dip_rect = Rect2(diplomacy_request_popup.position, diplomacy_request_popup.size)
@@ -3966,16 +4029,38 @@ func _aktualizuj_tlacitko_zprav() -> void:
 	var count = _ziskej_aktivni_zpravy().size()
 	_zpravy_toggle_btn.text = "Zpravy (%d)" % count
 	_zpravy_toggle_btn.disabled = false
+	if _zpravy_anchor_control and is_instance_valid(_zpravy_anchor_control) and _zpravy_anchor_control is Button:
+		(_zpravy_anchor_control as Button).text = "Zpravy (%d)" % count
 
 func _pozicuj_tlacitko_zprav() -> void:
 	if _zpravy_toggle_btn == null:
 		return
+	if _zpravy_anchor_control and is_instance_valid(_zpravy_anchor_control):
+		_zpravy_toggle_btn.hide()
+		return
+	_zpravy_toggle_btn.show()
 	var viewport_size = get_viewport().get_visible_rect().size
 	var y = _topbar_bottom_y() + 4.0
 	var next_btn = get_tree().current_scene.find_child("NextTurnButton", true, false) as Control
 	if next_btn:
 		y = next_btn.global_position.y + next_btn.size.y + 4.0
 	_zpravy_toggle_btn.position = Vector2(viewport_size.x - _zpravy_toggle_btn.size.x - 12.0, y)
+
+func _ziskej_rect_anchoru_zprav() -> Rect2:
+	if _zpravy_anchor_control and is_instance_valid(_zpravy_anchor_control) and _zpravy_anchor_control.is_visible_in_tree():
+		return Rect2(_zpravy_anchor_control.global_position, _zpravy_anchor_control.size)
+	if _zpravy_toggle_btn and is_instance_valid(_zpravy_toggle_btn) and _zpravy_toggle_btn.visible:
+		return Rect2(_zpravy_toggle_btn.global_position, _zpravy_toggle_btn.size)
+	return Rect2(Vector2.ZERO, Vector2.ZERO)
+
+func nastav_zpravy_anchor_control(control: Control) -> void:
+	_zpravy_anchor_control = control
+	_pozicuj_tlacitko_zprav()
+	_aktualizuj_tlacitko_zprav()
+	_aktualizuj_pozice_popupu()
+
+func prepni_zpravy_panel() -> void:
+	_on_zpravy_toggle_pressed()
 
 func _vyhledat_tagy_statu_v_textu(text: String) -> Array:
 	var tags: Array = []

@@ -3,6 +3,8 @@ extends CanvasLayer
 @onready var money_label = $Panel/HBoxContainer/MoneyLabel
 @onready var turn_label = $Panel/HBoxContainer/TurnLabel
 @onready var next_btn = $Panel/HBoxContainer/NextTurnButton
+@onready var zpravy_btn = $Panel/HBoxContainer/ZpravyButton
+@onready var top_panel = $Panel
 @onready var map_modes_box = $Panel/HBoxContainer/MapModes
 @onready var mode_btn_political = $Panel/HBoxContainer/MapModes/ModePolitical
 @onready var mode_btn_population = $Panel/HBoxContainer/MapModes/ModePopulation
@@ -27,11 +29,14 @@ var _is_turn_processing: bool = false
 var _turn_busy_anim_time: float = 0.0
 var _turn_busy_anim_step: int = 0
 var _map_mode_white_icon_cache: Dictionary = {}
+var _finance_tooltip_panel: PanelContainer
+var _finance_tooltip_text: RichTextLabel
+var _finance_tooltip_visible: bool = false
 
 const TURN_BUSY_FRAMES := ["[zpracovavam  ]", "[zpracovavam .]", "[zpracovavam ..]", "[zpracovavam ...]"]
-const MAP_MODE_BUTTON_HEIGHT := 30
-const MAP_MODE_BUTTON_SELECTED_HEIGHT := 36
-const MAP_MODE_BUTTON_WIDTH := 40
+const MAP_MODE_BUTTON_HEIGHT := 38
+const MAP_MODE_BUTTON_SELECTED_HEIGHT := 45
+const MAP_MODE_BUTTON_WIDTH := 50
 const MAP_MODE_TO_BUTTON_PATHS := {
 	"political": "ModePolitical",
 	"population": "ModePopulation",
@@ -155,23 +160,47 @@ func _ensure_ideology_flag_index() -> void:
 func _ready():
 	# Connect button clicks and GameManager signals
 	next_btn.pressed.connect(_on_next_turn_pressed)
+	if zpravy_btn and not zpravy_btn.pressed.is_connected(_on_zpravy_pressed):
+		zpravy_btn.pressed.connect(_on_zpravy_pressed)
 	_zapoj_tlacitka_mapovych_modu()
 	_napoj_signal_mapoveho_modu()
+	_vytvor_financni_tooltip_panel()
+	_napoj_financni_hover()
 	GameManager.kolo_zmeneno.connect(aktualizuj_ui)
 	if GameManager.has_signal("zpracovani_tahu_zmeneno") and not GameManager.zpracovani_tahu_zmeneno.is_connected(_on_zpracovani_tahu_zmeneno):
 		GameManager.zpracovani_tahu_zmeneno.connect(_on_zpracovani_tahu_zmeneno)
 	_vytvor_turn_busy_indicator()
 	_on_zpracovani_tahu_zmeneno(bool(GameManager.zpracovava_se_tah))
 	_nastav_tooltipy_ui()
+	call_deferred("_registruj_anchor_zprav")
 
 func _nastav_tooltipy_ui() -> void:
-	money_label.tooltip_text = "Stav statni kasy a cisty prijem za kolo."
+	money_label.tooltip_text = ""
 	turn_label.tooltip_text = "Aktualni cislo kola."
 	next_btn.tooltip_text = "Ukonci tve kolo a spusti dalsi tah."
+	zpravy_btn.tooltip_text = "Otevre centrum zprav (moje zeme / globalni)."
 	player_flag.tooltip_text = "Vlajka prave ovladaneho statu."
 	player_name.tooltip_text = "Nazev statu, za ktery prave hrajes."
 	_nastav_tooltipy_mapovych_modu()
 	TooltipUtils.apply_default_tooltips(self)
+	# Money label uses only custom hover panel, never default Godot tooltip.
+	money_label.tooltip_text = ""
+
+func _ziskej_game_ui_node() -> Node:
+	var scene_root = get_tree().current_scene
+	if scene_root == null:
+		return null
+	return scene_root.find_child("GameUI", true, false)
+
+func _registruj_anchor_zprav() -> void:
+	var game_ui = _ziskej_game_ui_node()
+	if game_ui and game_ui.has_method("nastav_zpravy_anchor_control"):
+		game_ui.nastav_zpravy_anchor_control(zpravy_btn)
+
+func _on_zpravy_pressed() -> void:
+	var game_ui = _ziskej_game_ui_node()
+	if game_ui and game_ui.has_method("prepni_zpravy_panel"):
+		game_ui.prepni_zpravy_panel()
 
 func _nastav_tooltipy_mapovych_modu() -> void:
 	if map_modes_box == null:
@@ -248,7 +277,7 @@ func _nastav_hotkey_badge(btn: Button, hotkey: String) -> void:
 		btn.add_child(badge)
 
 	badge.text = str(hotkey)
-	badge.add_theme_font_size_override("font_size", 9)
+	badge.add_theme_font_size_override("font_size", 11)
 	badge.add_theme_color_override("font_color", Color(0.95, 0.98, 1.0, 0.95))
 	badge.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.85))
 	badge.add_theme_constant_override("shadow_offset_x", 1)
@@ -258,9 +287,9 @@ func _nastav_hotkey_badge(btn: Button, hotkey: String) -> void:
 	badge.anchor_right = 1.0
 	badge.anchor_top = 1.0
 	badge.anchor_bottom = 1.0
-	badge.offset_left = -12.0
+	badge.offset_left = -15.0
 	badge.offset_right = -2.0
-	badge.offset_top = -11.0
+	badge.offset_top = -13.0
 	badge.offset_bottom = -1.0
 
 func _nastav_ikony_mapovych_modu() -> void:
@@ -393,6 +422,9 @@ func aktualizuj_ui():
 	# Update money and turn counters
 	money_label.text = "Kasa: %.2f mil. USD (+%.2f)" % [GameManager.statni_kasa, GameManager.celkovy_prijem]
 	turn_label.text = "Kolo: %d" % GameManager.aktualni_kolo
+	if _finance_tooltip_visible:
+		_aktualizuj_financni_tooltip_text()
+		_aktualizuj_financni_tooltip_pozici()
 	
 	# Update player info with dynamic data from GameManager
 	var aktivni_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
@@ -435,6 +467,9 @@ func _on_zpracovani_tahu_zmeneno(aktivni: bool) -> void:
 	set_process(aktivni)
 
 func _process(delta: float) -> void:
+	if _finance_tooltip_visible:
+		_aktualizuj_financni_tooltip_pozici()
+
 	if not _is_turn_processing or _turn_busy_indicator == null:
 		return
 	_turn_busy_anim_time += delta
@@ -443,6 +478,121 @@ func _process(delta: float) -> void:
 	_turn_busy_anim_time = 0.0
 	_turn_busy_anim_step = (_turn_busy_anim_step + 1) % TURN_BUSY_FRAMES.size()
 	_turn_busy_indicator.text = TURN_BUSY_FRAMES[_turn_busy_anim_step]
+
+func _vytvor_financni_tooltip_panel() -> void:
+	if _finance_tooltip_panel != null:
+		return
+	_finance_tooltip_panel = PanelContainer.new()
+	_finance_tooltip_panel.name = "FinanceTooltipPanel"
+	_finance_tooltip_panel.visible = false
+	_finance_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_finance_tooltip_panel.z_index = 200
+
+	var panel_style := StyleBoxFlat.new()
+	panel_style.bg_color = Color(0.07, 0.09, 0.12, 0.96)
+	panel_style.border_width_left = 1
+	panel_style.border_width_top = 1
+	panel_style.border_width_right = 1
+	panel_style.border_width_bottom = 1
+	panel_style.border_color = Color(0.65, 0.70, 0.76, 0.92)
+	panel_style.corner_radius_top_left = 6
+	panel_style.corner_radius_top_right = 6
+	panel_style.corner_radius_bottom_left = 6
+	panel_style.corner_radius_bottom_right = 6
+	panel_style.content_margin_left = 10
+	panel_style.content_margin_top = 8
+	panel_style.content_margin_right = 10
+	panel_style.content_margin_bottom = 8
+	_finance_tooltip_panel.add_theme_stylebox_override("panel", panel_style)
+
+	_finance_tooltip_text = RichTextLabel.new()
+	_finance_tooltip_text.bbcode_enabled = true
+	_finance_tooltip_text.fit_content = true
+	_finance_tooltip_text.scroll_active = false
+	_finance_tooltip_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_finance_tooltip_text.custom_minimum_size = Vector2(340, 0)
+	_finance_tooltip_panel.add_child(_finance_tooltip_text)
+	add_child(_finance_tooltip_panel)
+
+func _napoj_financni_hover() -> void:
+	if money_label == null:
+		return
+	money_label.mouse_filter = Control.MOUSE_FILTER_PASS
+	if not money_label.mouse_entered.is_connected(_on_money_label_mouse_entered):
+		money_label.mouse_entered.connect(_on_money_label_mouse_entered)
+	if not money_label.mouse_exited.is_connected(_on_money_label_mouse_exited):
+		money_label.mouse_exited.connect(_on_money_label_mouse_exited)
+
+func _on_money_label_mouse_entered() -> void:
+	_finance_tooltip_visible = true
+	_aktualizuj_financni_tooltip_text()
+	_aktualizuj_financni_tooltip_pozici()
+	if _finance_tooltip_panel:
+		_finance_tooltip_panel.show()
+
+func _on_money_label_mouse_exited() -> void:
+	_finance_tooltip_visible = false
+	if _finance_tooltip_panel:
+		_finance_tooltip_panel.hide()
+
+func _format_finance_value(value: float) -> String:
+	return "%.2f mil. USD" % value
+
+func _format_finance_signed(value: float) -> String:
+	return "%+.2f mil. USD" % value
+
+func _aktualizuj_financni_tooltip_text() -> void:
+	if _finance_tooltip_text == null:
+		return
+
+	var finance: Dictionary = {}
+	if GameManager.has_method("ziskej_financni_rozpad_statu"):
+		finance = GameManager.ziskej_financni_rozpad_statu(str(GameManager.hrac_stat))
+
+	if not bool(finance.get("ok", false)):
+		_finance_tooltip_text.text = "[color=#FFFFFF]Finance: data nejsou dostupna.[/color]"
+		return
+
+	var income = finance.get("income", {}) as Dictionary
+	var expenses = finance.get("expenses", {}) as Dictionary
+	var profit = float(finance.get("profit", 0.0))
+
+	var t := ""
+	t += "[b][color=#FFFFFF]PRIJEM[/color][/b]\n"
+	t += "[color=#65D96E]HDP: %s[/color]\n" % _format_finance_value(float(income.get("gdp", 0.0)))
+	t += "[color=#65D96E]Vazalove: %s[/color]\n" % _format_finance_value(float(income.get("vassals", 0.0)))
+	t += "[color=#65D96E]Reparace: %s[/color]\n" % _format_finance_value(float(income.get("reparations", 0.0)))
+	t += "[color=#65D96E]Ostatni: %s[/color]\n\n" % _format_finance_value(float(income.get("other", 0.0)))
+
+	t += "[b][color=#FFFFFF]VYDAJE[/color][/b]\n"
+	t += "[color=#FF6666]Udrzba armady: %s[/color]\n" % _format_finance_value(float(expenses.get("army_upkeep", 0.0)))
+	t += "[color=#FF6666]Investice: %s[/color]\n" % _format_finance_value(float(expenses.get("investments", 0.0)))
+	t += "[color=#FF6666]Ostatni: %s[/color]\n\n" % _format_finance_value(float(expenses.get("other", 0.0)))
+
+	t += "[b][color=#FFFFFF]ZUSTATEK (PROFIT): %s[/color][/b]" % _format_finance_signed(profit)
+	_finance_tooltip_text.text = t
+
+func _aktualizuj_financni_tooltip_pozici() -> void:
+	if _finance_tooltip_panel == null:
+		return
+	var mouse_pos = get_viewport().get_mouse_position()
+	var margin = Vector2(14, 14)
+	var desired = mouse_pos + margin
+	var viewport = get_viewport()
+	if viewport == null:
+		return
+	var viewport_size = viewport.get_visible_rect().size
+	var tooltip_size = _finance_tooltip_panel.get_combined_minimum_size()
+	var topbar_bottom = 0.0
+	if top_panel:
+		topbar_bottom = top_panel.global_position.y + top_panel.size.y
+	if desired.x + tooltip_size.x > viewport_size.x - 6:
+		desired.x = mouse_pos.x - tooltip_size.x - 10
+	if desired.y + tooltip_size.y > viewport_size.y - 6:
+		desired.y = viewport_size.y - tooltip_size.y - 6
+	desired.x = clampf(desired.x, 4.0, max(4.0, viewport_size.x - tooltip_size.x - 4.0))
+	desired.y = clampf(desired.y, topbar_bottom + 8.0, max(topbar_bottom + 8.0, viewport_size.y - tooltip_size.y - 4.0))
+	_finance_tooltip_panel.position = desired
 
 func nastav_hrace(tag: String, jmeno_statu: String, ideologie: String = ""):
 	if player_name:

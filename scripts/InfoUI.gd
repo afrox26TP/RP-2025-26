@@ -61,6 +61,38 @@ func _ziskej_provincie_data() -> Dictionary:
 		return map_loader.provinces
 	return GameManager.map_data
 
+func _ziskej_map_loader():
+	return get_tree().current_scene.find_child("Map", true, false)
+
+func _format_pct_signed(value: float) -> String:
+	var pct = int(round(value * 100.0))
+	if pct >= 0:
+		return "+%d%%" % pct
+	return "%d%%" % pct
+
+func _terenni_obranny_bonus_fallback(terrain_raw: String) -> float:
+	var key = terrain_raw.strip_edges().to_lower()
+	match key:
+		"plains", "plain":
+			return -0.20
+		"forest":
+			return 0.0
+		"hills", "hill":
+			return 0.20
+		"mountains", "mountain":
+			return 0.40
+		"city":
+			return 0.80
+		_:
+			return 0.0
+
+func _ziskej_terenni_obranny_bonus_pro_data(data: Dictionary, terrain_raw: String) -> float:
+	var prov_id = int(data.get("id", -1))
+	var map_loader = _ziskej_map_loader()
+	if map_loader and prov_id >= 0 and map_loader.has_method("ziskej_terenni_obranny_bonus_pct"):
+		return float(map_loader.ziskej_terenni_obranny_bonus_pct(prov_id))
+	return _terenni_obranny_bonus_fallback(terrain_raw)
+
 func _ziskej_cenu_za_vojaka() -> float:
 	if GameManager.has_method("ziskej_cenu_za_vojaka"):
 		return float(GameManager.ziskej_cenu_za_vojaka(GameManager.hrac_stat))
@@ -175,11 +207,14 @@ func _wrap_metric_label(key: String, base_label: Label) -> void:
 
 	var row = HBoxContainer.new()
 	row.name = "MetricRow_%s" % key
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.size_flags_horizontal = Control.SIZE_FILL
+	row.alignment = BoxContainer.ALIGNMENT_BEGIN
+	row.add_theme_constant_override("separation", 6)
 	parent.add_child(row)
 	parent.move_child(row, idx)
 
-	base_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Keep the value label compact so delta text stays attached to the number.
+	base_label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	row.add_child(base_label)
 
 	var delta = Label.new()
@@ -467,7 +502,8 @@ func zobraz_data(data: Dictionary):
 	var terrain_raw = str(data.get("terrain", "")).strip_edges()
 	if terrain_raw == "":
 		terrain_raw = "unknown"
-	terrain_label.text = "Terrain: " + terrain_raw
+	var terrain_def_bonus = _ziskej_terenni_obranny_bonus_pro_data(data, terrain_raw)
+	terrain_label.text = "Terrain: %s (obrana %s)" % [terrain_raw, _format_pct_signed(terrain_def_bonus)]
 	
 	if je_more:
 		_set_metric_visible("pop", false)

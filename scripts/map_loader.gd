@@ -62,6 +62,17 @@ const PROVINCES_DATA_PATHS := [
 	"res://map_data/Province.txt",
 	"res://map_data/Provinces.txt"
 ]
+const TERRAIN_DEFENDER_BONUS_PCT := {
+	"plains": -0.20,
+	"plain": -0.20,
+	"forest": 0.0,
+	"hills": 0.20,
+	"hill": 0.20,
+	"mountains": 0.40,
+	"mountain": 0.40,
+	"city": 0.80
+}
+const ATTACKER_LIBERATION_BONUS_PCT := 0.10
 # --------------------------------------------------------
 
 func _resolve_provinces_data_path() -> String:
@@ -675,7 +686,77 @@ func _ziskej_nasobic_sily_statu(state_tag: String) -> float:
 	var bonus_pct = max(0.0, float(info.get("bonus_pct", 0.0)))
 	return max(1.0, 1.0 + bonus_pct)
 
-func _vyres_souboj_podle_sily(attacker_tag: String, attacker_soldiers: int, defender_tag: String, defender_soldiers: int) -> Dictionary:
+func _ziskej_terenni_obranny_bonus_pct(prov_id: int) -> float:
+	if not provinces.has(prov_id):
+		return 0.0
+
+	var terrain_raw = str(provinces[prov_id].get("terrain", "")).strip_edges().to_lower()
+	if terrain_raw == "":
+		return 0.0
+
+	if TERRAIN_DEFENDER_BONUS_PCT.has(terrain_raw):
+		return float(TERRAIN_DEFENDER_BONUS_PCT[terrain_raw])
+	return 0.0
+
+func _ziskej_bonus_utocnika_pri_osvobozovani(prov_id: int, attacker_tag: String) -> float:
+	if not provinces.has(prov_id):
+		return 0.0
+
+	var atk = attacker_tag.strip_edges().to_upper()
+	if atk == "" or atk == "SEA":
+		return 0.0
+
+	var owner_tag = str(provinces[prov_id].get("owner", "")).strip_edges().to_upper()
+	var core_owner = str(provinces[prov_id].get("core_owner", owner_tag)).strip_edges().to_upper()
+	if core_owner == "" or core_owner == "SEA":
+		return 0.0
+
+	# Liberation bonus applies only when attacker fights for their own occupied core land.
+	if core_owner == atk and owner_tag != atk:
+		return ATTACKER_LIBERATION_BONUS_PCT
+	return 0.0
+
+func ziskej_terenni_obranny_bonus_pct(prov_id: int) -> float:
+	return _ziskej_terenni_obranny_bonus_pct(prov_id)
+
+func ziskej_bonus_utocnika_pri_osvobozovani(prov_id: int, attacker_tag: String) -> float:
+	return _ziskej_bonus_utocnika_pri_osvobozovani(prov_id, attacker_tag)
+
+func ziskej_nahled_bojovych_modifikatoru(from_id: int, to_id: int) -> Dictionary:
+	if not provinces.has(from_id) or not provinces.has(to_id):
+		return {"ok": false, "reason": "invalid_province"}
+
+	var attacker_tag = _ziskej_vlastnika_armady_v_provincii(from_id)
+	if attacker_tag == "":
+		return {"ok": false, "reason": "no_attacker"}
+
+	var defender_tag = _ziskej_braniciho_vlastnika_v_provincii(to_id)
+	var is_attack = (defender_tag != "" and defender_tag != attacker_tag and defender_tag != "SEA")
+
+	var terrain_bonus = 0.0
+	var liberation_bonus = 0.0
+	if is_attack:
+		terrain_bonus = _ziskej_terenni_obranny_bonus_pct(to_id)
+		liberation_bonus = _ziskej_bonus_utocnika_pri_osvobozovani(to_id, attacker_tag)
+
+	var attacker_state_mult = _ziskej_nasobic_sily_statu(attacker_tag)
+	var defender_state_mult = _ziskej_nasobic_sily_statu(defender_tag) if defender_tag != "" else 1.0
+
+	return {
+		"ok": true,
+		"is_attack": is_attack,
+		"attacker_tag": attacker_tag,
+		"defender_tag": defender_tag,
+		"terrain": str(provinces[to_id].get("terrain", "")).strip_edges().to_lower(),
+		"attacker_bonus_pct": liberation_bonus,
+		"defender_bonus_pct": terrain_bonus,
+		"attacker_state_mult": attacker_state_mult,
+		"defender_state_mult": defender_state_mult,
+		"attacker_total_mult": attacker_state_mult * max(0.05, 1.0 + liberation_bonus),
+		"defender_total_mult": defender_state_mult * max(0.05, 1.0 + terrain_bonus)
+	}
+
+func _vyres_souboj_podle_sily(attacker_tag: String, attacker_soldiers: int, defender_tag: String, defender_soldiers: int, defender_bonus_pct: float = 0.0, attacker_bonus_pct: float = 0.0) -> Dictionary:
 	var att_count = max(0, attacker_soldiers)
 	var def_count = max(0, defender_soldiers)
 	if att_count <= 0 and def_count <= 0:
@@ -686,7 +767,9 @@ func _vyres_souboj_podle_sily(attacker_tag: String, attacker_soldiers: int, defe
 		return {"attacker_won": false, "defender_won": true, "attacker_survivors": 0, "defender_survivors": def_count}
 
 	var att_mult = _ziskej_nasobic_sily_statu(attacker_tag)
+	att_mult *= max(0.05, 1.0 + attacker_bonus_pct)
 	var def_mult = _ziskej_nasobic_sily_statu(defender_tag)
+	def_mult *= max(0.05, 1.0 + defender_bonus_pct)
 	var att_power = float(att_count) * att_mult
 	var def_power = float(def_count) * def_mult
 	var eps = 0.0001
@@ -2823,7 +2906,9 @@ func zpracuj_tah_armad():
 			continue
 			
 		var obranci = int(provinces[to_id].get("soldiers", 0))
-		var souboj_provincie = _vyres_souboj_podle_sily(attacker_tag, utocnici, target_owner, obranci)
+		var terenni_bonus_obrany = _ziskej_terenni_obranny_bonus_pct(to_id)
+		var bonus_utocnika_osvobozeni = _ziskej_bonus_utocnika_pri_osvobozovani(to_id, attacker_tag)
+		var souboj_provincie = _vyres_souboj_podle_sily(attacker_tag, utocnici, target_owner, obranci, terenni_bonus_obrany, bonus_utocnika_osvobozeni)
 		
 		if bool(souboj_provincie.get("attacker_won", false)):
 			var prezivsi = int(souboj_provincie.get("attacker_survivors", 0))

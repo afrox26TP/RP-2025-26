@@ -992,6 +992,24 @@ func nacti_hru_ze_slotu(slot_name: String) -> bool:
 	var state = _nacti_state_z_cesty(slot_path)
 	return _aplikuj_save_state(state)
 
+func smaz_save_slot(slot_name: String) -> bool:
+	var clean = _normalizuj_nazev_save(slot_name)
+	if clean == "":
+		return false
+
+	var slot_path = _cesta_slotu_save(clean)
+	if not FileAccess.file_exists(slot_path):
+		return false
+
+	var abs_path = ProjectSettings.globalize_path(slot_path)
+	return DirAccess.remove_absolute(abs_path) == OK
+
+func smaz_legacy_save() -> bool:
+	if not FileAccess.file_exists(SAVEGAME_STATE_PATH):
+		return false
+	var abs_path = ProjectSettings.globalize_path(SAVEGAME_STATE_PATH)
+	return DirAccess.remove_absolute(abs_path) == OK
+
 func nacti_posledni_hru() -> bool:
 	var slots = ziskej_save_sloty()
 	if not slots.is_empty():
@@ -4057,6 +4075,107 @@ func _spocitej_cisty_prijem_statu(tag: String) -> float:
 
 func ziskej_cisty_prijem_statu(tag: String) -> float:
 	return _spocitej_cisty_prijem_statu(tag)
+
+func ziskej_financni_rozpad_statu(state_tag: String = "") -> Dictionary:
+	var state = _normalizuj_tag(state_tag)
+	if state == "":
+		state = _normalizuj_tag(hrac_stat)
+	if state == "" or state == "SEA":
+		return {
+			"ok": false,
+			"reason": "Neplatny stat."
+		}
+
+	var celkove_hdp := 0.0
+	var celkem_vojaku := 0
+	for p_id in map_data:
+		var d = map_data[p_id]
+		if _normalizuj_tag(str(d.get("owner", ""))) != state:
+			continue
+		celkove_hdp += float(d.get("gdp", 0.0))
+		celkem_vojaku += int(d.get("soldiers", 0))
+
+	var prijmova_sazba = ziskej_prijmovou_sazbu_hdp(state)
+	var upkeep_za_vojaka = ziskej_udrzbu_za_vojaka(state)
+	var prijem_hdp = celkove_hdp * prijmova_sazba
+	var vydaj_armada = float(celkem_vojaku) * upkeep_za_vojaka
+
+	var prijem_vazalove := 0.0
+	var vydaj_vazalsky_odvod := 0.0
+	for subject_any in vazalske_vztahy.keys():
+		var subject = _normalizuj_tag(str(subject_any))
+		var overlord = _normalizuj_tag(str(vazalske_vztahy[subject_any]))
+		if subject == "" or overlord == "":
+			continue
+
+		if overlord == state:
+			var rate_in = clamp(float(vazalske_odvody.get(subject, VASSAL_TRIBUTE_DEFAULT_RATE)), VASSAL_TRIBUTE_MIN_RATE, VASSAL_TRIBUTE_MAX_RATE)
+			var subject_income = max(0.0, _spocitej_cisty_prijem_statu(subject))
+			var planned_in = subject_income * rate_in
+			if planned_in > 0.0:
+				var subject_cash = _ziskej_kasu_statu(subject)
+				prijem_vazalove += clamp(planned_in, 0.0, max(0.0, subject_cash))
+
+		if subject == state:
+			var rate_out = clamp(float(vazalske_odvody.get(subject, VASSAL_TRIBUTE_DEFAULT_RATE)), VASSAL_TRIBUTE_MIN_RATE, VASSAL_TRIBUTE_MAX_RATE)
+			var own_income = max(0.0, _spocitej_cisty_prijem_statu(subject))
+			var planned_out = own_income * rate_out
+			if planned_out > 0.0:
+				var own_cash = _ziskej_kasu_statu(subject)
+				vydaj_vazalsky_odvod += clamp(planned_out, 0.0, max(0.0, own_cash))
+
+	var prijem_reparace := 0.0
+	var vydaj_reparace := 0.0
+	for rep_any in valecne_reparace:
+		var rep = rep_any as Dictionary
+		var from_tag = _normalizuj_tag(str(rep.get("from", "")))
+		var to_tag = _normalizuj_tag(str(rep.get("to", "")))
+		var remaining = int(rep.get("remaining_turns", 0))
+		if remaining <= 0 or from_tag == "" or to_tag == "":
+			continue
+
+		if from_tag != state and to_tag != state:
+			continue
+
+		var rate = clamp(float(rep.get("rate", WAR_REPARATIONS_RATE)), 0.01, 0.50)
+		var base_income = max(0.0, _spocitej_cisty_prijem_statu(from_tag))
+		var planned = max(WAR_REPARATIONS_MIN_PAYMENT, base_income * rate)
+		var from_cash = _ziskej_kasu_statu(from_tag)
+		var paid = clamp(planned, 0.0, max(0.0, from_cash + 100.0))
+		if to_tag == state:
+			prijem_reparace += paid
+		if from_tag == state:
+			vydaj_reparace += paid
+
+	var prijem_ostatni := 0.0
+	var vydaj_investice := 0.0
+	var vydaj_ostatni := vydaj_vazalsky_odvod + vydaj_reparace
+
+	var celkove_prijmy = prijem_hdp + prijem_vazalove + prijem_reparace + prijem_ostatni
+	var celkove_vydaje = vydaj_armada + vydaj_investice + vydaj_ostatni
+	var profit = celkove_prijmy - celkove_vydaje
+
+	return {
+		"ok": true,
+		"state": state,
+		"income": {
+			"gdp": prijem_hdp,
+			"vassals": prijem_vazalove,
+			"reparations": prijem_reparace,
+			"other": prijem_ostatni,
+			"total": celkove_prijmy
+		},
+		"expenses": {
+			"army_upkeep": vydaj_armada,
+			"investments": vydaj_investice,
+			"other": vydaj_ostatni,
+			"total": celkove_vydaje
+		},
+		"profit": profit,
+		"cash": _ziskej_kasu_statu(state),
+		"base_net_income": (prijem_hdp - vydaj_armada),
+		"projected_net_income": profit
+	}
 
 func ziskej_vazalsky_odvod(overlord_tag: String, subject_tag: String) -> float:
 	var overlord = _normalizuj_tag(overlord_tag)
