@@ -24,6 +24,8 @@ var hrac_kasa_inicializovana: Dictionary = {}
 var cekajici_popupy_hracu: Dictionary = {}
 var log_zprav_hracu: Dictionary = {}
 var log_globalnich_zprav: Array = []
+var vyzkum_statu: Dictionary = {}
+var armadni_lab_statu: Dictionary = {}
 var _defer_log_maintenance: bool = false
 var _log_maintenance_dirty: bool = false
 
@@ -139,6 +141,78 @@ const TURN_PROFILE_WARN_MS := 1200
 const AI_PROFILE_ENABLED := true
 const AI_PROFILE_WARN_MS := 500
 const TURN_STUCK_WATCHDOG_MS := 15000
+const ARM_LAB_GRID_W := 3
+const ARM_LAB_GRID_H := 3
+const ARM_LAB_GRID_MAX_W := 6
+const ARM_LAB_GRID_MAX_H := 6
+const ARM_LAB_OFFER_COUNT := 3
+const ARM_LAB_REROLL_BASE_COST := 8.0
+const ARM_LAB_QUALITY_UPGRADE_BASE_COST := 35.0
+const ARM_LAB_EXPAND_BASE_COST := 28.0
+const ARM_LAB_EXPAND_STEP_COST := 22.0
+const ARM_LAB_MERGE_POWER_MULT := 1.25
+const ARM_LAB_SELL_RETURN_RATIO := 0.75
+const ARM_LAB_LEVEL_POWER_STEP := 0.22
+const ARM_LAB_LEVEL_COST_STEP := 0.18
+const ARM_LAB_ITEM_POOL := [
+	{"id":"weapon_crate", "name":"Zbran", "tier":1, "w":1, "h":1, "cost_min":10.0, "cost_max":16.0, "flat_min":80, "flat_max":140, "pct_min":0.002, "pct_max":0.008},
+	{"id":"grenade_pack", "name":"Granat", "tier":1, "w":1, "h":1, "cost_min":8.0, "cost_max":14.0, "flat_min":50, "flat_max":120, "pct_min":0.001, "pct_max":0.006},
+	{"id":"truck_column", "name":"Auto", "tier":1, "w":2, "h":1, "cost_min":14.0, "cost_max":24.0, "flat_min":140, "flat_max":260, "pct_min":0.004, "pct_max":0.012},
+	{"id":"ifv_module", "name":"IFV", "tier":2, "w":2, "h":1, "cost_min":24.0, "cost_max":36.0, "flat_min":280, "flat_max":460, "pct_min":0.010, "pct_max":0.020},
+	{"id":"tank_platoon", "name":"Tank", "tier":2, "w":2, "h":2, "cost_min":34.0, "cost_max":52.0, "flat_min":420, "flat_max":680, "pct_min":0.015, "pct_max":0.030},
+	{"id":"rocket_artillery", "name":"Raketomet", "tier":3, "w":3, "h":1, "cost_min":46.0, "cost_max":70.0, "flat_min":650, "flat_max":980, "pct_min":0.028, "pct_max":0.050},
+	{"id":"heavy_tank", "name":"Tezky tank", "tier":3, "w":2, "h":2, "cost_min":58.0, "cost_max":86.0, "flat_min":780, "flat_max":1200, "pct_min":0.032, "pct_max":0.060}
+]
+const VYZKUM_PROJEKTY := {
+	"army_logistics_i": {
+		"id": "army_logistics_i",
+		"category": "armada",
+		"name": "Logistika I",
+		"description": "Lepsi zasobovani snizi cenu naboru vojaku.",
+		"cost": 35.0,
+		"modifiers": {"recruit_cost_mult": 0.92}
+	},
+	"army_professional_core": {
+		"id": "army_professional_core",
+		"category": "armada",
+		"name": "Profesionalni sbor",
+		"description": "Vycvik velitelu snizi udrzbu armady.",
+		"cost": 45.0,
+		"modifiers": {"upkeep_mult": 0.90}
+	},
+	"economy_tax_reform_i": {
+		"id": "economy_tax_reform_i",
+		"category": "ekonomika",
+		"name": "Danova reforma I",
+		"description": "Efektivnejsi vyber dani zvysi prijmy z HDP.",
+		"cost": 40.0,
+		"modifiers": {"income_rate_mult": 1.08}
+	},
+	"economy_industry_i": {
+		"id": "economy_industry_i",
+		"category": "ekonomika",
+		"name": "Industrializace I",
+		"description": "Investice do prumyslu zrychli rust HDP.",
+		"cost": 55.0,
+		"modifiers": {"gdp_growth_mult": 1.12}
+	},
+	"population_health_i": {
+		"id": "population_health_i",
+		"category": "populace",
+		"name": "Zdravotnictvi I",
+		"description": "Lepisi pece zvysi rust populace.",
+		"cost": 30.0,
+		"modifiers": {"population_growth_mult": 1.10}
+	},
+	"population_reserves_i": {
+		"id": "population_reserves_i",
+		"category": "populace",
+		"name": "Zalohy I",
+		"description": "Lepisi evidence obyvatel zvysi obnovu rekrutu.",
+		"cost": 38.0,
+		"modifiers": {"recruit_regen_mult": 1.18}
+	}
+}
 
 # Diplomacy
 var valky: Dictionary = {}
@@ -214,6 +288,8 @@ func nastav_lokalni_hrace(staty: Array) -> void:
 	cekajici_popupy_hracu.clear()
 	log_zprav_hracu.clear()
 	log_globalnich_zprav.clear()
+	vyzkum_statu.clear()
+	armadni_lab_statu.clear()
 	ai_kasy.clear()
 
 	if not hrac_kasy.has(hrac_stat):
@@ -691,6 +767,8 @@ func _vytvor_save_state() -> Dictionary:
 		"hrac_kasa_inicializovana": hrac_kasa_inicializovana.duplicate(true),
 		"log_zprav_hracu": log_zprav_hracu.duplicate(true),
 		"log_globalnich_zprav": log_globalnich_zprav.duplicate(true),
+		"vyzkum_statu": vyzkum_statu.duplicate(true),
+		"armadni_lab_statu": armadni_lab_statu.duplicate(true),
 		"valky": valky.duplicate(true),
 		"cekajici_kapitulace": cekajici_kapitulace.duplicate(true),
 		"cekajici_mirove_nabidky": cekajici_mirove_nabidky.duplicate(true),
@@ -747,6 +825,8 @@ func _aplikuj_save_state(state: Dictionary) -> bool:
 	hrac_kasa_inicializovana = (state.get("hrac_kasa_inicializovana", {}) as Dictionary).duplicate(true)
 	log_zprav_hracu = (state.get("log_zprav_hracu", {}) as Dictionary).duplicate(true)
 	log_globalnich_zprav = (state.get("log_globalnich_zprav", []) as Array).duplicate(true)
+	vyzkum_statu = (state.get("vyzkum_statu", {}) as Dictionary).duplicate(true)
+	armadni_lab_statu = (state.get("armadni_lab_statu", {}) as Dictionary).duplicate(true)
 	valky = (state.get("valky", {}) as Dictionary).duplicate(true)
 	cekajici_kapitulace = (state.get("cekajici_kapitulace", []) as Array).duplicate(true)
 	cekajici_mirove_nabidky = (state.get("cekajici_mirove_nabidky", []) as Array).duplicate(true)
@@ -802,6 +882,8 @@ func reset_pro_novou_hru() -> void:
 	cekajici_popupy_hracu.clear()
 	log_zprav_hracu.clear()
 	log_globalnich_zprav.clear()
+	vyzkum_statu.clear()
+	armadni_lab_statu.clear()
 
 	valky.clear()
 	cekajici_kapitulace.clear()
@@ -910,6 +992,947 @@ func _get_map_loader():
 func _normalizuj_tag(tag: String) -> String:
 	return tag.strip_edges().to_upper()
 
+func _clamp_arm_lab_quality(level: int) -> int:
+	return clampi(level, 0, 8)
+
+func _zajisti_armadni_lab_statu(tag: String) -> Dictionary:
+	var cisty = _normalizuj_tag(tag)
+	if cisty == "" or cisty == "SEA":
+		return {}
+	if not armadni_lab_statu.has(cisty):
+		armadni_lab_statu[cisty] = {
+			"grid_items": [],
+			"offers": [],
+			"offers_turn": -1,
+			"rerolls_this_turn": 0,
+			"quality_level": 0,
+			"grid_w": ARM_LAB_GRID_W,
+			"grid_h": ARM_LAB_GRID_H
+		}
+	var lab_any = armadni_lab_statu[cisty]
+	if not (lab_any is Dictionary):
+		armadni_lab_statu[cisty] = {
+			"grid_items": [],
+			"offers": [],
+			"offers_turn": -1,
+			"rerolls_this_turn": 0,
+			"quality_level": 0,
+			"grid_w": ARM_LAB_GRID_W,
+			"grid_h": ARM_LAB_GRID_H
+		}
+	var lab = armadni_lab_statu[cisty] as Dictionary
+	if not lab.has("grid_items") or not (lab.get("grid_items", []) is Array):
+		lab["grid_items"] = []
+	if not lab.has("offers") or not (lab.get("offers", []) is Array):
+		lab["offers"] = []
+	if not lab.has("offers_turn"):
+		lab["offers_turn"] = -1
+	if not lab.has("rerolls_this_turn"):
+		lab["rerolls_this_turn"] = 0
+	if not lab.has("quality_level"):
+		lab["quality_level"] = 0
+	if not lab.has("grid_w"):
+		lab["grid_w"] = ARM_LAB_GRID_W
+	if not lab.has("grid_h"):
+		lab["grid_h"] = ARM_LAB_GRID_H
+	if not lab.has("unlocked_cells") or not (lab.get("unlocked_cells", []) is Array):
+		var base_cells: Array = []
+		for y in range(ARM_LAB_GRID_H):
+			for x in range(ARM_LAB_GRID_W):
+				base_cells.append("%d_%d" % [x, y])
+		lab["unlocked_cells"] = base_cells
+	lab["quality_level"] = _clamp_arm_lab_quality(int(lab.get("quality_level", 0)))
+	lab["grid_w"] = clampi(int(lab.get("grid_w", ARM_LAB_GRID_W)), ARM_LAB_GRID_W, ARM_LAB_GRID_MAX_W)
+	lab["grid_h"] = clampi(int(lab.get("grid_h", ARM_LAB_GRID_H)), ARM_LAB_GRID_H, ARM_LAB_GRID_MAX_H)
+	var grid_items = lab.get("grid_items", []) as Array
+	for i in range(grid_items.size()):
+		var item = grid_items[i] as Dictionary
+		if not item.has("level"):
+			item["level"] = 1
+		grid_items[i] = item
+	lab["grid_items"] = grid_items
+	armadni_lab_statu[cisty] = lab
+	return lab
+
+func _arm_lab_odemcene_dict(lab: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	var arr = lab.get("unlocked_cells", []) as Array
+	for c_any in arr:
+		var key = str(c_any)
+		var parts = key.split("_")
+		if parts.size() != 2:
+			continue
+		var x = int(parts[0])
+		var y = int(parts[1])
+		if x < 0 or y < 0 or x >= ARM_LAB_GRID_MAX_W or y >= ARM_LAB_GRID_MAX_H:
+			continue
+		out["%d_%d" % [x, y]] = true
+	return out
+
+func _arm_lab_odemcene_array(unlocked: Dictionary) -> Array:
+	var arr: Array = []
+	for key in unlocked.keys():
+		arr.append(str(key))
+	arr.sort()
+	return arr
+
+func _arm_lab_obsah_mrizky_odemykani(unlocked: Dictionary) -> Dictionary:
+	var max_x = ARM_LAB_GRID_W - 1
+	var max_y = ARM_LAB_GRID_H - 1
+	for key_any in unlocked.keys():
+		var key = str(key_any)
+		var p = key.split("_")
+		if p.size() != 2:
+			continue
+		max_x = max(max_x, int(p[0]))
+		max_y = max(max_y, int(p[1]))
+	return {
+		"w": clampi(max_x + 1, ARM_LAB_GRID_W, ARM_LAB_GRID_MAX_W),
+		"h": clampi(max_y + 1, ARM_LAB_GRID_H, ARM_LAB_GRID_MAX_H)
+	}
+
+func _arm_lab_je_kandidat_expanze(unlocked: Dictionary, x: int, y: int) -> bool:
+	if x < 0 or y < 0 or x >= ARM_LAB_GRID_MAX_W or y >= ARM_LAB_GRID_MAX_H:
+		return false
+	var key = "%d_%d" % [x, y]
+	if unlocked.has(key):
+		return false
+
+	var row_right := -1
+	for xx in range(ARM_LAB_GRID_MAX_W):
+		if unlocked.has("%d_%d" % [xx, y]):
+			row_right = xx
+	if row_right >= 0 and x == row_right + 1:
+		return true
+
+	var col_bottom := -1
+	for yy in range(ARM_LAB_GRID_MAX_H):
+		if unlocked.has("%d_%d" % [x, yy]):
+			col_bottom = yy
+	if col_bottom >= 0 and y == col_bottom + 1:
+		return true
+
+	return false
+
+func _arm_lab_tier_roll(quality_level: int) -> int:
+	var q = _clamp_arm_lab_quality(quality_level)
+	var roll = randf()
+	var tier3_chance = clamp(0.08 + float(q) * 0.04, 0.08, 0.45)
+	var tier2_chance = clamp(0.26 + float(q) * 0.05, 0.26, 0.60)
+	if roll < tier3_chance:
+		return 3
+	if roll < (tier3_chance + tier2_chance):
+		return 2
+	return 1
+
+func _arm_lab_level_roll(quality_level: int) -> int:
+	var q = _clamp_arm_lab_quality(quality_level)
+	var roll = randf()
+	var lvl4_chance = clamp(0.02 + float(q) * 0.02, 0.02, 0.18)
+	var lvl3_chance = clamp(0.08 + float(q) * 0.05, 0.08, 0.40)
+	var lvl2_chance = clamp(0.30 + float(q) * 0.07, 0.30, 0.75)
+	if roll < lvl4_chance:
+		return 4
+	if roll < (lvl4_chance + lvl3_chance):
+		return 3
+	if roll < (lvl4_chance + lvl3_chance + lvl2_chance):
+		return 2
+	return 1
+
+func _arm_lab_vyber_sablonu_dle_tieru(tier: int) -> Dictionary:
+	var pool: Array = []
+	for tpl_any in ARM_LAB_ITEM_POOL:
+		var tpl = tpl_any as Dictionary
+		if int(tpl.get("tier", 1)) == tier:
+			pool.append(tpl)
+	if pool.is_empty():
+		for tpl_any in ARM_LAB_ITEM_POOL:
+			pool.append(tpl_any)
+	if pool.is_empty():
+		return {}
+	return (pool[randi_range(0, pool.size() - 1)] as Dictionary)
+
+func _arm_lab_vytvor_random_offer(quality_level: int) -> Dictionary:
+	var tier = _arm_lab_tier_roll(quality_level)
+	var level = max(_arm_lab_level_roll(quality_level), tier)
+	var tpl = _arm_lab_vyber_sablonu_dle_tieru(tier)
+	if tpl.is_empty():
+		return {}
+
+	var cost_min = float(tpl.get("cost_min", 10.0))
+	var cost_max = float(tpl.get("cost_max", cost_min))
+	var flat_min = int(tpl.get("flat_min", 40))
+	var flat_max = int(tpl.get("flat_max", flat_min))
+	var pct_min = float(tpl.get("pct_min", 0.001))
+	var pct_max = float(tpl.get("pct_max", pct_min))
+
+	var cost = randf_range(cost_min, cost_max)
+	var power_flat = randi_range(flat_min, flat_max)
+	var power_pct = randf_range(pct_min, pct_max)
+	var lvl_mult_power = 1.0 + float(max(0, level - 1)) * ARM_LAB_LEVEL_POWER_STEP
+	var lvl_mult_cost = 1.0 + float(max(0, level - 1)) * ARM_LAB_LEVEL_COST_STEP
+	cost *= lvl_mult_cost
+	power_flat = int(round(float(power_flat) * lvl_mult_power))
+	power_pct *= lvl_mult_power
+
+	return {
+		"offer_uid": str(Time.get_unix_time_from_system()) + "_" + str(randi()),
+		"id": str(tpl.get("id", "item")),
+		"name": str(tpl.get("name", "Item")),
+		"level": level,
+		"tier": tier,
+		"w": int(tpl.get("w", 1)),
+		"h": int(tpl.get("h", 1)),
+		"cost": snapped(max(1.0, cost), 0.01),
+		"power_flat": int(max(0, power_flat)),
+		"power_pct": max(0.0, power_pct)
+	}
+
+func _arm_lab_obsazena_mrizka(grid_items: Array) -> Dictionary:
+	var occupied: Dictionary = {}
+	for item_any in grid_items:
+		var item = item_any as Dictionary
+		var x = int(item.get("x", 0))
+		var y = int(item.get("y", 0))
+		var w = int(item.get("w", 1))
+		var h = int(item.get("h", 1))
+		for yy in range(y, y + h):
+			for xx in range(x, x + w):
+				occupied["%d_%d" % [xx, yy]] = true
+	return occupied
+
+func _arm_lab_najdi_prvni_volne_misto(grid_items: Array, w: int, h: int, grid_w: int, grid_h: int, unlocked: Dictionary = {}) -> Vector2i:
+	var iw = max(1, w)
+	var ih = max(1, h)
+	if iw > grid_w or ih > grid_h:
+		return Vector2i(-1, -1)
+
+	var occupied = _arm_lab_obsazena_mrizka(grid_items)
+	for y in range(0, grid_h - ih + 1):
+		for x in range(0, grid_w - iw + 1):
+			var fits := true
+			for yy in range(y, y + ih):
+				for xx in range(x, x + iw):
+					if not unlocked.is_empty() and not unlocked.has("%d_%d" % [xx, yy]):
+						fits = false
+						break
+					if occupied.has("%d_%d" % [xx, yy]):
+						fits = false
+						break
+				if not fits:
+					break
+			if fits:
+				return Vector2i(x, y)
+	return Vector2i(-1, -1)
+
+func _arm_lab_muze_umistit_na(grid_items: Array, w: int, h: int, x: int, y: int, grid_w: int, grid_h: int, unlocked: Dictionary = {}) -> bool:
+	var iw = max(1, w)
+	var ih = max(1, h)
+	if iw > grid_w or ih > grid_h:
+		return false
+	if x < 0 or y < 0:
+		return false
+	if (x + iw) > grid_w or (y + ih) > grid_h:
+		return false
+
+	var occupied = _arm_lab_obsazena_mrizka(grid_items)
+	for yy in range(y, y + ih):
+		for xx in range(x, x + iw):
+			if not unlocked.is_empty() and not unlocked.has("%d_%d" % [xx, yy]):
+				return false
+			if occupied.has("%d_%d" % [xx, yy]):
+				return false
+	return true
+
+func _arm_lab_muze_umistit_na_ignorovat(grid_items: Array, w: int, h: int, x: int, y: int, ignore_uid: String, grid_w: int, grid_h: int, unlocked: Dictionary = {}) -> bool:
+	var iw = max(1, w)
+	var ih = max(1, h)
+	if iw > grid_w or ih > grid_h:
+		return false
+	if x < 0 or y < 0:
+		return false
+	if (x + iw) > grid_w or (y + ih) > grid_h:
+		return false
+
+	var occupied: Dictionary = {}
+	for item_any in grid_items:
+		var item = item_any as Dictionary
+		if str(item.get("offer_uid", "")) == ignore_uid:
+			continue
+		var ix = int(item.get("x", 0))
+		var iy = int(item.get("y", 0))
+		var iw_item = int(item.get("w", 1))
+		var ih_item = int(item.get("h", 1))
+		for yy in range(iy, iy + ih_item):
+			for xx in range(ix, ix + iw_item):
+				occupied["%d_%d" % [xx, yy]] = true
+
+	for yy in range(y, y + ih):
+		for xx in range(x, x + iw):
+			if not unlocked.is_empty() and not unlocked.has("%d_%d" % [xx, yy]):
+				return false
+			if occupied.has("%d_%d" % [xx, yy]):
+				return false
+	return true
+
+func _arm_lab_zajisti_nabidky(state_tag: String) -> void:
+	var cisty = _normalizuj_tag(state_tag)
+	if cisty == "" or cisty == "SEA":
+		return
+	var lab = _zajisti_armadni_lab_statu(cisty)
+	if lab.is_empty():
+		return
+
+	if int(lab.get("offers_turn", -1)) == aktualni_kolo and (lab.get("offers", []) as Array).size() == ARM_LAB_OFFER_COUNT:
+		return
+
+	var quality = int(lab.get("quality_level", 0))
+	var offers: Array = []
+	for _i in range(ARM_LAB_OFFER_COUNT):
+		offers.append(_arm_lab_vytvor_random_offer(quality))
+
+	lab["offers"] = offers
+	lab["offers_turn"] = aktualni_kolo
+	lab["rerolls_this_turn"] = 0
+	armadni_lab_statu[cisty] = lab
+
+func _arm_lab_spocitej_bonus(grid_items: Array) -> Dictionary:
+	var total_flat := 0
+	var total_pct := 0.0
+	for item_any in grid_items:
+		var item = item_any as Dictionary
+		total_flat += int(item.get("power_flat", 0))
+		total_pct += float(item.get("power_pct", 0.0))
+	return {
+		"flat": total_flat,
+		"pct": total_pct
+	}
+
+func ziskej_armadni_lab_statu(state_tag: String) -> Dictionary:
+	var cisty = _normalizuj_tag(state_tag)
+	if cisty == "" or cisty == "SEA":
+		return {"ok": false, "reason": "Neplatny stat."}
+	if not _stat_existuje(cisty):
+		return {"ok": false, "reason": "Stat neexistuje v aktualni mape."}
+
+	_arm_lab_zajisti_nabidky(cisty)
+	var lab = _zajisti_armadni_lab_statu(cisty)
+	var grid_items = (lab.get("grid_items", []) as Array).duplicate(true)
+	var unlocked = _arm_lab_odemcene_dict(lab)
+	var dims = _arm_lab_obsah_mrizky_odemykani(unlocked)
+	var offers = (lab.get("offers", []) as Array).duplicate(true)
+	var bonus = _arm_lab_spocitej_bonus(grid_items)
+	var rerolls_this_turn = int(lab.get("rerolls_this_turn", 0))
+	var quality_level = int(lab.get("quality_level", 0))
+	var grid_w = int(dims.get("w", ARM_LAB_GRID_W))
+	var grid_h = int(dims.get("h", ARM_LAB_GRID_H))
+	var expanded_cells = max(0, unlocked.size() - (ARM_LAB_GRID_W * ARM_LAB_GRID_H))
+	var expand_cost = snapped(ARM_LAB_EXPAND_BASE_COST + float(expanded_cells) * ARM_LAB_EXPAND_STEP_COST, 0.01)
+	var can_expand = unlocked.size() < (ARM_LAB_GRID_MAX_W * ARM_LAB_GRID_MAX_H)
+
+	return {
+		"ok": true,
+		"state": cisty,
+		"grid_w": grid_w,
+		"grid_h": grid_h,
+		"grid_max_w": ARM_LAB_GRID_MAX_W,
+		"grid_max_h": ARM_LAB_GRID_MAX_H,
+		"can_expand": can_expand,
+		"expand_cost": expand_cost,
+		"unlocked_cells": _arm_lab_odemcene_array(unlocked),
+		"grid_items": grid_items,
+		"offers": offers,
+		"offers_turn": int(lab.get("offers_turn", -1)),
+		"reroll_cost": snapped(ARM_LAB_REROLL_BASE_COST + float(rerolls_this_turn) * 4.0, 0.01),
+		"quality_level": quality_level,
+		"quality_upgrade_cost": snapped(ARM_LAB_QUALITY_UPGRADE_BASE_COST + float(quality_level) * 16.0, 0.01),
+		"power_flat": int(bonus.get("flat", 0)),
+		"power_pct": float(bonus.get("pct", 0.0)),
+		"treasury": _ziskej_kasu_statu(cisty)
+	}
+
+func ziskej_silu_armady_statu(state_tag: String, base_soldiers: int = -1) -> Dictionary:
+	var cisty = _normalizuj_tag(state_tag)
+	if cisty == "" or cisty == "SEA":
+		return {"ok": false, "base": 0, "total": 0}
+
+	var base_value = base_soldiers
+	if base_value < 0:
+		base_value = 0
+		for p_id in map_data:
+			var d = map_data[p_id]
+			if _normalizuj_tag(str(d.get("owner", ""))) == cisty:
+				base_value += int(d.get("soldiers", 0))
+
+	var lab = _zajisti_armadni_lab_statu(cisty)
+	var grid_items = lab.get("grid_items", []) as Array
+	var bonus = _arm_lab_spocitej_bonus(grid_items)
+	var bonus_flat = int(bonus.get("flat", 0))
+	var bonus_pct = max(0.0, float(bonus.get("pct", 0.0)))
+	var bonus_from_pct = int(round(float(base_value) * bonus_pct))
+	var total = max(0, base_value + bonus_flat + bonus_from_pct)
+	return {
+		"ok": true,
+		"base": max(0, base_value),
+		"bonus_flat": bonus_flat,
+		"bonus_pct": bonus_pct,
+		"bonus_from_pct": bonus_from_pct,
+		"total": total
+	}
+
+func kup_armadni_nabidku_na_pozici(state_tag: String, offer_index: int, target_x: int, target_y: int) -> Dictionary:
+	var cisty = _normalizuj_tag(state_tag)
+	if cisty == "" or cisty == "SEA":
+		return {"ok": false, "reason": "Neplatny stat."}
+	if not _stat_existuje(cisty):
+		return {"ok": false, "reason": "Stat neexistuje v aktualni mape."}
+
+	_arm_lab_zajisti_nabidky(cisty)
+	var lab = _zajisti_armadni_lab_statu(cisty)
+	var offers = lab.get("offers", []) as Array
+	if offer_index < 0 or offer_index >= offers.size():
+		return {"ok": false, "reason": "Neplatna volba nabidky."}
+
+	var offer = offers[offer_index] as Dictionary
+	var cost = float(offer.get("cost", 0.0))
+	var treasury = _ziskej_kasu_statu(cisty)
+	if treasury < cost:
+		return {"ok": false, "reason": "Nedostatek penez.", "cost": cost, "treasury": treasury}
+
+	var grid_items = lab.get("grid_items", []) as Array
+	var unlocked = _arm_lab_odemcene_dict(lab)
+	var dims = _arm_lab_obsah_mrizky_odemykani(unlocked)
+	var grid_w = int(dims.get("w", ARM_LAB_GRID_W))
+	var grid_h = int(dims.get("h", ARM_LAB_GRID_H))
+	var ow = int(offer.get("w", 1))
+	var oh = int(offer.get("h", 1))
+	var pos: Vector2i
+	if target_x >= 0 and target_y >= 0:
+		if not _arm_lab_muze_umistit_na(grid_items, ow, oh, target_x, target_y, grid_w, grid_h, unlocked):
+			return {"ok": false, "reason": "Sem item nelze umistit."}
+		pos = Vector2i(target_x, target_y)
+	else:
+		pos = _arm_lab_najdi_prvni_volne_misto(grid_items, ow, oh, grid_w, grid_h, unlocked)
+	if pos.x < 0:
+		return {"ok": false, "reason": "V mrizce uz neni misto pro tento item."}
+
+	var item = offer.duplicate(true)
+	item["x"] = pos.x
+	item["y"] = pos.y
+	grid_items.append(item)
+	lab["grid_items"] = grid_items
+
+	offers.remove_at(offer_index)
+	while offers.size() < ARM_LAB_OFFER_COUNT:
+		offers.append(_arm_lab_vytvor_random_offer(int(lab.get("quality_level", 0))))
+	lab["offers"] = offers
+	armadni_lab_statu[cisty] = lab
+
+	_nastav_kasu_statu(cisty, treasury - cost)
+	if not map_data.is_empty():
+		spocitej_prijem(map_data, false)
+	kolo_zmeneno.emit()
+
+	return {
+		"ok": true,
+		"item": item,
+		"cost": cost,
+		"treasury_after": _ziskej_kasu_statu(cisty)
+	}
+
+func kup_armadni_nabidku(state_tag: String, offer_index: int) -> Dictionary:
+	return kup_armadni_nabidku_na_pozici(state_tag, offer_index, -1, -1)
+
+func kup_a_slouc_armadni_nabidku(state_tag: String, offer_index: int, target_uid: String) -> Dictionary:
+	var cisty = _normalizuj_tag(state_tag)
+	if cisty == "" or cisty == "SEA":
+		return {"ok": false, "reason": "Neplatny stat."}
+	if not _stat_existuje(cisty):
+		return {"ok": false, "reason": "Stat neexistuje v aktualni mape."}
+	if target_uid.strip_edges() == "":
+		return {"ok": false, "reason": "Neplatny cil merge."}
+
+	_arm_lab_zajisti_nabidky(cisty)
+	var lab = _zajisti_armadni_lab_statu(cisty)
+	var offers = lab.get("offers", []) as Array
+	if offer_index < 0 or offer_index >= offers.size():
+		return {"ok": false, "reason": "Neplatna volba nabidky."}
+
+	var offer = offers[offer_index] as Dictionary
+	var cost = float(offer.get("cost", 0.0))
+	var treasury = _ziskej_kasu_statu(cisty)
+	if treasury < cost:
+		return {"ok": false, "reason": "Nedostatek penez.", "cost": cost, "treasury": treasury}
+
+	var grid_items = lab.get("grid_items", []) as Array
+	var dst_idx := -1
+	for i in range(grid_items.size()):
+		var it = grid_items[i] as Dictionary
+		if str(it.get("offer_uid", "")) == target_uid:
+			dst_idx = i
+			break
+	if dst_idx < 0:
+		return {"ok": false, "reason": "Cilovy item pro merge nebyl nalezen."}
+
+	var dst = grid_items[dst_idx] as Dictionary
+	if str(offer.get("id", "")) != str(dst.get("id", "")):
+		return {"ok": false, "reason": "Lze sloucit jen stejne typy itemu."}
+	if int(offer.get("level", 1)) != int(dst.get("level", 1)):
+		return {"ok": false, "reason": "Itemy musi mit stejny level."}
+
+	var combined_flat = int(round((int(offer.get("power_flat", 0)) + int(dst.get("power_flat", 0))) * ARM_LAB_MERGE_POWER_MULT))
+	var combined_pct = (float(offer.get("power_pct", 0.0)) + float(dst.get("power_pct", 0.0))) * ARM_LAB_MERGE_POWER_MULT
+	dst["level"] = int(dst.get("level", 1)) + 1
+	dst["tier"] = max(int(dst.get("tier", 1)), int(offer.get("tier", 1)))
+	dst["power_flat"] = max(1, combined_flat)
+	dst["power_pct"] = max(0.0, combined_pct)
+	dst["cost"] = max(float(dst.get("cost", 0.0)), float(offer.get("cost", 0.0)))
+	grid_items[dst_idx] = dst
+	lab["grid_items"] = grid_items
+
+	offers.remove_at(offer_index)
+	while offers.size() < ARM_LAB_OFFER_COUNT:
+		offers.append(_arm_lab_vytvor_random_offer(int(lab.get("quality_level", 0))))
+	lab["offers"] = offers
+	armadni_lab_statu[cisty] = lab
+
+	_nastav_kasu_statu(cisty, treasury - cost)
+	if not map_data.is_empty():
+		spocitej_prijem(map_data, false)
+	kolo_zmeneno.emit()
+	return {
+		"ok": true,
+		"target_uid": target_uid,
+		"new_level": int(dst.get("level", 1)),
+		"cost": cost,
+		"treasury_after": _ziskej_kasu_statu(cisty)
+	}
+
+func presun_armadni_item(state_tag: String, item_uid: String, target_x: int, target_y: int) -> Dictionary:
+	var cisty = _normalizuj_tag(state_tag)
+	if cisty == "" or cisty == "SEA":
+		return {"ok": false, "reason": "Neplatny stat."}
+	if not _stat_existuje(cisty):
+		return {"ok": false, "reason": "Stat neexistuje v aktualni mape."}
+	if item_uid.strip_edges() == "":
+		return {"ok": false, "reason": "Neplatny item."}
+
+	var lab = _zajisti_armadni_lab_statu(cisty)
+	var grid_items = lab.get("grid_items", []) as Array
+	var found_idx := -1
+	for i in range(grid_items.size()):
+		var item = grid_items[i] as Dictionary
+		if str(item.get("offer_uid", "")) == item_uid:
+			found_idx = i
+			break
+	if found_idx < 0:
+		return {"ok": false, "reason": "Item nebyl nalezen v mrizce."}
+
+	var moving = grid_items[found_idx] as Dictionary
+	var w = int(moving.get("w", 1))
+	var h = int(moving.get("h", 1))
+	var unlocked = _arm_lab_odemcene_dict(lab)
+	var dims = _arm_lab_obsah_mrizky_odemykani(unlocked)
+	var grid_w = int(dims.get("w", ARM_LAB_GRID_W))
+	var grid_h = int(dims.get("h", ARM_LAB_GRID_H))
+	if not _arm_lab_muze_umistit_na_ignorovat(grid_items, w, h, target_x, target_y, item_uid, grid_w, grid_h, unlocked):
+		return {"ok": false, "reason": "Sem item nelze presunout."}
+
+	moving["x"] = target_x
+	moving["y"] = target_y
+	grid_items[found_idx] = moving
+	lab["grid_items"] = grid_items
+	armadni_lab_statu[cisty] = lab
+
+	kolo_zmeneno.emit()
+	return {
+		"ok": true,
+		"item_uid": item_uid,
+		"x": target_x,
+		"y": target_y
+	}
+
+func rozsirit_armadni_mrizku(state_tag: String) -> Dictionary:
+	var cisty = _normalizuj_tag(state_tag)
+	if cisty == "" or cisty == "SEA":
+		return {"ok": false, "reason": "Neplatny stat."}
+	if not _stat_existuje(cisty):
+		return {"ok": false, "reason": "Stat neexistuje v aktualni mape."}
+	var lab = _zajisti_armadni_lab_statu(cisty)
+	var unlocked = _arm_lab_odemcene_dict(lab)
+	for y in range(ARM_LAB_GRID_MAX_H):
+		for x in range(ARM_LAB_GRID_MAX_W):
+			if _arm_lab_je_kandidat_expanze(unlocked, x, y):
+				return koupit_armadni_bunku(cisty, x, y)
+	return {"ok": false, "reason": "Mrizka je uz na maximu."}
+
+func koupit_armadni_bunku(state_tag: String, x: int, y: int) -> Dictionary:
+	var cisty = _normalizuj_tag(state_tag)
+	if cisty == "" or cisty == "SEA":
+		return {"ok": false, "reason": "Neplatny stat."}
+	if not _stat_existuje(cisty):
+		return {"ok": false, "reason": "Stat neexistuje v aktualni mape."}
+
+	var lab = _zajisti_armadni_lab_statu(cisty)
+	var unlocked = _arm_lab_odemcene_dict(lab)
+	if unlocked.size() >= (ARM_LAB_GRID_MAX_W * ARM_LAB_GRID_MAX_H):
+		return {"ok": false, "reason": "Mrizka je uz na maximu."}
+	if not _arm_lab_je_kandidat_expanze(unlocked, x, y):
+		return {"ok": false, "reason": "Tuto bunku nyni nelze koupit."}
+
+	var expanded_cells = max(0, unlocked.size() - (ARM_LAB_GRID_W * ARM_LAB_GRID_H))
+	var cost = snapped(ARM_LAB_EXPAND_BASE_COST + float(expanded_cells) * ARM_LAB_EXPAND_STEP_COST, 0.01)
+	var treasury = _ziskej_kasu_statu(cisty)
+	if treasury < cost:
+		return {"ok": false, "reason": "Nedostatek penez na expanzi.", "cost": cost, "treasury": treasury}
+
+	unlocked["%d_%d" % [x, y]] = true
+	lab["unlocked_cells"] = _arm_lab_odemcene_array(unlocked)
+	var dims = _arm_lab_obsah_mrizky_odemykani(unlocked)
+	lab["grid_w"] = int(dims.get("w", ARM_LAB_GRID_W))
+	lab["grid_h"] = int(dims.get("h", ARM_LAB_GRID_H))
+	armadni_lab_statu[cisty] = lab
+	_nastav_kasu_statu(cisty, treasury - cost)
+	if not map_data.is_empty():
+		spocitej_prijem(map_data, false)
+	kolo_zmeneno.emit()
+	return {
+		"ok": true,
+		"x": x,
+		"y": y,
+		"grid_w": int(lab.get("grid_w", ARM_LAB_GRID_W)),
+		"grid_h": int(lab.get("grid_h", ARM_LAB_GRID_H)),
+		"cost": cost,
+		"treasury_after": _ziskej_kasu_statu(cisty)
+	}
+
+func prodej_armadni_item(state_tag: String, item_uid: String) -> Dictionary:
+	var cisty = _normalizuj_tag(state_tag)
+	if cisty == "" or cisty == "SEA":
+		return {"ok": false, "reason": "Neplatny stat."}
+	if not _stat_existuje(cisty):
+		return {"ok": false, "reason": "Stat neexistuje v aktualni mape."}
+	if item_uid.strip_edges() == "":
+		return {"ok": false, "reason": "Neplatny item."}
+
+	var lab = _zajisti_armadni_lab_statu(cisty)
+	var grid_items = lab.get("grid_items", []) as Array
+	var found_idx := -1
+	var found_item: Dictionary = {}
+	for i in range(grid_items.size()):
+		var it = grid_items[i] as Dictionary
+		if str(it.get("offer_uid", "")) == item_uid:
+			found_idx = i
+			found_item = it
+			break
+	if found_idx < 0:
+		return {"ok": false, "reason": "Item nebyl nalezen v mrizce."}
+
+	var base_cost = max(0.0, float(found_item.get("cost", 0.0)))
+	var sell_value = snapped(base_cost * ARM_LAB_SELL_RETURN_RATIO, 0.01)
+	grid_items.remove_at(found_idx)
+	lab["grid_items"] = grid_items
+	armadni_lab_statu[cisty] = lab
+
+	var treasury = _ziskej_kasu_statu(cisty)
+	_nastav_kasu_statu(cisty, treasury + sell_value)
+	if not map_data.is_empty():
+		spocitej_prijem(map_data, false)
+	kolo_zmeneno.emit()
+
+	return {
+		"ok": true,
+		"item_uid": item_uid,
+		"sold_for": sell_value,
+		"treasury_after": _ziskej_kasu_statu(cisty)
+	}
+
+func sloucit_armadni_itemy(state_tag: String, source_uid: String, target_uid: String) -> Dictionary:
+	var cisty = _normalizuj_tag(state_tag)
+	if cisty == "" or cisty == "SEA":
+		return {"ok": false, "reason": "Neplatny stat."}
+	if not _stat_existuje(cisty):
+		return {"ok": false, "reason": "Stat neexistuje v aktualni mape."}
+	if source_uid.strip_edges() == "" or target_uid.strip_edges() == "" or source_uid == target_uid:
+		return {"ok": false, "reason": "Neplatna kombinace itemu."}
+
+	var lab = _zajisti_armadni_lab_statu(cisty)
+	var grid_items = lab.get("grid_items", []) as Array
+	var src_idx := -1
+	var dst_idx := -1
+	for i in range(grid_items.size()):
+		var it = grid_items[i] as Dictionary
+		var uid = str(it.get("offer_uid", ""))
+		if uid == source_uid:
+			src_idx = i
+		elif uid == target_uid:
+			dst_idx = i
+	if src_idx < 0 or dst_idx < 0:
+		return {"ok": false, "reason": "Item nebyl nalezen."}
+
+	var src = grid_items[src_idx] as Dictionary
+	var dst = grid_items[dst_idx] as Dictionary
+	if str(src.get("id", "")) != str(dst.get("id", "")):
+		return {"ok": false, "reason": "Lze sloucit jen stejne typy itemu."}
+	var src_lvl = int(src.get("level", 1))
+	var dst_lvl = int(dst.get("level", 1))
+	if src_lvl != dst_lvl:
+		return {"ok": false, "reason": "Itemy musi mit stejny level."}
+
+	var combined_flat = int(round((int(src.get("power_flat", 0)) + int(dst.get("power_flat", 0))) * ARM_LAB_MERGE_POWER_MULT))
+	var combined_pct = (float(src.get("power_pct", 0.0)) + float(dst.get("power_pct", 0.0))) * ARM_LAB_MERGE_POWER_MULT
+	dst["level"] = dst_lvl + 1
+	dst["tier"] = max(int(dst.get("tier", 1)), int(src.get("tier", 1)))
+	dst["power_flat"] = max(1, combined_flat)
+	dst["power_pct"] = max(0.0, combined_pct)
+	dst["cost"] = max(float(dst.get("cost", 0.0)), float(src.get("cost", 0.0)))
+
+	grid_items[dst_idx] = dst
+	grid_items.remove_at(src_idx)
+	lab["grid_items"] = grid_items
+	armadni_lab_statu[cisty] = lab
+	kolo_zmeneno.emit()
+	return {
+		"ok": true,
+		"target_uid": target_uid,
+		"new_level": int(dst.get("level", 1))
+	}
+
+func reroll_armadni_nabidky(state_tag: String) -> Dictionary:
+	var cisty = _normalizuj_tag(state_tag)
+	if cisty == "" or cisty == "SEA":
+		return {"ok": false, "reason": "Neplatny stat."}
+	if not _stat_existuje(cisty):
+		return {"ok": false, "reason": "Stat neexistuje v aktualni mape."}
+
+	var lab = _zajisti_armadni_lab_statu(cisty)
+	if int(lab.get("offers_turn", -1)) != aktualni_kolo:
+		_arm_lab_zajisti_nabidky(cisty)
+		lab = _zajisti_armadni_lab_statu(cisty)
+
+	var rerolls = int(lab.get("rerolls_this_turn", 0))
+	var cost = snapped(ARM_LAB_REROLL_BASE_COST + float(rerolls) * 4.0, 0.01)
+	var treasury = _ziskej_kasu_statu(cisty)
+	if treasury < cost:
+		return {"ok": false, "reason": "Nedostatek penez na reroll.", "cost": cost, "treasury": treasury}
+
+	var offers: Array = []
+	for _i in range(ARM_LAB_OFFER_COUNT):
+		offers.append(_arm_lab_vytvor_random_offer(int(lab.get("quality_level", 0))))
+
+	lab["offers"] = offers
+	lab["offers_turn"] = aktualni_kolo
+	lab["rerolls_this_turn"] = rerolls + 1
+	armadni_lab_statu[cisty] = lab
+
+	_nastav_kasu_statu(cisty, treasury - cost)
+	if not map_data.is_empty():
+		spocitej_prijem(map_data, false)
+	kolo_zmeneno.emit()
+
+	return {"ok": true, "cost": cost, "treasury_after": _ziskej_kasu_statu(cisty)}
+
+func vylepsi_kvalitu_dropu_armady(state_tag: String) -> Dictionary:
+	var cisty = _normalizuj_tag(state_tag)
+	if cisty == "" or cisty == "SEA":
+		return {"ok": false, "reason": "Neplatny stat."}
+	if not _stat_existuje(cisty):
+		return {"ok": false, "reason": "Stat neexistuje v aktualni mape."}
+
+	var lab = _zajisti_armadni_lab_statu(cisty)
+	var current_level = _clamp_arm_lab_quality(int(lab.get("quality_level", 0)))
+	if current_level >= 8:
+		return {"ok": false, "reason": "Kvalita dropu je uz na maximu."}
+
+	var cost = snapped(ARM_LAB_QUALITY_UPGRADE_BASE_COST + float(current_level) * 16.0, 0.01)
+	var treasury = _ziskej_kasu_statu(cisty)
+	if treasury < cost:
+		return {"ok": false, "reason": "Nedostatek penez na upgrade kvality.", "cost": cost, "treasury": treasury}
+
+	lab["quality_level"] = current_level + 1
+	lab["offers_turn"] = -1
+	lab["offers"] = []
+	lab["rerolls_this_turn"] = 0
+	armadni_lab_statu[cisty] = lab
+	_nastav_kasu_statu(cisty, treasury - cost)
+
+	# New quality applies immediately with a free offer refresh.
+	_arm_lab_zajisti_nabidky(cisty)
+
+	if not map_data.is_empty():
+		spocitej_prijem(map_data, false)
+	kolo_zmeneno.emit()
+
+	return {
+		"ok": true,
+		"new_quality_level": int(lab.get("quality_level", 0)),
+		"cost": cost,
+		"treasury_after": _ziskej_kasu_statu(cisty)
+	}
+
+func _zajisti_vyzkum_statu(tag: String) -> Array:
+	var cisty = _normalizuj_tag(tag)
+	if cisty == "" or cisty == "SEA":
+		return []
+	if not vyzkum_statu.has(cisty):
+		vyzkum_statu[cisty] = []
+	var research_any = vyzkum_statu.get(cisty, [])
+	if not (research_any is Array):
+		vyzkum_statu[cisty] = []
+		return vyzkum_statu[cisty] as Array
+	return research_any as Array
+
+func je_vyzkum_hotovy(state_tag: String, project_id: String) -> bool:
+	var cisty = _normalizuj_tag(state_tag)
+	if cisty == "" or project_id.strip_edges() == "":
+		return false
+	var completed = _zajisti_vyzkum_statu(cisty)
+	return completed.has(project_id)
+
+func ziskej_vyzkum_projekty() -> Array:
+	var out: Array = []
+	for key in VYZKUM_PROJEKTY.keys():
+		var p = (VYZKUM_PROJEKTY[key] as Dictionary).duplicate(true)
+		out.append(p)
+	out.sort_custom(func(a, b):
+		var da = a as Dictionary
+		var db = b as Dictionary
+		var cat_a = str(da.get("category", ""))
+		var cat_b = str(db.get("category", ""))
+		if cat_a == cat_b:
+			return str(da.get("name", "")) < str(db.get("name", ""))
+		return cat_a < cat_b
+	)
+	return out
+
+func ziskej_vyzkum_statu(state_tag: String) -> Dictionary:
+	var cisty = _normalizuj_tag(state_tag)
+	if cisty == "" or cisty == "SEA":
+		return {
+			"ok": false,
+			"reason": "Neplatny stat.",
+			"projects": [],
+			"completed": [],
+			"treasury": 0.0
+		}
+
+	var completed = _zajisti_vyzkum_statu(cisty)
+	var out_projects: Array = []
+	for key in VYZKUM_PROJEKTY.keys():
+		var base = VYZKUM_PROJEKTY[key] as Dictionary
+		var project = base.duplicate(true)
+		project["done"] = completed.has(str(project.get("id", key)))
+		out_projects.append(project)
+
+	out_projects.sort_custom(func(a, b):
+		var da = a as Dictionary
+		var db = b as Dictionary
+		var cat_a = str(da.get("category", ""))
+		var cat_b = str(db.get("category", ""))
+		if cat_a == cat_b:
+			return str(da.get("name", "")) < str(db.get("name", ""))
+		return cat_a < cat_b
+	)
+
+	return {
+		"ok": true,
+		"state": cisty,
+		"projects": out_projects,
+		"completed": completed.duplicate(),
+		"treasury": _ziskej_kasu_statu(cisty)
+	}
+
+func muze_vyzkoumat_projekt(state_tag: String, project_id: String) -> Dictionary:
+	var cisty = _normalizuj_tag(state_tag)
+	var pid = project_id.strip_edges()
+	if cisty == "" or cisty == "SEA":
+		return {"ok": false, "reason": "Neplatny stat."}
+	if pid == "" or not VYZKUM_PROJEKTY.has(pid):
+		return {"ok": false, "reason": "Neznamy vyzkum."}
+	if not _stat_existuje(cisty):
+		return {"ok": false, "reason": "Stat neexistuje v aktualni mape."}
+
+	var completed = _zajisti_vyzkum_statu(cisty)
+	if completed.has(pid):
+		return {"ok": false, "reason": "Vyzkum uz je dokoncen."}
+
+	var project = VYZKUM_PROJEKTY[pid] as Dictionary
+	var cost = float(project.get("cost", 0.0))
+	var treasury = _ziskej_kasu_statu(cisty)
+	if treasury < cost:
+		return {
+			"ok": false,
+			"reason": "Nedostatek penez na vyzkum.",
+			"cost": cost,
+			"treasury": treasury
+		}
+
+	return {
+		"ok": true,
+		"state": cisty,
+		"project": project.duplicate(true),
+		"cost": cost,
+		"treasury": treasury
+	}
+
+func proved_vyzkum_projektu(state_tag: String, project_id: String) -> Dictionary:
+	var check = muze_vyzkoumat_projekt(state_tag, project_id)
+	if not bool(check.get("ok", false)):
+		return check
+
+	var cisty = _normalizuj_tag(state_tag)
+	var pid = project_id.strip_edges()
+	var project = VYZKUM_PROJEKTY[pid] as Dictionary
+	var cost = float(project.get("cost", 0.0))
+
+	var current_treasury = _ziskej_kasu_statu(cisty)
+	_nastav_kasu_statu(cisty, current_treasury - cost)
+
+	var completed = _zajisti_vyzkum_statu(cisty)
+	completed.append(pid)
+	vyzkum_statu[cisty] = completed
+
+	if not map_data.is_empty():
+		spocitej_prijem(map_data, false)
+	kolo_zmeneno.emit()
+
+	return {
+		"ok": true,
+		"state": cisty,
+		"project_id": pid,
+		"project": project.duplicate(true),
+		"cost": cost,
+		"treasury_after": _ziskej_kasu_statu(cisty)
+	}
+
+func _ziskej_modifikatory_vyzkumu_statu(state_tag: String) -> Dictionary:
+	var out := {
+		"recruit_cost_mult": 1.0,
+		"upkeep_mult": 1.0,
+		"income_rate_mult": 1.0,
+		"gdp_growth_mult": 1.0,
+		"population_growth_mult": 1.0,
+		"recruit_regen_mult": 1.0
+	}
+
+	var cisty = _normalizuj_tag(state_tag)
+	if cisty == "" or cisty == "SEA":
+		return out
+
+	var completed = _zajisti_vyzkum_statu(cisty)
+	for pid_any in completed:
+		var pid = str(pid_any)
+		if not VYZKUM_PROJEKTY.has(pid):
+			continue
+		var project = VYZKUM_PROJEKTY[pid] as Dictionary
+		var modifiers = project.get("modifiers", {}) as Dictionary
+		for k in modifiers.keys():
+			if not out.has(k):
+				continue
+			out[k] = float(out[k]) * float(modifiers[k])
+
+	return out
+
 func _normalizuj_ideologii(ideology: String) -> String:
 	var raw = ideology.strip_edges().to_lower()
 	match raw:
@@ -968,7 +1991,13 @@ func _ziskej_ekonomicke_modifikatory_ideologie(ideology: String) -> Dictionary:
 	return base
 
 func ziskej_ekonomicke_modifikatory_statu(state_tag: String) -> Dictionary:
-	return _ziskej_ekonomicke_modifikatory_ideologie(_ziskej_ideologii_statu(state_tag))
+	var base = _ziskej_ekonomicke_modifikatory_ideologie(_ziskej_ideologii_statu(state_tag))
+	var research = _ziskej_modifikatory_vyzkumu_statu(state_tag)
+	for k in research.keys():
+		if not base.has(k):
+			continue
+		base[k] = float(base[k]) * float(research[k])
+	return base
 
 func ziskej_cenu_za_vojaka(state_tag: String) -> float:
 	var mods = ziskej_ekonomicke_modifikatory_statu(state_tag)
@@ -2690,12 +3719,15 @@ func _spocitej_silu_statu(tag: String) -> int:
 		return 0
 	if _turn_cache_valid and _turn_state_soldier_power.has(hledany):
 		return int(_turn_state_soldier_power[hledany])
-	var sila := 0
+	var base_sila := 0
 	for p_id in map_data:
 		var d = map_data[p_id]
 		if str(d.get("owner", "")).strip_edges().to_upper() == hledany:
-			sila += int(d.get("soldiers", 0))
-	return sila
+			base_sila += int(d.get("soldiers", 0))
+	var army_power = ziskej_silu_armady_statu(hledany, base_sila)
+	if bool(army_power.get("ok", false)):
+		return int(army_power.get("total", base_sila))
+	return base_sila
 
 func _ma_ai_prijmout_mir(prijemce: String, odesilatel: String) -> bool:
 	var prij = prijemce.strip_edges().to_upper()

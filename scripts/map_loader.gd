@@ -650,6 +650,77 @@ func _ziskej_barvu_overlay_statu(tag: String, is_attack: bool) -> Color:
 		out_col.a = 0.86
 	return out_col
 
+func _ziskej_nasobic_sily_statu(state_tag: String) -> float:
+	var cisty = state_tag.strip_edges().to_upper()
+	if cisty == "" or cisty == "SEA":
+		return 1.0
+	if GameManager == null or not GameManager.has_method("ziskej_silu_armady_statu"):
+		return 1.0
+
+	var info = GameManager.ziskej_silu_armady_statu(cisty) as Dictionary
+	if not bool(info.get("ok", false)):
+		return 1.0
+
+	var base = int(info.get("base", 0))
+	var total = int(info.get("total", base))
+	if base > 0:
+		return max(0.05, float(total) / float(base))
+
+	# If state currently has no soldiers, fall back to percentage component.
+	var bonus_pct = max(0.0, float(info.get("bonus_pct", 0.0)))
+	return max(1.0, 1.0 + bonus_pct)
+
+func _vyres_souboj_podle_sily(attacker_tag: String, attacker_soldiers: int, defender_tag: String, defender_soldiers: int) -> Dictionary:
+	var att_count = max(0, attacker_soldiers)
+	var def_count = max(0, defender_soldiers)
+	if att_count <= 0 and def_count <= 0:
+		return {"attacker_won": false, "defender_won": false, "attacker_survivors": 0, "defender_survivors": 0}
+	if def_count <= 0:
+		return {"attacker_won": true, "defender_won": false, "attacker_survivors": att_count, "defender_survivors": 0}
+	if att_count <= 0:
+		return {"attacker_won": false, "defender_won": true, "attacker_survivors": 0, "defender_survivors": def_count}
+
+	var att_mult = _ziskej_nasobic_sily_statu(attacker_tag)
+	var def_mult = _ziskej_nasobic_sily_statu(defender_tag)
+	var att_power = float(att_count) * att_mult
+	var def_power = float(def_count) * def_mult
+	var eps = 0.0001
+
+	if abs(att_power - def_power) <= eps:
+		return {
+			"attacker_won": false,
+			"defender_won": false,
+			"attacker_survivors": 0,
+			"defender_survivors": 0,
+			"attacker_power": att_power,
+			"defender_power": def_power
+		}
+
+	if att_power > def_power:
+		var left_power = att_power - def_power
+		var survivors = int(ceil(left_power / max(0.0001, att_mult)))
+		survivors = clampi(survivors, 1, att_count)
+		return {
+			"attacker_won": true,
+			"defender_won": false,
+			"attacker_survivors": survivors,
+			"defender_survivors": 0,
+			"attacker_power": att_power,
+			"defender_power": def_power
+		}
+
+	var left_power_def = def_power - att_power
+	var def_survivors = int(ceil(left_power_def / max(0.0001, def_mult)))
+	def_survivors = clampi(def_survivors, 1, def_count)
+	return {
+		"attacker_won": false,
+		"defender_won": true,
+		"attacker_survivors": 0,
+		"defender_survivors": def_survivors,
+		"attacker_power": att_power,
+		"defender_power": def_power
+	}
+
 func _ready():
 	_vytvor_loading_overlay()
 	_nastav_loading_stav("Nacitani mapy...", 0.03)
@@ -2445,9 +2516,10 @@ func zpracuj_tah_armad():
 				# Make sure they are enemies
 				if utok1["owner"] != utok2["owner"]:
 					var hrac_zapojen = GameManager.je_lidsky_stat(str(utok1["owner"])) or GameManager.je_lidsky_stat(str(utok2["owner"]))
-					
-					if utok1["amount"] > utok2["amount"]:
-						utok1["amount"] -= utok2["amount"]
+					var souboj_pole = _vyres_souboj_podle_sily(str(utok1["owner"]), int(utok1["amount"]), str(utok2["owner"]), int(utok2["amount"]))
+
+					if bool(souboj_pole.get("attacker_won", false)):
+						utok1["amount"] = int(souboj_pole.get("attacker_survivors", 0))
 						utok2["amount"] = 0 # Destroyed
 						if hrac_zapojen:
 							bitevni_udalosti.append({
@@ -2455,8 +2527,8 @@ func zpracuj_tah_armad():
 								"text": "⚔️ Armáda %s smetla při přesunu armádu %s." % [str(utok1["owner"]), str(utok2["owner"])],
 								"province_id": int(utok1["to"])
 							})
-					elif utok2["amount"] > utok1["amount"]:
-						utok2["amount"] -= utok1["amount"]
+					elif bool(souboj_pole.get("defender_won", false)):
+						utok2["amount"] = int(souboj_pole.get("defender_survivors", 0))
 						utok1["amount"] = 0 # Destroyed
 						if hrac_zapojen:
 							bitevni_udalosti.append({
@@ -2511,12 +2583,14 @@ func zpracuj_tah_armad():
 				provinces[to_id]["soldiers"] += utocnici
 				moved_survivors = utocnici
 			else:
-				if utocnici > obranci_more:
-					provinces[to_id]["soldiers"] = utocnici - obranci_more
+				var souboj_more = _vyres_souboj_podle_sily(attacker_tag, utocnici, target_owner, obranci_more)
+				if bool(souboj_more.get("attacker_won", false)):
+					var prezivsi_more_att = int(souboj_more.get("attacker_survivors", 0))
+					provinces[to_id]["soldiers"] = prezivsi_more_att
 					provinces[to_id]["army_owner"] = attacker_tag
-					moved_survivors = utocnici - obranci_more
-				elif obranci_more > utocnici:
-					provinces[to_id]["soldiers"] = obranci_more - utocnici
+					moved_survivors = prezivsi_more_att
+				elif bool(souboj_more.get("defender_won", false)):
+					provinces[to_id]["soldiers"] = int(souboj_more.get("defender_survivors", 0))
 					provinces[to_id]["army_owner"] = target_owner
 					moved_survivors = 0
 				else:
@@ -2553,9 +2627,10 @@ func zpracuj_tah_armad():
 			continue
 			
 		var obranci = int(provinces[to_id].get("soldiers", 0))
+		var souboj_provincie = _vyres_souboj_podle_sily(attacker_tag, utocnici, target_owner, obranci)
 		
-		if utocnici > obranci:
-			var prezivsi = utocnici - obranci
+		if bool(souboj_provincie.get("attacker_won", false)):
+			var prezivsi = int(souboj_provincie.get("attacker_survivors", 0))
 			provinces[to_id]["soldiers"] = prezivsi
 			moved_survivors = prezivsi
 			
@@ -2603,9 +2678,9 @@ func zpracuj_tah_armad():
 				})
 					
 		else:
-			var prezivsi = obranci - utocnici
+			var prezivsi = int(souboj_provincie.get("defender_survivors", 0))
 			provinces[to_id]["soldiers"] = prezivsi
-			provinces[to_id]["army_owner"] = target_owner
+			provinces[to_id]["army_owner"] = target_owner if prezivsi > 0 else ""
 			moved_survivors = 0
 			
 			if hrac_zapojen:

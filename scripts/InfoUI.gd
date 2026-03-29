@@ -3,6 +3,7 @@ extends CanvasLayer
 
 @onready var id_label = $PanelContainer/VBoxContainer/IDLabel
 @onready var owner_label = $PanelContainer/VBoxContainer/OwnerLabel
+@onready var terrain_label = $PanelContainer/VBoxContainer/TerrainLabel
 @onready var pop_label = $PanelContainer/VBoxContainer/PopLabel
 @onready var recruit_label = $PanelContainer/VBoxContainer/RecruitLabel
 @onready var gdp_label = $PanelContainer/VBoxContainer/GdpLabel
@@ -126,6 +127,7 @@ func _ready():
 func _nastav_tooltipy_ui() -> void:
 	id_label.tooltip_text = "Nazev vybrane provincie."
 	owner_label.tooltip_text = "Aktualni vlastnik provincie."
+	terrain_label.tooltip_text = "Typ terenu v teto provincii."
 	pop_label.tooltip_text = "Pocet obyvatel provincie."
 	recruit_label.tooltip_text = "Dostupni rekruti v provincii."
 	gdp_label.tooltip_text = "Ekonomicka sila provincie."
@@ -460,6 +462,12 @@ func zobraz_data(data: Dictionary):
 		owner_label.text = "Vlastnik: %s (okupace, core: %s)" % [owner_tag, core_owner]
 	else:
 		owner_label.text = "Vlastnik: " + owner_tag
+
+	terrain_label.visible = true
+	var terrain_raw = str(data.get("terrain", "")).strip_edges()
+	if terrain_raw == "":
+		terrain_raw = "unknown"
+	terrain_label.text = "Terrain: " + terrain_raw
 	
 	if je_more:
 		_set_metric_visible("pop", false)
@@ -870,6 +878,7 @@ func zobraz_hromadna_data(ids: Array, all_provinces: Dictionary):
 
 	id_label.text = "Hromadný výběr: %d provincií" % hromadny_vyber_ids.size()
 	owner_label.text = "Akce pro stát: %s" % GameManager.hrac_stat
+	terrain_label.visible = false
 	_set_metric_visible("pop", true)
 	_set_metric_visible("recruit", true)
 	_set_metric_visible("gdp", true)

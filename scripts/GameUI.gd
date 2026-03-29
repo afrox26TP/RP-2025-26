@@ -1,5 +1,49 @@
 extends CanvasLayer
 
+class ArmyOfferCard:
+	extends PanelContainer
+	var owner_ui = null
+	var offer_index: int = -1
+
+	func _get_drag_data(_at_position: Vector2):
+		if owner_ui == null:
+			return null
+		return owner_ui._army_offer_get_drag_data(offer_index, self)
+
+class ArmyGridCell:
+	extends PanelContainer
+	var owner_ui = null
+	var cell_index: int = -1
+
+	func _get_drag_data(_at_position: Vector2):
+		if owner_ui == null:
+			return null
+		return owner_ui._army_grid_cell_get_drag_data(cell_index, self)
+
+	func _can_drop_data(_at_position: Vector2, data) -> bool:
+		if owner_ui == null:
+			return false
+		return owner_ui._army_grid_cell_can_drop(cell_index, data)
+
+	func _drop_data(_at_position: Vector2, data) -> void:
+		if owner_ui == null:
+			return
+		owner_ui._army_grid_cell_drop(cell_index, data)
+
+class ArmyTrashBin:
+	extends PanelContainer
+	var owner_ui = null
+
+	func _can_drop_data(_at_position: Vector2, data) -> bool:
+		if owner_ui == null:
+			return false
+		return owner_ui._army_trash_can_drop(data)
+
+	func _drop_data(_at_position: Vector2, data) -> void:
+		if owner_ui == null:
+			return
+		owner_ui._army_trash_drop(data)
+
 @onready var panel = $OverviewPanel
 
 # Updated paths for the new UI tree structure
@@ -12,6 +56,7 @@ extends CanvasLayer
 @onready var gdp_label = $OverviewPanel/VBoxContainer/TotalGdpLabel
 @onready var gdp_pc_label = $OverviewPanel/VBoxContainer/GdpPerCapitaLabel 
 @onready var relationship_label = $OverviewPanel/VBoxContainer/RelationshipLabel
+var army_power_label: Label
 
 # --- NEW: Action nodes ---
 @onready var action_separator = $OverviewPanel/VBoxContainer/ActionSeparator
@@ -63,6 +108,25 @@ var ideology_effects_label: RichTextLabel
 var ideology_option: OptionButton
 var ideology_apply_btn: Button
 var ideology_relocate_capital_btn: Button
+var research_btn: Button
+var _research_dialog: PanelContainer
+var _research_money_label: Label
+var _research_list: VBoxContainer
+var _army_research_grid: GridContainer
+var _army_research_offers: VBoxContainer
+var _army_research_trash: ArmyTrashBin
+var _army_research_reroll_btn: Button
+var _army_research_quality_btn: Button
+var _army_research_summary_label: Label
+var _army_research_grid_cells: Array = []
+var _army_research_grid_w: int = 3
+var _army_research_grid_h: int = 3
+var _army_research_view_w: int = 3
+var _army_research_view_h: int = 3
+var _army_research_last_info: Dictionary = {}
+var _research_dialog_user_open: bool = false
+var _research_dialog_layout_warmed: bool = false
+var _army_cell_drag_uid: Dictionary = {}
 var _ideology_option_values: Array = []
 var _current_viewed_province_id: int = -1
 var _relocate_capital_action_lock: bool = false
@@ -209,10 +273,17 @@ func _ziskej_jmeno_statu_podle_tagu(tag: String) -> String:
 	return cisty
 
 func _ready():
+	if panel:
+		panel.offset_left = 0.0
+		panel.offset_top = 0.0
+		panel.offset_right = panel.offset_left + 324.0
+		panel.offset_bottom = panel.offset_top + 760.0
 	panel.hide()
 	_setup_overview_inline_deltas()
+	_zajisti_label_sily_armady()
 	_zajisti_tlacitko_daru()
 	_zajisti_ideology_controls()
+	_zajisti_vyzkum_controls()
 	_setup_popup_country_link()
 	_napln_aliance_option()
 	
@@ -255,6 +326,8 @@ func _ready():
 		ideology_apply_btn.pressed.connect(_on_apply_ideology_pressed)
 	if ideology_relocate_capital_btn and not ideology_relocate_capital_btn.pressed.is_connected(_on_relocate_capital_pressed):
 		ideology_relocate_capital_btn.pressed.connect(_on_relocate_capital_pressed)
+	if research_btn and not research_btn.pressed.is_connected(_on_research_button_pressed):
+		research_btn.pressed.connect(_on_research_button_pressed)
 	if alliance_level_option and not alliance_level_option.item_selected.is_connected(_on_alliance_level_selected):
 		alliance_level_option.item_selected.connect(_on_alliance_level_selected)
 	if GameManager.has_signal("kolo_zmeneno") and not GameManager.kolo_zmeneno.is_connected(_on_kolo_zmeneno):
@@ -284,9 +357,16 @@ func _ready():
 	_aktualizuj_pozice_popupu()
 	_aktualizuj_popup_diplomatickych_zadosti()
 	_vytvor_darovaci_dialog()
+	_vytvor_vyzkum_dialog()
+	# Pre-layout research dialog once in hidden mode; fixes broken first open in turn 0.
+	call_deferred("_predhrej_vyzkum_dialog_layout")
 	_nastav_tooltipy_ui()
 
 func _process(_delta: float) -> void:
+	if _research_dialog and _research_dialog.visible:
+		if panel == null or not panel.visible or research_btn == null or not research_btn.visible:
+			_zavri_vyzkum_dialog()
+
 	if _turn_loading_active:
 		_turn_loading_anim_time += _delta
 		if _turn_loading_anim_time >= 0.2 and _turn_loading_label:
@@ -357,6 +437,8 @@ func _nastav_tooltipy_ui() -> void:
 	ideo_label.tooltip_text = "Aktualni politicke zrizeni statu."
 	pop_label.tooltip_text = "Celkova populace statu."
 	recruit_label.tooltip_text = "Dostupni rekruti celeho statu."
+	if army_power_label:
+		army_power_label.tooltip_text = "Vysledna sila armady po zapocteni bonusu vybavy."
 	gdp_label.tooltip_text = "Celkove HDP statu."
 	gdp_pc_label.tooltip_text = "HDP prepocitane na jednoho obyvatele."
 	relationship_label.tooltip_text = "Diplomaticky vztah mezi tvym statem a cilem."
@@ -368,6 +450,8 @@ func _nastav_tooltipy_ui() -> void:
 		ideology_apply_btn.tooltip_text = "Potvrdi prechod tvého statu na zvolenou ideologii."
 	if ideology_relocate_capital_btn:
 		ideology_relocate_capital_btn.tooltip_text = "Spusti vyber cile na mape. Cena je dynamicka a zobrazi se primo u cilove provincie."
+	if research_btn:
+		research_btn.tooltip_text = "Otevre armadni lab: rozsiritelna mrizka, itemy a rerolly."
 	improve_rel_btn.tooltip_text = "Zlepsi vztah o 10 bodu."
 	worsen_rel_btn.tooltip_text = "Zhorsi vztah o 10 bodu."
 	if gift_money_btn:
@@ -569,6 +653,21 @@ func _zajisti_tlacitko_daru() -> void:
 	if insert_after and insert_after.get_parent() == vbox:
 		vbox.move_child(gift_money_btn, insert_after.get_index() + 1)
 
+func _zajisti_label_sily_armady() -> void:
+	army_power_label = get_node_or_null("OverviewPanel/VBoxContainer/ArmyPowerLabel") as Label
+	var vbox = get_node_or_null("OverviewPanel/VBoxContainer") as VBoxContainer
+	if vbox == null:
+		return
+	if army_power_label == null:
+		army_power_label = Label.new()
+		army_power_label.name = "ArmyPowerLabel"
+		army_power_label.text = "Sila armady: 1.00x (+0 | +0.00%)"
+		vbox.add_child(army_power_label)
+
+	# Keep army power in the main stats block, directly above action separator.
+	if action_separator and action_separator.get_parent() == vbox:
+		vbox.move_child(army_power_label, action_separator.get_index())
+
 func _zajisti_ideology_controls() -> void:
 	var vbox = get_node_or_null("OverviewPanel/VBoxContainer")
 	if vbox == null:
@@ -630,6 +729,769 @@ func _zajisti_ideology_controls() -> void:
 		vbox.move_child(ideology_option, ideology_effects_label.get_index() + 1)
 		vbox.move_child(ideology_apply_btn, ideology_option.get_index() + 1)
 		vbox.move_child(ideology_relocate_capital_btn, ideology_apply_btn.get_index() + 1)
+
+func _zajisti_vyzkum_controls() -> void:
+	research_btn = get_node_or_null("OverviewPanel/VBoxContainer/ResearchButton") as Button
+	if research_btn:
+		return
+	var vbox = get_node_or_null("OverviewPanel/VBoxContainer")
+	if vbox == null:
+		return
+
+	research_btn = Button.new()
+	research_btn.name = "ResearchButton"
+	research_btn.text = "Armada"
+	vbox.add_child(research_btn)
+
+	# Keep research action close to ideology controls for player's own state.
+	if ideology_relocate_capital_btn and ideology_relocate_capital_btn.get_parent() == vbox:
+		vbox.move_child(research_btn, ideology_relocate_capital_btn.get_index() + 1)
+
+func _vytvor_vyzkum_dialog() -> void:
+	if _research_dialog != null:
+		return
+
+	_research_dialog = PanelContainer.new()
+	_research_dialog.name = "ResearchDialog"
+	_research_dialog.size = Vector2(640, 620)
+	_research_dialog.top_level = true
+	add_child(_research_dialog)
+
+	var margin = MarginContainer.new()
+	margin.offset_left = 12
+	margin.offset_top = 12
+	margin.offset_right = -12
+	margin.offset_bottom = -12
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_research_dialog.add_child(margin)
+
+	var root = VBoxContainer.new()
+	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_theme_constant_override("separation", 10)
+	margin.add_child(root)
+
+	var title = Label.new()
+	title.text = "Armadni vyzkum"
+	title.add_theme_font_size_override("font_size", 24)
+	root.add_child(title)
+
+	_research_money_label = Label.new()
+	_research_money_label.text = "Kasa: -"
+	root.add_child(_research_money_label)
+
+	_army_research_summary_label = Label.new()
+	_army_research_summary_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_army_research_summary_label.text = "Bonus armady: +0"
+	root.add_child(_army_research_summary_label)
+
+	var scroll = ScrollContainer.new()
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_child(scroll)
+
+	_research_list = VBoxContainer.new()
+	_research_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_research_list.add_theme_constant_override("separation", 10)
+	scroll.add_child(_research_list)
+
+	var grid_title = Label.new()
+	grid_title.text = "Mrizka vybavy"
+	grid_title.add_theme_font_size_override("font_size", 18)
+	_research_list.add_child(grid_title)
+
+	_army_research_grid = GridContainer.new()
+	_army_research_grid.columns = 3
+	_army_research_grid.tooltip_text = "Kazde kolo spadnou 3 itemy. Nakup funguje jen drag & drop do mrizky. Pretazenim itemu na stejny item stejneho levelu je sloucis."
+	_army_research_grid.add_theme_constant_override("h_separation", 6)
+	_army_research_grid.add_theme_constant_override("v_separation", 6)
+	_research_list.add_child(_army_research_grid)
+
+	_army_research_grid_cells.clear()
+
+	var controls_row = HBoxContainer.new()
+	controls_row.add_theme_constant_override("separation", 8)
+	_research_list.add_child(controls_row)
+
+	_army_research_reroll_btn = Button.new()
+	_army_research_reroll_btn.text = "Reroll"
+	_army_research_reroll_btn.pressed.connect(_on_army_research_reroll_pressed)
+	controls_row.add_child(_army_research_reroll_btn)
+
+	_army_research_quality_btn = Button.new()
+	_army_research_quality_btn.text = "Vylepsit kvalitu"
+	_army_research_quality_btn.pressed.connect(_on_army_research_quality_upgrade_pressed)
+	controls_row.add_child(_army_research_quality_btn)
+
+	_army_research_trash = ArmyTrashBin.new()
+	_army_research_trash.owner_ui = self
+	_army_research_trash.custom_minimum_size = Vector2(170, 40)
+	_army_research_trash.mouse_default_cursor_shape = Control.CURSOR_CAN_DROP
+	controls_row.add_child(_army_research_trash)
+
+	var trash_label = Label.new()
+	trash_label.name = "TrashLabel"
+	trash_label.text = "Kos (prodej 75%)"
+	trash_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	trash_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	trash_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_army_research_trash.add_child(trash_label)
+
+	var offers_title = Label.new()
+	offers_title.text = "Nabidka tohoto kola"
+	offers_title.add_theme_font_size_override("font_size", 18)
+	_research_list.add_child(offers_title)
+
+	_army_research_offers = VBoxContainer.new()
+	_army_research_offers.add_theme_constant_override("separation", 8)
+	_research_list.add_child(_army_research_offers)
+
+	var footer = HBoxContainer.new()
+	footer.alignment = BoxContainer.ALIGNMENT_END
+	root.add_child(footer)
+
+	var close_btn = Button.new()
+	close_btn.text = "Zavrit"
+	close_btn.pressed.connect(func(): _zavri_vyzkum_dialog())
+	footer.add_child(close_btn)
+
+	_research_dialog.hide()
+
+func _zavri_vyzkum_dialog() -> void:
+	_research_dialog_user_open = false
+	if _research_dialog:
+		_research_dialog.hide()
+
+func _predhrej_vyzkum_dialog_layout() -> void:
+	if _research_dialog == null or _research_dialog_layout_warmed:
+		return
+	if GameManager == null:
+		return
+
+	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
+	if player_tag == "":
+		return
+
+	_pozicuj_vyzkum_dialog()
+	_research_dialog.modulate.a = 0.0
+	_research_dialog.show()
+	_aktualizuj_vyzkum_dialog(player_tag)
+	await get_tree().process_frame
+	if _research_dialog:
+		_research_dialog.hide()
+		_research_dialog.modulate.a = 1.0
+	_research_dialog_user_open = false
+	_research_dialog_layout_warmed = true
+
+func _pozicuj_vyzkum_dialog() -> void:
+	if _research_dialog == null:
+		return
+	var viewport = get_viewport()
+	if viewport == null:
+		return
+	var vp = viewport.get_visible_rect().size
+	if vp.x <= 0.0 or vp.y <= 0.0:
+		return
+
+	var left_x := 0.0
+	if panel:
+		left_x = max(0.0, panel.offset_right)
+	var margin := 10.0
+	var top_offset := 62.0
+	var avail_w = max(280.0, vp.x - left_x - margin * 2.0)
+	var avail_h = max(300.0, vp.y - top_offset - margin)
+
+	var w = min(640.0, avail_w)
+	var h = min(720.0, avail_h)
+	_research_dialog.size = Vector2(w, h)
+	_research_dialog.position = Vector2(clamp(left_x + margin, 0.0, max(0.0, vp.x - w)), clamp(top_offset, 0.0, max(0.0, vp.y - h)))
+
+func _on_research_button_pressed() -> void:
+	if current_viewed_tag == "":
+		return
+	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
+	if current_viewed_tag != player_tag:
+		return
+	if _research_dialog and _research_dialog.visible:
+		_zavri_vyzkum_dialog()
+		return
+	if not _research_dialog_layout_warmed:
+		await _predhrej_vyzkum_dialog_layout()
+	_research_dialog_user_open = true
+	if _research_dialog:
+		_pozicuj_vyzkum_dialog()
+		_research_dialog.show()
+	# Update after popup layout is ready to avoid first-open visual glitches.
+	call_deferred("_aktualizuj_vyzkum_dialog", player_tag)
+
+func _item_short_name(item_name: String) -> String:
+	var words = item_name.strip_edges().split(" ")
+	if words.size() >= 2:
+		return (str(words[0]).substr(0, 1) + str(words[1]).substr(0, 1)).to_upper()
+	if item_name.length() <= 3:
+		return item_name.to_upper()
+	return item_name.substr(0, 3).to_upper()
+
+func _aktualizuj_vyzkum_dialog(state_tag: String) -> void:
+	if _research_dialog == null or _research_list == null:
+		return
+	if not GameManager.has_method("ziskej_armadni_lab_statu"):
+		if _army_research_summary_label:
+			_army_research_summary_label.text = "Armadni lab zatim neni dostupny."
+		return
+
+	var info = GameManager.ziskej_armadni_lab_statu(state_tag) as Dictionary
+	if not bool(info.get("ok", false)):
+		if _army_research_summary_label:
+			_army_research_summary_label.text = str(info.get("reason", "Armadni lab se nepodarilo nacist."))
+		return
+	_army_research_last_info = info.duplicate(true)
+	_army_cell_drag_uid.clear()
+
+	var treasury = float(info.get("treasury", 0.0))
+	if _research_money_label:
+		_research_money_label.text = "Kasa statu: $%.2f mld." % treasury
+
+	var power_flat = int(info.get("power_flat", 0))
+	var power_pct = float(info.get("power_pct", 0.0)) * 100.0
+	var expand_cost = float(info.get("expand_cost", 0.0))
+	var grid_w = max(1, int(info.get("grid_w", 3)))
+	var grid_h = max(1, int(info.get("grid_h", 3)))
+	var grid_max_w = max(grid_w, int(info.get("grid_max_w", grid_w)))
+	var grid_max_h = max(grid_h, int(info.get("grid_max_h", grid_h)))
+	_army_research_grid_w = grid_w
+	_army_research_grid_h = grid_h
+	_army_research_view_w = min(grid_max_w, grid_w + 1)
+	_army_research_view_h = min(grid_max_h, grid_h + 1)
+	var unlocked = _army_unlocked_dict()
+	var plus_candidates = _army_plus_candidates(unlocked, grid_max_w, grid_max_h)
+	if _army_research_summary_label:
+		_army_research_summary_label.text = "Bonus armady: +%d a +%.2f%% ze zakladni sily" % [power_flat, power_pct]
+
+	var cell_texts: Array = []
+	cell_texts.resize(_army_research_view_w * _army_research_view_h)
+	for i in range(cell_texts.size()):
+		cell_texts[i] = "-"
+
+	var grid_items = info.get("grid_items", []) as Array
+	for item_any in grid_items:
+		var item = item_any as Dictionary
+		var x = int(item.get("x", 0))
+		var y = int(item.get("y", 0))
+		var w = int(item.get("w", 1))
+		var h = int(item.get("h", 1))
+		var short = _item_short_name(str(item.get("name", "?")))
+		var lvl = int(item.get("level", 1))
+		short += str(lvl)
+		var uid = str(item.get("offer_uid", ""))
+		for yy in range(y, y + h):
+			for xx in range(x, x + w):
+				if xx < 0 or yy < 0 or xx >= _army_research_view_w or yy >= _army_research_view_h:
+					continue
+				if not unlocked.has("%d_%d" % [xx, yy]):
+					continue
+				var cell_key = "%d" % (yy * _army_research_view_w + xx)
+				if uid != "":
+					_army_cell_drag_uid[cell_key] = uid
+				cell_texts[yy * _army_research_view_w + xx] = short
+
+	if _army_research_grid:
+		var target_count = _army_research_view_w * _army_research_view_h
+		for child in _army_research_grid.get_children():
+			child.queue_free()
+		_army_research_grid_cells.clear()
+		_army_research_grid.columns = _army_research_view_w
+		for yy in range(_army_research_view_h):
+			for xx in range(_army_research_view_w):
+				var idx = yy * _army_research_view_w + xx
+				var key = "%d_%d" % [xx, yy]
+				if unlocked.has(key):
+					var cell = ArmyGridCell.new()
+					cell.owner_ui = self
+					cell.cell_index = idx
+					cell.custom_minimum_size = Vector2(120, 52)
+					var lbl = Label.new()
+					lbl.name = "CellLabel"
+					lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+					lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+					lbl.text = "-"
+					cell.add_child(lbl)
+					_army_research_grid.add_child(cell)
+					_army_research_grid_cells.append(cell)
+				elif plus_candidates.has(key):
+					var plus_btn = Button.new()
+					plus_btn.text = "+ $%.0f" % expand_cost
+					plus_btn.custom_minimum_size = Vector2(120, 52)
+					plus_btn.pressed.connect(_on_army_research_buy_cell_pressed.bind(xx, yy))
+					plus_btn.disabled = treasury < expand_cost
+					_army_research_grid.add_child(plus_btn)
+					_army_research_grid_cells.append(plus_btn)
+				else:
+					var filler = PanelContainer.new()
+					filler.custom_minimum_size = Vector2(120, 52)
+					filler.modulate = Color(1, 1, 1, 0.18)
+					_army_research_grid.add_child(filler)
+					_army_research_grid_cells.append(filler)
+
+		for i in range(min(cell_texts.size(), _army_research_grid_cells.size())):
+			var cell_any = _army_research_grid_cells[i]
+			if not (cell_any is ArmyGridCell):
+				continue
+			var cell = cell_any as PanelContainer
+			var lbl = cell.get_node_or_null("CellLabel") as Label
+			if lbl:
+				lbl.text = str(cell_texts[i])
+
+	if _army_research_reroll_btn:
+		var reroll_cost = float(info.get("reroll_cost", 0.0))
+		_army_research_reroll_btn.text = "Reroll ($%.2f)" % reroll_cost
+		_army_research_reroll_btn.disabled = treasury < reroll_cost
+
+	if _army_research_quality_btn:
+		var quality_level = int(info.get("quality_level", 0))
+		var quality_cost = float(info.get("quality_upgrade_cost", 0.0))
+		_army_research_quality_btn.text = "Vylepsit kvalitu dropu Q%d -> Q%d ($%.2f)" % [quality_level, quality_level + 1, quality_cost]
+		_army_research_quality_btn.tooltip_text = "Vyssi Q zveda sanci na vyssi level itemu a posunuje i minimalni kvalitu nabidek."
+		_army_research_quality_btn.disabled = quality_level >= 8 or treasury < quality_cost
+
+	if _army_research_offers:
+		for child in _army_research_offers.get_children():
+			child.queue_free()
+
+	var offers = info.get("offers", []) as Array
+	for i in range(offers.size()):
+		var offer = offers[i] as Dictionary
+		if _army_research_offers == null:
+			break
+		var card = ArmyOfferCard.new()
+		card.owner_ui = self
+		card.offer_index = i
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		card.mouse_default_cursor_shape = Control.CURSOR_DRAG
+		_army_research_offers.add_child(card)
+
+		var card_margin = MarginContainer.new()
+		card_margin.offset_left = 8
+		card_margin.offset_top = 8
+		card_margin.offset_right = -8
+		card_margin.offset_bottom = -8
+		card_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		card.add_child(card_margin)
+
+		var row = HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		card_margin.add_child(row)
+
+		var left = VBoxContainer.new()
+		left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(left)
+
+		var w = int(offer.get("w", 1))
+		var h = int(offer.get("h", 1))
+		var cost = float(offer.get("cost", 0.0))
+		var level = int(offer.get("level", 1))
+		var power_item_flat = int(offer.get("power_flat", 0))
+		var power_item_pct = float(offer.get("power_pct", 0.0)) * 100.0
+
+		var title = Label.new()
+		title.text = "%d) %s | L%d | %dx%d | $%.2f" % [i + 1, str(offer.get("name", "Item")), level, w, h, cost]
+		left.add_child(title)
+
+		var desc = Label.new()
+		desc.text = "Efekt: +%d sily, +%.2f%% ze zakladu" % [power_item_flat, power_item_pct]
+		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		left.add_child(desc)
+
+		if treasury < cost:
+			card.modulate = Color(1, 1, 1, 0.65)
+		card.tooltip_text = "Nákup funguje pouze drag & drop do mrizky."
+
+func _vytvor_army_drag_preview(w: int, h: int, level: int = 1) -> Control:
+	var iw = max(1, w)
+	var ih = max(1, h)
+	var cell_w := 44.0
+	var cell_h := 30.0
+	var sep := 4.0
+	var inner_w = float(iw) * cell_w + float(max(0, iw - 1)) * sep
+	var inner_h = float(ih) * cell_h + float(max(0, ih - 1)) * sep
+
+	var preview = PanelContainer.new()
+	preview.custom_minimum_size = Vector2(inner_w + 10.0, inner_h + 10.0)
+	preview.size = preview.custom_minimum_size
+	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var margin = MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	margin.offset_left = 5
+	margin.offset_top = 5
+	margin.offset_right = -5
+	margin.offset_bottom = -5
+	preview.add_child(margin)
+
+	var grid = GridContainer.new()
+	grid.columns = iw
+	grid.add_theme_constant_override("h_separation", int(sep))
+	grid.add_theme_constant_override("v_separation", int(sep))
+	margin.add_child(grid)
+
+	for _i in range(iw * ih):
+		var block = ColorRect.new()
+		block.custom_minimum_size = Vector2(cell_w, cell_h)
+		block.color = Color(0.78, 0.89, 1.0, 0.70)
+		grid.add_child(block)
+
+	if level > 1:
+		var lvl = Label.new()
+		lvl.text = "L%d" % level
+		lvl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		lvl.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+		lvl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		preview.add_child(lvl)
+
+	var root = Control.new()
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.custom_minimum_size = Vector2.ZERO
+	root.size = Vector2.ZERO
+	root.add_child(preview)
+	preview.position = -preview.size * 0.5
+	return root
+
+func _army_offer_get_drag_data(offer_index: int, source: Control):
+	if not _army_research_last_info.has("offers"):
+		return null
+	var offers = _army_research_last_info.get("offers", []) as Array
+	if offer_index < 0 or offer_index >= offers.size():
+		return null
+	var offer = offers[offer_index] as Dictionary
+
+	var preview = _vytvor_army_drag_preview(int(offer.get("w", 1)), int(offer.get("h", 1)), int(offer.get("level", 1)))
+	source.set_drag_preview(preview)
+
+	return {
+		"type": "army_offer",
+		"offer_index": offer_index
+	}
+
+func _army_unlocked_dict() -> Dictionary:
+	var out: Dictionary = {}
+	var arr = _army_research_last_info.get("unlocked_cells", []) as Array
+	for c_any in arr:
+		out[str(c_any)] = true
+	return out
+
+func _army_plus_candidates(unlocked: Dictionary, max_w: int, max_h: int) -> Dictionary:
+	var out: Dictionary = {}
+	for y in range(max_h):
+		var row_right := -1
+		for x in range(max_w):
+			if unlocked.has("%d_%d" % [x, y]):
+				row_right = x
+		if row_right >= 0 and row_right + 1 < max_w:
+			var key_r = "%d_%d" % [row_right + 1, y]
+			if not unlocked.has(key_r):
+				out[key_r] = true
+
+	for x in range(max_w):
+		var col_bottom := -1
+		for y in range(max_h):
+			if unlocked.has("%d_%d" % [x, y]):
+				col_bottom = y
+		if col_bottom >= 0 and col_bottom + 1 < max_h:
+			var key_b = "%d_%d" % [x, col_bottom + 1]
+			if not unlocked.has(key_b):
+				out[key_b] = true
+	return out
+
+func _army_cell_index_to_xy(cell_index: int) -> Vector2i:
+	var gw = max(1, _army_research_view_w)
+	return Vector2i(cell_index % gw, int(cell_index / gw))
+
+func _army_grid_item_at_cell(cell_index: int) -> Dictionary:
+	var pos = _army_cell_index_to_xy(cell_index)
+	var x = pos.x
+	var y = pos.y
+	var grid_items = _army_research_last_info.get("grid_items", []) as Array
+	for item_any in grid_items:
+		var item = item_any as Dictionary
+		var ix = int(item.get("x", 0))
+		var iy = int(item.get("y", 0))
+		var iw = int(item.get("w", 1))
+		var ih = int(item.get("h", 1))
+		if x >= ix and x < (ix + iw) and y >= iy and y < (iy + ih):
+			return item
+	return {}
+
+func _army_items_mozno_sloucit(a: Dictionary, b: Dictionary) -> bool:
+	if a.is_empty() or b.is_empty():
+		return false
+	if str(a.get("id", "")) != str(b.get("id", "")):
+		return false
+	return int(a.get("level", 1)) == int(b.get("level", 1))
+
+func _army_offer_mozno_sloucit_s_itemem(offer: Dictionary, item: Dictionary) -> bool:
+	if offer.is_empty() or item.is_empty():
+		return false
+	if str(offer.get("id", "")) != str(item.get("id", "")):
+		return false
+	return int(offer.get("level", 1)) == int(item.get("level", 1))
+
+func _army_grid_can_place_offer_at(cell_index: int, offer: Dictionary) -> bool:
+	var pos = _army_cell_index_to_xy(cell_index)
+	var x = pos.x
+	var y = pos.y
+	var w = int(offer.get("w", 1))
+	var h = int(offer.get("h", 1))
+	var grid_w = max(1, int(_army_research_last_info.get("grid_w", _army_research_grid_w)))
+	var grid_h = max(1, int(_army_research_last_info.get("grid_h", _army_research_grid_h)))
+	if x < 0 or y < 0:
+		return false
+	if x + w > grid_w or y + h > grid_h:
+		return false
+
+	var grid_items = _army_research_last_info.get("grid_items", []) as Array
+	var unlocked = _army_unlocked_dict()
+	var occupied: Dictionary = {}
+	for item_any in grid_items:
+		var item = item_any as Dictionary
+		var ix = int(item.get("x", 0))
+		var iy = int(item.get("y", 0))
+		var iw = int(item.get("w", 1))
+		var ih = int(item.get("h", 1))
+		for yy in range(iy, iy + ih):
+			for xx in range(ix, ix + iw):
+				occupied["%d_%d" % [xx, yy]] = true
+
+	for yy in range(y, y + h):
+		for xx in range(x, x + w):
+			if not unlocked.has("%d_%d" % [xx, yy]):
+				return false
+			if occupied.has("%d_%d" % [xx, yy]):
+				return false
+	return true
+
+func _army_grid_cell_can_drop(cell_index: int, data) -> bool:
+	if not (data is Dictionary):
+		return false
+	var d = data as Dictionary
+	var dtype = str(d.get("type", ""))
+	if dtype != "army_offer" and dtype != "army_item":
+		return false
+	if dtype == "army_item":
+		var item_uid = str(d.get("item_uid", ""))
+		if item_uid == "":
+			return false
+		var grid_items = _army_research_last_info.get("grid_items", []) as Array
+		var moving: Dictionary = {}
+		for item_any in grid_items:
+			var item = item_any as Dictionary
+			if str(item.get("offer_uid", "")) == item_uid:
+				moving = item
+				break
+		if moving.is_empty():
+			return false
+		var pos = _army_cell_index_to_xy(cell_index)
+		var x = pos.x
+		var y = pos.y
+		var w = int(moving.get("w", 1))
+		var h = int(moving.get("h", 1))
+		var grid_w = max(1, int(_army_research_last_info.get("grid_w", _army_research_grid_w)))
+		var grid_h = max(1, int(_army_research_last_info.get("grid_h", _army_research_grid_h)))
+		if x < 0 or y < 0 or x + w > grid_w or y + h > grid_h:
+			return false
+		var target_item = _army_grid_item_at_cell(cell_index)
+		if not target_item.is_empty() and str(target_item.get("offer_uid", "")) != item_uid:
+			return _army_items_mozno_sloucit(moving, target_item)
+		var unlocked = _army_unlocked_dict()
+		var occupied: Dictionary = {}
+		for item_any in grid_items:
+			var item2 = item_any as Dictionary
+			if str(item2.get("offer_uid", "")) == item_uid:
+				continue
+			var ix = int(item2.get("x", 0))
+			var iy = int(item2.get("y", 0))
+			var iw = int(item2.get("w", 1))
+			var ih = int(item2.get("h", 1))
+			for yy in range(iy, iy + ih):
+				for xx in range(ix, ix + iw):
+					occupied["%d_%d" % [xx, yy]] = true
+		for yy in range(y, y + h):
+			for xx in range(x, x + w):
+				if not unlocked.has("%d_%d" % [xx, yy]):
+					return false
+				if occupied.has("%d_%d" % [xx, yy]):
+					return false
+		return true
+
+	if not _army_research_last_info.has("offers"):
+		return false
+	var offer_index = int(d.get("offer_index", -1))
+	var offers = _army_research_last_info.get("offers", []) as Array
+	if offer_index < 0 or offer_index >= offers.size():
+		return false
+	var offer = offers[offer_index] as Dictionary
+	var treasury = float(_army_research_last_info.get("treasury", 0.0))
+	var cost = float(offer.get("cost", 0.0))
+	if treasury < cost:
+		return false
+	var target_item = _army_grid_item_at_cell(cell_index)
+	if not target_item.is_empty():
+		return _army_offer_mozno_sloucit_s_itemem(offer, target_item)
+	return _army_grid_can_place_offer_at(cell_index, offer)
+
+func _army_grid_cell_drop(cell_index: int, data) -> void:
+	if not _army_grid_cell_can_drop(cell_index, data):
+		return
+	var d = data as Dictionary
+	var dtype = str(d.get("type", ""))
+	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
+	if player_tag == "":
+		return
+	var pos = _army_cell_index_to_xy(cell_index)
+	var result: Dictionary = {}
+	if dtype == "army_offer":
+		var offer_index = int(d.get("offer_index", -1))
+		var offers = _army_research_last_info.get("offers", []) as Array
+		var offer: Dictionary = {}
+		if offer_index >= 0 and offer_index < offers.size():
+			offer = offers[offer_index] as Dictionary
+		var target_item = _army_grid_item_at_cell(cell_index)
+		if not target_item.is_empty() and _army_offer_mozno_sloucit_s_itemem(offer, target_item):
+			if not GameManager.has_method("kup_a_slouc_armadni_nabidku"):
+				return
+			result = GameManager.kup_a_slouc_armadni_nabidku(player_tag, offer_index, str(target_item.get("offer_uid", ""))) as Dictionary
+		else:
+			if not GameManager.has_method("kup_armadni_nabidku_na_pozici"):
+				return
+			result = GameManager.kup_armadni_nabidku_na_pozici(player_tag, offer_index, pos.x, pos.y) as Dictionary
+	elif dtype == "army_item":
+		var item_uid = str(d.get("item_uid", ""))
+		var target_item = _army_grid_item_at_cell(cell_index)
+		var source_item: Dictionary = {}
+		for it_any in (_army_research_last_info.get("grid_items", []) as Array):
+			var it = it_any as Dictionary
+			if str(it.get("offer_uid", "")) == item_uid:
+				source_item = it
+				break
+		if not target_item.is_empty() and str(target_item.get("offer_uid", "")) != item_uid and _army_items_mozno_sloucit(source_item, target_item):
+			if not GameManager.has_method("sloucit_armadni_itemy"):
+				return
+			result = GameManager.sloucit_armadni_itemy(player_tag, item_uid, str(target_item.get("offer_uid", ""))) as Dictionary
+		else:
+			if not GameManager.has_method("presun_armadni_item"):
+				return
+			result = GameManager.presun_armadni_item(player_tag, item_uid, pos.x, pos.y) as Dictionary
+	else:
+		return
+	if not bool(result.get("ok", false)):
+		zobraz_systemove_hlaseni("Armada", str(result.get("reason", "Sem item nelze polozit.")))
+	_aktualizuj_vyzkum_dialog(player_tag)
+	_obnov_otevreny_prehled_statu()
+
+func _army_grid_cell_get_drag_data(cell_index: int, source: Control):
+	var key = "%d" % cell_index
+	if not _army_cell_drag_uid.has(key):
+		return null
+	var item_uid = str(_army_cell_drag_uid[key])
+	if item_uid == "":
+		return null
+	var moving: Dictionary = {}
+	for item_any in (_army_research_last_info.get("grid_items", []) as Array):
+		var item = item_any as Dictionary
+		if str(item.get("offer_uid", "")) == item_uid:
+			moving = item
+			break
+	if moving.is_empty():
+		return null
+
+	var preview = _vytvor_army_drag_preview(int(moving.get("w", 1)), int(moving.get("h", 1)), int(moving.get("level", 1)))
+	source.set_drag_preview(preview)
+
+	return {
+		"type": "army_item",
+		"item_uid": item_uid
+	}
+
+func _army_trash_can_drop(data) -> bool:
+	if not (data is Dictionary):
+		return false
+	var d = data as Dictionary
+	if str(d.get("type", "")) != "army_item":
+		return false
+	var item_uid = str(d.get("item_uid", ""))
+	if item_uid == "":
+		return false
+	for it_any in (_army_research_last_info.get("grid_items", []) as Array):
+		var it = it_any as Dictionary
+		if str(it.get("offer_uid", "")) == item_uid:
+			return true
+	return false
+
+func _army_trash_drop(data) -> void:
+	if not _army_trash_can_drop(data):
+		return
+	var d = data as Dictionary
+	var item_uid = str(d.get("item_uid", ""))
+	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
+	if player_tag == "":
+		return
+	if not GameManager.has_method("prodej_armadni_item"):
+		return
+	var result = GameManager.prodej_armadni_item(player_tag, item_uid) as Dictionary
+	if not bool(result.get("ok", false)):
+		zobraz_systemove_hlaseni("Armada", str(result.get("reason", "Prodej selhal.")))
+	_aktualizuj_vyzkum_dialog(player_tag)
+	_obnov_otevreny_prehled_statu()
+
+func _on_army_research_buy_offer_pressed(offer_index: int) -> void:
+	# Legacy fallback. Main flow is drag & drop only.
+	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
+	if player_tag == "":
+		return
+	if not GameManager.has_method("kup_armadni_nabidku"):
+		return
+	var result = GameManager.kup_armadni_nabidku(player_tag, offer_index) as Dictionary
+	if not bool(result.get("ok", false)):
+		await zobraz_systemove_hlaseni("Armada", str(result.get("reason", "Nakup selhal.")))
+		_aktualizuj_vyzkum_dialog(player_tag)
+		return
+	_aktualizuj_vyzkum_dialog(player_tag)
+	_obnov_otevreny_prehled_statu()
+
+func _on_army_research_buy_cell_pressed(x: int, y: int) -> void:
+	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
+	if player_tag == "":
+		return
+	if not GameManager.has_method("koupit_armadni_bunku"):
+		return
+	var result = GameManager.koupit_armadni_bunku(player_tag, x, y) as Dictionary
+	if not bool(result.get("ok", false)):
+		await zobraz_systemove_hlaseni("Armada", str(result.get("reason", "Nakup bunky selhal.")))
+	_aktualizuj_vyzkum_dialog(player_tag)
+	_obnov_otevreny_prehled_statu()
+
+func _on_army_research_reroll_pressed() -> void:
+	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
+	if player_tag == "":
+		return
+	if not GameManager.has_method("reroll_armadni_nabidky"):
+		return
+	var result = GameManager.reroll_armadni_nabidky(player_tag) as Dictionary
+	if not bool(result.get("ok", false)):
+		await zobraz_systemove_hlaseni("Armada", str(result.get("reason", "Reroll selhal.")))
+	_aktualizuj_vyzkum_dialog(player_tag)
+	_obnov_otevreny_prehled_statu()
+
+func _on_army_research_quality_upgrade_pressed() -> void:
+	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
+	if player_tag == "":
+		return
+	if not GameManager.has_method("vylepsi_kvalitu_dropu_armady"):
+		return
+	var result = GameManager.vylepsi_kvalitu_dropu_armady(player_tag) as Dictionary
+	if not bool(result.get("ok", false)):
+		await zobraz_systemove_hlaseni("Armada", str(result.get("reason", "Upgrade kvality selhal.")))
+	_aktualizuj_vyzkum_dialog(player_tag)
+	_obnov_otevreny_prehled_statu()
 
 func _normalizuj_ideologii(ideology: String) -> String:
 	var raw = ideology.strip_edges().to_lower()
@@ -1228,10 +2090,16 @@ func _on_viewport_resized():
 	_pozicuj_pause_menu()
 	_pozicuj_save_load_popupy()
 	_pozicuj_gift_dialog()
+	if _research_dialog and _research_dialog.visible:
+		_pozicuj_vyzkum_dialog()
 
 func _input(event):
 	if event is InputEventKey and event.pressed and not event.is_echo():
 		if event.keycode == KEY_ESCAPE:
+			if _research_dialog and _research_dialog.visible:
+				_zavri_vyzkum_dialog()
+				get_viewport().set_input_as_handled()
+				return
 			if _gift_dialog and _gift_dialog.visible:
 				_gift_dialog.hide()
 				get_viewport().set_input_as_handled()
@@ -1644,6 +2512,7 @@ func _on_load_dialog_confirm_pressed() -> void:
 		ok = bool(GameManager.nacti_hru())
 
 	if ok:
+		_zavri_vyzkum_dialog()
 		_load_dialog.hide()
 		await zobraz_systemove_hlaseni("Load", "Hra byla nactena ze slotu: %s" % slot_name)
 	else:
@@ -2822,6 +3691,7 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 	var total_pop = 0
 	var total_gdp = 0.0
 	var total_recruits = 0
+	var total_soldiers = 0
 	
 	# Calculate total country stats
 	for p_id in all_provinces:
@@ -2830,6 +3700,7 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 			total_pop += int(p.get("population", 0))
 			total_gdp += float(p.get("gdp", 0.0))
 			total_recruits += int(p.get("recruitable_population", 0))
+			total_soldiers += int(p.get("soldiers", 0))
 			
 	name_label.text = plne_jmeno
 	ideo_label.text = "Zřízení: " + ideologie.capitalize()
@@ -2841,6 +3712,21 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 		procento = (float(total_recruits) / float(total_pop)) * 100.0
 		
 	recruit_label.text = "Celkoví rekruti: " + _formatuj_cislo(total_recruits) + " (%.2f %%)" % procento
+	if army_power_label:
+		var army_total = total_soldiers
+		var bonus_flat = 0
+		var bonus_pct = 0.0
+		if GameManager.has_method("ziskej_silu_armady_statu"):
+			var power_info = GameManager.ziskej_silu_armady_statu(owner_tag, total_soldiers) as Dictionary
+			army_total = int(power_info.get("total", total_soldiers))
+			bonus_flat = int(power_info.get("bonus_flat", 0))
+			bonus_pct = float(power_info.get("bonus_pct", 0.0)) * 100.0
+		var mult = 1.0
+		if total_soldiers > 0:
+			mult = float(army_total) / float(total_soldiers)
+		else:
+			mult = 1.0 + (bonus_pct / 100.0)
+		army_power_label.text = "Sila armady: %.3fx (+%d | +%.2f%%)" % [mult, bonus_flat, bonus_pct]
 	gdp_label.text = "Celkové HDP: %.2f mld. USD" % total_gdp
 	
 	# Calculate GDP per capita
@@ -2873,9 +3759,12 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 			if non_aggression_btn: non_aggression_btn.hide()
 			if incoming_request_label: incoming_request_label.hide()
 			if respond_request_buttons: respond_request_buttons.hide()
+			if research_btn: research_btn.show()
 		else:
 			_aktualizuj_ideology_ui(owner_tag, ideologie)
 			_aktualizuj_vztah_ui(owner_tag)
+			if _research_dialog and _research_dialog.visible:
+				_zavri_vyzkum_dialog()
 			# Show actions for other countries
 			action_separator.show()
 			if improve_rel_btn: improve_rel_btn.show()
@@ -2886,6 +3775,7 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 			_aktualizuj_diplomacii_tlacitka(owner_tag)
 			if non_aggression_btn: non_aggression_btn.show()
 			_aktualizuj_zadost_ui(owner_tag)
+			if research_btn: research_btn.hide()
 	
 	panel.show()
 
@@ -2946,6 +3836,10 @@ func _on_ideology_option_selected(index: int) -> void:
 # Triggered by right-clicking on the map
 func schovej_se():
 	panel.hide()
+	if _research_dialog and _research_dialog.visible:
+		_zavri_vyzkum_dialog()
+	if research_btn:
+		research_btn.hide()
 	_current_viewed_province_id = -1
 	_ceka_na_vyber_cile_hlavniho_mesta = false
 	_relocate_capital_action_lock = false
@@ -3096,6 +3990,9 @@ func _on_alliance_level_selected(index: int):
 func _on_kolo_zmeneno():
 	_aktualizuj_popup_diplomatickych_zadosti()
 	_aktualizuj_panel_zprav()
+	# Keep research window open; player closes it manually.
+	if _research_dialog and _research_dialog.visible and GameManager:
+		_aktualizuj_vyzkum_dialog(str(GameManager.hrac_stat).strip_edges().to_upper())
 	if current_viewed_tag == "" or not panel.visible:
 		return
 	_obnov_otevreny_prehled_statu()
