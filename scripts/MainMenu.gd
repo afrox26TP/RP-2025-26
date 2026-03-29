@@ -84,7 +84,11 @@ var hratelne_staty = {
 
 const MAP_SCENE_PATH := "res://scenes/map.tscn"
 const SAVE_FILE_PATH := "user://savegame.dat"
-const PROVINCES_DATA_PATH := "res://map_data/Provinces.txt"
+const PROVINCES_DATA_PATHS := [
+	"res://map_data/province.txt",
+	"res://map_data/Province.txt",
+	"res://map_data/Provinces.txt"
+]
 const SETTINGS_DIALOG_TITLE := "Nastaveni"
 const SETTINGS_DIALOG_TEXT := "Nastaveni budou doplnena v dalsi iteraci.\n\nOVLADANI:\n- Zoom koleckem\n- Posouvat mapu WSAD\n- Ukoncit kolo mezernikem\n- Pravim tlacitkem cancelovat akce a zavirat dialogy\n- DEv simple conquer tool: C"
 const CREDITS_DIALOG_TITLE := "Kredity"
@@ -210,15 +214,69 @@ func _nastav_vychozi_vyber_statu():
 	vsechny_tagy.sort()
 	selected_country_tag = str(vsechny_tagy[0])
 
+func _resolve_provinces_data_path() -> String:
+	for path in PROVINCES_DATA_PATHS:
+		if ResourceLoader.exists(path):
+			return path
+	return str(PROVINCES_DATA_PATHS[PROVINCES_DATA_PATHS.size() - 1])
+
+func _build_column_index(header_line: String) -> Dictionary:
+	var out: Dictionary = {}
+	var cols = header_line.split(";")
+	for i in range(cols.size()):
+		out[str(cols[i]).strip_edges().to_lower()] = i
+	return out
+
+func _find_column_idx(col_index: Dictionary, names: Array, fallback_idx: int = -1) -> int:
+	for raw_name in names:
+		var key = str(raw_name).strip_edges().to_lower()
+		if col_index.has(key):
+			return int(col_index[key])
+	return fallback_idx
+
+func _read_int(parts: Array, idx: int, default_val: int = 0) -> int:
+	if idx < 0 or idx >= parts.size():
+		return default_val
+	var raw = str(parts[idx]).strip_edges()
+	if raw == "":
+		return default_val
+	return int(raw)
+
+func _read_float(parts: Array, idx: int, default_val: float = 0.0) -> float:
+	if idx < 0 or idx >= parts.size():
+		return default_val
+	var raw = str(parts[idx]).strip_edges()
+	if raw == "":
+		return default_val
+	return float(raw)
+
+func _read_text(parts: Array, idx: int, default_val: String = "") -> String:
+	if idx < 0 or idx >= parts.size():
+		return default_val
+	return str(parts[idx]).strip_edges()
+
 func _nacti_data_statu_pro_browser():
 	country_stats.clear()
-	var file = FileAccess.open(PROVINCES_DATA_PATH, FileAccess.READ)
+	var data_path = _resolve_provinces_data_path()
+	var file = FileAccess.open(data_path, FileAccess.READ)
 	if file == null:
-		push_warning("Nepodarilo se nacist Provinces.txt pro browser statu.")
+		push_warning("Nepodarilo se nacist dataset provincii pro browser statu.")
 		return
 
-	if not file.eof_reached():
-		file.get_line() # header
+	if file.eof_reached():
+		return
+
+	var header_line = file.get_line().strip_edges()
+	var col_index = _build_column_index(header_line)
+
+	var idx_type = _find_column_idx(col_index, ["type"], 4)
+	var idx_owner = _find_column_idx(col_index, ["controller", "owner"], 6)
+	var idx_country_name = _find_column_idx(col_index, ["country_name"], 11)
+	var idx_population = _find_column_idx(col_index, ["population"], 12)
+	var idx_gdp = _find_column_idx(col_index, ["gdp"], 13)
+	var idx_ideology = _find_column_idx(col_index, ["ideology"], 18)
+	var idx_recruitable = _find_column_idx(col_index, ["recruitable_population"], 19)
+	var idx_soldiers = _find_column_idx(col_index, ["soldiers", "army", "army_size"], -1)
 
 	while not file.eof_reached():
 		var line = file.get_line().strip_edges()
@@ -226,19 +284,19 @@ func _nacti_data_statu_pro_browser():
 			continue
 
 		var parts = line.split(";")
-		if parts.size() < 20:
+		if parts.size() < 7:
 			continue
 
-		var typ = parts[4].strip_edges().to_lower()
-		var tag = parts[6].strip_edges().to_upper()
+		var typ = _read_text(parts, idx_type).to_lower()
+		var tag = _read_text(parts, idx_owner).to_upper()
 		if typ == "sea" or tag == "" or tag == "SEA":
 			continue
 
 		if not country_stats.has(tag):
 			country_stats[tag] = {
 				"tag": tag,
-				"country_name_en": parts[11].strip_edges(),
-				"ideology": parts[18].strip_edges(),
+				"country_name_en": _read_text(parts, idx_country_name, tag),
+				"ideology": _read_text(parts, idx_ideology),
 				"population": 0,
 				"gdp": 0.0,
 				"recruitable_population": 0,
@@ -246,12 +304,11 @@ func _nacti_data_statu_pro_browser():
 				"province_count": 0
 			}
 
-		country_stats[tag]["population"] += int(parts[12])
-		country_stats[tag]["gdp"] += float(parts[13])
-		country_stats[tag]["recruitable_population"] += int(parts[19])
+		country_stats[tag]["population"] += _read_int(parts, idx_population)
+		country_stats[tag]["gdp"] += _read_float(parts, idx_gdp)
+		country_stats[tag]["recruitable_population"] += _read_int(parts, idx_recruitable)
 		country_stats[tag]["province_count"] += 1
-		if parts.size() > 20 and parts[20].strip_edges() != "":
-			country_stats[tag]["soldiers"] += int(parts[20])
+		country_stats[tag]["soldiers"] += _read_int(parts, idx_soldiers)
 
 func _naplni_browser_seznam():
 	for child in country_list.get_children():

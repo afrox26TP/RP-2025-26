@@ -29,11 +29,11 @@ window/size/viewport_height=1080
 
 [gui]
 
-theme/default_font_multichannel_signed_distance_field=true
 timers/tooltip_delay_sec=1.0
+theme/default_font_multichannel_signed_distance_field=true
 
 [rendering]
 
+environment/defaults/default_clear_color=Color(0.078431375, 0.3137255, 0.78431374, 1)
 2d/snap/snap_2d_transforms_to_pixel=true
 2d/snap/snap_2d_vertices_to_pixel=true
-environment/defaults/default_clear_color=Color(0.078431375, 0.3137255, 0.78431374, 1)

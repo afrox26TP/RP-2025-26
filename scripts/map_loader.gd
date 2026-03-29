@@ -1,5 +1,7 @@
 extends Node2D
 
+signal mapovy_mod_zmenen(mod: String)
+
 @export var label_scene = preload("res://scenes/ProvinceLabel.tscn")
 
 var provinces = {}
@@ -47,7 +49,53 @@ var _loading_label: Label = null
 var _loading_bar: ProgressBar = null
 const PORT_ICON_PATH := "res://map_data/port_icon.svg"
 const PORT_ICON_FALLBACK_PATH := "res://map_data/ArmyIcons/ArmyIconTemplate.svg"
+const PROVINCES_DATA_PATHS := [
+	"res://map_data/province.txt",
+	"res://map_data/Province.txt",
+	"res://map_data/Provinces.txt"
+]
 # --------------------------------------------------------
+
+func _resolve_provinces_data_path() -> String:
+	for path in PROVINCES_DATA_PATHS:
+		if ResourceLoader.exists(path):
+			return path
+	return str(PROVINCES_DATA_PATHS[PROVINCES_DATA_PATHS.size() - 1])
+
+func _build_column_index(header_line: String) -> Dictionary:
+	var out: Dictionary = {}
+	var cols = header_line.split(";")
+	for i in range(cols.size()):
+		out[str(cols[i]).strip_edges().to_lower()] = i
+	return out
+
+func _find_column_idx(col_index: Dictionary, names: Array, fallback_idx: int = -1) -> int:
+	for raw_name in names:
+		var key = str(raw_name).strip_edges().to_lower()
+		if col_index.has(key):
+			return int(col_index[key])
+	return fallback_idx
+
+func _read_int(parts: Array, idx: int, default_val: int = 0) -> int:
+	if idx < 0 or idx >= parts.size():
+		return default_val
+	var raw = str(parts[idx]).strip_edges()
+	if raw == "":
+		return default_val
+	return int(raw)
+
+func _read_float(parts: Array, idx: int, default_val: float = 0.0) -> float:
+	if idx < 0 or idx >= parts.size():
+		return default_val
+	var raw = str(parts[idx]).strip_edges()
+	if raw == "":
+		return default_val
+	return float(raw)
+
+func _read_text(parts: Array, idx: int, default_val: String = "") -> String:
+	if idx < 0 or idx >= parts.size():
+		return default_val
+	return str(parts[idx]).strip_edges()
 
 func _vytvor_loading_overlay() -> void:
 	if _loading_layer != null:
@@ -114,6 +162,7 @@ func nastav_mapovy_mod(mod: String):
 	aktualni_mapovy_mod = mod
 	_aktualizuj_aktivni_mapovy_mod()
 	_aplikuj_viditelnost_ukazatelu_jednotek()
+	emit_signal("mapovy_mod_zmenen", aktualni_mapovy_mod)
 
 func _aktualizuj_aktivni_mapovy_mod() -> void:
 	var sprite = $Sprite2D
@@ -813,63 +862,109 @@ func _pridej_animovany_marker_po_linii(container: Node2D, marker_store: Array, p
 	})
 
 func load_provinces():
-	var file = FileAccess.open("res://map_data/Provinces.txt", FileAccess.READ)
+	var data_path = _resolve_provinces_data_path()
+	var file = FileAccess.open(data_path, FileAccess.READ)
 	if file == null:
-		push_error("Chybi soubor Provinces.txt!")
+		push_error("Chybi dataset provincii!")
 		return
-		
-	file.get_line() 
+
+	if file.eof_reached():
+		return
+
+	var header_line = file.get_line().strip_edges()
+	var col_index = _build_column_index(header_line)
+
+	var idx_id = _find_column_idx(col_index, ["id"], 0)
+	var idx_r = _find_column_idx(col_index, ["r"], 1)
+	var idx_g = _find_column_idx(col_index, ["g"], 2)
+	var idx_b = _find_column_idx(col_index, ["b"], 3)
+	var idx_type = _find_column_idx(col_index, ["type"], 4)
+	var idx_state = _find_column_idx(col_index, ["state"], 5)
+	var idx_core_owner = _find_column_idx(col_index, ["owner", "core_owner"], 6)
+	var idx_controller = _find_column_idx(col_index, ["controller", "owner"], 6)
+	var idx_x = _find_column_idx(col_index, ["x"], 8)
+	var idx_y = _find_column_idx(col_index, ["y"], 9)
+	var idx_province_name = _find_column_idx(col_index, ["province_name"], 10)
+	var idx_country_name = _find_column_idx(col_index, ["country_name"], 11)
+	var idx_population = _find_column_idx(col_index, ["population"], 12)
+	var idx_gdp = _find_column_idx(col_index, ["gdp"], 13)
+	var idx_is_capital = _find_column_idx(col_index, ["is_capital"], 15)
+	var idx_capital_city = _find_column_idx(col_index, ["capital_city", "capital_name"], 16)
+	var idx_neighbors = _find_column_idx(col_index, ["neighbors"], 17)
+	var idx_ideology = _find_column_idx(col_index, ["ideology"], 18)
+	var idx_recruitable = _find_column_idx(col_index, ["recruitable_population"], 19)
+	var idx_soldiers = _find_column_idx(col_index, ["soldiers", "army", "army_size"], -1)
+	var idx_happiness = _find_column_idx(col_index, ["happiness"], -1)
+	var idx_terrain = _find_column_idx(col_index, ["terrain"], -1)
+	var idx_terrain_index = _find_column_idx(col_index, ["terrain_index"], -1)
+	var idx_resource_type = _find_column_idx(col_index, ["resource_type"], -1)
+	var idx_resource_index = _find_column_idx(col_index, ["resource_index"], -1)
+	var idx_resource_amount = _find_column_idx(col_index, ["resource_amount"], -1)
 	
 	while not file.eof_reached():
 		var line = file.get_line().strip_edges()
 		if line == "": continue
 			
 		var parts = line.split(";")
-		if parts.size() < 20: continue 
+		if parts.size() < 7: continue 
 			
-		var prov_id = int(parts[0])
-		
-		var pop = 0
-		var gdp_val = 0.0
-		if parts[12].strip_edges() != "": pop = int(parts[12])
-		if parts[13].strip_edges() != "": gdp_val = float(parts[13])
-		
-		var je_to_hlavni = false
-		var nazev_mesta = ""
-		if parts[15].strip_edges() == "1":
-			je_to_hlavni = true
-			nazev_mesta = parts[16].strip_edges()
+		var prov_id = _read_int(parts, idx_id, -1)
+		if prov_id < 0:
+			continue
+
+		var pop = _read_int(parts, idx_population)
+		var gdp_val = _read_float(parts, idx_gdp)
+
+		var je_to_hlavni = _read_int(parts, idx_is_capital) == 1
+		var nazev_mesta = _read_text(parts, idx_capital_city)
 			
 		var neighbors_array = []
-		var n_str = parts[17].strip_edges()
+		var n_str = _read_text(parts, idx_neighbors)
 		if n_str != "":
 			for n in n_str.split(","):
 				if n.strip_edges() != "":
 					neighbors_array.append(int(n))
 
-		var ideologie_statu = parts[18].strip_edges().to_lower()
+		var ideologie_statu = _read_text(parts, idx_ideology).to_lower()
+		var core_owner_tag = _read_text(parts, idx_core_owner).to_upper()
+		var controller_tag = _read_text(parts, idx_controller, core_owner_tag).to_upper()
+		if controller_tag == "":
+			controller_tag = core_owner_tag
+
+		var r = _read_int(parts, idx_r)
+		var g = _read_int(parts, idx_g)
+		var b = _read_int(parts, idx_b)
+		var recruitable_population = _read_int(parts, idx_recruitable)
+		var soldiers = _read_int(parts, idx_soldiers)
 		
 		provinces[prov_id] = {
 			"id": prov_id,
-			"color": Color8(int(parts[1]), int(parts[2]), int(parts[3])),
-			"type": parts[4],
-			"state": parts[5],
-			"owner": parts[6],
-			"core_owner": parts[6],
-			"x": float(parts[8]), 
-			"y": float(parts[9]), 
-			"province_name": parts[10],
-			"country_name": parts[11].strip_edges(), 
+			"color": Color8(r, g, b),
+			"type": _read_text(parts, idx_type),
+			"state": _read_text(parts, idx_state),
+			"owner": controller_tag,
+			"core_owner": core_owner_tag,
+			"x": _read_float(parts, idx_x),
+			"y": _read_float(parts, idx_y),
+			"province_name": _read_text(parts, idx_province_name),
+			"country_name": _read_text(parts, idx_country_name),
 			"population": pop,
 			"gdp": gdp_val,
 			"is_capital": je_to_hlavni,
 			"capital_name": nazev_mesta,
 			"neighbors": neighbors_array,
 			"ideology": ideologie_statu,
-			"recruitable_population": int(parts[19]),
-			"base_recruitable_population": int(parts[19]),
-			"soldiers": int(parts[20]) if parts.size() > 20 else 0,
-			"army_owner": "" if parts[6].strip_edges().to_upper() == "SEA" else parts[6].strip_edges().to_upper(),
+			"recruitable_population": recruitable_population,
+			"base_recruitable_population": recruitable_population,
+			"soldiers": soldiers,
+			"army_owner": "" if controller_tag == "SEA" else controller_tag,
+			"controller": controller_tag,
+			"happiness": _read_int(parts, idx_happiness),
+			"terrain": _read_text(parts, idx_terrain),
+			"terrain_index": _read_int(parts, idx_terrain_index),
+			"resource_type": _read_text(parts, idx_resource_type),
+			"resource_index": _read_int(parts, idx_resource_index),
+			"resource_amount": _read_int(parts, idx_resource_amount),
 			"has_port": false
 		}
 

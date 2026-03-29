@@ -69,8 +69,8 @@ horizontal_alignment = 1
 
 [node name="Subtitle" type="Label" parent="CenterPanel/MarginContainer/VBoxContainer" unique_id=340904286]
 layout_mode = 2
-theme_override_font_sizes/font_size = 18
 theme_override_colors/font_color = Color(0.768627, 0.843137, 0.956863, 1)
+theme_override_font_sizes/font_size = 18
 text = "Tahova grand strategy hra | Rocnikovy projekt 2025-26"
 horizontal_alignment = 1
 
@@ -80,8 +80,8 @@ layout_mode = 2
 [node name="SelectedCountryLabel" type="Label" parent="CenterPanel/MarginContainer/VBoxContainer" unique_id=1834597633]
 visible = false
 layout_mode = 2
-theme_override_font_sizes/font_size = 19
 theme_override_colors/font_color = Color(0.694118, 0.831373, 1, 1)
+theme_override_font_sizes/font_size = 19
 text = "Vybrany stat:"
 
 [node name="MenuHint" type="Label" parent="CenterPanel/MarginContainer/VBoxContainer" unique_id=1834597637]
@@ -177,27 +177,15 @@ grow_vertical = 2
 
 [node name="CloseCornerButton" type="Button" parent="CountryBrowserPanel" unique_id=179100043]
 visible = false
-custom_minimum_size = Vector2(36, 36)
-layout_mode = 1
 z_index = 20
-anchors_preset = 1
-anchor_left = 1.0
-anchor_top = 0.0
-anchor_right = 1.0
-anchor_bottom = 0.0
-offset_left = -46.0
-offset_top = 10.0
-offset_right = -10.0
-offset_bottom = 44.0
-grow_horizontal = 0
-grow_vertical = 0
-flat = true
-disabled = false
-theme_override_font_sizes/font_size = 20
+custom_minimum_size = Vector2(36, 36)
+layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_hover_color = Color(1, 0.85, 0.85, 1)
 theme_override_colors/font_pressed_color = Color(1, 0.7, 0.7, 1)
+theme_override_colors/font_hover_color = Color(1, 0.85, 0.85, 1)
+theme_override_font_sizes/font_size = 20
 text = "X"
+flat = true
 
 [node name="MarginContainer" type="MarginContainer" parent="CountryBrowserPanel" unique_id=179100010]
 layout_mode = 2
@@ -219,17 +207,16 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 30
 text = "Vyber statu"
-horizontal_alignment = 0
 
 [node name="CloseHeaderButton" type="Button" parent="CountryBrowserPanel/MarginContainer/RootVBox/HeaderRow" unique_id=179100045]
 custom_minimum_size = Vector2(34, 34)
 layout_mode = 2
-flat = true
-theme_override_font_sizes/font_size = 19
 theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_hover_color = Color(1, 0.82, 0.82, 1)
 theme_override_colors/font_pressed_color = Color(1, 0.65, 0.65, 1)
+theme_override_colors/font_hover_color = Color(1, 0.82, 0.82, 1)
+theme_override_font_sizes/font_size = 19
 text = "X"
+flat = true
 
 [node name="BrowserSubtitle" type="Label" parent="CountryBrowserPanel/MarginContainer/RootVBox" unique_id=179100013]
 layout_mode = 2

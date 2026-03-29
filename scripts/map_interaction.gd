@@ -22,6 +22,14 @@ var _right_press_active: bool = false
 var _right_press_pos: Vector2 = Vector2.ZERO
 var _right_dragging: bool = false
 var _drag_select_anchor_cache: Dictionary = {}
+var _mode_hover_layer: CanvasLayer
+var _mode_hover_panel: PanelContainer
+var _mode_hover_label: Label
+var _mode_hover_debug_label: Label
+var _aktualni_mapovy_mod_local: String = "political"
+var _last_mode_hover_debug_text: String = ""
+const MODE_HOVER_OFFSET := Vector2(16, 18)
+const MODE_HOVER_DEBUG_LOG := false
 
 # Variable to track the last hovered province ID for label popping
 var _posledni_hover_id: int = -1
@@ -85,6 +93,156 @@ func _ready():
 	material.set_shader_parameter("hovered_id", -1.0)
 	material.set_shader_parameter("selected_id", -1.0)
 	_aktualizuj_hromadny_selection_texture([])
+	_ensure_mode_hover_tooltip()
+
+func _ensure_mode_hover_tooltip() -> void:
+	if _mode_hover_layer != null:
+		return
+
+	_mode_hover_layer = CanvasLayer.new()
+	_mode_hover_layer.layer = 2048
+	_mode_hover_layer.follow_viewport_enabled = false
+	var root_viewport = get_tree().root
+	if root_viewport:
+		root_viewport.add_child(_mode_hover_layer)
+	else:
+		add_child(_mode_hover_layer)
+
+	_mode_hover_panel = PanelContainer.new()
+	_mode_hover_panel.visible = false
+	_mode_hover_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_mode_hover_panel.top_level = true
+	_mode_hover_panel.modulate = Color(1, 1, 1, 0.96)
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.02, 0.03, 0.05, 0.90)
+	style.border_width_left = 1
+	style.border_width_top = 1
+	style.border_width_right = 1
+	style.border_width_bottom = 1
+	style.border_color = Color(0.72, 0.80, 0.92, 0.50)
+	style.corner_radius_top_left = 4
+	style.corner_radius_top_right = 4
+	style.corner_radius_bottom_right = 4
+	style.corner_radius_bottom_left = 4
+	_mode_hover_panel.add_theme_stylebox_override("panel", style)
+	_mode_hover_layer.add_child(_mode_hover_panel)
+
+	var margin = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 8)
+	margin.add_theme_constant_override("margin_top", 5)
+	margin.add_theme_constant_override("margin_right", 8)
+	margin.add_theme_constant_override("margin_bottom", 5)
+	_mode_hover_panel.add_child(margin)
+
+	_mode_hover_label = Label.new()
+	_mode_hover_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_mode_hover_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_mode_hover_label.add_theme_font_size_override("font_size", 15)
+	_mode_hover_label.add_theme_color_override("font_color", Color(0.98, 0.99, 1.0, 1.0))
+	_mode_hover_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.95))
+	_mode_hover_label.add_theme_constant_override("shadow_offset_x", 1)
+	_mode_hover_label.add_theme_constant_override("shadow_offset_y", 1)
+	margin.add_child(_mode_hover_label)
+
+	# Hard fallback label (kept hidden unless explicitly enabled).
+	_mode_hover_debug_label = Label.new()
+	_mode_hover_debug_label.visible = false
+	_mode_hover_debug_label.position = Vector2(12, 12)
+	_mode_hover_debug_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_mode_hover_debug_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.95))
+	_mode_hover_debug_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.90))
+	_mode_hover_debug_label.add_theme_constant_override("shadow_offset_x", 1)
+	_mode_hover_debug_label.add_theme_constant_override("shadow_offset_y", 1)
+	_mode_hover_layer.add_child(_mode_hover_debug_label)
+
+func _hide_mode_hover_tooltip() -> void:
+	if _mode_hover_panel:
+		_mode_hover_panel.visible = false
+	if _mode_hover_debug_label:
+		_mode_hover_debug_label.visible = false
+
+func _update_mode_hover_tooltip_position(global_pos: Vector2) -> void:
+	if _mode_hover_panel == null or not _mode_hover_panel.visible:
+		return
+	var mouse_pos = get_viewport().get_mouse_position()
+	var target = mouse_pos + MODE_HOVER_OFFSET
+	var vp_size = get_viewport().get_visible_rect().size
+	_mode_hover_panel.reset_size()
+	var panel_size = _mode_hover_panel.size
+	target.x = clamp(target.x, 4.0, max(4.0, vp_size.x - panel_size.x - 4.0))
+	target.y = clamp(target.y, 4.0, max(4.0, vp_size.y - panel_size.y - 4.0))
+	_mode_hover_panel.position = target
+
+func _ziskej_aktualni_mapovy_mod(root: Node) -> String:
+	if _aktualni_mapovy_mod_local != "":
+		return _aktualni_mapovy_mod_local
+	if root:
+		var maybe_mod = str(root.get("aktualni_mapovy_mod"))
+		if maybe_mod != "":
+			return maybe_mod
+	return "political"
+
+func _format_int_compact(value: int) -> String:
+	var s = str(abs(value))
+	var out := ""
+	while s.length() > 3:
+		out = " " + s.substr(s.length() - 3, 3) + out
+		s = s.substr(0, s.length() - 3)
+	out = s + out
+	if value < 0:
+		return "-" + out
+	return out
+
+func _sestav_text_hover_modu(data: Dictionary, mod: String) -> String:
+	match mod:
+		"population":
+			return "Population: %s" % _format_int_compact(int(data.get("population", 0)))
+		"gdp":
+			return "GDP: %.2f" % float(data.get("gdp", 0.0))
+		"ideology":
+			return "Ideology: %s" % str(data.get("ideology", "unknown"))
+		"recruitable_population":
+			return "Recruitable: %s" % _format_int_compact(int(data.get("recruitable_population", 0)))
+		"relationships":
+			var owner_tag = str(data.get("owner", "")).strip_edges().to_upper()
+			var rel = 0.0
+			if GameManager.has_method("ziskej_vztah_statu") and owner_tag != "" and owner_tag != "SEA":
+				rel = float(GameManager.ziskej_vztah_statu(GameManager.hrac_stat, owner_tag))
+			return "Relation: %+.1f" % rel
+		"terrain":
+			return "Terrain: %s" % str(data.get("terrain", "unknown"))
+		"resources":
+			var r_type = str(data.get("resource_type", "none"))
+			var r_amount = int(data.get("resource_amount", 0))
+			if r_type == "" or r_type == "none":
+				return "Resource: none"
+			return "Resource: %s (%d)" % [r_type, r_amount]
+		_:
+			return ""
+
+func _show_mode_hover_tooltip(data: Dictionary, root: Node) -> void:
+	if _mode_hover_panel == null or _mode_hover_label == null:
+		return
+	var mod = _ziskej_aktualni_mapovy_mod(root)
+	if mod == "political":
+		_hide_mode_hover_tooltip()
+		return
+
+	var txt = _sestav_text_hover_modu(data, mod)
+	if txt == "":
+		_hide_mode_hover_tooltip()
+		return
+
+	_mode_hover_label.text = txt
+	_mode_hover_panel.size = _mode_hover_panel.get_combined_minimum_size()
+	_mode_hover_panel.visible = true
+	if _mode_hover_debug_label:
+		_mode_hover_debug_label.text = txt
+		_mode_hover_debug_label.visible = true
+	if MODE_HOVER_DEBUG_LOG and txt != _last_mode_hover_debug_text:
+		print("[MODE_HOVER] ", txt)
+		_last_mode_hover_debug_text = txt
+	_update_mode_hover_tooltip_position(get_global_mouse_position())
 
 func _draw():
 	if not _drag_select_active or not _drag_select_started:
@@ -129,6 +287,7 @@ func _unhandled_input(event):
 			queue_redraw()
 			return
 		_zpracuj_interakci(event.position, false, false)
+		_update_mode_hover_tooltip_position(get_global_mouse_position())
 	elif event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 			var root = get_parent()
@@ -199,6 +358,14 @@ func _unhandled_input(event):
 				aktualizuj_mapovy_mod("relationships", root.provinces)
 				if root.has_method("nastav_mapovy_mod"):
 					root.nastav_mapovy_mod("relationships")
+			elif event.keycode == KEY_7:
+				aktualizuj_mapovy_mod("terrain", root.provinces)
+				if root.has_method("nastav_mapovy_mod"):
+					root.nastav_mapovy_mod("terrain")
+			elif event.keycode == KEY_8:
+				aktualizuj_mapovy_mod("resources", root.provinces)
+				if root.has_method("nastav_mapovy_mod"):
+					root.nastav_mapovy_mod("resources")
 			
 			elif event.keycode == KEY_C:
 				var vybrana_provincie = material.get_shader_parameter("selected_id")
@@ -288,6 +455,7 @@ func _ziskej_drag_select_anchor(root: Node, prov_id: int, prov_data: Dictionary)
 func _odzanc_vse():
 	material.set_shader_parameter("has_selected", false)
 	material.set_shader_parameter("selected_id", -1.0)
+	_hide_mode_hover_tooltip()
 	
 	var root = get_parent()
 	if root and root.has_method("nastav_vybranou_armadu_provincie"):
@@ -464,12 +632,14 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 			Input.set_default_cursor_shape(Input.CURSOR_POINTING_HAND if valid_multi_hover else Input.CURSOR_ARROW)
 
 			if _posledni_hover_id == int(prov_id):
+				_show_mode_hover_tooltip(data, root)
 				return
 
 			_vymaz_hover_labely()
 			material.set_shader_parameter("hovered_id", prov_id)
 			material.set_shader_parameter("has_hover", true)
 			_posledni_hover_id = int(prov_id)
+			_show_mode_hover_tooltip(data, root)
 			return
 		
 		# Limit hovering strictly to neighbors if we are in target mode
@@ -516,6 +686,7 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 			material.set_shader_parameter("is_target_hover", false)
 			
 		if _posledni_hover_id == int(prov_id):
+			_show_mode_hover_tooltip(data, root)
 			return # Already hovering this province, do nothing
 			
 		_vymaz_hover_labely() # Clean up the previously hovered label
@@ -533,10 +704,12 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 					break # Stop searching once found
 					
 		_posledni_hover_id = int(prov_id)
+		_show_mode_hover_tooltip(data, root)
 
 func _vymaz_hover():
 	material.set_shader_parameter("has_hover", false)
 	material.set_shader_parameter("is_target_hover", false)
+	_hide_mode_hover_tooltip()
 	var root = get_parent()
 	if root and root.has_method("vycisti_nahled_presunu"):
 		root.vycisti_nahled_presunu()
@@ -573,6 +746,7 @@ func _vymaz_hover_labely():
 		_posledni_hover_id = -1
 
 func aktualizuj_mapovy_mod(mod: String, province_db: Dictionary):
+	_aktualni_mapovy_mod_local = str(mod)
 	for prov_id in province_db.keys():
 		var d = province_db[prov_id]
 		var barva = Color.TRANSPARENT
@@ -614,6 +788,46 @@ func aktualizuj_mapovy_mod(mod: String, province_db: Dictionary):
 					else:
 						var s_neg = clamp(absf(rel) / 100.0, 0.0, 1.0)
 						barva = Color(1.0, 1.0 - (0.9 * s_neg), 0.15, 1.0)
+				"terrain":
+					var terrain = str(d.get("terrain", "")).strip_edges().to_lower()
+					match terrain:
+						"city":
+							barva = Color(0.72, 0.16, 0.22, 1.0)
+						"plains":
+							barva = Color(0.79, 0.72, 0.36, 1.0)
+						"forest":
+							barva = Color(0.18, 0.52, 0.25, 1.0)
+						"hills":
+							barva = Color(0.56, 0.42, 0.29, 1.0)
+						"mountains":
+							barva = Color(0.46, 0.49, 0.53, 1.0)
+						"desert":
+							barva = Color(0.86, 0.74, 0.44, 1.0)
+						"swamp":
+							barva = Color(0.29, 0.42, 0.30, 1.0)
+						_:
+							barva = Color(0.52, 0.52, 0.52, 1.0)
+				"resources":
+					var resource = str(d.get("resource_type", "")).strip_edges().to_lower()
+					match resource:
+						"grain":
+							barva = Color(0.92, 0.78, 0.30, 1.0)
+						"timber":
+							barva = Color(0.30, 0.58, 0.22, 1.0)
+						"iron":
+							barva = Color(0.56, 0.58, 0.62, 1.0)
+						"coal":
+							barva = Color(0.16, 0.18, 0.22, 1.0)
+						"oil":
+							barva = Color(0.10, 0.10, 0.10, 1.0)
+						"gas":
+							barva = Color(0.18, 0.72, 0.84, 1.0)
+						"gold":
+							barva = Color(0.98, 0.83, 0.24, 1.0)
+						"uranium":
+							barva = Color(0.50, 0.90, 0.40, 1.0)
+						_:
+							barva = Color(0.55, 0.55, 0.58, 1.0)
 				
 		data_image.set_pixel(prov_id, 0, barva)
 	data_texture.update(data_image)

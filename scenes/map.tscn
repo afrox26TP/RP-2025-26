@@ -408,6 +408,58 @@ grow_vertical = 2
 layout_mode = 2
 theme_override_font_sizes/font_size = 25
 
+[node name="MapModes" type="HBoxContainer" parent="TopBar/Panel/HBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="ModePolitical" type="Button" parent="TopBar/Panel/HBoxContainer/MapModes"]
+layout_mode = 2
+custom_minimum_size = Vector2(58, 24)
+theme_override_font_sizes/font_size = 11
+text = ""
+
+[node name="ModePopulation" type="Button" parent="TopBar/Panel/HBoxContainer/MapModes"]
+layout_mode = 2
+custom_minimum_size = Vector2(58, 24)
+theme_override_font_sizes/font_size = 11
+text = ""
+
+[node name="ModeGDP" type="Button" parent="TopBar/Panel/HBoxContainer/MapModes"]
+layout_mode = 2
+custom_minimum_size = Vector2(58, 24)
+theme_override_font_sizes/font_size = 11
+text = ""
+
+[node name="ModeIdeology" type="Button" parent="TopBar/Panel/HBoxContainer/MapModes"]
+layout_mode = 2
+custom_minimum_size = Vector2(58, 24)
+theme_override_font_sizes/font_size = 11
+text = ""
+
+[node name="ModeRecruits" type="Button" parent="TopBar/Panel/HBoxContainer/MapModes"]
+layout_mode = 2
+custom_minimum_size = Vector2(58, 24)
+theme_override_font_sizes/font_size = 11
+text = ""
+
+[node name="ModeRelations" type="Button" parent="TopBar/Panel/HBoxContainer/MapModes"]
+layout_mode = 2
+custom_minimum_size = Vector2(58, 24)
+theme_override_font_sizes/font_size = 11
+text = ""
+
+[node name="ModeTerrain" type="Button" parent="TopBar/Panel/HBoxContainer/MapModes"]
+layout_mode = 2
+custom_minimum_size = Vector2(58, 24)
+theme_override_font_sizes/font_size = 11
+text = ""
+
+[node name="ModeResources" type="Button" parent="TopBar/Panel/HBoxContainer/MapModes"]
+layout_mode = 2
+custom_minimum_size = Vector2(58, 24)
+theme_override_font_sizes/font_size = 11
+text = ""
+
 [node name="Spacer" type="Control" parent="TopBar/Panel/HBoxContainer" unique_id=119213241]
 layout_mode = 2
 size_flags_horizontal = 3
