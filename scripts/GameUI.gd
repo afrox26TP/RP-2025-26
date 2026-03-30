@@ -1,5 +1,7 @@
 extends CanvasLayer
 
+const TooltipUtils = preload("res://scripts/TooltipUtils.gd")
+
 class ArmyOfferCard:
 	extends PanelContainer
 	var owner_ui = null
@@ -96,7 +98,6 @@ var _system_message_ack: bool = false
 var _pause_menu_panel: PopupPanel
 var _pause_confirm_dialog: ConfirmationDialog
 var _pause_pending_action: String = ""
-var _pause_confirm_accepted: bool = false
 var _overview_metric_rows: Dictionary = {}
 var _overview_metric_deltas: Dictionary = {}
 var _overview_preview_deltas: Dictionary = {}
@@ -768,18 +769,15 @@ func _vytvor_panel_vazalu() -> void:
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
 
+	var help_btn = TooltipUtils.create_help_button("Set tribute and click Apply %.")
+	help_btn.pressed.connect(func(): TooltipUtils.show_help_dropdown(self, help_btn, "Set tribute and click Apply %."))
+	header.add_child(help_btn)
+
 	var close_top_btn = Button.new()
 	close_top_btn.text = "Close"
 	close_top_btn.custom_minimum_size = Vector2(72, 0)
 	close_top_btn.pressed.connect(func(): _vassals_dialog.hide())
 	header.add_child(close_top_btn)
-
-	var hint = Label.new()
-	hint.text = "Set tribute and click Apply %."
-	hint.autowrap_mode = TextServer.AUTOWRAP_OFF
-	hint.clip_text = true
-	hint.custom_minimum_size = Vector2(0, 18)
-	root.add_child(hint)
 
 	var scroll = ScrollContainer.new()
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -837,6 +835,7 @@ func _pozicuj_a_zmen_velikost_panelu_vazalu(vassal_count: int = -1) -> void:
 func _on_vassals_button_pressed() -> void:
 	if _vassals_dialog == null:
 		return
+	_zavri_vyzkum_dialog()
 	_obnov_panel_vazalu()
 	_pozicuj_a_zmen_velikost_panelu_vazalu()
 	_vassals_dialog.show()
@@ -1272,6 +1271,8 @@ func _on_research_button_pressed() -> void:
 	if _research_dialog and _research_dialog.visible:
 		_zavri_vyzkum_dialog()
 		return
+	if _vassals_dialog and _vassals_dialog.visible:
+		_vassals_dialog.hide()
 	if not _research_dialog_layout_warmed:
 		await _predhrej_vyzkum_dialog_layout()
 	_research_dialog_user_open = true
@@ -2615,7 +2616,8 @@ func _vytvor_pause_menu() -> void:
 	_pause_confirm_dialog.ok_button_text = "Yes"
 	_pause_confirm_dialog.cancel_button_text = "No"
 	_pause_confirm_dialog.confirmed.connect(_on_pause_confirmed)
-	_pause_confirm_dialog.visibility_changed.connect(_on_pause_confirm_visibility_changed)
+	_pause_confirm_dialog.canceled.connect(_on_pause_confirm_canceled)
+	_pause_confirm_dialog.close_requested.connect(_on_pause_confirm_canceled)
 	add_child(_pause_confirm_dialog)
 	_aplikuj_ingame_popup_styl(_pause_confirm_dialog)
 	var _conf_lbl = _pause_confirm_dialog.get_label()
@@ -2666,16 +2668,27 @@ func _vytvor_darovaci_dialog() -> void:
 	vbox.add_theme_constant_override("separation", 8)
 	margin.add_child(vbox)
 
+	var title_row = HBoxContainer.new()
+	title_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_child(title_row)
+
+	var title_left_spacer = Control.new()
+	title_left_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_row.add_child(title_left_spacer)
+
 	var title = Label.new()
 	title.text = "Send financial gift"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 20)
-	vbox.add_child(title)
+	title_row.add_child(title)
 
-	var hint = Label.new()
-	hint.text = "Amount in M USD"
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(hint)
+	var gift_help_btn = TooltipUtils.create_help_button("Amount in M USD")
+	gift_help_btn.pressed.connect(func(): TooltipUtils.show_help_dropdown(self, gift_help_btn, "Amount in M USD"))
+	title_row.add_child(gift_help_btn)
+
+	var title_right_spacer = Control.new()
+	title_right_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_row.add_child(title_right_spacer)
 
 	_gift_amount_input = LineEdit.new()
 	_gift_amount_input.placeholder_text = "e.g. 50"
@@ -3198,7 +3211,6 @@ func _zobraz_pause_confirm(action: String, title: String, text: String) -> void:
 	if not _pause_confirm_dialog:
 		return
 	_pause_pending_action = action
-	_pause_confirm_accepted = false
 	_pause_confirm_dialog.title = title
 	_pause_confirm_dialog.dialog_text = text
 	_pause_confirm_dialog.popup_centered()
@@ -3730,6 +3742,12 @@ func _on_save_dialog_confirm_pressed() -> void:
 	if slot_name == "":
 		slot_name = _vygeneruj_default_jmeno_save()
 
+	if GameManager and GameManager.has_method("ziskej_save_slot_pro_kolo"):
+		var existing_slot := str(GameManager.ziskej_save_slot_pro_kolo(int(GameManager.aktualni_kolo)))
+		if existing_slot != "":
+			await zobraz_systemove_hlaseni("Save", "This turn you already saved the game.")
+			return
+
 	var ok = false
 	if GameManager and GameManager.has_method("uloz_hru_do_slotu"):
 		ok = bool(GameManager.uloz_hru_do_slotu(slot_name))
@@ -3806,18 +3824,14 @@ func _on_pause_load_pressed() -> void:
 func _on_pause_quit_pressed() -> void:
 	_zobraz_pause_confirm("quit", "Quit", "Do you really want to return to the main menu?")
 
-func _on_pause_confirm_visibility_changed() -> void:
-	if not _pause_confirm_dialog or _pause_confirm_dialog.visible:
-		return
-	var should_restore_pause := not _pause_confirm_accepted and (_pause_pending_action == "quit" or _pause_pending_action == "surrender")
+func _on_pause_confirm_canceled() -> void:
+	var should_restore_pause := _pause_pending_action == "quit" or _pause_pending_action == "surrender"
 	_pause_pending_action = ""
-	_pause_confirm_accepted = false
 	if should_restore_pause and _pause_menu_panel:
 		_pozicuj_pause_menu()
 		_pause_menu_panel.call_deferred("show")
 
 func _on_pause_confirmed() -> void:
-	_pause_confirm_accepted = true
 	var action = _pause_pending_action
 	_pause_pending_action = ""
 	_zavri_pause_menu()

@@ -219,6 +219,9 @@ var _load_status_label: Label = null
 var _load_open_button: Button = null
 var _load_slot_btns: Dictionary = {}
 var _selected_load_slot_key: String = ""
+var _menu_hint_helper_btn: Button = null
+var _browser_helper_btn: Button = null
+var _language_hint_helper_btn: Button = null
 const BROWSER_CONFIRM_DEFAULT_TEXT := "Confirm selection"
 const BROWSER_CONFIRM_ADD_PLAYER_TEXT := "Add player"
 const BROWSER_CLOSE_DEFAULT_TEXT := "Close"
@@ -265,6 +268,55 @@ func _load_normalized_flag_texture(path: String, width: int, height: int):
 	normalized_flag_texture_cache[cache_key] = normalized_tex
 	return normalized_tex
 
+func _vloz_centered_helper_pred_label(label: Label) -> Button:
+	if label == null or label.get_parent() == null:
+		return null
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var left_spacer := Control.new()
+	left_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(left_spacer)
+	var help_btn := TooltipUtils.create_help_button(label.text)
+	row.add_child(help_btn)
+	var right_spacer := Control.new()
+	right_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(right_spacer)
+	var parent := label.get_parent()
+	parent.add_child(row)
+	parent.move_child(row, label.get_index())
+	label.hide()
+	return help_btn
+
+func _vytvor_clean_helpery() -> void:
+	if _browser_helper_btn == null and btn_close_corner and btn_close_corner.get_parent() != null:
+		_browser_helper_btn = TooltipUtils.create_help_button("")
+		_browser_helper_btn.pressed.connect(func(): TooltipUtils.show_help_dropdown(self, _browser_helper_btn, _browser_helper_btn.tooltip_text))
+		var browser_header := btn_close_corner.get_parent()
+		browser_header.add_child(_browser_helper_btn)
+		browser_header.move_child(_browser_helper_btn, btn_close_corner.get_index())
+		browser_subtitle.hide()
+		browser_flow_hint.hide()
+		list_hint.hide()
+	if _language_hint_helper_btn == null and language_option and language_option.get_parent() != null:
+		_language_hint_helper_btn = TooltipUtils.create_help_button(language_hint.text)
+		_language_hint_helper_btn.pressed.connect(func(): TooltipUtils.show_help_dropdown(self, _language_hint_helper_btn, _language_hint_helper_btn.tooltip_text))
+		language_option.get_parent().add_child(_language_hint_helper_btn)
+		language_hint.hide()
+	_aktualizuj_clean_helpery()
+
+func _aktualizuj_clean_helpery() -> void:
+	if _browser_helper_btn:
+		var browser_parts: Array[String] = []
+		for part in [browser_subtitle.text, browser_flow_hint.text, list_hint.text]:
+			var clean_part := str(part).strip_edges()
+			if clean_part != "":
+				browser_parts.append(clean_part)
+		_browser_helper_btn.tooltip_text = "\n".join(browser_parts)
+		_browser_helper_btn.visible = not browser_parts.is_empty()
+	if _language_hint_helper_btn:
+		_language_hint_helper_btn.tooltip_text = language_hint.text
+		_language_hint_helper_btn.visible = language_hint.text.strip_edges() != ""
+
 func _ready():
 	_nacti_nastaveni()
 	_nastav_texty_dialogu()
@@ -303,6 +355,7 @@ func _ready():
 	_aplikuj_nastaveni_globalne()
 	_aktualizuj_settings_hodnoty()
 	_aktualizuj_texty_dle_jazyka()
+	_vytvor_clean_helpery()
 	_nastav_tooltipy_ui()
 	_vytvor_load_dialog()
 	_styluj_mainmenu_popup_dialogy()
@@ -516,6 +569,7 @@ func _aktualizuj_texty_dle_jazyka() -> void:
 	master_volume_label.text = str(t["master_volume"])
 	btn_settings_reset.text = str(t["reset"])
 	btn_settings_apply.text = str(t["apply"])
+	_aktualizuj_clean_helpery()
 
 func _aktualizuj_settings_header_stav(dirty: bool) -> void:
 	var t = _texty_ui()
@@ -1004,6 +1058,7 @@ func _obnov_text_vyberu():
 	if country_stats.has(selected_country_tag):
 		_nastav_detail_statu(selected_country_tag)
 	_aktualizuj_panel_vyberu_hracu()
+	_aktualizuj_clean_helpery()
 
 func _aktualizuj_browser_napovedu():
 	if not browser_flow_hint or not browser_subtitle or not list_hint:
@@ -1022,6 +1077,7 @@ func _aktualizuj_browser_napovedu():
 		browser_subtitle.text = "Pick one country for solo or add more for local multiplayer"
 		list_hint.text = "Click a country for details, then confirm selection"
 		browser_flow_hint.text = "Solo mode: choose a country and confirm."
+	_aktualizuj_clean_helpery()
 
 func _nastav_stav_pokracovani():
 	var ma_save = FileAccess.file_exists(SAVE_FILE_PATH)

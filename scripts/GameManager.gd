@@ -970,6 +970,24 @@ func ziskej_save_sloty() -> Array:
 	)
 	return slots
 
+func ziskej_save_slot_pro_kolo(turn_number: int) -> String:
+	if turn_number <= 0:
+		return ""
+	for slot_any in ziskej_save_sloty():
+		var slot = slot_any as Dictionary
+		var slot_path = str(slot.get("path", ""))
+		if slot_path == "":
+			continue
+		var state = _nacti_state_z_cesty(slot_path)
+		if state.is_empty():
+			continue
+		if int(state.get("aktualni_kolo", -1)) == turn_number:
+			return str(slot.get("name", ""))
+	return ""
+
+func ma_save_pro_kolo(turn_number: int) -> bool:
+	return ziskej_save_slot_pro_kolo(turn_number) != ""
+
 func ma_ulozene_hry() -> bool:
 	if FileAccess.file_exists(SAVEGAME_STATE_PATH):
 		return true
@@ -977,6 +995,8 @@ func ma_ulozene_hry() -> bool:
 
 func uloz_hru_do_slotu(slot_name: String) -> bool:
 	_zajisti_slozku_save()
+	if ma_save_pro_kolo(aktualni_kolo):
+		return false
 	var state = _vytvor_save_state()
 	if state.is_empty():
 		return false
