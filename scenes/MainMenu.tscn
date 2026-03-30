@@ -2,6 +2,88 @@
 
 [ext_resource type="Script" uid="uid://hm0xv0vabr0x" path="res://scripts/MainMenu.gd" id="1_yqorp"]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_settings_tabs_bg"]
+bg_color = Color(0.065, 0.102, 0.168, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.31, 0.44, 0.62, 0.7)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_settings_tab_unselected"]
+bg_color = Color(0.08, 0.12, 0.2, 0.85)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 0
+border_color = Color(0.28, 0.38, 0.53, 0.75)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+content_margin_left = 16.0
+content_margin_top = 8.0
+content_margin_right = 16.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_settings_tab_hover"]
+bg_color = Color(0.14, 0.22, 0.38, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 0
+border_color = Color(0.45, 0.6, 0.82, 0.85)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+content_margin_left = 16.0
+content_margin_top = 8.0
+content_margin_right = 16.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_settings_tab_selected"]
+bg_color = Color(0.09, 0.145, 0.235, 0.95)
+border_width_left = 1
+border_width_top = 2
+border_width_right = 1
+border_width_bottom = 0
+border_color = Color(0.6, 0.78, 0.98, 0.9)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+content_margin_left = 16.0
+content_margin_top = 8.0
+content_margin_right = 16.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_settings_card"]
+bg_color = Color(0.09, 0.145, 0.235, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.6, 0.78, 0.98, 0.9)
+corner_radius_top_left = 0
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_settings_help_box"]
+content_margin_left = 8.0
+content_margin_top = 6.0
+content_margin_right = 8.0
+content_margin_bottom = 6.0
+bg_color = Color(0.05, 0.08, 0.13, 0.7)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.34, 0.48, 0.67, 0.6)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
 [node name="MainMenu" type="Control" unique_id=1394648690]
 layout_mode = 3
 anchors_preset = 15
@@ -139,14 +221,296 @@ autowrap_mode = 3
 
 [node name="SettingsDialog" type="AcceptDialog" parent="Dialogs" unique_id=179100006]
 title = "Settings"
-dialog_text = "Settings will be expanded in a future update.
+min_size = Vector2i(960, 840)
+size = Vector2i(960, 840)
+wrap_controls = false
+unresizable = true
+theme_override_styles/panel = SubResource("StyleBoxFlat_settings_tabs_bg")
+ok_button_text = "Close"
 
-CONTROLS:
+[node name="SettingsRoot" type="MarginContainer" parent="Dialogs/SettingsDialog" unique_id=570571029]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="SettingsVBox" type="VBoxContainer" parent="Dialogs/SettingsDialog/SettingsRoot" unique_id=707114355]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="SettingsHeader" type="VBoxContainer" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox" unique_id=612180449]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="SettingsHeaderTitle" type="Label" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsHeader" unique_id=1278469328]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.94, 1, 1)
+theme_override_font_sizes/font_size = 22
+text = "Game Settings"
+
+[node name="SettingsHeaderSubtitle" type="Label" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsHeader" unique_id=913801079]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.68, 0.8, 0.93, 1)
+text = "Customize controls, language, and gameplay preferences"
+
+[node name="TabSwitcher" type="HBoxContainer" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox" unique_id=1020481418]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="ControlsTabBtn" type="Button" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/TabSwitcher" unique_id=752677941]
+custom_minimum_size = Vector2(140, 38)
+layout_mode = 2
+text = "Controls"
+flat = false
+theme_override_styles/normal = SubResource("StyleBoxFlat_settings_tab_selected")
+theme_override_styles/hover = SubResource("StyleBoxFlat_settings_tab_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_settings_tab_selected")
+theme_override_styles/focus = SubResource("StyleBoxFlat_settings_tab_selected")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_settings_tab_unselected")
+
+[node name="SettingsTabBtn" type="Button" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/TabSwitcher" unique_id=373208800]
+custom_minimum_size = Vector2(140, 38)
+layout_mode = 2
+text = "Settings"
+flat = false
+theme_override_styles/normal = SubResource("StyleBoxFlat_settings_tab_unselected")
+theme_override_styles/hover = SubResource("StyleBoxFlat_settings_tab_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_settings_tab_selected")
+theme_override_styles/focus = SubResource("StyleBoxFlat_settings_tab_unselected")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_settings_tab_unselected")
+
+[node name="TabSpacer" type="Control" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/TabSwitcher" unique_id=600282671]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ControlsPanel" type="PanelContainer" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox" unique_id=944481454]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_settings_card")
+
+[node name="ControlsPad" type="MarginContainer" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel" unique_id=100000001]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
+
+[node name="ControlsContent" type="VBoxContainer" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad" unique_id=100000002]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ControlsInfo" type="Label" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad/ControlsContent" unique_id=1632196499]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.71, 0.84, 1, 1)
+theme_override_font_sizes/font_size = 18
+text = "Map controls"
+
+[node name="CameraSpeedLabel" type="Label" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad/ControlsContent" unique_id=611891893]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.92, 0.98, 1)
+text = "Camera move speed"
+
+[node name="CameraSpeedRow" type="HBoxContainer" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad/ControlsContent" unique_id=1585820048]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="CameraSpeedSlider" type="HSlider" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad/ControlsContent/CameraSpeedRow" unique_id=2095492306]
+custom_minimum_size = Vector2(500, 30)
+layout_mode = 2
+size_flags_horizontal = 4
+min_value = 400.0
+max_value = 2600.0
+step = 25.0
+value = 1000.0
+
+[node name="CameraSpeedValue" type="Label" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad/ControlsContent/CameraSpeedRow" unique_id=1196955708]
+custom_minimum_size = Vector2(74, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.83, 0.96, 1)
+text = "1000"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="ZoomSpeedLabel" type="Label" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad/ControlsContent" unique_id=1317320837]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.92, 0.98, 1)
+text = "Zoom speed"
+
+[node name="ZoomSpeedRow" type="HBoxContainer" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad/ControlsContent" unique_id=256897486]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="ZoomSpeedSlider" type="HSlider" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad/ControlsContent/ZoomSpeedRow" unique_id=455287874]
+custom_minimum_size = Vector2(500, 30)
+layout_mode = 2
+size_flags_horizontal = 4
+min_value = 0.03
+max_value = 0.35
+step = 0.01
+value = 0.1
+
+[node name="ZoomSpeedValue" type="Label" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad/ControlsContent/ZoomSpeedRow" unique_id=809768015]
+custom_minimum_size = Vector2(74, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.83, 0.96, 1)
+text = "0.10"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="InvertZoomCheck" type="CheckBox" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad/ControlsContent" unique_id=1136179193]
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+text = "Invert mouse wheel zoom"
+
+[node name="ControlsSchemeSeparator" type="HSeparator" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad/ControlsContent" unique_id=470606896]
+layout_mode = 2
+
+[node name="ControlsSchemeTitle" type="Label" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad/ControlsContent" unique_id=1892853298]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.76, 0.88, 1, 1)
+theme_override_font_sizes/font_size = 16
+text = "Current keybinds"
+
+[node name="ControlsSchemeText" type="RichTextLabel" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad/ControlsContent" unique_id=1383697210]
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/default_color = Color(0.9, 0.95, 1, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_settings_help_box")
+bbcode_enabled = true
+text = "- WASD / Arrows: move camera
 - Mouse wheel: zoom
-- WASD: move map
+- Right mouse hold + drag: pan map
 - Space: end turn
-- Right click: cancel actions and close dialogs
-- Dev simple conquer tool: C"
+- Right click: cancel action or close open dialogs
+- C: developer quick conquer tool"
+scroll_active = false
+
+[node name="MapModesSeparator" type="HSeparator" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad/ControlsContent" unique_id=100000010]
+layout_mode = 2
+
+[node name="MapModesTitle" type="Label" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad/ControlsContent" unique_id=100000011]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.76, 0.88, 1, 1)
+theme_override_font_sizes/font_size = 16
+text = "Map mode hotkeys"
+
+[node name="MapModesText" type="RichTextLabel" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad/ControlsContent" unique_id=100000012]
+layout_mode = 2
+theme_override_colors/default_color = Color(0.9, 0.95, 1, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_settings_help_box")
+bbcode_enabled = true
+text = "[b]1[/b] Political   [b]2[/b] Population   [b]3[/b] GDP
+[b]4[/b] Ideology   [b]5[/b] Recruitable Pop.   [b]6[/b] Relationships
+[b]7[/b] Terrain   [b]8[/b] Resources"
+scroll_active = false
+fit_content = true
+
+[node name="SettingsPanel" type="PanelContainer" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox" unique_id=1016459936]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_settings_card")
+
+[node name="SettingsPad" type="MarginContainer" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel" unique_id=100000003]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
+
+[node name="SettingsContent" type="VBoxContainer" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad" unique_id=100000004]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="SettingsInfo" type="Label" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent" unique_id=953303553]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.71, 0.84, 1, 1)
+theme_override_font_sizes/font_size = 18
+text = "Settings"
+
+[node name="SettingsSeparator1" type="HSeparator" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent" unique_id=2125714477]
+layout_mode = 2
+
+[node name="LanguageLabel" type="Label" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent" unique_id=1361196074]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.92, 0.98, 1)
+text = "UI language"
+
+[node name="LanguageRow" type="HBoxContainer" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent" unique_id=1479469019]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="LanguageOption" type="OptionButton" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/LanguageRow" unique_id=1267610750]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="LanguageHint" type="Label" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent" unique_id=438578505]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.83, 0.95, 1)
+text = "Switches UI language immediately."
+autowrap_mode = 3
+
+[node name="SettingsSeparator2" type="HSeparator" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent" unique_id=801583941]
+layout_mode = 2
+
+[node name="FullscreenCheck" type="CheckBox" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent" unique_id=1962781749]
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+text = "Fullscreen"
+
+[node name="VsyncCheck" type="CheckBox" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent" unique_id=1031267199]
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+button_pressed = true
+text = "VSync"
+
+[node name="MasterVolumeLabel" type="Label" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent" unique_id=2026917463]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.92, 0.98, 1)
+text = "Master volume"
+
+[node name="MasterVolumeRow" type="HBoxContainer" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent" unique_id=827467238]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="MasterVolumeSlider" type="HSlider" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/MasterVolumeRow" unique_id=213508031]
+custom_minimum_size = Vector2(500, 30)
+layout_mode = 2
+size_flags_horizontal = 4
+max_value = 1.0
+step = 0.01
+value = 0.85
+
+[node name="MasterVolumeValue" type="Label" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/MasterVolumeRow" unique_id=1739087154]
+custom_minimum_size = Vector2(74, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.83, 0.96, 1)
+text = "85%"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="SettingsButtons" type="HBoxContainer" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox" unique_id=2125580233]
+layout_mode = 2
+theme_override_constants/separation = 10
+alignment = 2
+
+[node name="ResetButton" type="Button" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsButtons" unique_id=1543802145]
+custom_minimum_size = Vector2(140, 38)
+layout_mode = 2
+text = "Reset defaults"
+
+[node name="ApplyButton" type="Button" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsButtons" unique_id=32963975]
+custom_minimum_size = Vector2(120, 38)
+layout_mode = 2
+text = "Apply"
 
 [node name="CreditsDialog" type="AcceptDialog" parent="Dialogs" unique_id=179100007]
 title = "Credits"

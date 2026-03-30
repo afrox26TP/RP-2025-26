@@ -377,7 +377,7 @@ func _nahled_stavby_text(building_id: int, cena: float, prov_data: Dictionary) -
 		_set_metric_delta("income", "+1.00 / turn", Color(0.20, 0.85, 0.25))
 		overview_deltas["gdp"] = {"text": "+10.00", "color": Color(0.20, 0.85, 0.25)}
 		_push_overview_deltas(overview_deltas)
-		return "%s | Cost: %s | Treasury after purchase: %s | Income after completion (3 turns): %s (Delta %s)" % [bonus_text, _format_money_auto(cena, 2), _format_money_auto(cash_after, 2), _format_money_auto(income_after, 2, false, true), _format_money_auto(delta_income, 2, true, true)]
+		return "%s | Cost: %s | Funds after purchase: %s | Income after completion (3 turns): %s (Delta %s)" % [bonus_text, _format_money_auto(cena, 2), _format_money_auto(cash_after, 2), _format_money_auto(income_after, 2, false, true), _format_money_auto(delta_income, 2, true, true)]
 	if building_id == 1:
 		_set_metric_delta("recruit", "+2 000", Color(0.20, 0.85, 0.25))
 		overview_deltas["recruit"] = {"text": "+2 000", "color": Color(0.20, 0.85, 0.25)}
@@ -385,7 +385,7 @@ func _nahled_stavby_text(building_id: int, cena: float, prov_data: Dictionary) -
 		_set_metric_delta("income", "0.00", Color(0.75, 0.75, 0.75))
 		overview_deltas["gdp"] = {"text": "0.00", "color": Color(0.75, 0.75, 0.75)}
 	_push_overview_deltas(overview_deltas)
-	return "%s | Cost: %s | Treasury after purchase: %s | No direct income change" % [bonus_text, _format_money_auto(cena, 2), _format_money_auto(cash_after, 2)]
+	return "%s | Cost: %s | Funds after purchase: %s | No direct income change" % [bonus_text, _format_money_auto(cena, 2), _format_money_auto(cash_after, 2)]
 
 func _nahled_verbovani_text(pocet: int) -> String:
 	_clear_inline_deltas()
@@ -400,7 +400,7 @@ func _nahled_verbovani_text(pocet: int) -> String:
 		"recruit": {"text": "-%s" % _formatuj_cislo(pocet), "color": Color(0.95, 0.35, 0.35)},
 		"gdp": {"text": "%+.2f / turn" % upkeep_delta, "color": Color(0.95, 0.35, 0.35)}
 	})
-	return "Recruitment: %s soldiers | Cost: %s | Treasury after purchase: %s | Upkeep: %s | New net income: %s" % [_formatuj_cislo(pocet), _format_money_auto(cena, 2), _format_money_auto(cash_after, 2), _format_money_auto(upkeep_delta, 2, true, true), _format_money_auto(projected_income, 2, false, true)]
+	return "Recruitment: %s soldiers | Cost: %s | Funds after purchase: %s | Upkeep: %s | New net income: %s" % [_formatuj_cislo(pocet), _format_money_auto(cena, 2), _format_money_auto(cash_after, 2), _format_money_auto(upkeep_delta, 2, true, true), _format_money_auto(projected_income, 2, false, true)]
 
 func _posun_stavba_menu():
 	var p = btn_stavet.get_popup()
@@ -650,7 +650,7 @@ func _on_potvrdit_likvidaci():
 		prov_data["recruitable_population"] = int(prov_data.get("recruitable_population", 0)) + pocet_vojaku
 
 	likvidace_popup.hide()
-	_ukaz_stavbu_info("ARMY DISBAND", "Disbanded %s soldiers. %s USD was returned to the treasury." % [_formatuj_cislo(pocet_vojaku), _format_money_auto(refundace, 2)])
+	_ukaz_stavbu_info("ARMY DISBAND", "Disbanded %s soldiers. %s USD was returned to state funds." % [_formatuj_cislo(pocet_vojaku), _format_money_auto(refundace, 2)])
 	zobraz_data(prov_data)
 	GameManager.kolo_zmeneno.emit()
 

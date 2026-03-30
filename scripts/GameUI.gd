@@ -1118,7 +1118,7 @@ func _vytvor_vyzkum_dialog() -> void:
 	root.add_child(title)
 
 	_research_money_label = Label.new()
-	_research_money_label.text = "Treasury: -"
+	_research_money_label.text = "Funds: -"
 	root.add_child(_research_money_label)
 
 	_army_research_summary_label = Label.new()
@@ -1307,7 +1307,7 @@ func _aktualizuj_vyzkum_dialog(state_tag: String) -> void:
 
 	var treasury = float(info.get("treasury", 0.0))
 	if _research_money_label:
-		_research_money_label.text = "State treasury: $%.2f bn" % treasury
+		_research_money_label.text = "State funds: $%.2f bn" % treasury
 
 	var power_flat = int(info.get("power_flat", 0))
 	var power_pct = float(info.get("power_pct", 0.0)) * 100.0

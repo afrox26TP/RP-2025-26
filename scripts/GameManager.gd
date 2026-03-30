@@ -2603,7 +2603,7 @@ func presun_hlavni_mesto(state_tag: String, target_province_id: int, pay_cost: b
 	if pay_cost:
 		var cash_now = _ziskej_kasu_statu(state)
 		if cash_now + 0.0001 < cost:
-			return {"ok": false, "reason": "Insufficient funds in treasury.", "required": cost, "cash": cash_now}
+			return {"ok": false, "reason": "Insufficient funds.", "required": cost, "cash": cash_now}
 		_nastav_kasu_statu(state, cash_now - cost)
 
 	var old_capital_id = int(check.get("current_capital_id", -1))
@@ -2654,7 +2654,7 @@ func daruj_penize_statu(odesilatel: String, prijemce: String, amount: float) -> 
 
 	var kasa_odesilatel = _ziskej_kasu_statu(from_tag)
 	if kasa_odesilatel + 0.0001 < castka:
-		return {"ok": false, "reason": "Insufficient funds in treasury."}
+		return {"ok": false, "reason": "Insufficient funds."}
 
 	var kasa_prijemce = _ziskej_kasu_statu(to_tag)
 	_nastav_kasu_statu(from_tag, kasa_odesilatel - castka)

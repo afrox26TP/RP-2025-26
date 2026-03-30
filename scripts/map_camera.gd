@@ -6,9 +6,14 @@ signal zoom_zmenen(aktualni_zoom)
 @export var zoom_speed = 0.1
 @export var min_zoom = 0.05
 @export var max_zoom = 4.0
+const SETTINGS_FILE_PATH := "user://settings.cfg"
 
 var drag_start = Vector2.ZERO
 var dragging = false
+var invert_zoom_wheel: bool = false
+
+func _ready() -> void:
+	_nacti_ovladani_ze_settings()
 
 func _process(delta):
 	# Handle keyboard movement
@@ -25,10 +30,12 @@ func _unhandled_input(event):
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			if not _is_hovering_scrollable_ui():
-				_zoom_camera(1.0 + zoom_speed)
+				var factor_up = 1.0 - zoom_speed if invert_zoom_wheel else 1.0 + zoom_speed
+				_zoom_camera(factor_up)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			if not _is_hovering_scrollable_ui():
-				_zoom_camera(1.0 - zoom_speed)
+				var factor_down = 1.0 + zoom_speed if invert_zoom_wheel else 1.0 - zoom_speed
+				_zoom_camera(factor_down)
 			
 		if event.button_index == MOUSE_BUTTON_RIGHT:
 			if event.pressed:
@@ -57,3 +64,12 @@ func _zoom_camera(factor):
 	
 	# Broadcast the new zoom level to other game systems
 	zoom_zmenen.emit(zoom.x)
+
+func _nacti_ovladani_ze_settings() -> void:
+	var cfg = ConfigFile.new()
+	if cfg.load(SETTINGS_FILE_PATH) != OK:
+		return
+
+	speed = float(cfg.get_value("controls", "camera_speed", speed))
+	zoom_speed = clamp(float(cfg.get_value("controls", "zoom_speed", zoom_speed)), 0.01, 0.6)
+	invert_zoom_wheel = bool(cfg.get_value("controls", "invert_zoom", invert_zoom_wheel))

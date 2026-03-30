@@ -420,7 +420,7 @@ func _on_mode_resources_pressed() -> void:
 
 func aktualizuj_ui():
 	# Update money and turn counters
-	money_label.text = "Treasury: %.2f M USD (+%.2f)" % [GameManager.statni_kasa, GameManager.celkovy_prijem]
+	money_label.text = "Funds: %.2f M USD (+%.2f)" % [GameManager.statni_kasa, GameManager.celkovy_prijem]
 	turn_label.text = "Turn: %d" % GameManager.aktualni_kolo
 	if _finance_tooltip_visible:
 		_aktualizuj_financni_tooltip_text()

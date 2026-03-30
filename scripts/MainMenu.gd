@@ -4,6 +4,8 @@ const TooltipUtils = preload("res://scripts/TooltipUtils.gd")
 
 @onready var selected_country_label: Label = $CenterPanel/MarginContainer/VBoxContainer/SelectedCountryLabel
 @onready var menu_hint_label: Label = $CenterPanel/MarginContainer/VBoxContainer/MenuHint
+@onready var title_label: Label = $CenterPanel/MarginContainer/VBoxContainer/Title
+@onready var subtitle_label: Label = $CenterPanel/MarginContainer/VBoxContainer/Subtitle
 
 @onready var btn_new_game: Button = $CenterPanel/MarginContainer/VBoxContainer/MainButtons/NewGameButton
 @onready var btn_continue: Button = $CenterPanel/MarginContainer/VBoxContainer/MainButtons/ContinueButton
@@ -35,6 +37,36 @@ const TooltipUtils = preload("res://scripts/TooltipUtils.gd")
 @onready var settings_dialog: AcceptDialog = $Dialogs/SettingsDialog
 @onready var credits_dialog: AcceptDialog = $Dialogs/CreditsDialog
 @onready var exit_dialog: ConfirmationDialog = $Dialogs/ExitDialog
+@onready var settings_header_title: Label = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsHeader/SettingsHeaderTitle
+@onready var settings_header_subtitle: Label = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsHeader/SettingsHeaderSubtitle
+
+@onready var controls_btn: Button = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/TabSwitcher/ControlsTabBtn
+@onready var settings_btn: Button = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/TabSwitcher/SettingsTabBtn
+@onready var controls_panel: PanelContainer = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel
+@onready var settings_panel: PanelContainer = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel
+@onready var controls_content: VBoxContainer = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad/ControlsContent
+@onready var settings_content: VBoxContainer = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent
+@onready var controls_info: Label = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad/ControlsContent/ControlsInfo
+@onready var camera_speed_label: Label = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad/ControlsContent/CameraSpeedLabel
+@onready var camera_speed_slider: HSlider = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad/ControlsContent/CameraSpeedRow/CameraSpeedSlider
+@onready var camera_speed_value: Label = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad/ControlsContent/CameraSpeedRow/CameraSpeedValue
+@onready var zoom_speed_label: Label = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad/ControlsContent/ZoomSpeedLabel
+@onready var zoom_speed_slider: HSlider = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad/ControlsContent/ZoomSpeedRow/ZoomSpeedSlider
+@onready var zoom_speed_value: Label = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad/ControlsContent/ZoomSpeedRow/ZoomSpeedValue
+@onready var invert_zoom_check: CheckBox = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad/ControlsContent/InvertZoomCheck
+@onready var controls_scheme_title: Label = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad/ControlsContent/ControlsSchemeTitle
+@onready var controls_scheme_text: RichTextLabel = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/ControlsPanel/ControlsPad/ControlsContent/ControlsSchemeText
+
+@onready var language_label: Label = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/LanguageLabel
+@onready var language_option: OptionButton = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/LanguageRow/LanguageOption
+@onready var language_hint: Label = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/LanguageHint
+@onready var fullscreen_check: CheckBox = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/FullscreenCheck
+@onready var vsync_check: CheckBox = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/VsyncCheck
+@onready var master_volume_label: Label = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/MasterVolumeLabel
+@onready var master_volume_slider: HSlider = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/MasterVolumeRow/MasterVolumeSlider
+@onready var master_volume_value: Label = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/MasterVolumeRow/MasterVolumeValue
+@onready var btn_settings_reset: Button = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsButtons/ResetButton
+@onready var btn_settings_apply: Button = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsButtons/ApplyButton
 
 # List of playable countries (Display Name : Tag)
 var hratelne_staty = {
@@ -84,17 +116,91 @@ var hratelne_staty = {
 
 const MAP_SCENE_PATH := "res://scenes/map.tscn"
 const SAVE_FILE_PATH := "user://savegame.dat"
+const SETTINGS_FILE_PATH := "user://settings.cfg"
 const PROVINCES_DATA_PATHS := [
 	"res://map_data/province.txt",
 	"res://map_data/Province.txt",
 	"res://map_data/Provinces.txt"
 ]
 const SETTINGS_DIALOG_TITLE := "Settings"
-const SETTINGS_DIALOG_TEXT := "Settings will be expanded in a future update.\n\nCONTROLS:\n- Mouse wheel: zoom\n- WASD: move map\n- Space: end turn\n- Right click: cancel actions and close dialogs\n- Dev simple conquer tool: C"
 const CREDITS_DIALOG_TITLE := "Credits"
 const CREDITS_DIALOG_TEXT := "RP-2025-26\n\nDesign and gameplay: ME (Afrox26TP)\nMap and data: internal dataset (mine)"
 const EXIT_DIALOG_TITLE := "Confirmation"
 const EXIT_DIALOG_TEXT := "Do you really want to quit the game?"
+const SETTINGS_DEFAULT_LANGUAGE := "cs"
+
+const UI_TEXTS := {
+	"en": {
+		"title": "EUROPEAN MAP PROJECT",
+		"subtitle": "Turn-based grand strategy game | School project 2025-26",
+		"new_game": "New Game (country selection)",
+		"continue": "Continue",
+		"continue_empty": "Continue (no save)",
+		"settings": "Settings",
+		"credits": "Credits",
+		"quit": "Quit game",
+		"settings_title": "Settings",
+		"settings_header_title": "Game Settings",
+		"settings_header_subtitle": "Customize controls, language, and gameplay preferences",
+		"settings_header_subtitle_clean": "All changes saved",
+		"settings_header_subtitle_dirty": "Unsaved changes - press Apply",
+		"tab_settings": "Settings",
+		"tab_controls": "Controls",
+		"tab_language": "Language",
+		"tab_other": "Other",
+		"controls_info": "Map controls",
+		"camera_speed": "Camera move speed",
+		"zoom_speed": "Zoom speed",
+		"invert_zoom": "Invert mouse wheel zoom",
+		"controls_static_title": "Current keybinds",
+		"controls_static_text": "Core controls\n- WASD / Arrows: move camera\n- Mouse wheel: zoom\n- Right mouse hold + drag: pan map\n- Space: end turn\n- Right click: cancel action or close open dialogs\n- C: developer quick conquer tool\n\nMap mode hotkeys\n- 1: Political\n- 2: Population\n- 3: GDP\n- 4: Ideology\n- 5: Recruitable Population\n- 6: Relations\n- 7: Terrain\n- 8: Resources",
+		"language_info": "Language",
+		"language_label": "UI language",
+		"language_hint": "Switches main menu and settings labels immediately.",
+		"other_info": "Other",
+		"fullscreen": "Fullscreen",
+		"vsync": "VSync",
+		"master_volume": "Master volume",
+		"reset": "Reset defaults",
+		"apply": "Apply",
+		"close": "Close"
+	},
+	"cs": {
+		"title": "EUROPEAN MAP PROJECT",
+		"subtitle": "Tahova grand strategy hra | Skolni projekt 2025-26",
+		"new_game": "Nova hra (vyber statu)",
+		"continue": "Pokracovat",
+		"continue_empty": "Pokracovat (bez ulozeni)",
+		"settings": "Nastaveni",
+		"credits": "Autori",
+		"quit": "Ukoncit hru",
+		"settings_title": "Nastaveni",
+		"settings_header_title": "Nastaveni hry",
+		"settings_header_subtitle": "Uprav ovladani, jazyk a herni preference",
+		"settings_header_subtitle_clean": "Vsechny zmeny jsou ulozene",
+		"settings_header_subtitle_dirty": "Mas neulozene zmeny - stiskni Pouzit",
+		"tab_settings": "Nastaveni",
+		"tab_controls": "Ovladani",
+		"tab_language": "Jazyk",
+		"tab_other": "Ostatni",
+		"controls_info": "Ovladani mapy",
+		"camera_speed": "Rychlost posunu kamery",
+		"zoom_speed": "Rychlost zoomu",
+		"invert_zoom": "Obratit zoom koleckem",
+		"controls_static_title": "Aktualni ovladani",
+		"controls_static_text": "Zakladni ovladani\n- WASD / Sipky: posun kamery\n- Kolecko mysi: zoom\n- Drzeni praveho tlacitka + tah: posun mapy\n- Mezernik: ukoncit kolo\n- Prave tlacitko: zrusit akci nebo zavrit dialog\n- C: vyvojarsky rychly conquer tool\n\nHotkeys pro map mody\n- 1: Politicky\n- 2: Populace\n- 3: HDP\n- 4: Ideologie\n- 5: Rekrutovatelna populace\n- 6: Vztahy\n- 7: Teren\n- 8: Suroviny",
+		"language_info": "Jazyk",
+		"language_label": "Jazyk rozhrani",
+		"language_hint": "Zmeni texty v hlavnim menu a nastaveni ihned.",
+		"other_info": "Ostatni",
+		"fullscreen": "Cela obrazovka",
+		"vsync": "VSync",
+		"master_volume": "Hlavni hlasitost",
+		"reset": "Obnovit vychozi",
+		"apply": "Pouzit",
+		"close": "Zavrit"
+	}
+}
 
 var country_stats: Dictionary = {}
 var flag_texture_cache: Dictionary = {}
@@ -105,6 +211,8 @@ var selected_country_tag: String = "ALB"
 var new_game_browser_flow: bool = false
 var local_player_tags: Array = []
 var setup_active_player_index: int = 0
+var nastaveni_data: Dictionary = {}
+var _settings_original_ui_state: Dictionary = {}
 const BROWSER_CONFIRM_DEFAULT_TEXT := "Confirm selection"
 const BROWSER_CONFIRM_ADD_PLAYER_TEXT := "Add player"
 const BROWSER_CLOSE_DEFAULT_TEXT := "Close"
@@ -152,6 +260,7 @@ func _load_normalized_flag_texture(path: String, width: int, height: int):
 	return normalized_tex
 
 func _ready():
+	_nacti_nastaveni()
 	_nastav_texty_dialogu()
 	_nacti_data_statu_pro_browser()
 	_naplni_browser_seznam()
@@ -170,8 +279,27 @@ func _ready():
 	btn_confirm_country.pressed.connect(_on_confirm_country_pressed)
 	btn_close_browser.pressed.connect(_on_close_browser_pressed)
 	btn_close_corner.pressed.connect(_on_close_browser_corner_pressed)
+	controls_btn.pressed.connect(_on_controls_tab_clicked)
+	settings_btn.pressed.connect(_on_settings_tab_clicked)
+	btn_settings_apply.pressed.connect(_on_apply_settings_pressed)
+	btn_settings_reset.pressed.connect(_on_reset_settings_pressed)
+	language_option.item_selected.connect(_on_language_option_selected)
+	camera_speed_slider.value_changed.connect(_on_settings_value_changed)
+	zoom_speed_slider.value_changed.connect(_on_settings_value_changed)
+	master_volume_slider.value_changed.connect(_on_settings_value_changed)
+	invert_zoom_check.toggled.connect(_on_settings_toggle_changed)
+	fullscreen_check.toggled.connect(_on_settings_toggle_changed)
+	vsync_check.toggled.connect(_on_settings_toggle_changed)
 	exit_dialog.confirmed.connect(_on_exit_confirmed)
+
+	_napln_language_option()
+	_nastav_settings_ui_z_dat()
+	_aplikuj_nastaveni_globalne()
+	_aktualizuj_settings_hodnoty()
+	_aktualizuj_texty_dle_jazyka()
 	_nastav_tooltipy_ui()
+	_show_settings_tab(0)  # Start with Controls tab
+
 
 func _nastav_tooltipy_ui() -> void:
 	btn_new_game.tooltip_text = "Start a new game and open country selection."
@@ -196,11 +324,196 @@ func _nastav_tooltipy_ui() -> void:
 
 func _nastav_texty_dialogu():
 	settings_dialog.title = SETTINGS_DIALOG_TITLE
-	settings_dialog.dialog_text = SETTINGS_DIALOG_TEXT
+	settings_dialog.ok_button_text = "Close"
 	credits_dialog.title = CREDITS_DIALOG_TITLE
 	credits_dialog.dialog_text = CREDITS_DIALOG_TEXT
 	exit_dialog.title = EXIT_DIALOG_TITLE
 	exit_dialog.dialog_text = EXIT_DIALOG_TEXT
+
+func _vytvor_vychozi_nastaveni() -> Dictionary:
+	return {
+		"controls": {
+			"camera_speed": 1000.0,
+			"zoom_speed": 0.10,
+			"invert_zoom": false
+		},
+		"language": {
+			"code": SETTINGS_DEFAULT_LANGUAGE
+		},
+		"other": {
+			"fullscreen": false,
+			"vsync": true,
+			"master_volume": 0.85
+		}
+	}
+
+func _nacti_nastaveni() -> void:
+	nastaveni_data = _vytvor_vychozi_nastaveni()
+	var cfg = ConfigFile.new()
+	if cfg.load(SETTINGS_FILE_PATH) != OK:
+		return
+
+	nastaveni_data["controls"]["camera_speed"] = float(cfg.get_value("controls", "camera_speed", nastaveni_data["controls"]["camera_speed"]))
+	nastaveni_data["controls"]["zoom_speed"] = float(cfg.get_value("controls", "zoom_speed", nastaveni_data["controls"]["zoom_speed"]))
+	nastaveni_data["controls"]["invert_zoom"] = bool(cfg.get_value("controls", "invert_zoom", nastaveni_data["controls"]["invert_zoom"]))
+
+	var loaded_language = str(cfg.get_value("language", "code", nastaveni_data["language"]["code"]))
+	nastaveni_data["language"]["code"] = _normalizuj_jazyk(loaded_language)
+
+	nastaveni_data["other"]["fullscreen"] = bool(cfg.get_value("other", "fullscreen", nastaveni_data["other"]["fullscreen"]))
+	nastaveni_data["other"]["vsync"] = bool(cfg.get_value("other", "vsync", nastaveni_data["other"]["vsync"]))
+	nastaveni_data["other"]["master_volume"] = float(cfg.get_value("other", "master_volume", nastaveni_data["other"]["master_volume"]))
+
+func _uloz_nastaveni() -> void:
+	var cfg = ConfigFile.new()
+	cfg.set_value("controls", "camera_speed", float(nastaveni_data["controls"]["camera_speed"]))
+	cfg.set_value("controls", "zoom_speed", float(nastaveni_data["controls"]["zoom_speed"]))
+	cfg.set_value("controls", "invert_zoom", bool(nastaveni_data["controls"]["invert_zoom"]))
+
+	cfg.set_value("language", "code", str(nastaveni_data["language"]["code"]))
+
+	cfg.set_value("other", "fullscreen", bool(nastaveni_data["other"]["fullscreen"]))
+	cfg.set_value("other", "vsync", bool(nastaveni_data["other"]["vsync"]))
+	cfg.set_value("other", "master_volume", float(nastaveni_data["other"]["master_volume"]))
+
+	var save_err = cfg.save(SETTINGS_FILE_PATH)
+	if save_err != OK:
+		push_warning("Failed to save settings. Error: %s" % str(save_err))
+
+func _normalizuj_jazyk(raw_code: String) -> String:
+	var code = raw_code.strip_edges().to_lower()
+	if not UI_TEXTS.has(code):
+		return SETTINGS_DEFAULT_LANGUAGE
+	return code
+
+func _aktualni_jazyk() -> String:
+	var code = str(nastaveni_data.get("language", {}).get("code", SETTINGS_DEFAULT_LANGUAGE))
+	return _normalizuj_jazyk(code)
+
+func _texty_ui() -> Dictionary:
+	return UI_TEXTS[_aktualni_jazyk()]
+
+func _napln_language_option() -> void:
+	language_option.clear()
+	language_option.add_item("English")
+	language_option.set_item_metadata(0, "en")
+	language_option.add_item("Cesky")
+	language_option.set_item_metadata(1, "cs")
+
+func _jazyk_z_option() -> String:
+	var idx = language_option.selected
+	if idx < 0:
+		return SETTINGS_DEFAULT_LANGUAGE
+	var metadata = language_option.get_item_metadata(idx)
+	if metadata == null:
+		return SETTINGS_DEFAULT_LANGUAGE
+	return _normalizuj_jazyk(str(metadata))
+
+func _nastav_settings_ui_z_dat() -> void:
+	camera_speed_slider.value = float(nastaveni_data["controls"]["camera_speed"])
+	zoom_speed_slider.value = float(nastaveni_data["controls"]["zoom_speed"])
+	invert_zoom_check.button_pressed = bool(nastaveni_data["controls"]["invert_zoom"])
+
+	var jazyk = _aktualni_jazyk()
+	for i in range(language_option.item_count):
+		if str(language_option.get_item_metadata(i)) == jazyk:
+			language_option.select(i)
+			break
+
+	fullscreen_check.button_pressed = bool(nastaveni_data["other"]["fullscreen"])
+	vsync_check.button_pressed = bool(nastaveni_data["other"]["vsync"])
+	master_volume_slider.value = clamp(float(nastaveni_data["other"]["master_volume"]), 0.0, 1.0)
+
+func _uloz_settings_ui_do_dat() -> void:
+	nastaveni_data["controls"]["camera_speed"] = clamp(camera_speed_slider.value, 400.0, 2600.0)
+	nastaveni_data["controls"]["zoom_speed"] = clamp(zoom_speed_slider.value, 0.03, 0.35)
+	nastaveni_data["controls"]["invert_zoom"] = invert_zoom_check.button_pressed
+	nastaveni_data["language"]["code"] = _jazyk_z_option()
+	nastaveni_data["other"]["fullscreen"] = fullscreen_check.button_pressed
+	nastaveni_data["other"]["vsync"] = vsync_check.button_pressed
+	nastaveni_data["other"]["master_volume"] = clamp(master_volume_slider.value, 0.0, 1.0)
+
+func _aktualizuj_settings_hodnoty(_v: float = 0.0) -> void:
+	camera_speed_value.text = "%d" % int(round(camera_speed_slider.value))
+	zoom_speed_value.text = "%.2f" % zoom_speed_slider.value
+	master_volume_value.text = "%d%%" % int(round(master_volume_slider.value * 100.0))
+
+func _aplikuj_nastaveni_globalne() -> void:
+	var fullscreen = bool(nastaveni_data["other"]["fullscreen"])
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if fullscreen else DisplayServer.WINDOW_MODE_WINDOWED)
+
+	var vsync_mode = DisplayServer.VSYNC_ENABLED if bool(nastaveni_data["other"]["vsync"]) else DisplayServer.VSYNC_DISABLED
+	DisplayServer.window_set_vsync_mode(vsync_mode)
+
+	var master_bus = AudioServer.get_bus_index("Master")
+	if master_bus != -1:
+		var linear_volume = clamp(float(nastaveni_data["other"]["master_volume"]), 0.0, 1.0)
+		var db_volume = -80.0 if linear_volume <= 0.0001 else linear_to_db(linear_volume)
+		AudioServer.set_bus_volume_db(master_bus, db_volume)
+
+func _aktualizuj_texty_dle_jazyka() -> void:
+	var t = _texty_ui()
+	title_label.text = str(t["title"])
+	subtitle_label.text = str(t["subtitle"])
+	btn_new_game.text = str(t["new_game"])
+	btn_settings.text = str(t["settings"])
+	btn_credits.text = str(t["credits"])
+	btn_exit.text = str(t["quit"])
+	settings_dialog.title = str(t["settings_title"])
+	settings_dialog.ok_button_text = str(t["close"])
+	settings_header_title.text = str(t["settings_header_title"])
+	settings_header_subtitle.text = str(t["settings_header_subtitle"])
+
+	controls_btn.text = str(t["tab_controls"])
+	settings_btn.text = str(t["tab_settings"])
+	controls_info.text = str(t["controls_info"])
+	camera_speed_label.text = str(t["camera_speed"])
+	zoom_speed_label.text = str(t["zoom_speed"])
+	invert_zoom_check.text = str(t["invert_zoom"])
+	controls_scheme_title.text = str(t["controls_static_title"])
+	controls_scheme_text.text = str(t["controls_static_text"])
+	language_label.text = str(t["language_label"])
+	language_hint.text = str(t["language_hint"])
+	fullscreen_check.text = str(t["fullscreen"])
+	vsync_check.text = str(t["vsync"])
+	master_volume_label.text = str(t["master_volume"])
+	btn_settings_reset.text = str(t["reset"])
+	btn_settings_apply.text = str(t["apply"])
+
+func _aktualizuj_settings_header_stav(dirty: bool) -> void:
+	var t = _texty_ui()
+	if dirty:
+		settings_header_subtitle.text = str(t["settings_header_subtitle_dirty"])
+		settings_header_subtitle.modulate = Color(1.0, 0.91, 0.70, 1.0)
+	else:
+		settings_header_subtitle.text = str(t["settings_header_subtitle_clean"])
+		settings_header_subtitle.modulate = Color(0.72, 0.88, 1.0, 1.0)
+
+func _read_settings_from_ui() -> Dictionary:
+	return {
+		"camera_speed": int(round(camera_speed_slider.value)),
+		"zoom_speed": snapped(zoom_speed_slider.value, 0.01),
+		"invert_zoom": invert_zoom_check.button_pressed,
+		"language": _jazyk_z_option(),
+		"fullscreen": fullscreen_check.button_pressed,
+		"vsync": vsync_check.button_pressed,
+		"master_volume": snapped(master_volume_slider.value, 0.01)
+	}
+
+func _settings_state_equals(a: Dictionary, b: Dictionary) -> bool:
+	for key in ["camera_speed", "zoom_speed", "invert_zoom", "language", "fullscreen", "vsync", "master_volume"]:
+		if not a.has(key) or not b.has(key):
+			return false
+		if a[key] != b[key]:
+			return false
+	return true
+
+func _refresh_apply_button_state() -> void:
+	var current = _read_settings_from_ui()
+	var dirty = not _settings_state_equals(current, _settings_original_ui_state)
+	btn_settings_apply.disabled = not dirty
+	btn_settings_apply.modulate = Color(1, 1, 1, 1) if dirty else Color(0.78, 0.82, 0.9, 1)
+	_aktualizuj_settings_header_stav(dirty)
 
 func _nastav_vychozi_vyber_statu():
 	if country_stats.has(selected_country_tag):
@@ -677,11 +990,12 @@ func _nastav_stav_pokracovani():
 	var ma_save = FileAccess.file_exists(SAVE_FILE_PATH)
 	if GameManager and GameManager.has_method("ma_ulozene_hry"):
 		ma_save = bool(GameManager.ma_ulozene_hry())
+	var t = _texty_ui()
 	btn_continue.disabled = not ma_save
 	if ma_save:
-		btn_continue.text = "Continue"
+		btn_continue.text = str(t["continue"])
 	else:
-		btn_continue.text = "Continue (no save)"
+		btn_continue.text = str(t["continue_empty"])
 
 func _spust_hru_vyberem(player_tags: Array = []):
 	var final_tags = player_tags.duplicate()
@@ -755,7 +1069,74 @@ func _on_continue_pressed():
 			push_warning("Continue failed: save could not be loaded.")
 
 func _on_settings_pressed():
-	settings_dialog.popup_centered()
+	_nastav_settings_ui_z_dat()
+	_aktualizuj_settings_hodnoty()
+	_settings_original_ui_state = _read_settings_from_ui()
+	_refresh_apply_button_state()
+	_show_settings_tab(0)  # Show Controls tab
+	# Enforce fixed size and center
+	settings_dialog.size = Vector2i(960, 840)
+	var viewport_size = Vector2i(get_viewport_rect().size)
+	settings_dialog.position = (viewport_size - Vector2i(960, 840)) / 2
+	settings_dialog.show()
+
+func _show_settings_tab(tab_index: int) -> void:
+	if tab_index == 0:
+		controls_panel.show()
+		settings_panel.hide()
+		controls_btn.modulate = Color(1.0, 1.0, 1.0, 1.0)
+		controls_btn.mouse_default_cursor_shape = Control.CURSOR_ARROW
+		settings_btn.modulate = Color(0.65, 0.72, 0.82, 1.0)
+		settings_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	else:
+		controls_panel.hide()
+		settings_panel.show()
+		controls_btn.modulate = Color(0.65, 0.72, 0.82, 1.0)
+		controls_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		settings_btn.modulate = Color(1.0, 1.0, 1.0, 1.0)
+		settings_btn.mouse_default_cursor_shape = Control.CURSOR_ARROW
+
+func _on_controls_tab_clicked() -> void:
+	_show_settings_tab(0)
+
+func _on_settings_tab_clicked() -> void:
+	_show_settings_tab(1)
+
+func _on_apply_settings_pressed() -> void:
+	_uloz_settings_ui_do_dat()
+	_aplikuj_nastaveni_globalne()
+	_aktualizuj_texty_dle_jazyka()
+	_nastav_stav_pokracovani()
+	_uloz_nastaveni()
+	_settings_original_ui_state = _read_settings_from_ui()
+	_refresh_apply_button_state()
+
+func _on_reset_settings_pressed() -> void:
+	nastaveni_data = _vytvor_vychozi_nastaveni()
+	_nastav_settings_ui_z_dat()
+	_aktualizuj_settings_hodnoty()
+	_aplikuj_nastaveni_globalne()
+	_aktualizuj_texty_dle_jazyka()
+	_nastav_stav_pokracovani()
+	_uloz_nastaveni()
+	_settings_original_ui_state = _read_settings_from_ui()
+	_refresh_apply_button_state()
+
+func _on_language_option_selected(_idx: int) -> void:
+	# Language switch is applied immediately to avoid UI/data desync.
+	nastaveni_data["language"]["code"] = _jazyk_z_option()
+	_aktualizuj_texty_dle_jazyka()
+	_nastav_stav_pokracovani()
+	_uloz_nastaveni()
+	_settings_original_ui_state = _read_settings_from_ui()
+	_refresh_apply_button_state()
+
+func _on_settings_value_changed(_value: float) -> void:
+	_aktualizuj_settings_hodnoty()
+	_refresh_apply_button_state()
+
+func _on_settings_toggle_changed(_pressed: bool) -> void:
+	_refresh_apply_button_state()
 
 func _on_credits_pressed():
 	credits_dialog.popup_centered()
