@@ -124,7 +124,7 @@ const PROVINCES_DATA_PATHS := [
 ]
 const SETTINGS_DIALOG_TITLE := "Settings"
 const CREDITS_DIALOG_TITLE := "Credits"
-const CREDITS_DIALOG_TEXT := "RP-2025-26\n\nDesign and gameplay: ME (Afrox26TP)\nMap and data: internal dataset (mine)"
+const CREDITS_DIALOG_TEXT := "RP-2025-26\n\nDesign and gameplay: ME (Afrox26TP)\nMap and data: internal dataset (mine)\nTester: Andhyy (outsourced)"
 const EXIT_DIALOG_TITLE := "Confirmation"
 const EXIT_DIALOG_TEXT := "Do you really want to quit the game?"
 const SETTINGS_DEFAULT_LANGUAGE := "cs"
@@ -133,9 +133,9 @@ const UI_TEXTS := {
 	"en": {
 		"title": "EUROPEAN MAP PROJECT",
 		"subtitle": "Turn-based grand strategy game | School project 2025-26",
-		"new_game": "New Game (country selection)",
-		"continue": "Continue",
-		"continue_empty": "Continue (no save)",
+		"new_game": "New Game",
+		"continue": "Load",
+		"continue_empty": "Load (no save)",
 		"settings": "Settings",
 		"credits": "Credits",
 		"quit": "Quit game",
@@ -168,9 +168,9 @@ const UI_TEXTS := {
 	"cs": {
 		"title": "EUROPEAN MAP PROJECT",
 		"subtitle": "Tahova grand strategy hra | Skolni projekt 2025-26",
-		"new_game": "Nova hra (vyber statu)",
-		"continue": "Pokracovat",
-		"continue_empty": "Pokracovat (bez ulozeni)",
+		"new_game": "New Game",
+		"continue": "Load",
+		"continue_empty": "Load (bez ulozeni)",
 		"settings": "Nastaveni",
 		"credits": "Autori",
 		"quit": "Ukoncit hru",
@@ -213,6 +213,12 @@ var local_player_tags: Array = []
 var setup_active_player_index: int = 0
 var nastaveni_data: Dictionary = {}
 var _settings_original_ui_state: Dictionary = {}
+var _load_dialog: AcceptDialog = null
+var _load_scroll_vbox: VBoxContainer = null
+var _load_status_label: Label = null
+var _load_open_button: Button = null
+var _load_slot_btns: Dictionary = {}
+var _selected_load_slot_key: String = ""
 const BROWSER_CONFIRM_DEFAULT_TEXT := "Confirm selection"
 const BROWSER_CONFIRM_ADD_PLAYER_TEXT := "Add player"
 const BROWSER_CLOSE_DEFAULT_TEXT := "Close"
@@ -298,6 +304,8 @@ func _ready():
 	_aktualizuj_settings_hodnoty()
 	_aktualizuj_texty_dle_jazyka()
 	_nastav_tooltipy_ui()
+	_vytvor_load_dialog()
+	_styluj_mainmenu_popup_dialogy()
 	_show_settings_tab(0)  # Start with Controls tab
 
 
@@ -327,8 +335,37 @@ func _nastav_texty_dialogu():
 	settings_dialog.ok_button_text = "Close"
 	credits_dialog.title = CREDITS_DIALOG_TITLE
 	credits_dialog.dialog_text = CREDITS_DIALOG_TEXT
+	credits_dialog.ok_button_text = "Close"
 	exit_dialog.title = EXIT_DIALOG_TITLE
 	exit_dialog.dialog_text = EXIT_DIALOG_TEXT
+	exit_dialog.ok_button_text = "Yes"
+	exit_dialog.cancel_button_text = "No"
+	var _exit_lbl = exit_dialog.get_label()
+	if _exit_lbl:
+		_exit_lbl.add_theme_font_size_override("font_size", 20)
+		_exit_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_exit_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_exit_lbl.size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+func _aplikuj_spolecny_popup_styl(dialog: Window, target_size: Vector2i) -> void:
+	if dialog == null:
+		return
+
+	dialog.wrap_controls = false
+	dialog.unresizable = true
+	dialog.min_size = target_size
+	dialog.size = target_size
+
+	var base_panel = settings_dialog.get_theme_stylebox("panel")
+	if base_panel != null:
+		dialog.add_theme_stylebox_override("panel", base_panel.duplicate())
+
+func _styluj_mainmenu_popup_dialogy() -> void:
+	_aplikuj_spolecny_popup_styl(settings_dialog, Vector2i(960, 840))
+	_aplikuj_spolecny_popup_styl(credits_dialog, Vector2i(680, 360))
+	_aplikuj_spolecny_popup_styl(exit_dialog, Vector2i(560, 240))
+	if _load_dialog != null:
+		_aplikuj_spolecny_popup_styl(_load_dialog, Vector2i(720, 560))
 
 func _vytvor_vychozi_nastaveni() -> Dictionary:
 	return {
@@ -952,7 +989,7 @@ func _obnov_text_vyberu():
 	if local_player_tags.size() > 1:
 		selected_country_label.text = "Local players: %s" % ", ".join(local_player_tags)
 		if menu_hint_label:
-			menu_hint_label.text = "Ready: %d players. Click New Game to edit selection or Continue for a quick start." % local_player_tags.size()
+			menu_hint_label.text = "Ready: %d players. Click New Game to edit selection or Load for a quick start." % local_player_tags.size()
 		_aktualizuj_panel_vyberu_hracu()
 		return
 
@@ -996,6 +1033,291 @@ func _nastav_stav_pokracovani():
 		btn_continue.text = str(t["continue"])
 	else:
 		btn_continue.text = str(t["continue_empty"])
+
+func _vytvor_load_dialog() -> void:
+	if _load_dialog != null:
+		return
+
+	_load_dialog = AcceptDialog.new()
+	_load_dialog.name = "LoadDialog"
+	_load_dialog.title = "Load Game"
+	_load_dialog.min_size = Vector2i(720, 560)
+	_load_dialog.size = Vector2i(720, 560)
+	_load_dialog.wrap_controls = false
+	_load_dialog.unresizable = true
+	_load_dialog.ok_button_text = "Close"
+	add_child(_load_dialog)
+
+	# Hide the native OK button – our footer provides its own Close
+	_load_dialog.get_ok_button().hide()
+
+	var root = MarginContainer.new()
+	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_theme_constant_override("margin_left", 18)
+	root.add_theme_constant_override("margin_top", 14)
+	root.add_theme_constant_override("margin_right", 18)
+	root.add_theme_constant_override("margin_bottom", 14)
+	_load_dialog.add_child(root)
+
+	var vbox = VBoxContainer.new()
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vbox.add_theme_constant_override("separation", 10)
+	root.add_child(vbox)
+
+	# Title – matches BrowserTitle font size
+	var title_lbl = Label.new()
+	title_lbl.text = "Load Game"
+	title_lbl.add_theme_font_size_override("font_size", 28)
+	vbox.add_child(title_lbl)
+
+	# List panel – matches ListPanel structure from Country Browser
+	var list_panel = PanelContainer.new()
+	list_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vbox.add_child(list_panel)
+
+	var list_margin = MarginContainer.new()
+	list_margin.add_theme_constant_override("margin_left", 10)
+	list_margin.add_theme_constant_override("margin_top", 10)
+	list_margin.add_theme_constant_override("margin_right", 10)
+	list_margin.add_theme_constant_override("margin_bottom", 10)
+	list_panel.add_child(list_margin)
+
+	var list_vbox = VBoxContainer.new()
+	list_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	list_vbox.add_theme_constant_override("separation", 8)
+	list_margin.add_child(list_vbox)
+
+	var scroll = ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	list_vbox.add_child(scroll)
+
+	_load_scroll_vbox = VBoxContainer.new()
+	_load_scroll_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_load_scroll_vbox.add_theme_constant_override("separation", 6)
+	scroll.add_child(_load_scroll_vbox)
+
+	# Status label – BrowserFlowHint color
+	_load_status_label = Label.new()
+	_load_status_label.text = ""
+	_load_status_label.add_theme_color_override("font_color", Color(0.8, 0.870588, 0.964706, 1.0))
+	vbox.add_child(_load_status_label)
+
+	# Footer buttons – matches BrowserButtons style exactly
+	var browser_btns = HBoxContainer.new()
+	browser_btns.add_theme_constant_override("separation", 10)
+	vbox.add_child(browser_btns)
+
+	var refresh_btn = Button.new()
+	refresh_btn.text = "Refresh"
+	refresh_btn.custom_minimum_size = Vector2(0, 44)
+	refresh_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	refresh_btn.pressed.connect(_obnov_load_sloty_v_menu)
+	browser_btns.add_child(refresh_btn)
+
+	_load_open_button = Button.new()
+	_load_open_button.text = "Load"
+	_load_open_button.custom_minimum_size = Vector2(0, 44)
+	_load_open_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_load_open_button.disabled = true
+	_load_open_button.pressed.connect(_on_load_selected_pressed)
+	browser_btns.add_child(_load_open_button)
+
+	var close_btn = Button.new()
+	close_btn.text = "Close"
+	close_btn.custom_minimum_size = Vector2(0, 44)
+	close_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	close_btn.pressed.connect(func(): _load_dialog.hide())
+	browser_btns.add_child(close_btn)
+
+	_styluj_mainmenu_popup_dialogy()
+	_obnov_load_sloty_v_menu()
+
+func _vytvor_load_row_style(selected: bool) -> StyleBoxFlat:
+	var s = StyleBoxFlat.new()
+	if selected:
+		s.bg_color = Color(0.14, 0.22, 0.38, 0.95)
+		s.border_color = Color(0.45, 0.6, 0.82, 0.95)
+		s.border_width_top = 2
+		s.border_width_left = 2
+		s.border_width_right = 1
+		s.border_width_bottom = 1
+	else:
+		s.bg_color = Color(0.065, 0.102, 0.168, 0.0)
+		s.border_color = Color(0.28, 0.38, 0.53, 0.0)
+		s.border_width_top = 0
+		s.border_width_left = 0
+		s.border_width_right = 0
+		s.border_width_bottom = 0
+	s.content_margin_left = 14.0
+	s.content_margin_top = 6.0
+	s.content_margin_right = 14.0
+	s.content_margin_bottom = 6.0
+	s.corner_radius_top_left = 6
+	s.corner_radius_top_right = 6
+	s.corner_radius_bottom_right = 6
+	s.corner_radius_bottom_left = 6
+	return s
+
+func _obnov_load_sloty_v_menu() -> void:
+	if _load_scroll_vbox == null:
+		return
+
+	for ch in _load_scroll_vbox.get_children():
+		ch.queue_free()
+	_load_slot_btns.clear()
+	_selected_load_slot_key = ""
+
+	var all_slots: Array = []
+
+	if GameManager and GameManager.has_method("ziskej_save_sloty"):
+		var slots = GameManager.ziskej_save_sloty() as Array
+		for slot_any in slots:
+			var slot = slot_any as Dictionary
+			var slot_name = str(slot.get("name", "")).strip_edges()
+			if slot_name == "":
+				continue
+			var modified = int(slot.get("modified", 0))
+			var stamp = "date unknown"
+			if modified > 0:
+				stamp = Time.get_datetime_string_from_unix_time(modified, true)
+			all_slots.append({"key": slot_name, "name": slot_name, "stamp": stamp})
+
+	if FileAccess.file_exists(SAVE_FILE_PATH):
+		all_slots.append({"key": "__legacy__", "name": "Legacy quicksave", "stamp": "savegame.dat"})
+
+	var hover_style = StyleBoxFlat.new()
+	hover_style.bg_color = Color(0.11, 0.18, 0.30, 0.92)
+	hover_style.border_color = Color(0.45, 0.62, 0.86, 0.75)
+	hover_style.border_width_left = 1
+	hover_style.border_width_top = 1
+	hover_style.border_width_right = 1
+	hover_style.border_width_bottom = 1
+	hover_style.corner_radius_top_left = 6
+	hover_style.corner_radius_top_right = 6
+	hover_style.corner_radius_bottom_right = 6
+	hover_style.corner_radius_bottom_left = 6
+
+	for slot_info_any in all_slots:
+		var slot_info = slot_info_any as Dictionary
+		var slot_key = str(slot_info.get("key", ""))
+		var slot_name = str(slot_info.get("name", ""))
+		var stamp = str(slot_info.get("stamp", ""))
+
+		var row_btn = Button.new()
+		row_btn.custom_minimum_size = Vector2(0, 74)
+		row_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		row_btn.flat = false
+		row_btn.focus_mode = Control.FOCUS_CLICK
+		row_btn.add_theme_stylebox_override("normal", _vytvor_load_row_style(false))
+		row_btn.add_theme_stylebox_override("hover", hover_style.duplicate())
+		row_btn.add_theme_stylebox_override("pressed", _vytvor_load_row_style(true))
+		row_btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+
+		var inner = VBoxContainer.new()
+		inner.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		inner.add_theme_constant_override("separation", 3)
+		inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row_btn.add_child(inner)
+
+		var name_lbl = Label.new()
+		name_lbl.text = slot_name
+		name_lbl.add_theme_font_size_override("font_size", 15)
+		name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		name_lbl.clip_text = true
+		inner.add_child(name_lbl)
+
+		var date_lbl = Label.new()
+		date_lbl.text = stamp
+		date_lbl.add_theme_font_size_override("font_size", 12)
+		date_lbl.add_theme_color_override("font_color", Color(0.694118, 0.831373, 1.0, 1.0))
+		date_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		inner.add_child(date_lbl)
+
+		row_btn.pressed.connect(_on_load_row_pressed.bind(slot_key))
+		_load_slot_btns[slot_key] = row_btn
+		_load_scroll_vbox.add_child(row_btn)
+
+	var count := all_slots.size()
+	if _load_open_button:
+		_load_open_button.disabled = count == 0
+	if _load_status_label:
+		_load_status_label.text = "%d save%s found" % [count, "s" if count != 1 else ""] if count > 0 else "No saves found."
+
+	if count > 0:
+		var first_key = str((all_slots[0] as Dictionary).get("key", ""))
+		_on_load_row_highlight(first_key)
+
+func _otevri_load_okno() -> void:
+	if _load_dialog == null:
+		_vytvor_load_dialog()
+	_obnov_load_sloty_v_menu()
+	_load_dialog.popup_centered(_load_dialog.min_size)
+
+func _on_load_row_pressed(slot_key: String) -> void:
+	_on_load_row_highlight(slot_key)
+
+func _on_load_row_highlight(slot_key: String) -> void:
+	_selected_load_slot_key = slot_key
+	for key in _load_slot_btns.keys():
+		var btn = _load_slot_btns[key] as Button
+		if btn:
+			var is_sel = key == slot_key
+			btn.add_theme_stylebox_override("normal", _vytvor_load_row_style(is_sel))
+			btn.add_theme_stylebox_override("focus", _vytvor_load_row_style(is_sel))
+	if _load_open_button:
+		_load_open_button.disabled = slot_key == ""
+
+func _ziskej_vybrany_load_slot() -> String:
+	return _selected_load_slot_key
+
+func _on_load_selected_pressed() -> void:
+	var slot_key = _ziskej_vybrany_load_slot()
+	if slot_key == "":
+		if _load_status_label:
+			_load_status_label.text = "Select a save first."
+		return
+	if _load_dialog:
+		_load_dialog.hide()
+	_spust_load_ze_slotu(slot_key)
+
+func _pockej_na_map_scenu(max_frames: int = 180) -> bool:
+	for _i in range(max_frames):
+		if GameManager and GameManager.has_method("_get_map_loader"):
+			var loader = GameManager._get_map_loader()
+			if loader != null:
+				return true
+		await get_tree().process_frame
+	return false
+
+func _spust_load_ze_slotu(slot_key: String) -> void:
+	var err = get_tree().change_scene_to_file(MAP_SCENE_PATH)
+	if err != OK:
+		push_warning("Failed to open map for Load. Error: %s" % str(err))
+		return
+
+	await get_tree().process_frame
+	if not await _pockej_na_map_scenu():
+		push_warning("Load canceled: map scene did not initialize in time.")
+		return
+
+	var loaded_ok := false
+	if slot_key == "__legacy__":
+		if GameManager and GameManager.has_method("nacti_hru"):
+			loaded_ok = bool(GameManager.nacti_hru())
+	elif GameManager and GameManager.has_method("nacti_hru_ze_slotu"):
+		loaded_ok = bool(GameManager.nacti_hru_ze_slotu(slot_key))
+
+	if not loaded_ok:
+		# Fallback to newest available save if selected slot cannot be loaded.
+		if GameManager and GameManager.has_method("nacti_posledni_hru"):
+			loaded_ok = bool(GameManager.nacti_posledni_hru())
+
+	if not loaded_ok:
+		push_warning("Load failed: save could not be loaded.")
 
 func _spust_hru_vyberem(player_tags: Array = []):
 	var final_tags = player_tags.duplicate()
@@ -1046,27 +1368,7 @@ func _on_new_game_pressed():
 	_otevri_browser_statu()
 
 func _on_continue_pressed():
-	var ma_save = FileAccess.file_exists(SAVE_FILE_PATH)
-	if GameManager and GameManager.has_method("ma_ulozene_hry"):
-		ma_save = bool(GameManager.ma_ulozene_hry())
-
-	if not ma_save:
-		_nastav_stav_pokracovani()
-		return
-
-	var err = get_tree().change_scene_to_file(MAP_SCENE_PATH)
-	if err != OK:
-		push_warning("Failed to open map for Continue. Error: %s" % str(err))
-		return
-
-	# Wait for map scene setup, then override runtime state with saved data.
-	await get_tree().process_frame
-	if GameManager and GameManager.has_method("nacti_posledni_hru"):
-		if not bool(GameManager.nacti_posledni_hru()):
-			push_warning("Continue failed: save could not be loaded.")
-	elif GameManager and GameManager.has_method("nacti_hru"):
-		if not bool(GameManager.nacti_hru()):
-			push_warning("Continue failed: save could not be loaded.")
+	_otevri_load_okno()
 
 func _on_settings_pressed():
 	_nastav_settings_ui_z_dat()
@@ -1074,11 +1376,8 @@ func _on_settings_pressed():
 	_settings_original_ui_state = _read_settings_from_ui()
 	_refresh_apply_button_state()
 	_show_settings_tab(0)  # Show Controls tab
-	# Enforce fixed size and center
-	settings_dialog.size = Vector2i(960, 840)
-	var viewport_size = Vector2i(get_viewport_rect().size)
-	settings_dialog.position = (viewport_size - Vector2i(960, 840)) / 2
-	settings_dialog.show()
+	_styluj_mainmenu_popup_dialogy()
+	settings_dialog.popup_centered(settings_dialog.min_size)
 
 func _show_settings_tab(tab_index: int) -> void:
 	if tab_index == 0:
@@ -1139,10 +1438,12 @@ func _on_settings_toggle_changed(_pressed: bool) -> void:
 	_refresh_apply_button_state()
 
 func _on_credits_pressed():
-	credits_dialog.popup_centered()
+	_styluj_mainmenu_popup_dialogy()
+	credits_dialog.popup_centered(credits_dialog.min_size)
 
 func _on_exit_pressed():
-	exit_dialog.popup_centered()
+	_styluj_mainmenu_popup_dialogy()
+	exit_dialog.popup_centered(exit_dialog.min_size)
 
 func _on_exit_confirmed():
 	get_tree().quit()

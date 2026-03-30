@@ -170,7 +170,7 @@ text = "Selected country:"
 visible = false
 layout_mode = 2
 theme_override_colors/font_color = Color(0.760784, 0.823529, 0.917647, 1)
-text = "New Game: pick 1+ countries for local multiplayer. Continue: last save."
+text = "New Game: pick 1+ countries for local multiplayer. Load: last save."
 horizontal_alignment = 1
 autowrap_mode = 3
 
@@ -181,12 +181,12 @@ theme_override_constants/separation = 10
 [node name="NewGameButton" type="Button" parent="CenterPanel/MarginContainer/VBoxContainer/MainButtons" unique_id=909067166]
 custom_minimum_size = Vector2(0, 52)
 layout_mode = 2
-text = "New Game (country selection)"
+text = "New Game"
 
 [node name="ContinueButton" type="Button" parent="CenterPanel/MarginContainer/VBoxContainer/MainButtons" unique_id=909067167]
 custom_minimum_size = Vector2(0, 52)
 layout_mode = 2
-text = "Continue saved game"
+text = "Load"
 
 [node name="SecondaryButtons" type="HBoxContainer" parent="CenterPanel/MarginContainer/VBoxContainer" unique_id=1834597635]
 layout_mode = 2

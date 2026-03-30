@@ -96,19 +96,33 @@ var _system_message_ack: bool = false
 var _pause_menu_panel: PopupPanel
 var _pause_confirm_dialog: ConfirmationDialog
 var _pause_pending_action: String = ""
+var _pause_confirm_accepted: bool = false
 var _overview_metric_rows: Dictionary = {}
 var _overview_metric_deltas: Dictionary = {}
 var _overview_preview_deltas: Dictionary = {}
 var _save_dialog: PopupPanel
 var _save_name_input: LineEdit
 var _load_dialog: PopupPanel
-var _load_slot_list: ItemList
 var _load_slot_scroll: ScrollContainer
 var _load_slots_vbox: VBoxContainer
 var _load_confirm_btn: Button
 var _load_slot_names: Array = []
 var _load_selected_slot_name: String = ""
 var _load_slot_row_buttons: Dictionary = {}
+var _settings_dialog: PopupPanel
+var _settings_fullscreen_check: CheckBox
+var _settings_vsync_check: CheckBox
+var _settings_volume_slider: HSlider
+var _settings_volume_value: Label
+var _settings_camera_slider: HSlider
+var _settings_camera_value: Label
+var _settings_zoom_slider: HSlider
+var _settings_zoom_value: Label
+var _settings_invert_zoom_check: CheckBox
+var _settings_tab_controls_btn: Button
+var _settings_tab_settings_btn: Button
+var _settings_controls_panel: PanelContainer
+var _settings_options_panel: PanelContainer
 var _gift_dialog: PopupPanel
 var _gift_amount_input: LineEdit
 var gift_money_btn: Button
@@ -201,6 +215,7 @@ const QUEUE_PREVIEW_MAX_ITEMS := 8
 const ZPRAVY_MAX_ITEMS := 180
 const ZPRAVY_HISTORY_MAX_ITEMS := 500
 const MAIN_MENU_SCENE_PATH := "res://scenes/MainMenu.tscn"
+const SETTINGS_FILE_PATH := "user://settings.cfg"
 const IDEOLOGY_UI_ORDER := ["demokracie", "kralovstvi", "autokracie", "komunismus", "nacismus", "fasismus"]
 const TURN_LOADING_FRAMES := ["Zpracovavam tah", "Zpracovavam tah.", "Zpracovavam tah..", "Zpracovavam tah..."]
 const SYSTEM_MESSAGE_TURN_AUTO_ACK_MS := 7000
@@ -1097,6 +1112,7 @@ func _vytvor_vyzkum_dialog() -> void:
 	_research_dialog.size = Vector2(640, 620)
 	_research_dialog.top_level = true
 	add_child(_research_dialog)
+	_aplikuj_ingame_popup_styl(_research_dialog)
 
 	var margin = MarginContainer.new()
 	margin.offset_left = 12
@@ -2491,6 +2507,7 @@ func _on_viewport_resized():
 	_aktualizuj_pozice_popupu()
 	_pozicuj_pause_menu()
 	_pozicuj_save_load_popupy()
+	_pozicuj_settings_dialog()
 	_pozicuj_gift_dialog()
 	_pozicuj_mirovou_konferenci_dialog()
 	_pozicuj_hlaseni_mirove_konference()
@@ -2518,8 +2535,8 @@ func _input(event):
 				_save_dialog.hide()
 				get_viewport().set_input_as_handled()
 				return
-			if _load_dialog and _load_dialog.visible:
-				_load_dialog.hide()
+			if _settings_dialog and _settings_dialog.visible:
+				_settings_dialog.hide()
 				get_viewport().set_input_as_handled()
 				return
 			if system_message_popup and system_message_popup.visible:
@@ -2535,82 +2552,107 @@ func _input(event):
 func _vytvor_pause_menu() -> void:
 	_pause_menu_panel = PopupPanel.new()
 	_pause_menu_panel.name = "PauseMenu"
-	_pause_menu_panel.size = Vector2(320, 352)
+	_pause_menu_panel.wrap_controls = false
+	_pause_menu_panel.unresizable = true
+	_pause_menu_panel.min_size = Vector2i(340, 358)
+	_pause_menu_panel.size = Vector2(340, 358)
 	add_child(_pause_menu_panel)
 
+	var panel_style = StyleBoxFlat.new()
+	panel_style.bg_color = Color(0.07, 0.10, 0.18, 0.97)
+	panel_style.border_width_left = 1
+	panel_style.border_width_top = 1
+	panel_style.border_width_right = 1
+	panel_style.border_width_bottom = 1
+	panel_style.border_color = Color(0.45, 0.6, 0.79, 0.7)
+	panel_style.corner_radius_top_left = 8
+	panel_style.corner_radius_top_right = 8
+	panel_style.corner_radius_bottom_left = 8
+	panel_style.corner_radius_bottom_right = 8
+	_pause_menu_panel.add_theme_stylebox_override("panel", panel_style)
+
 	var root_margin = MarginContainer.new()
-	root_margin.offset_left = 12
-	root_margin.offset_top = 12
-	root_margin.offset_right = -12
-	root_margin.offset_bottom = -12
+	root_margin.add_theme_constant_override("margin_left", 16)
+	root_margin.add_theme_constant_override("margin_top", 16)
+	root_margin.add_theme_constant_override("margin_right", 16)
+	root_margin.add_theme_constant_override("margin_bottom", 16)
 	root_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_pause_menu_panel.add_child(root_margin)
 
 	var vbox = VBoxContainer.new()
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	vbox.add_theme_constant_override("separation", 8)
+	vbox.add_theme_constant_override("separation", 10)
 	root_margin.add_child(vbox)
 
 	var title = Label.new()
 	title.text = "Game Menu"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_font_size_override("font_size", 26)
 	vbox.add_child(title)
-
-	var subtitle = Label.new()
-	subtitle.text = "ESC"
-	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(subtitle)
 
 	vbox.add_child(HSeparator.new())
 
-	var btn_resume = Button.new()
-	btn_resume.text = "Resume"
-	btn_resume.pressed.connect(_on_pause_resume_pressed)
-	vbox.add_child(btn_resume)
-
-	var btn_options = Button.new()
-	btn_options.text = "Options"
-	btn_options.pressed.connect(_on_pause_options_pressed)
-	vbox.add_child(btn_options)
-
-	var btn_surrender = Button.new()
-	btn_surrender.text = "Surrender"
-	btn_surrender.pressed.connect(_on_pause_surrender_pressed)
-	vbox.add_child(btn_surrender)
-
-	var btn_save = Button.new()
-	btn_save.text = "Save"
-	btn_save.pressed.connect(_on_pause_save_pressed)
-	vbox.add_child(btn_save)
-
-	var btn_load = Button.new()
-	btn_load.text = "Load"
-	btn_load.pressed.connect(_on_pause_load_pressed)
-	vbox.add_child(btn_load)
-
-	var btn_quit = Button.new()
-	btn_quit.text = "Quit"
-	btn_quit.pressed.connect(_on_pause_quit_pressed)
-	vbox.add_child(btn_quit)
+	var _btn_defs = [
+		["Resume", Callable(self, "_on_pause_resume_pressed")],
+		["Settings", Callable(self, "_on_pause_options_pressed")],
+		["Surrender", Callable(self, "_on_pause_surrender_pressed")],
+		["Save / Load", Callable(self, "_on_pause_save_pressed")],
+		["Quit", Callable(self, "_on_pause_quit_pressed")],
+	]
+	for _bd in _btn_defs:
+		var _b = Button.new()
+		_b.text = _bd[0]
+		_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_b.custom_minimum_size = Vector2(0, 44)
+		_b.pressed.connect(_bd[1])
+		vbox.add_child(_b)
 
 	_pause_confirm_dialog = ConfirmationDialog.new()
-	_pause_confirm_dialog.min_size = Vector2i(430, 160)
+	_pause_confirm_dialog.wrap_controls = false
+	_pause_confirm_dialog.unresizable = true
+	_pause_confirm_dialog.min_size = Vector2i(480, 200)
+	_pause_confirm_dialog.ok_button_text = "Yes"
+	_pause_confirm_dialog.cancel_button_text = "No"
 	_pause_confirm_dialog.confirmed.connect(_on_pause_confirmed)
+	_pause_confirm_dialog.visibility_changed.connect(_on_pause_confirm_visibility_changed)
 	add_child(_pause_confirm_dialog)
+	_aplikuj_ingame_popup_styl(_pause_confirm_dialog)
+	var _conf_lbl = _pause_confirm_dialog.get_label()
+	if _conf_lbl:
+		_conf_lbl.add_theme_font_size_override("font_size", 18)
+		_conf_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_conf_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_conf_lbl.size_flags_vertical = Control.SIZE_EXPAND_FILL
 
 	_vytvor_save_load_dialogy()
+	_vytvor_settings_dialog()
 
 	_pause_menu_panel.hide()
 	_pozicuj_pause_menu()
 	_pozicuj_save_load_popupy()
+	_pozicuj_settings_dialog()
+
+func _aplikuj_ingame_popup_styl(node) -> void:
+	var s = StyleBoxFlat.new()
+	s.bg_color = Color(0.07, 0.10, 0.18, 0.97)
+	s.border_color = Color(0.45, 0.60, 0.79, 0.70)
+	s.border_width_left = 1
+	s.border_width_top = 1
+	s.border_width_right = 1
+	s.border_width_bottom = 1
+	s.corner_radius_top_left = 8
+	s.corner_radius_top_right = 8
+	s.corner_radius_bottom_left = 8
+	s.corner_radius_bottom_right = 8
+	node.add_theme_stylebox_override("panel", s)
 
 func _vytvor_darovaci_dialog() -> void:
 	_gift_dialog = PopupPanel.new()
 	_gift_dialog.name = "GiftDialog"
 	_gift_dialog.size = Vector2(420, 190)
 	add_child(_gift_dialog)
+	_aplikuj_ingame_popup_styl(_gift_dialog)
 
 	var margin = MarginContainer.new()
 	margin.offset_left = 12
@@ -2675,6 +2717,7 @@ func _vytvor_mirovou_konferenci_dialog() -> void:
 	_peace_dialog.exclusive = false
 	_peace_dialog.popup_window = false
 	add_child(_peace_dialog)
+	_aplikuj_ingame_popup_styl(_peace_dialog)
 
 	var margin = MarginContainer.new()
 	margin.offset_left = 12
@@ -3145,7 +3188,7 @@ func _prepni_pause_menu() -> void:
 		_pause_menu_panel.hide()
 	else:
 		_pozicuj_pause_menu()
-		_pause_menu_panel.popup()
+		_pause_menu_panel.show()
 
 func _zavri_pause_menu() -> void:
 	if _pause_menu_panel:
@@ -3155,88 +3198,44 @@ func _zobraz_pause_confirm(action: String, title: String, text: String) -> void:
 	if not _pause_confirm_dialog:
 		return
 	_pause_pending_action = action
+	_pause_confirm_accepted = false
 	_pause_confirm_dialog.title = title
 	_pause_confirm_dialog.dialog_text = text
 	_pause_confirm_dialog.popup_centered()
 
 func _vytvor_save_load_dialogy() -> void:
 	_save_dialog = PopupPanel.new()
-	_save_dialog.name = "SaveDialog"
-	_save_dialog.size = Vector2(430, 190)
+	_save_dialog.name = "SaveLoadDialog"
+	_save_dialog.size = Vector2(560, 470)
 	add_child(_save_dialog)
+	_aplikuj_ingame_popup_styl(_save_dialog)
 
-	var save_margin = MarginContainer.new()
-	save_margin.offset_left = 12
-	save_margin.offset_top = 12
-	save_margin.offset_right = -12
-	save_margin.offset_bottom = -12
-	save_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_save_dialog.add_child(save_margin)
+	# Keep compatibility for existing helpers that still reference _load_dialog.
+	_load_dialog = _save_dialog
 
-	var save_vbox = VBoxContainer.new()
-	save_vbox.add_theme_constant_override("separation", 10)
-	save_margin.add_child(save_vbox)
+	var root_margin = MarginContainer.new()
+	root_margin.offset_left = 12
+	root_margin.offset_top = 12
+	root_margin.offset_right = -12
+	root_margin.offset_bottom = -12
+	root_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_save_dialog.add_child(root_margin)
 
-	var save_title = Label.new()
-	save_title.text = "Save game"
-	save_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	save_title.add_theme_font_size_override("font_size", 20)
-	save_vbox.add_child(save_title)
+	var root_vbox = VBoxContainer.new()
+	root_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root_vbox.add_theme_constant_override("separation", 10)
+	root_margin.add_child(root_vbox)
 
-	var save_hint = Label.new()
-	save_hint.text = "Enter save slot name"
-	save_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	save_vbox.add_child(save_hint)
-
-	_save_name_input = LineEdit.new()
-	_save_name_input.placeholder_text = "e.g. france_turn12"
-	_save_name_input.text_submitted.connect(func(_t): _on_save_dialog_confirm_pressed())
-	save_vbox.add_child(_save_name_input)
-
-	var save_btns = HBoxContainer.new()
-	save_btns.add_theme_constant_override("separation", 8)
-	save_vbox.add_child(save_btns)
-
-	var save_confirm_btn = Button.new()
-	save_confirm_btn.text = "Save"
-	save_confirm_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	save_confirm_btn.pressed.connect(_on_save_dialog_confirm_pressed)
-	save_btns.add_child(save_confirm_btn)
-
-	var save_cancel_btn = Button.new()
-	save_cancel_btn.text = "Cancel"
-	save_cancel_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	save_cancel_btn.pressed.connect(func(): _save_dialog.hide())
-	save_btns.add_child(save_cancel_btn)
-
-	_load_dialog = PopupPanel.new()
-	_load_dialog.name = "LoadDialog"
-	_load_dialog.size = Vector2(460, 320)
-	add_child(_load_dialog)
-
-	var load_margin = MarginContainer.new()
-	load_margin.offset_left = 12
-	load_margin.offset_top = 12
-	load_margin.offset_right = -12
-	load_margin.offset_bottom = -12
-	load_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_load_dialog.add_child(load_margin)
-
-	var load_vbox = VBoxContainer.new()
-	load_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	load_vbox.add_theme_constant_override("separation", 8)
-	load_margin.add_child(load_vbox)
-
-	var load_title = Label.new()
-	load_title.text = "Load game"
-	load_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	load_title.add_theme_font_size_override("font_size", 20)
-	load_vbox.add_child(load_title)
+	var title = Label.new()
+	title.text = "Save / Load"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 24)
+	root_vbox.add_child(title)
 
 	_load_slot_scroll = ScrollContainer.new()
 	_load_slot_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_load_slot_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	load_vbox.add_child(_load_slot_scroll)
+	root_vbox.add_child(_load_slot_scroll)
 
 	_load_slots_vbox = VBoxContainer.new()
 	_load_slots_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -3245,36 +3244,402 @@ func _vytvor_save_load_dialogy() -> void:
 
 	var load_btns = HBoxContainer.new()
 	load_btns.add_theme_constant_override("separation", 8)
-	load_vbox.add_child(load_btns)
+	root_vbox.add_child(load_btns)
 
 	_load_confirm_btn = Button.new()
 	_load_confirm_btn.text = "Load"
 	_load_confirm_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_load_confirm_btn.custom_minimum_size = Vector2(0, 44)
 	_load_confirm_btn.pressed.connect(_on_load_dialog_confirm_pressed)
 	load_btns.add_child(_load_confirm_btn)
 
 	var load_refresh_btn = Button.new()
 	load_refresh_btn.text = "Refresh"
 	load_refresh_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	load_refresh_btn.custom_minimum_size = Vector2(0, 44)
 	load_refresh_btn.pressed.connect(_obnov_load_sloty)
 	load_btns.add_child(load_refresh_btn)
 
-	var load_cancel_btn = Button.new()
-	load_cancel_btn.text = "Cancel"
-	load_cancel_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	load_cancel_btn.pressed.connect(func(): _load_dialog.hide())
-	load_btns.add_child(load_cancel_btn)
+	var close_btn = Button.new()
+	close_btn.text = "Close"
+	close_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	close_btn.custom_minimum_size = Vector2(0, 44)
+	close_btn.pressed.connect(func(): _save_dialog.hide())
+	load_btns.add_child(close_btn)
+
+	root_vbox.add_child(HSeparator.new())
+
+	var save_row = HBoxContainer.new()
+	save_row.add_theme_constant_override("separation", 8)
+	root_vbox.add_child(save_row)
+
+	_save_name_input = LineEdit.new()
+	_save_name_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_save_name_input.placeholder_text = "e.g. france_turn12"
+	_save_name_input.text_submitted.connect(func(_t): _on_save_dialog_confirm_pressed())
+	save_row.add_child(_save_name_input)
+
+	var save_confirm_btn = Button.new()
+	save_confirm_btn.text = "Save"
+	save_confirm_btn.custom_minimum_size = Vector2(0, 44)
+	save_confirm_btn.pressed.connect(_on_save_dialog_confirm_pressed)
+	save_row.add_child(save_confirm_btn)
 
 	_save_dialog.hide()
-	_load_dialog.hide()
+
+func _vytvor_settings_dialog() -> void:
+	_settings_dialog = PopupPanel.new()
+	_settings_dialog.name = "SettingsDialog"
+	_settings_dialog.wrap_controls = false
+	_settings_dialog.unresizable = true
+	_settings_dialog.min_size = Vector2i(620, 560)
+	_settings_dialog.size = Vector2i(620, 560)
+	add_child(_settings_dialog)
+	_aplikuj_ingame_popup_styl(_settings_dialog)
+
+	var margin = MarginContainer.new()
+	margin.offset_left = 12
+	margin.offset_top = 12
+	margin.offset_right = -12
+	margin.offset_bottom = -12
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_settings_dialog.add_child(margin)
+
+	var root = VBoxContainer.new()
+	root.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_theme_constant_override("separation", 8)
+	margin.add_child(root)
+
+	var title = Label.new()
+	title.text = "Settings"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 20)
+	root.add_child(title)
+
+	var tab_switcher = HBoxContainer.new()
+	tab_switcher.add_theme_constant_override("separation", 6)
+	root.add_child(tab_switcher)
+
+	_settings_tab_controls_btn = Button.new()
+	_settings_tab_controls_btn.text = "Controls"
+	_settings_tab_controls_btn.custom_minimum_size = Vector2(130, 34)
+	tab_switcher.add_child(_settings_tab_controls_btn)
+
+	_settings_tab_settings_btn = Button.new()
+	_settings_tab_settings_btn.text = "Settings"
+	_settings_tab_settings_btn.custom_minimum_size = Vector2(130, 34)
+	tab_switcher.add_child(_settings_tab_settings_btn)
+
+	var tab_spacer = Control.new()
+	tab_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tab_switcher.add_child(tab_spacer)
+
+	var panel_style = StyleBoxFlat.new()
+	panel_style.bg_color = Color(0.08, 0.12, 0.2, 0.88)
+	panel_style.border_width_left = 1
+	panel_style.border_width_top = 1
+	panel_style.border_width_right = 1
+	panel_style.border_width_bottom = 1
+	panel_style.border_color = Color(0.45, 0.6, 0.79, 0.68)
+	panel_style.corner_radius_top_left = 6
+	panel_style.corner_radius_top_right = 6
+	panel_style.corner_radius_bottom_left = 6
+	panel_style.corner_radius_bottom_right = 6
+
+	_settings_controls_panel = PanelContainer.new()
+	_settings_controls_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_settings_controls_panel.add_theme_stylebox_override("panel", panel_style)
+	root.add_child(_settings_controls_panel)
+
+	_settings_options_panel = PanelContainer.new()
+	_settings_options_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_settings_options_panel.add_theme_stylebox_override("panel", panel_style)
+	root.add_child(_settings_options_panel)
+
+	var controls_margin = MarginContainer.new()
+	controls_margin.offset_left = 12
+	controls_margin.offset_top = 10
+	controls_margin.offset_right = -12
+	controls_margin.offset_bottom = -10
+	controls_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_settings_controls_panel.add_child(controls_margin)
+
+	var controls_content = VBoxContainer.new()
+	controls_content.add_theme_constant_override("separation", 8)
+	controls_margin.add_child(controls_content)
+
+	var controls_title = Label.new()
+	controls_title.text = "Control Scheme"
+	controls_title.add_theme_font_size_override("font_size", 17)
+	controls_content.add_child(controls_title)
+
+	var controls_info = RichTextLabel.new()
+	controls_info.fit_content = false
+	controls_info.scroll_active = false
+	controls_info.bbcode_enabled = true
+	controls_info.custom_minimum_size = Vector2(0, 130)
+	controls_info.text = "- WASD / Arrows: move camera\n- Mouse wheel: zoom\n- Right mouse hold + drag: pan map\n- Space: end turn\n- Right click: cancel action / close dialogs\n- C: developer quick conquer tool"
+	controls_content.add_child(controls_info)
+
+	controls_content.add_child(HSeparator.new())
+
+	var map_modes_title = Label.new()
+	map_modes_title.text = "Map Modes"
+	map_modes_title.add_theme_font_size_override("font_size", 16)
+	controls_content.add_child(map_modes_title)
+
+	var hotkeys_grid = GridContainer.new()
+	hotkeys_grid.columns = 2
+	hotkeys_grid.add_theme_constant_override("h_separation", 16)
+	hotkeys_grid.add_theme_constant_override("v_separation", 4)
+	controls_content.add_child(hotkeys_grid)
+
+	var mode_rows := [
+		"1 - Political", "2 - Population",
+		"3 - GDP", "4 - Ideology",
+		"5 - Recruitable Pop.", "6 - Relationships",
+		"7 - Terrain", "8 - Resources"
+	]
+	for row_text in mode_rows:
+		var row_label = Label.new()
+		row_label.text = row_text
+		hotkeys_grid.add_child(row_label)
+
+	var settings_margin = MarginContainer.new()
+	settings_margin.offset_left = 12
+	settings_margin.offset_top = 10
+	settings_margin.offset_right = -12
+	settings_margin.offset_bottom = -10
+	settings_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_settings_options_panel.add_child(settings_margin)
+
+	var settings_content = VBoxContainer.new()
+	settings_content.add_theme_constant_override("separation", 7)
+	settings_margin.add_child(settings_content)
+
+	var display_title = Label.new()
+	display_title.text = "Display"
+	display_title.add_theme_font_size_override("font_size", 16)
+	settings_content.add_child(display_title)
+
+	_settings_fullscreen_check = CheckBox.new()
+	_settings_fullscreen_check.text = "Fullscreen"
+	settings_content.add_child(_settings_fullscreen_check)
+
+	_settings_vsync_check = CheckBox.new()
+	_settings_vsync_check.text = "VSync"
+	settings_content.add_child(_settings_vsync_check)
+
+	settings_content.add_child(HSeparator.new())
+
+	var audio_title = Label.new()
+	audio_title.text = "Audio"
+	audio_title.add_theme_font_size_override("font_size", 16)
+	settings_content.add_child(audio_title)
+
+	var volume_label = Label.new()
+	volume_label.text = "Master volume"
+	settings_content.add_child(volume_label)
+
+	var volume_row = HBoxContainer.new()
+	volume_row.add_theme_constant_override("separation", 8)
+	settings_content.add_child(volume_row)
+
+	_settings_volume_slider = HSlider.new()
+	_settings_volume_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_settings_volume_slider.min_value = 0.0
+	_settings_volume_slider.max_value = 1.0
+	_settings_volume_slider.step = 0.01
+	_settings_volume_slider.value_changed.connect(_on_ingame_volume_changed)
+	volume_row.add_child(_settings_volume_slider)
+
+	_settings_volume_value = Label.new()
+	_settings_volume_value.custom_minimum_size = Vector2(64, 0)
+	_settings_volume_value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	volume_row.add_child(_settings_volume_value)
+
+	settings_content.add_child(HSeparator.new())
+
+	var controls_settings_title = Label.new()
+	controls_settings_title.text = "Controls"
+	controls_settings_title.add_theme_font_size_override("font_size", 16)
+	settings_content.add_child(controls_settings_title)
+
+	var camera_label = Label.new()
+	camera_label.text = "Camera move speed"
+	settings_content.add_child(camera_label)
+
+	var camera_row = HBoxContainer.new()
+	camera_row.add_theme_constant_override("separation", 8)
+	settings_content.add_child(camera_row)
+
+	_settings_camera_slider = HSlider.new()
+	_settings_camera_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_settings_camera_slider.min_value = 400.0
+	_settings_camera_slider.max_value = 2600.0
+	_settings_camera_slider.step = 25.0
+	_settings_camera_slider.value_changed.connect(_on_ingame_camera_speed_changed)
+	camera_row.add_child(_settings_camera_slider)
+
+	_settings_camera_value = Label.new()
+	_settings_camera_value.custom_minimum_size = Vector2(64, 0)
+	_settings_camera_value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	camera_row.add_child(_settings_camera_value)
+
+	var zoom_label = Label.new()
+	zoom_label.text = "Zoom speed"
+	settings_content.add_child(zoom_label)
+
+	var zoom_row = HBoxContainer.new()
+	zoom_row.add_theme_constant_override("separation", 8)
+	settings_content.add_child(zoom_row)
+
+	_settings_zoom_slider = HSlider.new()
+	_settings_zoom_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_settings_zoom_slider.min_value = 0.03
+	_settings_zoom_slider.max_value = 0.35
+	_settings_zoom_slider.step = 0.01
+	_settings_zoom_slider.value_changed.connect(_on_ingame_zoom_speed_changed)
+	zoom_row.add_child(_settings_zoom_slider)
+
+	_settings_zoom_value = Label.new()
+	_settings_zoom_value.custom_minimum_size = Vector2(64, 0)
+	_settings_zoom_value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	zoom_row.add_child(_settings_zoom_value)
+
+	_settings_invert_zoom_check = CheckBox.new()
+	_settings_invert_zoom_check.text = "Invert mouse wheel zoom"
+	settings_content.add_child(_settings_invert_zoom_check)
+
+	_settings_tab_controls_btn.pressed.connect(func(): _show_ingame_settings_tab(0))
+	_settings_tab_settings_btn.pressed.connect(func(): _show_ingame_settings_tab(1))
+	_show_ingame_settings_tab(1)
+
+	root.add_child(HSeparator.new())
+
+	var buttons = HBoxContainer.new()
+	buttons.add_theme_constant_override("separation", 8)
+	root.add_child(buttons)
+
+	var apply_btn = Button.new()
+	apply_btn.text = "Apply"
+	apply_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	apply_btn.pressed.connect(_on_ingame_settings_apply_pressed)
+	buttons.add_child(apply_btn)
+
+	var close_btn = Button.new()
+	close_btn.text = "Close"
+	close_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	close_btn.pressed.connect(func(): _settings_dialog.hide())
+	buttons.add_child(close_btn)
+
+	_settings_dialog.hide()
+
+func _show_ingame_settings_tab(tab_index: int) -> void:
+	if _settings_controls_panel == null or _settings_options_panel == null:
+		return
+
+	if tab_index == 0:
+		_settings_controls_panel.show()
+		_settings_options_panel.hide()
+		if _settings_tab_controls_btn:
+			_settings_tab_controls_btn.modulate = Color(1.0, 1.0, 1.0, 1.0)
+		if _settings_tab_settings_btn:
+			_settings_tab_settings_btn.modulate = Color(0.72, 0.8, 0.9, 1.0)
+	else:
+		_settings_controls_panel.hide()
+		_settings_options_panel.show()
+		if _settings_tab_controls_btn:
+			_settings_tab_controls_btn.modulate = Color(0.72, 0.8, 0.9, 1.0)
+		if _settings_tab_settings_btn:
+			_settings_tab_settings_btn.modulate = Color(1.0, 1.0, 1.0, 1.0)
+
+func _pozicuj_settings_dialog() -> void:
+	if _settings_dialog:
+		var vp = get_viewport().get_visible_rect().size
+		_settings_dialog.position = Vector2((vp.x - _settings_dialog.size.x) * 0.5, (vp.y - _settings_dialog.size.y) * 0.5)
 
 func _pozicuj_save_load_popupy() -> void:
 	if _save_dialog:
 		var vp = get_viewport().get_visible_rect().size
 		_save_dialog.position = Vector2((vp.x - _save_dialog.size.x) * 0.5, (vp.y - _save_dialog.size.y) * 0.5)
-	if _load_dialog:
-		var vp2 = get_viewport().get_visible_rect().size
-		_load_dialog.position = Vector2((vp2.x - _load_dialog.size.x) * 0.5, (vp2.y - _load_dialog.size.y) * 0.5)
+
+func _ziskej_map_kameru() -> Node:
+	var map_cam = get_tree().current_scene.find_child("Camera2D", true, false)
+	if map_cam != null and map_cam.has_method("_nacti_ovladani_ze_settings"):
+		return map_cam
+	return null
+
+func _nacti_settings_do_ingame_ui() -> void:
+	var cfg = ConfigFile.new()
+	if cfg.load(SETTINGS_FILE_PATH) != OK:
+		_settings_fullscreen_check.button_pressed = DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
+		_settings_vsync_check.button_pressed = DisplayServer.window_get_vsync_mode() != DisplayServer.VSYNC_DISABLED
+		_settings_volume_slider.value = 1.0
+		_settings_camera_slider.value = 1000.0
+		_settings_zoom_slider.value = 0.1
+		_settings_invert_zoom_check.button_pressed = false
+	else:
+		_settings_fullscreen_check.button_pressed = bool(cfg.get_value("display", "fullscreen", false))
+		_settings_vsync_check.button_pressed = bool(cfg.get_value("display", "vsync", true))
+		_settings_volume_slider.value = clamp(float(cfg.get_value("audio", "master_volume", 1.0)), 0.0, 1.0)
+		_settings_camera_slider.value = float(cfg.get_value("controls", "camera_speed", 1000.0))
+		_settings_zoom_slider.value = clamp(float(cfg.get_value("controls", "zoom_speed", 0.1)), 0.03, 0.35)
+		_settings_invert_zoom_check.button_pressed = bool(cfg.get_value("controls", "invert_zoom", false))
+
+	_on_ingame_volume_changed(_settings_volume_slider.value)
+	_on_ingame_camera_speed_changed(_settings_camera_slider.value)
+	_on_ingame_zoom_speed_changed(_settings_zoom_slider.value)
+
+func _uloz_a_aplikuj_ingame_settings() -> void:
+	var fullscreen = _settings_fullscreen_check.button_pressed
+	var vsync_enabled = _settings_vsync_check.button_pressed
+	var master_volume = float(_settings_volume_slider.value)
+	var camera_speed = float(_settings_camera_slider.value)
+	var zoom_speed = float(_settings_zoom_slider.value)
+	var invert_zoom = _settings_invert_zoom_check.button_pressed
+
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if fullscreen else DisplayServer.WINDOW_MODE_WINDOWED)
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if vsync_enabled else DisplayServer.VSYNC_DISABLED)
+
+	var master_bus_idx = AudioServer.get_bus_index("Master")
+	if master_bus_idx == -1:
+		master_bus_idx = 0
+	AudioServer.set_bus_volume_db(master_bus_idx, linear_to_db(clamp(master_volume, 0.0001, 1.0)))
+
+	var cfg = ConfigFile.new()
+	cfg.load(SETTINGS_FILE_PATH)
+	cfg.set_value("display", "fullscreen", fullscreen)
+	cfg.set_value("display", "vsync", vsync_enabled)
+	cfg.set_value("audio", "master_volume", master_volume)
+	cfg.set_value("controls", "camera_speed", camera_speed)
+	cfg.set_value("controls", "zoom_speed", zoom_speed)
+	cfg.set_value("controls", "invert_zoom", invert_zoom)
+	var save_err = cfg.save(SETTINGS_FILE_PATH)
+	if save_err != OK:
+		push_warning("Failed to save in-game settings. Error: %s" % str(save_err))
+
+	var map_cam = _ziskej_map_kameru()
+	if map_cam:
+		map_cam.speed = camera_speed
+		map_cam.zoom_speed = zoom_speed
+		map_cam.invert_zoom_wheel = invert_zoom
+
+func _on_ingame_volume_changed(value: float) -> void:
+	if _settings_volume_value:
+		_settings_volume_value.text = "%d%%" % int(round(value * 100.0))
+
+func _on_ingame_camera_speed_changed(value: float) -> void:
+	if _settings_camera_value:
+		_settings_camera_value.text = "%d" % int(round(value))
+
+func _on_ingame_zoom_speed_changed(value: float) -> void:
+	if _settings_zoom_value:
+		_settings_zoom_value.text = "%.2f" % value
+
+func _on_ingame_settings_apply_pressed() -> void:
+	_uloz_a_aplikuj_ingame_settings()
+	_settings_dialog.hide()
 
 func _vygeneruj_default_jmeno_save() -> String:
 	return "save_%s" % Time.get_datetime_string_from_system().replace("T", "_").replace(":", "-")
@@ -3329,10 +3694,11 @@ func _pridej_radek_load_slotu(slot_name: String, display_name: String) -> void:
 	_load_slot_row_buttons[slot_name] = select_btn
 
 	var delete_btn = Button.new()
-	delete_btn.text = "Delete"
+	delete_btn.text = "🗑"
 	delete_btn.custom_minimum_size = Vector2(34, 0)
 	delete_btn.focus_mode = Control.FOCUS_NONE
 	delete_btn.tooltip_text = "Delete save slot"
+	delete_btn.add_theme_font_size_override("font_size", 18)
 	delete_btn.pressed.connect(_on_load_slot_row_delete_pressed.bind(slot_name))
 	row.add_child(delete_btn)
 
@@ -3413,13 +3779,18 @@ func _on_pause_resume_pressed() -> void:
 
 func _on_pause_options_pressed() -> void:
 	_zavri_pause_menu()
-	await zobraz_systemove_hlaseni("Options", "Settings will be expanded in a future update.")
+	_nacti_settings_do_ingame_ui()
+	_show_ingame_settings_tab(1)
+	if _settings_dialog:
+		_settings_dialog.size = _settings_dialog.min_size
+		_settings_dialog.popup_centered(_settings_dialog.min_size)
 
 func _on_pause_surrender_pressed() -> void:
 	_zobraz_pause_confirm("surrender", "Surrender", "Do you really want to surrender as the current country?")
 
 func _on_pause_save_pressed() -> void:
 	_zavri_pause_menu()
+	_obnov_load_sloty()
 	if _save_name_input:
 		_save_name_input.text = _vygeneruj_default_jmeno_save()
 	if _save_dialog:
@@ -3430,16 +3801,23 @@ func _on_pause_save_pressed() -> void:
 			_save_name_input.select_all()
 
 func _on_pause_load_pressed() -> void:
-	_zavri_pause_menu()
-	_obnov_load_sloty()
-	if _load_dialog:
-		_pozicuj_save_load_popupy()
-		_load_dialog.popup()
+	_on_pause_save_pressed()
 
 func _on_pause_quit_pressed() -> void:
 	_zobraz_pause_confirm("quit", "Quit", "Do you really want to return to the main menu?")
 
+func _on_pause_confirm_visibility_changed() -> void:
+	if not _pause_confirm_dialog or _pause_confirm_dialog.visible:
+		return
+	var should_restore_pause := not _pause_confirm_accepted and (_pause_pending_action == "quit" or _pause_pending_action == "surrender")
+	_pause_pending_action = ""
+	_pause_confirm_accepted = false
+	if should_restore_pause and _pause_menu_panel:
+		_pozicuj_pause_menu()
+		_pause_menu_panel.call_deferred("show")
+
 func _on_pause_confirmed() -> void:
+	_pause_confirm_accepted = true
 	var action = _pause_pending_action
 	_pause_pending_action = ""
 	_zavri_pause_menu()
