@@ -148,12 +148,13 @@ const SAVEGAME_STATE_PATH := "user://savegame.dat"
 const SAVE_SLOTS_DIR := "user://saves"
 const SAVE_SLOT_EXT := ".dat"
 const MAX_LOG_ZPRAV := 500
-const NEXT_TURN_INPUT_COOLDOWN_MS := 250
-const TURN_PROFILE_ENABLED := true
+const NEXT_TURN_INPUT_COOLDOWN_MS := 0
+const TURN_PROFILE_ENABLED := false
 const TURN_PROFILE_WARN_MS := 1200
-const AI_PROFILE_ENABLED := true
+const AI_PROFILE_ENABLED := false
 const AI_PROFILE_WARN_MS := 500
 const TURN_STUCK_WATCHDOG_MS := 15000
+const TURN_LOG_ENABLED := false
 const ARM_LAB_GRID_W := 3
 const ARM_LAB_GRID_H := 3
 const ARM_LAB_GRID_MAX_W := 6
@@ -254,6 +255,7 @@ const DIP_REQUEST_PRIORITY_MILITARY_ACCESS := 4
 var zpracovava_se_tah: bool = false
 var _last_end_turn_request_ms: int = -1000000
 var _turn_watchdog_token: int = 0
+var _queued_end_turn_requests: int = 0
 var _presun_hlavniho_mesta_posledni_kolo: Dictionary = {}
 var _core_state_cache: Dictionary = {}
 var _vztahy_statu: Dictionary = {}
@@ -657,6 +659,19 @@ func _zobraz_cekajici_popupy_aktivniho_hrace() -> void:
 
 	var kopie_fronty = fronta.duplicate(true)
 	fronta.clear()
+	if kopie_fronty.size() > 1:
+		var bloky: Array = []
+		for item_any in kopie_fronty:
+			var item = item_any as Dictionary
+			var t = str(item.get("title", "Report")).strip_edges()
+			var msg = str(item.get("text", "")).strip_edges()
+			if msg == "":
+				continue
+			bloky.append("[%s]\n%s" % [t if t != "" else "Report", msg])
+		if not bloky.is_empty():
+			await map_loader._ukaz_bitevni_popup("Reports", "\n\n".join(bloky))
+		return
+
 	for item in kopie_fronty:
 		var t = str(item.get("title", "Report"))
 		var msg = str(item.get("text", ""))
@@ -5940,7 +5955,8 @@ func spocitej_prijem(all_provinces: Dictionary, emit_ui_signal: bool = true):
 		hrac_prijmy[hrac_stat] = celkovy_prijem
 		hrac_kasy[hrac_stat] = statni_kasa
 	
-	print("HDP Prijem: %.2f | Vydaje Armada: %.2f | Cisty zisk: %.2f" % [prijem_z_hdp, naklady_na_vojaky, celkovy_prijem])
+	if TURN_LOG_ENABLED:
+		print("HDP Prijem: %.2f | Vydaje Armada: %.2f | Cisty zisk: %.2f" % [prijem_z_hdp, naklady_na_vojaky, celkovy_prijem])
 	if emit_ui_signal:
 		kolo_zmeneno.emit()
 
@@ -5983,11 +5999,30 @@ func muze_ukoncit_kolo() -> bool:
 	return elapsed >= NEXT_TURN_INPUT_COOLDOWN_MS
 
 func pozaduj_ukonceni_kola() -> bool:
+	if zpracovava_se_tah:
+		_queued_end_turn_requests += 1
+		return true
 	if not muze_ukoncit_kolo():
 		return false
 	_last_end_turn_request_ms = Time.get_ticks_msec()
 	ukonci_kolo()
 	return true
+
+func _spust_dalsi_pozadovane_kolo() -> void:
+	if zpracovava_se_tah:
+		return
+	if _queued_end_turn_requests <= 0:
+		return
+	_queued_end_turn_requests -= 1
+	_last_end_turn_request_ms = Time.get_ticks_msec()
+	ukonci_kolo()
+
+func _dokoncit_ukonceni_kola(turn_start_ms: int, turn_phases: Dictionary) -> void:
+	_zrus_turn_watchdog()
+	_nastav_stav_zpracovani_tahu(false)
+	_log_turn_profile(Time.get_ticks_msec() - turn_start_ms, turn_phases)
+	if _queued_end_turn_requests > 0:
+		call_deferred("_spust_dalsi_pozadovane_kolo")
 
 func _log_turn_profile(total_ms: int, phases: Dictionary) -> void:
 	if not TURN_PROFILE_ENABLED:
@@ -6064,9 +6099,7 @@ func ukonci_kolo():
 		phase_start_ms = Time.get_ticks_msec()
 		kolo_zmeneno.emit()
 		turn_phases["ui"] = Time.get_ticks_msec() - phase_start_ms
-		_zrus_turn_watchdog()
-		_nastav_stav_zpracovani_tahu(false)
-		_log_turn_profile(Time.get_ticks_msec() - turn_start_ms, turn_phases)
+		_dokoncit_ukonceni_kola(turn_start_ms, turn_phases)
 		return
 
 	var map_loader = _get_map_loader()
@@ -6166,10 +6199,8 @@ func ukonci_kolo():
 				continue
 			_pridej_popup_hraci(str(owner_tag), "Report", "\n".join(lines))
 
-	print("--- TURN %d ---" % aktualni_kolo)
-	
-	if map_loader and map_loader.has_method("aktualizuj_ikony_armad"):
-		map_loader.aktualizuj_ikony_armad()
+	if TURN_LOG_ENABLED:
+		print("--- TURN %d ---" % aktualni_kolo)
 
 	if lokalni_hraci_staty.size() > 1:
 		_prepni_na_hrace(0)
@@ -6180,9 +6211,7 @@ func ukonci_kolo():
 	phase_start_ms = Time.get_ticks_msec()
 	kolo_zmeneno.emit()
 	turn_phases["ui"] = int(turn_phases["ui"]) + (Time.get_ticks_msec() - phase_start_ms)
-	_zrus_turn_watchdog()
-	_nastav_stav_zpracovani_tahu(false)
-	_log_turn_profile(Time.get_ticks_msec() - turn_start_ms, turn_phases)
+	_dokoncit_ukonceni_kola(turn_start_ms, turn_phases)
 
 func _aplikuj_bonus(prov_id: int, typ: int):
 	if not map_data.has(prov_id): return
@@ -6212,7 +6241,7 @@ func _vyres_bankrot(tag: String):
 	if celkem_dezertovalo > 0:
 		if je_lidsky_stat(tag):
 			_pridej_popup_hraci(tag, "STATE BANKRUPTCY", "Out of money. %d soldiers deserted." % celkem_dezertovalo)
-		else:
+		elif TURN_LOG_ENABLED:
 			print("AI BANKRUPTCY (%s): %d soldiers deserted." % [tag, celkem_dezertovalo])
 
 # Player actions
@@ -6241,7 +6270,8 @@ func hrac_verbuje(provincie_id: int, pocet: int) -> bool:
 # AI logic
 
 func zpracuj_tah_ai():
-	print("--- AI THINKING START ---")
+	if TURN_LOG_ENABLED:
+		print("--- AI THINKING START ---")
 	var ai_start_ms = Time.get_ticks_msec()
 	var ai_phase_ms = ai_start_ms
 	var ai_phases := {
@@ -6380,7 +6410,8 @@ func zpracuj_tah_ai():
 	ai_phases["cleanup"] = Time.get_ticks_msec() - ai_phase_ms
 	_log_ai_profile(Time.get_ticks_msec() - ai_start_ms, ai_phases)
 				
-	print("--- AI THINKING END ---")
+	if TURN_LOG_ENABLED:
+		print("--- AI THINKING END ---")
 
 func _vyber_ai_kandidata_pro_presun_hlavniho_mesta(state_tag: String, current_capital_id: int) -> int:
 	var best_id := -1
@@ -6447,7 +6478,8 @@ func _ai_zvaz_presun_hlavniho_mesta(state_tag: String) -> void:
 
 	var result = presun_hlavni_mesto(state, candidate_id, true, false)
 	if bool(result.get("ok", false)):
-		print("[AI] %s moved the capital to province %d for %.2f bn USD." % [state, candidate_id, cost])
+		if TURN_LOG_ENABLED:
+			print("[AI] %s moved the capital to province %d for %.2f bn USD." % [state, candidate_id, cost])
 
 func _naplanuj_ai_presuny(map_loader):
 	var ai_staty = _ziskej_ai_staty()

@@ -22,8 +22,13 @@ func _process(delta):
 	if Input.is_action_pressed("ui_left") or Input.is_key_pressed(KEY_A): input_dir.x -= 1
 	if Input.is_action_pressed("ui_down") or Input.is_key_pressed(KEY_S): input_dir.y += 1
 	if Input.is_action_pressed("ui_up") or Input.is_key_pressed(KEY_W): input_dir.y -= 1
-	
-	position += input_dir.normalized() * speed * delta * (1.0 / zoom.x)
+	if input_dir == Vector2.ZERO:
+		return
+
+	if input_dir.x != 0.0 and input_dir.y != 0.0:
+		input_dir = input_dir.normalized()
+
+	position += input_dir * speed * delta * (1.0 / zoom.x)
 
 func _input(event):
 	# Handle mouse input for zooming and panning
@@ -55,10 +60,18 @@ func _input(event):
 func _is_hovering_any_ui_blocking_camera() -> bool:
 	var hovered := get_viewport().gui_get_hovered_control()
 	while hovered != null:
-		# Any interactive UI under cursor should keep wheel/right-drag for itself.
-		if hovered.mouse_filter != Control.MOUSE_FILTER_IGNORE:
+		# Block camera only for HUD/menus in CanvasLayer, not map labels placed in world.
+		if hovered.mouse_filter != Control.MOUSE_FILTER_IGNORE and _is_canvas_layer_ui_control(hovered):
 			return true
 		hovered = hovered.get_parent() as Control
+	return false
+
+func _is_canvas_layer_ui_control(ctrl: Control) -> bool:
+	var node: Node = ctrl
+	while node != null:
+		if node is CanvasLayer:
+			return true
+		node = node.get_parent()
 	return false
 
 func _zoom_camera(factor):

@@ -227,6 +227,7 @@ var _turn_loading_label: Label
 var _turn_loading_anim_time: float = 0.0
 var _turn_loading_anim_step: int = 0
 var _turn_loading_active: bool = false
+var _country_overview_stats_cache: Dictionary = {}
 
 const POPUP_TOP_MARGIN := 6
 const POPUP_GAP := 6
@@ -2343,11 +2344,44 @@ func _obnov_otevreny_prehled_statu() -> void:
 	var provinces = _ziskej_vsechny_provincie_pro_prehled()
 	if provinces.is_empty():
 		return
-	for p_id in provinces:
-		var d = provinces[p_id] as Dictionary
-		if str(d.get("owner", "")).strip_edges().to_upper() == current_viewed_tag:
-			zobraz_prehled_statu(d, provinces)
+	if _current_viewed_province_id >= 0 and provinces.has(_current_viewed_province_id):
+		var current_data = provinces[_current_viewed_province_id] as Dictionary
+		if str(current_data.get("owner", "")).strip_edges().to_upper() == current_viewed_tag:
+			zobraz_prehled_statu(current_data, provinces)
 			return
+
+	var stats = _ziskej_souhrn_statu(current_viewed_tag, provinces)
+	var representative_province_id = int(stats.get("representative_province_id", -1))
+	if representative_province_id >= 0 and provinces.has(representative_province_id):
+		zobraz_prehled_statu(provinces[representative_province_id], provinces)
+
+func _ziskej_souhrn_statu(owner_tag: String, all_provinces: Dictionary) -> Dictionary:
+	var clean_tag = owner_tag.strip_edges().to_upper()
+	if clean_tag == "":
+		return {}
+	if _country_overview_stats_cache.has(clean_tag):
+		return _country_overview_stats_cache[clean_tag]
+
+	var stats := {
+		"population": 0,
+		"gdp": 0.0,
+		"recruits": 0,
+		"soldiers": 0,
+		"representative_province_id": -1
+	}
+	for p_id in all_provinces:
+		var province = all_provinces[p_id] as Dictionary
+		if str(province.get("owner", "")).strip_edges().to_upper() != clean_tag:
+			continue
+		stats["population"] = int(stats.get("population", 0)) + int(province.get("population", 0))
+		stats["gdp"] = float(stats.get("gdp", 0.0)) + float(province.get("gdp", 0.0))
+		stats["recruits"] = int(stats.get("recruits", 0)) + int(province.get("recruitable_population", 0))
+		stats["soldiers"] = int(stats.get("soldiers", 0)) + int(province.get("soldiers", 0))
+		if int(stats.get("representative_province_id", -1)) == -1:
+			stats["representative_province_id"] = int(p_id)
+
+	_country_overview_stats_cache[clean_tag] = stats
+	return stats
 
 func _ziskej_dostupne_ideologie_pro_stat(tag: String) -> Array:
 	var out: Array = []
@@ -5774,20 +5808,12 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 	if country_flag:
 		country_flag.texture = _resolve_flag_texture(owner_tag, ideologie)
 	# --------------------
-		
-	var total_pop = 0
-	var total_gdp = 0.0
-	var total_recruits = 0
-	var total_soldiers = 0
-	
-	# Calculate total country stats
-	for p_id in all_provinces:
-		var p = all_provinces[p_id]
-		if str(p.get("owner", "")).strip_edges().to_upper() == owner_tag:
-			total_pop += int(p.get("population", 0))
-			total_gdp += float(p.get("gdp", 0.0))
-			total_recruits += int(p.get("recruitable_population", 0))
-			total_soldiers += int(p.get("soldiers", 0))
+
+	var stats = _ziskej_souhrn_statu(owner_tag, all_provinces)
+	var total_pop = int(stats.get("population", 0))
+	var total_gdp = float(stats.get("gdp", 0.0))
+	var total_recruits = int(stats.get("recruits", 0))
+	var total_soldiers = int(stats.get("soldiers", 0))
 			
 	name_label.text = plne_jmeno
 	ideo_label.text = "Regime: " + ideologie.capitalize()
@@ -6118,6 +6144,7 @@ func _on_alliance_button_pressed():
 	_otevri_alliance_dialog(current_viewed_tag)
 
 func _on_kolo_zmeneno():
+	_country_overview_stats_cache.clear()
 	_aktualizuj_popup_diplomatickych_zadosti()
 	_aktualizuj_panel_zprav()
 	_aktualizuj_hlaseni_mirove_konference()

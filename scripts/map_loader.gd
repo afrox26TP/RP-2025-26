@@ -50,6 +50,10 @@ var aktualni_mapovy_mod: String = "political"
 var _port_icons_dirty: bool = true
 var _naval_reachable_cache_from: int = -1
 var _naval_reachable_cache: Dictionary = {}
+var _coastal_province_cache: Dictionary = {}
+var _sea_step_neighbors_cache: Dictionary = {}
+var _land_step_neighbors_cache: Dictionary = {}
+var _land_plus_sea_step_neighbors_cache: Dictionary = {}
 var _preview_path_key: String = ""
 var _hromadny_vyber_overlay_key: String = ""
 var _loading_layer: CanvasLayer = null
@@ -1140,6 +1144,8 @@ func load_provinces():
 
 	_sea_position_cache.clear()
 	_province_pixel_center_cache.clear()
+	_invalidate_movement_topology_cache()
+	_rebuild_movement_topology_cache()
 	_invalidate_naval_reachability_cache()
 
 func generuj_nazvy_provincii():
@@ -1646,7 +1652,6 @@ func aktualizuj_ikony_armad():
 	if _port_icons_dirty:
 		aktualizuj_ikony_pristavu()
 	aktualizuj_vlajky_hlavnich_mest()
-	_aktualizuj_aktivni_mapovy_mod()
 	_aktualizuj_indikatory_kapitulace()
 
 	var selected_prov_id = -1
@@ -1666,6 +1671,13 @@ func _je_more_provincie(prov_id: int) -> bool:
 	return owner_tag == "SEA" or typ == "sea"
 
 func _je_pobrezni_provincie(prov_id: int) -> bool:
+	if _coastal_province_cache.has(prov_id):
+		return bool(_coastal_province_cache[prov_id])
+	var result = _spocitej_je_pobrezni_provincie(prov_id)
+	_coastal_province_cache[prov_id] = result
+	return result
+
+func _spocitej_je_pobrezni_provincie(prov_id: int) -> bool:
 	if not provinces.has(prov_id):
 		return false
 	if _je_more_provincie(prov_id):
@@ -1674,6 +1686,47 @@ func _je_pobrezni_provincie(prov_id: int) -> bool:
 		if _je_more_provincie(int(n_id)):
 			return true
 	return false
+
+func _invalidate_movement_topology_cache() -> void:
+	_coastal_province_cache.clear()
+	_sea_step_neighbors_cache.clear()
+	_land_step_neighbors_cache.clear()
+	_land_plus_sea_step_neighbors_cache.clear()
+
+func _rebuild_movement_topology_cache() -> void:
+	_invalidate_movement_topology_cache()
+
+	for p_id_any in provinces.keys():
+		var p_id = int(p_id_any)
+		if not provinces.has(p_id):
+			continue
+
+		var neighbors = provinces[p_id].get("neighbors", [])
+		if _je_more_provincie(p_id):
+			var sea_steps: Array = []
+			for n_id_any in neighbors:
+				var n_id = int(n_id_any)
+				if not provinces.has(n_id):
+					continue
+				if _je_more_provincie(n_id) or _je_pobrezni_provincie(n_id):
+					sea_steps.append(n_id)
+			_sea_step_neighbors_cache[p_id] = sea_steps
+			continue
+
+		var land_steps: Array = []
+		var land_plus_sea_steps: Array = []
+		for n_id_any in neighbors:
+			var n_id = int(n_id_any)
+			if not provinces.has(n_id):
+				continue
+			if _je_more_provincie(n_id):
+				land_plus_sea_steps.append(n_id)
+			else:
+				land_steps.append(n_id)
+				land_plus_sea_steps.append(n_id)
+
+		_land_step_neighbors_cache[p_id] = land_steps
+		_land_plus_sea_step_neighbors_cache[p_id] = land_plus_sea_steps
 
 func _invalidate_naval_reachability_cache() -> void:
 	_naval_reachable_cache_from = -1
@@ -1844,29 +1897,17 @@ func _je_pruchozi_mezikrok_presunu(prov_id: int, owner_tag: String) -> bool:
 	return land_owner == owner_tag
 
 func _ziskej_krokove_sousedy_presunu(from_id: int) -> Array:
-	var sousedi: Array = []
 	if not provinces.has(from_id):
-		return sousedi
+		return []
 
 	var from_is_sea = _je_more_provincie(from_id)
 	if from_is_sea:
-		for n_id in provinces[from_id].get("neighbors", []):
-			var nid = int(n_id)
-			if _je_more_provincie(nid):
-				sousedi.append(nid)
-			elif _je_pobrezni_provincie(nid):
-				sousedi.append(nid)
-	else:
-		var can_embark = _je_pobrezni_provincie(from_id) and GameManager.provincie_ma_pristav(from_id)
-		for n_id in provinces[from_id].get("neighbors", []):
-			var nid = int(n_id)
-			if _je_more_provincie(nid):
-				if can_embark:
-					sousedi.append(nid)
-			else:
-				sousedi.append(nid)
+		return _sea_step_neighbors_cache.get(from_id, [])
 
-	return sousedi
+	var can_embark = _je_pobrezni_provincie(from_id) and GameManager.provincie_ma_pristav(from_id)
+	if can_embark:
+		return _land_plus_sea_step_neighbors_cache.get(from_id, [])
+	return _land_step_neighbors_cache.get(from_id, [])
 
 func najdi_nejrychlejsi_cestu_presunu(from_id: int, to_id: int) -> Array:
 	if from_id == to_id:
@@ -2751,17 +2792,28 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int, vykreslit_
 
 # Process all movements and await player confirmation for their battles
 func zpracuj_tah_armad():
-	var puvodni_tahy = cekajici_presuny.duplicate(true)
-	cekajici_presuny.clear()
+	if cekajici_presuny.is_empty():
+		_vymaz_indikaci_cekajicich_presunu()
+		_minimalni_ai_tahy.clear()
+		obsazene_pozice_presunu.clear()
+		trasy_lane_counter.clear()
+		return
+
+	var puvodni_tahy = cekajici_presuny
+	cekajici_presuny = []
 	var tahy_k_zpracovani: Array = []
 	var pokracujici_presuny: Array = []
+	var profil_statu_cache: Dictionary = {}
 
 	for raw_move in puvodni_tahy:
-		var move = raw_move.duplicate(true)
-		var path: Array = move.get("path", [])
-		var from_id = int(move.get("from", -1))
-		var to_id = int(move.get("to", -1))
-		var path_index = int(move.get("path_index", 0))
+		var move_any = raw_move as Dictionary
+		if move_any == null:
+			continue
+
+		var path: Array = (move_any.get("path", []) as Array).duplicate()
+		var from_id = int(move_any.get("from", -1))
+		var to_id = int(move_any.get("to", -1))
+		var path_index = int(move_any.get("path_index", 0))
 
 		if path.size() >= 2:
 			if path_index < 0:
@@ -2771,9 +2823,15 @@ func zpracuj_tah_armad():
 			from_id = int(path[path_index])
 			to_id = int(path[path_index + 1])
 
-		move["from"] = from_id
-		move["to"] = to_id
-		move["path_index"] = path_index
+		var move := {
+			"from": from_id,
+			"to": to_id,
+			"path": path,
+			"path_index": path_index,
+			"deduct_on_resolve": bool(move_any.get("deduct_on_resolve", false)),
+			"amount": int(move_any.get("amount", 0)),
+			"owner": str(move_any.get("owner", "")).strip_edges().to_upper()
+		}
 		tahy_k_zpracovani.append(move)
 
 	# Auto-continued path orders are deducted only when their next turn resolves.
@@ -2884,12 +2942,13 @@ func zpracuj_tah_armad():
 	
 	# Only process surviving attacks against provinces
 	for move in tahy_k_zpracovani:
-		if move["amount"] <= 0: continue # Skip destroyed armies
+		if int(move.get("amount", 0)) <= 0:
+			continue # Skip destroyed armies
 		
-		var _from_id = move["from"]
-		var to_id = move["to"]
-		var utocnici = move["amount"]
-		var attacker_tag = move["owner"]
+		var _from_id = int(move.get("from", -1))
+		var to_id = int(move.get("to", -1))
+		var utocnici = int(move.get("amount", 0))
+		var attacker_tag = str(move.get("owner", "")).strip_edges().to_upper()
 		var path: Array = move.get("path", [])
 		var path_index = int(move.get("path_index", 0))
 		var ma_dalsi_krok = (path.size() >= 2 and (path_index + 1) < (path.size() - 1))
@@ -2998,7 +3057,10 @@ func zpracuj_tah_armad():
 			# Update properties for the conquered province
 			provinces[to_id]["owner"] = attacker_tag
 			# core_owner remains unchanged so occupied territory can be distinguished from core territory.
-			var profil_utocnika = _ziskej_profil_statu(attacker_tag)
+			var profil_utocnika = profil_statu_cache.get(attacker_tag, null)
+			if profil_utocnika == null:
+				profil_utocnika = _ziskej_profil_statu(attacker_tag)
+				profil_statu_cache[attacker_tag] = profil_utocnika
 			provinces[to_id]["country_name"] = str(profil_utocnika.get("country_name", attacker_tag))
 			provinces[to_id]["ideology"] = str(profil_utocnika.get("ideology", ""))
 			provinces[to_id]["army_owner"] = attacker_tag
@@ -3400,6 +3462,7 @@ func _zpracuj_odlozene_kapitulace(celkovy_report: String) -> String:
 			var conf_result = GameManager.uzavri_mir_a_zahaj_konferenci(winner_tag, target_owner, "capitulation")
 			if bool(conf_result.get("ok", false)):
 				provinces = GameManager.map_data
+				_rebuild_movement_topology_cache()
 				if GameManager.je_lidsky_stat(winner_tag) or GameManager.je_lidsky_stat(target_owner):
 					celkovy_report += "Capitulation: %s held the capital of %s. Peace conference will determine war terms.\n\n" % [winner_tag, target_owner]
 				continue
