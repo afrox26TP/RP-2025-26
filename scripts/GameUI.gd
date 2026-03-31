@@ -1,6 +1,6 @@
 extends CanvasLayer
 
-const TooltipUtils = preload("res://scripts/TooltipUtils.gd")
+const TooltipUtilsScript = preload("res://scripts/TooltipUtils.gd")
 
 class ArmyOfferCard:
 	extends PanelContainer
@@ -566,7 +566,7 @@ func _nastav_tooltipy_ui() -> void:
 	system_message_title.tooltip_text = "System message title."
 	system_message_text.tooltip_text = "Detailed system message text."
 	system_message_ok_btn.tooltip_text = "Confirm and close message."
-	TooltipUtils.apply_default_tooltips(self)
+	TooltipUtilsScript.apply_default_tooltips(self)
 
 func _on_popup_flag_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
@@ -815,8 +815,8 @@ func _vytvor_panel_vazalu() -> void:
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
 
-	var help_btn = TooltipUtils.create_help_button("Set tribute and click Apply %.")
-	help_btn.pressed.connect(func(): TooltipUtils.show_help_dropdown(self, help_btn, "Set tribute and click Apply %."))
+	var help_btn = TooltipUtilsScript.create_help_button("Set tribute and click Apply %.")
+	help_btn.pressed.connect(func(): TooltipUtilsScript.show_help_dropdown(self, help_btn, "Set tribute and click Apply %."))
 	header.add_child(help_btn)
 
 	var close_top_btn = Button.new()
@@ -1487,7 +1487,6 @@ func _aktualizuj_vyzkum_dialog(state_tag: String) -> void:
 				cell_texts[yy * _army_research_view_w + xx] = short
 
 	if _army_research_grid:
-		var target_count = _army_research_view_w * _army_research_view_h
 		for child in _army_research_grid.get_children():
 			child.queue_free()
 		_army_research_grid_cells.clear()
@@ -1600,7 +1599,7 @@ func _aktualizuj_vyzkum_dialog(state_tag: String) -> void:
 			card.modulate = Color(1, 1, 1, 0.65)
 		card.tooltip_text = "Buying works only via drag and drop into the grid."
 
-func _vytvor_army_drag_preview(w: int, h: int, level: int = 1) -> Control:
+func _vytvor_army_drag_preview(w: int, h: int, _level: int = 1) -> Control:
 	var iw = max(1, w)
 	var ih = max(1, h)
 	var cell_w := 44.0
@@ -1784,9 +1783,9 @@ func _army_grid_cell_can_drop(cell_index: int, data) -> bool:
 		var grid_h = max(1, int(_army_research_last_info.get("grid_h", _army_research_grid_h)))
 		if x < 0 or y < 0 or x + w > grid_w or y + h > grid_h:
 			return false
-		var target_item = _army_grid_item_at_cell(cell_index)
-		if not target_item.is_empty() and str(target_item.get("offer_uid", "")) != item_uid:
-			return _army_items_mozno_sloucit(moving, target_item)
+		var move_target_item = _army_grid_item_at_cell(cell_index)
+		if not move_target_item.is_empty() and str(move_target_item.get("offer_uid", "")) != item_uid:
+			return _army_items_mozno_sloucit(moving, move_target_item)
 		var unlocked = _army_unlocked_dict()
 		var occupied: Dictionary = {}
 		for item_any in grid_items:
@@ -2919,8 +2918,8 @@ func _vytvor_darovaci_dialog() -> void:
 	title.add_theme_font_size_override("font_size", 20)
 	title_row.add_child(title)
 
-	var gift_help_btn = TooltipUtils.create_help_button("Amount in M USD")
-	gift_help_btn.pressed.connect(func(): TooltipUtils.show_help_dropdown(self, gift_help_btn, "Amount in M USD"))
+	var gift_help_btn = TooltipUtilsScript.create_help_button("Amount in M USD")
+	gift_help_btn.pressed.connect(func(): TooltipUtilsScript.show_help_dropdown(self, gift_help_btn, "Amount in M USD"))
 	title_row.add_child(gift_help_btn)
 
 	var title_right_spacer = Control.new()
@@ -3308,9 +3307,14 @@ func _pridej_alliance_kartu(alliance: Dictionary, target_tag: String, view_mode:
 				var needed = float(cond.get("needed", 0))
 				var met = bool(cond.get("met", false))
 				var both_human = bool(cond.get("both_human", false))
+				var forced_by_overlord = bool(cond.get("forced_by_overlord", false))
+				var overlord_name = _ziskej_jmeno_statu_podle_tagu(str(cond.get("overlord", "")))
 				var at_war = bool(cond.get("at_war", false))
 
-				if both_human:
+				if forced_by_overlord:
+					cond_label.text = "  %s: Forced (vassal of %s)" % [member_name, overlord_name]
+					cond_label.add_theme_color_override("font_color", Color(0.5, 0.9, 0.5))
+				elif both_human:
 					cond_label.text = "  %s: Auto (both players)" % member_name
 					cond_label.add_theme_color_override("font_color", Color(0.5, 0.9, 0.5))
 				elif at_war:
@@ -3413,11 +3417,32 @@ func _on_alliance_create_confirm() -> void:
 func _on_alliance_invite_pressed(alliance_id: String, target_tag: String) -> void:
 	if not GameManager.has_method("pridej_clena_do_aliance"):
 		return
-	var target_is_human = GameManager.has_method("je_lidsky_stat") and bool(GameManager.je_lidsky_stat(target_tag))
-	var ignoruj = target_is_human
-	var result = GameManager.pridej_clena_do_aliance(alliance_id, target_tag, ignoruj)
-	if not bool(result.get("ok", false)):
-		zobraz_systemove_hlaseni("Alliance", str(result.get("reason", "Failed to add member.")))
+	var target_clean = str(target_tag).strip_edges().to_upper()
+	var target_is_human = GameManager.has_method("je_lidsky_stat") and bool(GameManager.je_lidsky_stat(target_clean))
+
+	var forced_by_overlord_member = false
+	if GameManager.has_method("ziskej_alianci_podle_id") and GameManager.has_method("ziskej_overlorda_statu"):
+		var grp = GameManager.ziskej_alianci_podle_id(alliance_id) as Dictionary
+		var members = grp.get("members", []) as Array
+		var target_overlord = str(GameManager.ziskej_overlorda_statu(target_clean)).strip_edges().to_upper()
+		forced_by_overlord_member = (target_overlord != "" and members.has(target_overlord))
+
+	if target_is_human and not forced_by_overlord_member:
+		if not GameManager.has_method("odeslat_aliancni_zadost") or not GameManager.has_method("ziskej_alianci_podle_id"):
+			zobraz_systemove_hlaseni("Alliance", "Cannot send alliance request in current game state.")
+			return
+		var grp_info = GameManager.ziskej_alianci_podle_id(alliance_id) as Dictionary
+		var lvl = int(grp_info.get("level", 1))
+		var sent = bool(GameManager.odeslat_aliancni_zadost(GameManager.hrac_stat, target_clean, lvl, true))
+		if not sent:
+			zobraz_systemove_hlaseni("Alliance", "Alliance request could not be sent.")
+		else:
+			zobraz_systemove_hlaseni("Alliance", "%s received an alliance request and can accept or decline it." % _ziskej_jmeno_statu_podle_tagu(target_clean))
+	else:
+		var ignoruj = target_is_human
+		var result = GameManager.pridej_clena_do_aliance(alliance_id, target_clean, ignoruj)
+		if not bool(result.get("ok", false)):
+			zobraz_systemove_hlaseni("Alliance", str(result.get("reason", "Failed to add member.")))
 	_obnov_alliance_dialog_obsah(_alliance_dialog_target_tag)
 	_aktualizuj_aliance_ui(_alliance_dialog_target_tag)
 	_aktualizuj_diplomacii_tlacitka(_alliance_dialog_target_tag)

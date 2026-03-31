@@ -25,20 +25,22 @@ func _process(delta):
 	
 	position += input_dir.normalized() * speed * delta * (1.0 / zoom.x)
 
-func _unhandled_input(event):
+func _input(event):
 	# Handle mouse input for zooming and panning
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			if not _is_hovering_scrollable_ui():
+			if not _is_hovering_any_ui_blocking_camera():
 				var factor_up = 1.0 - zoom_speed if invert_zoom_wheel else 1.0 + zoom_speed
 				_zoom_camera(factor_up)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			if not _is_hovering_scrollable_ui():
+			if not _is_hovering_any_ui_blocking_camera():
 				var factor_down = 1.0 + zoom_speed if invert_zoom_wheel else 1.0 - zoom_speed
 				_zoom_camera(factor_down)
 			
 		if event.button_index == MOUSE_BUTTON_RIGHT:
 			if event.pressed:
+				if _is_hovering_any_ui_blocking_camera():
+					return
 				dragging = true
 				drag_start = get_viewport().get_mouse_position()
 			else:
@@ -50,11 +52,11 @@ func _unhandled_input(event):
 		position += diff
 		drag_start = drag_current
 
-func _is_hovering_scrollable_ui() -> bool:
+func _is_hovering_any_ui_blocking_camera() -> bool:
 	var hovered := get_viewport().gui_get_hovered_control()
 	while hovered != null:
-		# Scroll containers should keep mouse wheel for their own content.
-		if hovered is ScrollContainer:
+		# Any interactive UI under cursor should keep wheel/right-drag for itself.
+		if hovered.mouse_filter != Control.MOUSE_FILTER_IGNORE:
 			return true
 		hovered = hovered.get_parent() as Control
 	return false

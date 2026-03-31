@@ -18,8 +18,7 @@ func load_alliances():
 		print("ERROR: Cannot load alliances from ", file_path)
 		return
 	
-	var header_line = file.get_line()
-	var header = header_line.split(";")
+	file.get_line()
 	
 	while not file.eof_reached():
 		var line = file.get_line()
@@ -57,7 +56,7 @@ func load_country_alliance_membership():
 		print("ERROR: Cannot load country alliance membership from ", file_path)
 		return
 	
-	var header_line = file.get_line()  # Skip header
+	file.get_line()  # Skip header
 	
 	while not file.eof_reached():
 		var line = file.get_line()

@@ -217,7 +217,7 @@ func _ziskej_text_data_pro_kolo(kolo: int) -> String:
 	var offset_mesicu = maxi(0, kolo - 1)
 	var month_index = (_calendar_start_month - 1) + offset_mesicu
 	var month = int(month_index % 12) + 1
-	var year = _calendar_start_year + int(month_index / 12)
+	var year = _calendar_start_year + int(floor(float(month_index) / 12.0))
 	return "Date: %02d.%02d.%04d" % [_calendar_start_day, month, year]
 
 func _ziskej_jmeno_statu_pro_frontu(tag: String) -> String:
@@ -248,11 +248,11 @@ func _sestav_text_fronty_tahu() -> String:
 	for i in range(hraci.size()):
 		var idx = (aktivni_idx + i) % hraci.size()
 		var tag = str(hraci[idx]).strip_edges().to_upper()
-		var name = _ziskej_jmeno_statu_pro_frontu(tag)
+		var state_name = _ziskej_jmeno_statu_pro_frontu(tag)
 		if i == 0:
-			casti.append("[NOW] %s" % name)
+			casti.append("[NOW] %s" % state_name)
 		else:
-			casti.append(name)
+			casti.append(state_name)
 	return "Queue: %s" % " -> ".join(casti)
 
 func _ziskej_texturu_vlajky_fronty(tag: String):

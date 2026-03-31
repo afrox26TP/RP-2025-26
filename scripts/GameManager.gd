@@ -2917,6 +2917,8 @@ func nazev_urovne_aliance(level: int) -> String:
 			return "No Alliance"
 
 func _ma_stat_prijmout_alianci(tag_a: String, tag_b: String, target_level: int) -> bool:
+	if _vazal_musi_prijmout_zadost(tag_a, tag_b):
+		return true
 	var rel = ziskej_vztah_statu(tag_a, tag_b)
 	if rel < ALLIANCE_HARD_REJECT_REL:
 		return false
@@ -3103,9 +3105,13 @@ func pridej_clena_do_aliance(alliance_id: String, tag: String, ignoruj_vztahove_
 	if members.has(clean):
 		return {"ok": false, "reason": "%s is already a member." % clean}
 
+	var candidate_overlord = ziskej_overlorda_statu(clean)
+	var forced_by_member_overlord = (candidate_overlord != "" and members.has(candidate_overlord))
+	var ignore_requirements = ignoruj_vztahove_podminky or forced_by_member_overlord
+
 	var level = int(skupina.get("level", ALLIANCE_DEFENSE))
 
-	if not ignoruj_vztahove_podminky:
+	if not ignore_requirements:
 		for m in members:
 			var member_tag = _normalizuj_tag(str(m))
 			if member_tag == "" or member_tag == clean:
@@ -3125,6 +3131,8 @@ func pridej_clena_do_aliance(alliance_id: String, tag: String, ignoruj_vztahove_
 	_zaloguj_globalni_zpravu("Alliance", "%s joined alliance '%s'." % [clean, str(skupina.get("name", ""))], "alliance")
 	if je_lidsky_stat(clean):
 		_pridej_popup_hraci(clean, "Alliance", "You joined alliance '%s'." % str(skupina.get("name", "")))
+	if forced_by_member_overlord and je_lidsky_stat(candidate_overlord):
+		_pridej_popup_hraci(candidate_overlord, "Alliance", "%s joined '%s' automatically as your vassal." % [clean, str(skupina.get("name", ""))])
 	return {"ok": true}
 
 func odeber_clena_z_aliance(alliance_id: String, tag: String) -> bool:
@@ -3209,6 +3217,8 @@ func ziskej_podminky_clenstvi_aliance(alliance_id: String, candidate_tag: String
 		return []
 	var skupina = aliance_skupiny[alliance_id] as Dictionary
 	var members = skupina.get("members", []) as Array
+	var candidate_overlord = ziskej_overlorda_statu(clean)
+	var forced_by_member_overlord = (candidate_overlord != "" and members.has(candidate_overlord))
 	var level = int(skupina.get("level", ALLIANCE_DEFENSE))
 	var needed_rel = _minimalni_vztah_pro_alianci(level)
 	var conditions: Array = []
@@ -3220,13 +3230,16 @@ func ziskej_podminky_clenstvi_aliance(alliance_id: String, candidate_tag: String
 		var rel = ziskej_vztah_statu(clean, member_tag)
 		var at_war = jsou_ve_valce(clean, member_tag)
 		var oba_lidske = je_lidsky_stat(clean) and je_lidsky_stat(member_tag)
-		var splneno = oba_lidske or (rel >= needed_rel and not at_war)
+		var forced_pair = forced_by_member_overlord
+		var splneno = forced_pair or oba_lidske or (rel >= needed_rel and not at_war)
 		conditions.append({
 			"member": member_tag,
 			"relation": rel,
 			"needed": needed_rel,
 			"at_war": at_war,
 			"both_human": oba_lidske,
+			"forced_by_overlord": forced_pair,
+			"overlord": candidate_overlord,
 			"met": splneno
 		})
 	return conditions
@@ -3444,13 +3457,14 @@ func uzavrit_neagresivni_smlouvu(tag_a: String, tag_b: String) -> bool:
 	var b = _normalizuj_tag(tag_b)
 	if a == "" or b == "" or a == b or a == "SEA" or b == "SEA":
 		return false
+	var forced_vassal_accept = _vazal_musi_prijmout_zadost(a, b)
 	if jsou_ve_valce(a, b):
 		if je_lidsky_stat(a) or je_lidsky_stat(b):
 			_pridej_popup_zucastnenym_hracum(a, b, "Diplomacy", "Non-aggression pact cannot be signed during war.")
 		return false
 
 	var rel = ziskej_vztah_statu(a, b)
-	if rel < NON_AGGRESSION_MIN_REL:
+	if rel < NON_AGGRESSION_MIN_REL and not forced_vassal_accept:
 		if je_lidsky_stat(a) or je_lidsky_stat(b):
 			_pridej_popup_zucastnenym_hracum(a, b, "Diplomacy", "Non-aggression pact requires relation at least %.1f." % NON_AGGRESSION_MIN_REL)
 		return false
@@ -3505,8 +3519,8 @@ func _najdi_nejblizsi_vlastni_provincii_pro_presun(tag: String, from_prov_id: in
 		if p_id == from_prov_id:
 			continue
 		var d = map_data[p_id]
-		var owner = _normalizuj_tag(str(d.get("owner", "")))
-		if owner != tag:
+		var owner_tag = _normalizuj_tag(str(d.get("owner", "")))
+		if owner_tag != tag:
 			continue
 		var existing_army = _normalizuj_tag(str(d.get("army_owner", "")))
 		if existing_army != "" and existing_army != tag:
@@ -3581,6 +3595,12 @@ func pozadej_vojensky_pristup(guest: String, host: String) -> bool:
 		return false
 	# If target is AI, grant immediately when relations ≥ 15, otherwise deny.
 	if not je_lidsky_stat(h):
+		if _vazal_musi_prijmout_zadost(h, g):
+			udelit_vojensky_pristup(h, g)
+			_zaloguj_globalni_zpravu("Diplomacy", "%s automatically granted military access to overlord %s." % [h, g], "diplomacy")
+			if je_lidsky_stat(g):
+				_pridej_popup_hraci(g, "Diplomacy", "%s (your vassal) granted you military access automatically." % h)
+			return true
 		var rel = ziskej_vztah_statu(g, h)
 		if rel >= 15.0:
 			udelit_vojensky_pristup(h, g)
@@ -3618,6 +3638,20 @@ func _pridej_diplomatickou_zadost(from_tag: String, to_tag: String, req_type: St
 
 	if not _je_essential_diplomaticka_zadost(from_clean, to_clean, req_type, alliance_level):
 		return false
+
+	# Vassals cannot reject overlord diplomacy; apply immediately.
+	if _vazal_musi_prijmout_zadost(to_clean, from_clean):
+		var forced_req = {
+			"from": from_clean,
+			"to": to_clean,
+			"type": req_type,
+			"level": alliance_level,
+			"turn": aktualni_kolo
+		}
+		var forced_ok = _vykonej_prijeti_diplomaticke_zadosti(to_clean, forced_req, true)
+		if forced_ok:
+			_zaloguj_globalni_zpravu("Diplomacy", "%s automatically accepted %s from overlord %s." % [to_clean, req_type, from_clean], "diplomacy")
+		return forced_ok
 
 	if not cekajici_diplomaticke_zadosti.has(to_clean):
 		cekajici_diplomaticke_zadosti[to_clean] = []
@@ -3789,12 +3823,14 @@ func ziskej_cekajici_diplomaticke_zadosti(hrac_tag: String) -> Array:
 	)
 	return queue
 
-func hrac_prijmi_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> bool:
-	var player_clean = _normalizuj_tag(hrac_tag)
-	var req = _odeber_diplomatickou_zadost(player_clean, from_tag)
-	if req.is_empty():
+func _vazal_musi_prijmout_zadost(receiver_tag: String, sender_tag: String) -> bool:
+	var receiver = _normalizuj_tag(receiver_tag)
+	var sender = _normalizuj_tag(sender_tag)
+	if receiver == "" or sender == "" or receiver == sender:
 		return false
+	return ziskej_overlorda_statu(receiver) == sender
 
+func _vykonej_prijeti_diplomaticke_zadosti(player_clean: String, req: Dictionary, forced_vassal_accept: bool = false) -> bool:
 	var sender = _normalizuj_tag(str(req.get("from", "")))
 	var req_type = str(req.get("type", ""))
 	var req_name = "diplomatic offer"
@@ -3806,6 +3842,7 @@ func hrac_prijmi_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> boo
 		req_name = "non-aggression pact offer"
 	elif req_type == "military_access":
 		req_name = "military access request"
+
 	if req_type == "alliance":
 		var level = int(req.get("level", ALLIANCE_NONE))
 		var obe_strany_lide = je_lidsky_stat(player_clean) and je_lidsky_stat(sender)
@@ -3852,11 +3889,26 @@ func hrac_prijmi_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> boo
 		if je_lidsky_stat(sender):
 			_pridej_popup_hraci(sender, "Diplomacy", "%s granted you military access to their territory." % player_clean)
 		return true
+
+	# Keep generic fallback for future diplomatic request types.
 	_zaloguj_globalni_zpravu("Diplomacy", "%s accepted %s from %s." % [player_clean, req_name, sender], "diplomacy")
+	if forced_vassal_accept and je_lidsky_stat(player_clean):
+		_pridej_popup_hraci(player_clean, "Diplomacy", "As a vassal, you automatically accepted a diplomatic request from your overlord (%s)." % sender)
 	return false
+
+func hrac_prijmi_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> bool:
+	var player_clean = _normalizuj_tag(hrac_tag)
+	var req = _odeber_diplomatickou_zadost(player_clean, from_tag)
+	if req.is_empty():
+		return false
+	return _vykonej_prijeti_diplomaticke_zadosti(player_clean, req)
 
 func hrac_odmitni_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> bool:
 	var player_clean = _normalizuj_tag(hrac_tag)
+	var from_clean = _normalizuj_tag(from_tag)
+	if _vazal_musi_prijmout_zadost(player_clean, from_clean):
+		return hrac_prijmi_diplomatickou_zadost(player_clean, from_clean)
+
 	var req = _odeber_diplomatickou_zadost(player_clean, from_tag)
 	if req.is_empty():
 		return false
@@ -3885,13 +3937,37 @@ func hrac_odmitni_vsechny_diplomaticke_zadosti(hrac_tag: String) -> int:
 		return 0
 
 	var queue = cekajici_diplomaticke_zadosti[player_clean] as Array
-	var count = queue.size()
+	var queue_copy = queue.duplicate(true)
+	var count = queue_copy.size()
 	if count <= 0:
+		return 0
+
+	var auto_accepted := 0
+	for req_any in queue_copy:
+		var req = req_any as Dictionary
+		var sender = _normalizuj_tag(str(req.get("from", "")))
+		if _vazal_musi_prijmout_zadost(player_clean, sender):
+			if hrac_prijmi_diplomatickou_zadost(player_clean, sender):
+				auto_accepted += 1
+
+	# Re-fetch queue after automatic acceptances and decline only the rest.
+	if not cekajici_diplomaticke_zadosti.has(player_clean):
+		if auto_accepted > 0 and je_lidsky_stat(player_clean):
+			_pridej_popup_hraci(player_clean, "Diplomacy", "As a vassal, %d offer(s) from your overlord were accepted automatically." % auto_accepted)
+		return 0
+	queue = cekajici_diplomaticke_zadosti[player_clean] as Array
+	count = queue.size()
+	if count <= 0:
+		if auto_accepted > 0 and je_lidsky_stat(player_clean):
+			_pridej_popup_hraci(player_clean, "Diplomacy", "As a vassal, %d offer(s) from your overlord were accepted automatically." % auto_accepted)
 		return 0
 
 	queue.clear()
 	if je_lidsky_stat(player_clean):
-		_pridej_popup_hraci(player_clean, "Diplomacy", "You declined all pending diplomatic requests (%d)." % count)
+		if auto_accepted > 0:
+			_pridej_popup_hraci(player_clean, "Diplomacy", "You declined %d request(s); %d overlord request(s) were accepted automatically." % [count, auto_accepted])
+		else:
+			_pridej_popup_hraci(player_clean, "Diplomacy", "You declined all pending diplomatic requests (%d)." % count)
 	return count
 
 func hrac_prijmi_vsechny_diplomaticke_zadosti(hrac_tag: String) -> int:
@@ -4960,6 +5036,21 @@ func ziskej_pocet_mirovych_konferenci_pro_hrace(hrac_tag: String) -> int:
 		return 0
 	var queue = cekajici_mirove_konference[player] as Array
 	return queue.size()
+
+func ma_cekajici_mirovou_konferenci_pro_stat(stat_tag: String) -> bool:
+	_odstran_neplatne_mirove_konference()
+	var wanted = _normalizuj_tag(stat_tag)
+	if wanted == "":
+		return false
+	for key_any in cekajici_mirove_konference.keys():
+		var queue = cekajici_mirove_konference[key_any] as Array
+		for item_any in queue:
+			var item = item_any as Dictionary
+			var winner = _normalizuj_tag(str(item.get("winner", "")))
+			var loser = _normalizuj_tag(str(item.get("loser", "")))
+			if winner == wanted or loser == wanted:
+				return true
+	return false
 
 func hrac_uzavri_mirovou_konferenci(hrac_tag: String, conference_id: int, demands: Dictionary) -> Dictionary:
 	var player = _normalizuj_tag(hrac_tag)

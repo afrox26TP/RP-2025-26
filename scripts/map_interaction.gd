@@ -230,7 +230,7 @@ func _hide_mode_hover_tooltip() -> void:
 	if _mode_hover_debug_label:
 		_mode_hover_debug_label.visible = false
 
-func _update_mode_hover_tooltip_position(global_pos: Vector2) -> void:
+func _update_mode_hover_tooltip_position(_global_pos: Vector2) -> void:
 	if _mode_hover_panel == null or not _mode_hover_panel.visible:
 		return
 	var mouse_pos = get_viewport().get_mouse_position()
@@ -271,7 +271,7 @@ func _format_money_compact(value: float) -> String:
 		decimals = 0
 	return "%s.%02d" % [_format_int_compact(whole), decimals]
 
-func _show_capital_target_tooltip(province_id: int, data: Dictionary, root: Node) -> void:
+func _show_capital_target_tooltip(province_id: int, _data: Dictionary, root: Node) -> void:
 	if _mode_hover_panel == null or _mode_hover_label == null:
 		return
 
@@ -482,8 +482,9 @@ func _unhandled_input(event):
 			var root = get_parent()
 			var is_targeting = "ceka_na_cil_presunu" in root and root.ceka_na_cil_presunu
 			var is_capital_targeting = "ceka_na_cil_hlavniho_mesta" in root and root.ceka_na_cil_hlavniho_mesta
+			var is_peace_targeting = "ceka_na_cil_miru" in root and root.ceka_na_cil_miru
 			var is_bulk_targeting = "ceka_na_hromadny_cil_presunu" in root and root.ceka_na_hromadny_cil_presunu
-			if not is_targeting and not is_bulk_targeting and not is_capital_targeting:
+			if not is_targeting and not is_bulk_targeting and not is_capital_targeting and not is_peace_targeting:
 				_drag_select_active = true
 				_drag_select_started = false
 				_drag_start_local = _ziskej_localni_pozici_mysi(get_global_mouse_position())
@@ -818,6 +819,8 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 			_aktualizuj_hromadny_selection_texture(hromadny_ids)
 			material.set_shader_parameter("selected_id", prov_id)
 			material.set_shader_parameter("has_selected", true)
+			if root.has_method("nastav_vybranou_armadu_provincie"):
+				root.nastav_vybranou_armadu_provincie(int(prov_id))
 			if hromadny_ids.size() > 1:
 				var info_ui_multi = get_tree().current_scene.find_child("InfoUI", true, false)
 				if info_ui_multi and info_ui_multi.has_method("zobraz_hromadna_data"):

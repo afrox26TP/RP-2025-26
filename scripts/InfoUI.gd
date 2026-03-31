@@ -484,6 +484,7 @@ func zobraz_data(data: Dictionary):
 	var core_owner = str(data.get("core_owner", owner_tag)).strip_edges().to_upper()
 	var je_more = (owner_tag == "SEA")
 	var je_moje = (owner_tag == GameManager.hrac_stat)
+	var je_moje_armada_na_sousi = (not je_more and armada_owner == GameManager.hrac_stat and int(data.get("soldiers", 0)) > 0)
 	var je_moje_armada_na_mori = (je_more and armada_owner == GameManager.hrac_stat and int(data.get("soldiers", 0)) > 0)
 	var vojaci = int(data.get("soldiers", 0))
 	var ma_pristav = bool(data.get("has_port", false))
@@ -540,9 +541,9 @@ func zobraz_data(data: Dictionary):
 		else:
 			_set_metric_visible("income", false)
 
-	if (je_moje and not je_more) or je_moje_armada_na_mori:
+	if (je_moje and not je_more) or je_moje_armada_na_sousi or je_moje_armada_na_mori:
 		var muze_stavet = (je_moje and not je_more)
-		var ma_armadu = (vojaci > 0)
+		var ma_armadu = (vojaci > 0 and (je_moje or je_moje_armada_na_sousi or je_moje_armada_na_mori))
 		btn_stavet.visible = muze_stavet
 		btn_verbovat.visible = muze_stavet
 		btn_likvidovat.visible = ma_armadu
@@ -586,9 +587,10 @@ func _on_likvidovat_pressed():
 	var armada_owner = str(prov_data.get("army_owner", "")).strip_edges().to_upper()
 	var je_more = (owner_tag == "SEA")
 	var je_moje = (owner_tag == GameManager.hrac_stat)
+	var je_moje_armada_na_sousi = (not je_more and armada_owner == GameManager.hrac_stat)
 	var je_moje_armada_na_mori = (je_more and armada_owner == GameManager.hrac_stat)
 
-	if not je_moje and not je_moje_armada_na_mori:
+	if not je_moje and not je_moje_armada_na_sousi and not je_moje_armada_na_mori:
 		return
 
 	var pocet_vojaku = int(prov_data.get("soldiers", 0))
@@ -626,9 +628,10 @@ func _on_potvrdit_likvidaci():
 	var armada_owner = str(prov_data.get("army_owner", "")).strip_edges().to_upper()
 	var je_more = (owner_tag == "SEA")
 	var je_moje = (owner_tag == GameManager.hrac_stat)
+	var je_moje_armada_na_sousi = (not je_more and armada_owner == GameManager.hrac_stat)
 	var je_moje_armada_na_mori = (je_more and armada_owner == GameManager.hrac_stat)
 
-	if not je_moje and not je_moje_armada_na_mori:
+	if not je_moje and not je_moje_armada_na_sousi and not je_moje_armada_na_mori:
 		likvidace_popup.hide()
 		return
 
@@ -903,7 +906,8 @@ func zobraz_hromadna_data(ids: Array, all_provinces: Dictionary):
 			total_gdp += float(d.get("gdp", 0.0))
 		var army_owner = str(d.get("army_owner", "")).strip_edges().to_upper()
 		var moje_more_armada = (je_more and army_owner == GameManager.hrac_stat)
-		if (owner_tag == GameManager.hrac_stat and int(d.get("soldiers", 0)) > 0) or moje_more_armada:
+		var moje_pozemni_armada = (not je_more and army_owner == GameManager.hrac_stat and int(d.get("soldiers", 0)) > 0)
+		if (owner_tag == GameManager.hrac_stat and int(d.get("soldiers", 0)) > 0) or moje_more_armada or moje_pozemni_armada:
 			vlastni_s_armadou.append(pid)
 			total_soldiers += int(d.get("soldiers", 0))
 
@@ -952,10 +956,9 @@ func _ziskej_hromadne_zdroje_s_armadou() -> Array:
 		var d = province_data[pid]
 		var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
 		var army_owner = str(d.get("army_owner", "")).strip_edges().to_upper()
-		var je_more = (owner_tag == "SEA")
 		if int(d.get("soldiers", 0)) <= 0:
 			continue
-		if owner_tag == GameManager.hrac_stat or (je_more and army_owner == GameManager.hrac_stat):
+		if owner_tag == GameManager.hrac_stat or army_owner == GameManager.hrac_stat:
 			out.append(pid)
 	return out
 

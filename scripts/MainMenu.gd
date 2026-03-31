@@ -1,6 +1,6 @@
 extends Control
 
-const TooltipUtils = preload("res://scripts/TooltipUtils.gd")
+const TooltipUtilsScript = preload("res://scripts/TooltipUtils.gd")
 
 @onready var selected_country_label: Label = $CenterPanel/MarginContainer/VBoxContainer/SelectedCountryLabel
 @onready var menu_hint_label: Label = $CenterPanel/MarginContainer/VBoxContainer/MenuHint
@@ -219,7 +219,6 @@ var _load_status_label: Label = null
 var _load_open_button: Button = null
 var _load_slot_btns: Dictionary = {}
 var _selected_load_slot_key: String = ""
-var _menu_hint_helper_btn: Button = null
 var _browser_helper_btn: Button = null
 var _language_hint_helper_btn: Button = null
 const BROWSER_CONFIRM_DEFAULT_TEXT := "Confirm selection"
@@ -276,7 +275,7 @@ func _vloz_centered_helper_pred_label(label: Label) -> Button:
 	var left_spacer := Control.new()
 	left_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(left_spacer)
-	var help_btn := TooltipUtils.create_help_button(label.text)
+	var help_btn := TooltipUtilsScript.create_help_button(label.text)
 	row.add_child(help_btn)
 	var right_spacer := Control.new()
 	right_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -289,8 +288,8 @@ func _vloz_centered_helper_pred_label(label: Label) -> Button:
 
 func _vytvor_clean_helpery() -> void:
 	if _browser_helper_btn == null and btn_close_corner and btn_close_corner.get_parent() != null:
-		_browser_helper_btn = TooltipUtils.create_help_button("")
-		_browser_helper_btn.pressed.connect(func(): TooltipUtils.show_help_dropdown(self, _browser_helper_btn, _browser_helper_btn.tooltip_text))
+		_browser_helper_btn = TooltipUtilsScript.create_help_button("")
+		_browser_helper_btn.pressed.connect(func(): TooltipUtilsScript.show_help_dropdown(self, _browser_helper_btn, _browser_helper_btn.tooltip_text))
 		var browser_header := btn_close_corner.get_parent()
 		browser_header.add_child(_browser_helper_btn)
 		browser_header.move_child(_browser_helper_btn, btn_close_corner.get_index())
@@ -298,8 +297,8 @@ func _vytvor_clean_helpery() -> void:
 		browser_flow_hint.hide()
 		list_hint.hide()
 	if _language_hint_helper_btn == null and language_option and language_option.get_parent() != null:
-		_language_hint_helper_btn = TooltipUtils.create_help_button(language_hint.text)
-		_language_hint_helper_btn.pressed.connect(func(): TooltipUtils.show_help_dropdown(self, _language_hint_helper_btn, _language_hint_helper_btn.tooltip_text))
+		_language_hint_helper_btn = TooltipUtilsScript.create_help_button(language_hint.text)
+		_language_hint_helper_btn.pressed.connect(func(): TooltipUtilsScript.show_help_dropdown(self, _language_hint_helper_btn, _language_hint_helper_btn.tooltip_text))
 		language_option.get_parent().add_child(_language_hint_helper_btn)
 		language_hint.hide()
 	_aktualizuj_clean_helpery()
@@ -381,7 +380,7 @@ func _nastav_tooltipy_ui() -> void:
 	detail_flag.tooltip_text = "Flag of the selected country."
 	detail_name.tooltip_text = "Name of the selected country."
 	detail_info.tooltip_text = "Short summary of country strengths and risks."
-	TooltipUtils.apply_default_tooltips(self)
+	TooltipUtilsScript.apply_default_tooltips(self)
 
 func _nastav_texty_dialogu():
 	settings_dialog.title = SETTINGS_DIALOG_TITLE
