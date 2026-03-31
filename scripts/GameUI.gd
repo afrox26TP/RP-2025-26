@@ -61,6 +61,7 @@ class ArmyTrashBin:
 var _vassals_btn: Button
 var _vassals_dialog: PopupPanel
 var _vassals_list: VBoxContainer
+var _military_access_btn: Button
 var army_power_label: Label
 var vassals_label: Label
 var war_reparations_label: Label
@@ -69,7 +70,7 @@ var war_reparations_label: Label
 @onready var action_separator = $OverviewPanel/VBoxContainer/ActionSeparator
 @onready var improve_rel_btn = $OverviewPanel/VBoxContainer/ImproveRelationButton
 @onready var worsen_rel_btn = $OverviewPanel/VBoxContainer/WorsenRelationButton
-@onready var alliance_level_option = $OverviewPanel/VBoxContainer/AllianceLevelOption
+@onready var alliance_btn = $OverviewPanel/VBoxContainer/AllianceLevelOption
 @onready var declare_war_btn = $OverviewPanel/VBoxContainer/DeclareWarButton
 @onready var propose_peace_btn = $OverviewPanel/VBoxContainer/ProposePeaceButton
 @onready var non_aggression_btn = $OverviewPanel/VBoxContainer/NonAggressionButton
@@ -94,6 +95,21 @@ var flag_texture_cache: Dictionary = {}
 var _updating_alliance_ui: bool = false
 var _current_incoming_request: Dictionary = {}
 var _popup_request_from_tag: String = ""
+
+# Alliance popup variables
+var _alliance_dialog: PanelContainer
+var _alliance_dialog_scroll: ScrollContainer
+var _alliance_dialog_list: VBoxContainer
+var _alliance_dialog_close_btn: Button
+var _alliance_dialog_create_btn: Button
+var _alliance_dialog_title: Label
+var _alliance_create_popup: PanelContainer
+var _alliance_create_name_input: LineEdit
+var _alliance_create_level_option: OptionButton
+var _alliance_create_color_picker: ColorPickerButton
+var _alliance_create_confirm_btn: Button
+var _alliance_create_cancel_btn: Button
+var _alliance_dialog_target_tag: String = ""
 var _system_message_ack: bool = false
 var _pause_menu_panel: PopupPanel
 var _pause_confirm_dialog: ConfirmationDialog
@@ -152,6 +168,8 @@ var ideology_separator: HSeparator
 var ideology_effects_label: RichTextLabel
 var ideology_option: OptionButton
 var ideology_apply_btn: Button
+var ideology_menu_btn: Button
+var ideology_menu_popup: PopupMenu
 var ideology_relocate_capital_btn: Button
 var research_btn: Button
 var _research_dialog: PanelContainer
@@ -326,10 +344,12 @@ func _ready():
 	_zajisti_mirove_overview_labely()
 	_zajisti_tlacitko_vazalu()
 	_zajisti_tlacitko_daru()
+	_zajisti_tlacitko_vojenskeho_pristupu()
 	_zajisti_ideology_controls()
 	_zajisti_vyzkum_controls()
 	_setup_popup_country_link()
-	_napln_aliance_option()
+	_vytvor_alliance_dialog()
+	_vytvor_alliance_create_popup()
 	
 	# Automatically connect the button signal if it exists
 	if declare_war_btn and not declare_war_btn.pressed.is_connected(_on_declare_war_button_pressed):
@@ -370,12 +390,23 @@ func _ready():
 			popup.popup_hide.connect(_on_ideology_dropdown_closed)
 	if ideology_apply_btn and not ideology_apply_btn.pressed.is_connected(_on_apply_ideology_pressed):
 		ideology_apply_btn.pressed.connect(_on_apply_ideology_pressed)
+	if ideology_menu_btn and not ideology_menu_btn.pressed.is_connected(_on_ideology_menu_button_pressed):
+		ideology_menu_btn.pressed.connect(_on_ideology_menu_button_pressed)
+	if ideology_menu_popup:
+		if not ideology_menu_popup.id_pressed.is_connected(_on_ideology_menu_id_pressed):
+			ideology_menu_popup.id_pressed.connect(_on_ideology_menu_id_pressed)
+		if ideology_menu_popup.has_signal("about_to_popup") and not ideology_menu_popup.about_to_popup.is_connected(_on_ideology_dropdown_opened):
+			ideology_menu_popup.about_to_popup.connect(_on_ideology_dropdown_opened)
+		if ideology_menu_popup.has_signal("id_focused") and not ideology_menu_popup.id_focused.is_connected(_on_ideology_dropdown_item_focused):
+			ideology_menu_popup.id_focused.connect(_on_ideology_dropdown_item_focused)
+		if ideology_menu_popup.has_signal("popup_hide") and not ideology_menu_popup.popup_hide.is_connected(_on_ideology_dropdown_closed):
+			ideology_menu_popup.popup_hide.connect(_on_ideology_dropdown_closed)
 	if ideology_relocate_capital_btn and not ideology_relocate_capital_btn.pressed.is_connected(_on_relocate_capital_pressed):
 		ideology_relocate_capital_btn.pressed.connect(_on_relocate_capital_pressed)
 	if research_btn and not research_btn.pressed.is_connected(_on_research_button_pressed):
 		research_btn.pressed.connect(_on_research_button_pressed)
-	if alliance_level_option and not alliance_level_option.item_selected.is_connected(_on_alliance_level_selected):
-		alliance_level_option.item_selected.connect(_on_alliance_level_selected)
+	if alliance_btn and not alliance_btn.pressed.is_connected(_on_alliance_button_pressed):
+		alliance_btn.pressed.connect(_on_alliance_button_pressed)
 	if GameManager.has_signal("kolo_zmeneno") and not GameManager.kolo_zmeneno.is_connected(_on_kolo_zmeneno):
 		GameManager.kolo_zmeneno.connect(_on_kolo_zmeneno)
 	if GameManager.has_signal("zpracovani_tahu_zmeneno") and not GameManager.zpracovani_tahu_zmeneno.is_connected(_on_zpracovani_tahu_zmeneno):
@@ -424,11 +455,15 @@ func _process(_delta: float) -> void:
 			_turn_loading_anim_step = (_turn_loading_anim_step + 1) % TURN_LOADING_FRAMES.size()
 			_turn_loading_label.text = TURN_LOADING_FRAMES[_turn_loading_anim_step]
 
-	if not _ideology_dropdown_open or ideology_option == null:
+	if not _ideology_dropdown_open:
 		if not _turn_loading_active:
 			set_process(false)
 		return
-	var popup = ideology_option.get_popup()
+	var popup: PopupMenu = null
+	if ideology_menu_popup and ideology_menu_popup.visible:
+		popup = ideology_menu_popup
+	elif ideology_option and ideology_option.get_popup() and ideology_option.get_popup().visible:
+		popup = ideology_option.get_popup()
 	if popup == null or not popup.visible:
 		if not _turn_loading_active:
 			set_process(false)
@@ -515,6 +550,8 @@ func _nastav_tooltipy_ui() -> void:
 	declare_war_btn.tooltip_text = "Declare war on the selected country."
 	propose_peace_btn.tooltip_text = "Send a peace proposal."
 	non_aggression_btn.tooltip_text = "Sign a non-aggression pact for 10 turns."
+	if _military_access_btn:
+		_military_access_btn.tooltip_text = "Request permission to move your troops through this country's territory. Alliances grant access automatically."
 	incoming_request_label.tooltip_text = "Shows incoming diplomatic request."
 	accept_request_btn.tooltip_text = "Accept displayed diplomatic request."
 	decline_request_btn.tooltip_text = "Decline displayed diplomatic request."
@@ -724,6 +761,25 @@ func _zajisti_tlacitko_vazalu() -> void:
 	if action_separator and action_separator.get_parent() == vbox:
 		vbox.move_child(_vassals_btn, action_separator.get_index() + 1)
 
+func _zajisti_tlacitko_vojenskeho_pristupu() -> void:
+	_military_access_btn = get_node_or_null("OverviewPanel/VBoxContainer/MilitaryAccessButton") as Button
+	if _military_access_btn:
+		return
+	var vbox = get_node_or_null("OverviewPanel/VBoxContainer") as VBoxContainer
+	if vbox == null:
+		return
+	_military_access_btn = Button.new()
+	_military_access_btn.name = "MilitaryAccessButton"
+	_military_access_btn.text = "Request military access"
+	_military_access_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_military_access_btn.hide()
+	_aplikuj_overview_tlacitko_vzhled(_military_access_btn)
+	vbox.add_child(_military_access_btn)
+	# Place it after non_aggression_btn if present, else at end
+	if non_aggression_btn and non_aggression_btn.get_parent() == vbox:
+		vbox.move_child(_military_access_btn, non_aggression_btn.get_index() + 1)
+	_military_access_btn.pressed.connect(_on_military_access_btn_pressed)
+
 func _vytvor_panel_vazalu() -> void:
 	if _vassals_dialog != null:
 		return
@@ -734,18 +790,7 @@ func _vytvor_panel_vazalu() -> void:
 	_vassals_dialog.exclusive = false
 	_vassals_dialog.popup_window = false
 	add_child(_vassals_dialog)
-	var dialog_style = StyleBoxFlat.new()
-	dialog_style.bg_color = Color(0.06, 0.09, 0.14, 0.96)
-	dialog_style.border_color = Color(0.60, 0.74, 0.92, 0.65)
-	dialog_style.border_width_left = 1
-	dialog_style.border_width_top = 1
-	dialog_style.border_width_right = 1
-	dialog_style.border_width_bottom = 1
-	dialog_style.corner_radius_top_left = 8
-	dialog_style.corner_radius_top_right = 8
-	dialog_style.corner_radius_bottom_left = 8
-	dialog_style.corner_radius_bottom_right = 8
-	_vassals_dialog.add_theme_stylebox_override("panel", dialog_style)
+	_aplikuj_ingame_popup_styl(_vassals_dialog)
 
 	var margin = MarginContainer.new()
 	margin.offset_left = 8
@@ -766,6 +811,7 @@ func _vytvor_panel_vazalu() -> void:
 	var title = Label.new()
 	title.text = "My vassals"
 	title.add_theme_font_size_override("font_size", 18)
+	title.add_theme_color_override("font_color", Color(0.93, 0.97, 1.0, 1.0))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
 
@@ -776,6 +822,7 @@ func _vytvor_panel_vazalu() -> void:
 	var close_top_btn = Button.new()
 	close_top_btn.text = "Close"
 	close_top_btn.custom_minimum_size = Vector2(72, 0)
+	_aplikuj_ingame_tlacitko_styl(close_top_btn)
 	close_top_btn.pressed.connect(func(): _vassals_dialog.hide())
 	header.add_child(close_top_btn)
 
@@ -835,6 +882,9 @@ func _pozicuj_a_zmen_velikost_panelu_vazalu(vassal_count: int = -1) -> void:
 func _on_vassals_button_pressed() -> void:
 	if _vassals_dialog == null:
 		return
+	if _vassals_dialog.visible:
+		_vassals_dialog.hide()
+		return
 	_zavri_vyzkum_dialog()
 	_obnov_panel_vazalu()
 	_pozicuj_a_zmen_velikost_panelu_vazalu()
@@ -862,8 +912,8 @@ func _obnov_panel_vazalu() -> void:
 		var subject = str(subject_any).strip_edges().to_upper()
 		var card = PanelContainer.new()
 		var card_style = StyleBoxFlat.new()
-		card_style.bg_color = Color(0.10, 0.14, 0.20, 0.88)
-		card_style.border_color = Color(0.45, 0.62, 0.85, 0.45)
+		card_style.bg_color = Color(0.11, 0.16, 0.24, 0.94)
+		card_style.border_color = Color(0.53, 0.70, 0.92, 0.58)
 		card_style.border_width_left = 1
 		card_style.border_width_top = 1
 		card_style.border_width_right = 1
@@ -893,16 +943,19 @@ func _obnov_panel_vazalu() -> void:
 		var name_lbl = Label.new()
 		name_lbl.text = _ziskej_jmeno_statu_podle_tagu(subject)
 		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		name_lbl.add_theme_color_override("font_color", Color(0.93, 0.97, 1.0, 1.0))
 		name_lbl.tooltip_text = subject
 		row.add_child(name_lbl)
 
 		var focus_btn = Button.new()
 		focus_btn.text = "Open"
+		_aplikuj_ingame_tlacitko_styl(focus_btn)
 		focus_btn.pressed.connect(_on_vassal_focus_pressed.bind(subject))
 		row.add_child(focus_btn)
 
 		var release_btn = Button.new()
 		release_btn.text = "Release"
+		_aplikuj_ingame_tlacitko_styl(release_btn, true)
 		release_btn.pressed.connect(_on_vassal_release_pressed.bind(subject))
 		row.add_child(release_btn)
 
@@ -912,6 +965,7 @@ func _obnov_panel_vazalu() -> void:
 
 		var tribute_lbl = Label.new()
 		tribute_lbl.text = "Tribute"
+		tribute_lbl.add_theme_color_override("font_color", Color(0.87, 0.92, 0.98, 1.0))
 		tribute_lbl.custom_minimum_size = Vector2(88, 0)
 		tribute_row.add_child(tribute_lbl)
 
@@ -928,12 +982,14 @@ func _obnov_panel_vazalu() -> void:
 
 		var pct_label = Label.new()
 		pct_label.text = "%d%%" % int(round(current_rate))
+		pct_label.add_theme_color_override("font_color", Color(0.83, 0.90, 0.98, 1.0))
 		pct_label.custom_minimum_size = Vector2(44, 0)
 		slider.value_changed.connect(func(v): pct_label.text = "%d%%" % int(round(v)))
 		tribute_row.add_child(pct_label)
 
 		var apply_btn = Button.new()
 		apply_btn.text = "Apply %"
+		_aplikuj_ingame_tlacitko_styl(apply_btn)
 		apply_btn.pressed.connect(_on_vassal_tribute_apply_pressed.bind(subject, slider))
 		tribute_row.add_child(apply_btn)
 
@@ -1070,6 +1126,49 @@ func _zajisti_ideology_controls() -> void:
 		ideology_apply_btn.text = "Change ideology"
 		vbox.add_child(ideology_apply_btn)
 
+	ideology_menu_btn = get_node_or_null("OverviewPanel/VBoxContainer/ChangeIdeologyMenuButton") as Button
+	if ideology_menu_btn == null:
+		ideology_menu_btn = Button.new()
+		ideology_menu_btn.name = "ChangeIdeologyMenuButton"
+		ideology_menu_btn.text = "Change ideology v"
+		ideology_menu_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		vbox.add_child(ideology_menu_btn)
+	if ideology_menu_btn.text.strip_edges() == "":
+		ideology_menu_btn.text = "Change ideology v"
+	_aplikuj_overview_tlacitko_vzhled(ideology_menu_btn)
+
+	ideology_menu_popup = get_node_or_null("IdeologyMenuPopup") as PopupMenu
+	if ideology_menu_popup == null:
+		ideology_menu_popup = PopupMenu.new()
+		ideology_menu_popup.name = "IdeologyMenuPopup"
+		ideology_menu_popup.popup_window = false
+		add_child(ideology_menu_popup)
+		var popup_style = StyleBoxFlat.new()
+		popup_style.bg_color = Color(0.07, 0.10, 0.18, 0.97)
+		popup_style.border_color = Color(0.45, 0.60, 0.79, 0.70)
+		popup_style.border_width_left = 1
+		popup_style.border_width_top = 1
+		popup_style.border_width_right = 1
+		popup_style.border_width_bottom = 1
+		popup_style.corner_radius_top_left = 8
+		popup_style.corner_radius_top_right = 8
+		popup_style.corner_radius_bottom_left = 8
+		popup_style.corner_radius_bottom_right = 8
+		ideology_menu_popup.add_theme_stylebox_override("panel", popup_style)
+		ideology_menu_popup.add_theme_color_override("font_color", Color(0.92, 0.96, 1.0, 1.0))
+		ideology_menu_popup.add_theme_color_override("font_hover_color", Color(1.0, 1.0, 1.0, 1.0))
+
+	if not ideology_menu_btn.pressed.is_connected(_on_ideology_menu_button_pressed):
+		ideology_menu_btn.pressed.connect(_on_ideology_menu_button_pressed)
+	if not ideology_menu_popup.id_pressed.is_connected(_on_ideology_menu_id_pressed):
+		ideology_menu_popup.id_pressed.connect(_on_ideology_menu_id_pressed)
+	if ideology_menu_popup.has_signal("about_to_popup") and not ideology_menu_popup.about_to_popup.is_connected(_on_ideology_dropdown_opened):
+		ideology_menu_popup.about_to_popup.connect(_on_ideology_dropdown_opened)
+	if ideology_menu_popup.has_signal("id_focused") and not ideology_menu_popup.id_focused.is_connected(_on_ideology_dropdown_item_focused):
+		ideology_menu_popup.id_focused.connect(_on_ideology_dropdown_item_focused)
+	if ideology_menu_popup.has_signal("popup_hide") and not ideology_menu_popup.popup_hide.is_connected(_on_ideology_dropdown_closed):
+		ideology_menu_popup.popup_hide.connect(_on_ideology_dropdown_closed)
+
 	ideology_relocate_capital_btn = get_node_or_null("OverviewPanel/VBoxContainer/RelocateCapitalButton") as Button
 	if ideology_relocate_capital_btn == null:
 		ideology_relocate_capital_btn = Button.new()
@@ -1084,6 +1183,14 @@ func _zajisti_ideology_controls() -> void:
 		vbox.move_child(ideology_option, ideology_effects_label.get_index() + 1)
 		vbox.move_child(ideology_apply_btn, ideology_option.get_index() + 1)
 		vbox.move_child(ideology_relocate_capital_btn, ideology_apply_btn.get_index() + 1)
+		if _vassals_btn and _vassals_btn.get_parent() == vbox:
+			vbox.move_child(ideology_menu_btn, _vassals_btn.get_index() + 1)
+		else:
+			vbox.move_child(ideology_menu_btn, ideology_relocate_capital_btn.get_index() + 1)
+
+	# Keep only the new menu flow visible; old dropdown/apply are internal state holders.
+	ideology_option.hide()
+	ideology_apply_btn.hide()
 
 func _zajisti_vyzkum_controls() -> void:
 	research_btn = get_node_or_null("OverviewPanel/VBoxContainer/ResearchButton") as Button
@@ -1130,15 +1237,18 @@ func _vytvor_vyzkum_dialog() -> void:
 	var title = Label.new()
 	title.text = "Army research"
 	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_color_override("font_color", Color(0.93, 0.97, 1.0, 1.0))
 	root.add_child(title)
 
 	_research_money_label = Label.new()
 	_research_money_label.text = "Funds: -"
+	_research_money_label.add_theme_color_override("font_color", Color(0.84, 0.91, 0.99, 1.0))
 	root.add_child(_research_money_label)
 
 	_army_research_summary_label = Label.new()
 	_army_research_summary_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_army_research_summary_label.text = "Army bonus: +0"
+	_army_research_summary_label.add_theme_color_override("font_color", Color(0.83, 0.90, 0.98, 1.0))
 	root.add_child(_army_research_summary_label)
 
 	var scroll = ScrollContainer.new()
@@ -1154,6 +1264,7 @@ func _vytvor_vyzkum_dialog() -> void:
 	var grid_title = Label.new()
 	grid_title.text = "Equipment grid"
 	grid_title.add_theme_font_size_override("font_size", 18)
+	grid_title.add_theme_color_override("font_color", Color(0.90, 0.95, 1.0, 1.0))
 	_research_list.add_child(grid_title)
 
 	_army_research_grid = GridContainer.new()
@@ -1171,11 +1282,13 @@ func _vytvor_vyzkum_dialog() -> void:
 
 	_army_research_reroll_btn = Button.new()
 	_army_research_reroll_btn.text = "Reroll"
+	_aplikuj_ingame_tlacitko_styl(_army_research_reroll_btn)
 	_army_research_reroll_btn.pressed.connect(_on_army_research_reroll_pressed)
 	controls_row.add_child(_army_research_reroll_btn)
 
 	_army_research_quality_btn = Button.new()
 	_army_research_quality_btn.text = "Upgrade quality"
+	_aplikuj_ingame_tlacitko_styl(_army_research_quality_btn)
 	_army_research_quality_btn.pressed.connect(_on_army_research_quality_upgrade_pressed)
 	controls_row.add_child(_army_research_quality_btn)
 
@@ -1183,19 +1296,24 @@ func _vytvor_vyzkum_dialog() -> void:
 	_army_research_trash.owner_ui = self
 	_army_research_trash.custom_minimum_size = Vector2(170, 40)
 	_army_research_trash.mouse_default_cursor_shape = Control.CURSOR_CAN_DROP
+	_army_research_trash.tooltip_text = "Trash (sell 75%)"
+	_army_research_trash.add_theme_stylebox_override("panel", _vytvor_ingame_kartu_styl(Color(0.17, 0.10, 0.12, 0.94), Color(0.84, 0.49, 0.49, 0.70)))
 	controls_row.add_child(_army_research_trash)
 
-	var trash_label = Label.new()
-	trash_label.name = "TrashLabel"
-	trash_label.text = "Trash (sell 75%)"
-	trash_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	trash_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	trash_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_army_research_trash.add_child(trash_label)
+	var trash_icon = Label.new()
+	trash_icon.name = "TrashIcon"
+	trash_icon.text = "🗑"
+	trash_icon.add_theme_color_override("font_color", Color(1.0, 0.89, 0.89, 1.0))
+	trash_icon.add_theme_font_size_override("font_size", 24)
+	trash_icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	trash_icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	trash_icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_army_research_trash.add_child(trash_icon)
 
 	var offers_title = Label.new()
 	offers_title.text = "This turn's offers"
 	offers_title.add_theme_font_size_override("font_size", 18)
+	offers_title.add_theme_color_override("font_color", Color(0.90, 0.95, 1.0, 1.0))
 	_research_list.add_child(offers_title)
 
 	_army_research_offers = VBoxContainer.new()
@@ -1208,6 +1326,7 @@ func _vytvor_vyzkum_dialog() -> void:
 
 	var close_btn = Button.new()
 	close_btn.text = "Close"
+	_aplikuj_ingame_tlacitko_styl(close_btn)
 	close_btn.pressed.connect(func(): _zavri_vyzkum_dialog())
 	footer.add_child(close_btn)
 
@@ -1382,10 +1501,12 @@ func _aktualizuj_vyzkum_dialog(state_tag: String) -> void:
 					cell.owner_ui = self
 					cell.cell_index = idx
 					cell.custom_minimum_size = Vector2(120, 52)
+					cell.add_theme_stylebox_override("panel", _vytvor_ingame_kartu_styl())
 					var lbl = Label.new()
 					lbl.name = "CellLabel"
 					lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 					lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+					lbl.add_theme_color_override("font_color", Color(0.93, 0.97, 1.0, 1.0))
 					lbl.text = "-"
 					cell.add_child(lbl)
 					_army_research_grid.add_child(cell)
@@ -1394,6 +1515,7 @@ func _aktualizuj_vyzkum_dialog(state_tag: String) -> void:
 					var plus_btn = Button.new()
 					plus_btn.text = "+ $%.0f" % expand_cost
 					plus_btn.custom_minimum_size = Vector2(120, 52)
+					_aplikuj_ingame_tlacitko_styl(plus_btn)
 					plus_btn.pressed.connect(_on_army_research_buy_cell_pressed.bind(xx, yy))
 					plus_btn.disabled = treasury < expand_cost
 					_army_research_grid.add_child(plus_btn)
@@ -1401,7 +1523,7 @@ func _aktualizuj_vyzkum_dialog(state_tag: String) -> void:
 				else:
 					var filler = PanelContainer.new()
 					filler.custom_minimum_size = Vector2(120, 52)
-					filler.modulate = Color(1, 1, 1, 0.18)
+					filler.add_theme_stylebox_override("panel", _vytvor_ingame_kartu_styl(Color(0.09, 0.12, 0.18, 0.45), Color(0.35, 0.44, 0.60, 0.30)))
 					_army_research_grid.add_child(filler)
 					_army_research_grid_cells.append(filler)
 
@@ -1440,6 +1562,7 @@ func _aktualizuj_vyzkum_dialog(state_tag: String) -> void:
 		card.offer_index = i
 		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		card.mouse_default_cursor_shape = Control.CURSOR_DRAG
+		card.add_theme_stylebox_override("panel", _vytvor_ingame_kartu_styl())
 		_army_research_offers.add_child(card)
 
 		var card_margin = MarginContainer.new()
@@ -2296,14 +2419,18 @@ func _aktualizuj_ideology_ui(owner_tag: String, current_ideology: String) -> voi
 		ideology_effects_label.hide()
 		ideology_option.hide()
 		ideology_apply_btn.hide()
+		if ideology_menu_btn:
+			ideology_menu_btn.hide()
 		ideology_relocate_capital_btn.hide()
 		_vycisti_nahled_ideologie_v_ui()
 		return
 
 	ideology_separator.show()
 	ideology_effects_label.show()
-	ideology_option.show()
-	ideology_apply_btn.show()
+	ideology_option.hide()
+	ideology_apply_btn.hide()
+	if ideology_menu_btn:
+		ideology_menu_btn.show()
 	ideology_relocate_capital_btn.show()
 
 	var current = _normalizuj_ideologii(current_ideology)
@@ -2327,11 +2454,76 @@ func _aktualizuj_ideology_ui(owner_tag: String, current_ideology: String) -> voi
 
 	ideology_option.select(selected_idx)
 	ideology_apply_btn.disabled = options.size() <= 1
+	if ideology_menu_btn:
+		ideology_menu_btn.disabled = options.size() <= 1
+		_napln_ideology_menu(options, current)
 	_set_ideology_effects_label(str(options[selected_idx]))
 	_ideology_dropdown_open = false
 	_vycisti_nahled_ideologie_v_ui()
 	_updating_ideology_ui = false
 	_aktualizuj_tlacitko_presunu_hlavniho_mesta(owner_tag)
+
+func _napln_ideology_menu(options: Array, current_ideology: String) -> void:
+	if ideology_menu_popup == null:
+		return
+	ideology_menu_popup.clear()
+	for i in range(options.size()):
+		var ideo = str(options[i])
+		ideology_menu_popup.add_item(_display_ideologie(ideo), i)
+		if _normalizuj_ideologii(ideo) == _normalizuj_ideologii(current_ideology):
+			ideology_menu_popup.set_item_disabled(ideology_menu_popup.get_item_count() - 1, true)
+	ideology_menu_popup.reset_size()
+
+func _on_ideology_menu_button_pressed() -> void:
+	if ideology_menu_btn == null or ideology_menu_popup == null or ideology_menu_btn.disabled:
+		return
+	if ideology_menu_popup.visible:
+		ideology_menu_popup.hide()
+		return
+	var viewport = get_viewport()
+	if viewport == null:
+		ideology_menu_popup.popup()
+		return
+	var vp_size = viewport.get_visible_rect().size
+	var popup_size = ideology_menu_popup.get_contents_minimum_size()
+	var approx_w = maxf(220.0, popup_size.x + 20.0)
+	var approx_h = maxf(120.0, popup_size.y + 10.0)
+	var btn_pos = ideology_menu_btn.get_global_position()
+	var pos = btn_pos + Vector2(ideology_menu_btn.size.x + 6.0, 0.0)
+	if pos.x + approx_w > vp_size.x - 8.0:
+		pos.x = btn_pos.x - approx_w - 6.0
+	pos.x = clampf(pos.x, 8.0, maxf(8.0, vp_size.x - approx_w - 8.0))
+	pos.y = clampf(pos.y, 8.0, maxf(8.0, vp_size.y - approx_h - 8.0))
+	ideology_menu_popup.position = pos
+	ideology_menu_popup.popup()
+
+func _aplikuj_overview_tlacitko_vzhled(btn: Button) -> void:
+	if btn == null:
+		return
+	var source: Button = null
+	if _vassals_btn:
+		source = _vassals_btn
+	elif improve_rel_btn:
+		source = improve_rel_btn
+	elif research_btn:
+		source = research_btn
+	if source == null:
+		return
+	btn.custom_minimum_size = source.custom_minimum_size
+	btn.theme_type_variation = source.theme_type_variation
+	for key in ["normal", "hover", "pressed", "focus", "disabled"]:
+		var sb = source.get_theme_stylebox(key)
+		if sb:
+			btn.add_theme_stylebox_override(key, sb)
+
+func _on_ideology_menu_id_pressed(id: int) -> void:
+	if ideology_option == null:
+		return
+	if id < 0 or id >= _ideology_option_values.size():
+		return
+	ideology_option.select(id)
+	_on_ideology_option_selected(id)
+	_on_apply_ideology_pressed()
 
 func _aktualizuj_tlacitko_presunu_hlavniho_mesta(owner_tag: String) -> void:
 	if ideology_relocate_capital_btn == null:
@@ -2649,6 +2841,51 @@ func _aplikuj_ingame_popup_styl(node) -> void:
 	s.corner_radius_bottom_right = 8
 	node.add_theme_stylebox_override("panel", s)
 
+func _vytvor_ingame_kartu_styl(bg: Color = Color(0.11, 0.16, 0.24, 0.94), border: Color = Color(0.53, 0.70, 0.92, 0.58)) -> StyleBoxFlat:
+	var s = StyleBoxFlat.new()
+	s.bg_color = bg
+	s.border_color = border
+	s.border_width_left = 1
+	s.border_width_top = 1
+	s.border_width_right = 1
+	s.border_width_bottom = 1
+	s.corner_radius_top_left = 6
+	s.corner_radius_top_right = 6
+	s.corner_radius_bottom_left = 6
+	s.corner_radius_bottom_right = 6
+	return s
+
+func _aplikuj_ingame_tlacitko_styl(btn: Button, danger: bool = false) -> void:
+	if btn == null:
+		return
+	btn.custom_minimum_size.y = maxf(btn.custom_minimum_size.y, 34.0)
+	btn.add_theme_color_override("font_color", Color(0.93, 0.97, 1.0, 1.0))
+	btn.add_theme_color_override("font_hover_color", Color(1.0, 1.0, 1.0, 1.0))
+
+	var base = StyleBoxFlat.new()
+	base.bg_color = Color(0.16, 0.24, 0.38, 0.96)
+	base.border_color = Color(0.60, 0.75, 0.95, 0.86)
+	if danger:
+		base.bg_color = Color(0.28, 0.15, 0.19, 0.97)
+		base.border_color = Color(0.85, 0.49, 0.57, 0.88)
+	base.border_width_left = 1
+	base.border_width_top = 1
+	base.border_width_right = 1
+	base.border_width_bottom = 1
+	base.corner_radius_top_left = 6
+	base.corner_radius_top_right = 6
+	base.corner_radius_bottom_left = 6
+	base.corner_radius_bottom_right = 6
+
+	var hover = base.duplicate() as StyleBoxFlat
+	hover.bg_color = base.bg_color.lightened(0.12)
+	hover.border_color = base.border_color.lightened(0.15)
+
+	btn.add_theme_stylebox_override("normal", base)
+	btn.add_theme_stylebox_override("hover", hover)
+	btn.add_theme_stylebox_override("pressed", hover)
+	btn.add_theme_stylebox_override("focus", hover)
+
 func _vytvor_darovaci_dialog() -> void:
 	_gift_dialog = PopupPanel.new()
 	_gift_dialog.name = "GiftDialog"
@@ -2719,6 +2956,500 @@ func _pozicuj_gift_dialog() -> void:
 		return
 	var vp = get_viewport().get_visible_rect().size
 	_gift_dialog.position = Vector2((vp.x - _gift_dialog.size.x) * 0.5, (vp.y - _gift_dialog.size.y) * 0.5)
+
+# ---- Alliance Dialog ----
+
+func _vytvor_alliance_dialog() -> void:
+	_alliance_dialog = PanelContainer.new()
+	_alliance_dialog.name = "AllianceDialog"
+	_alliance_dialog.custom_minimum_size = Vector2(520, 400)
+	_alliance_dialog.visible = false
+	add_child(_alliance_dialog)
+
+	var style = _vytvor_ingame_kartu_styl(Color(0.07, 0.10, 0.16, 0.96), Color(0.40, 0.60, 0.90, 0.55))
+	style.content_margin_left = 14
+	style.content_margin_top = 12
+	style.content_margin_right = 14
+	style.content_margin_bottom = 12
+	_alliance_dialog.add_theme_stylebox_override("panel", style)
+
+	var main_vbox = VBoxContainer.new()
+	main_vbox.add_theme_constant_override("separation", 8)
+	_alliance_dialog.add_child(main_vbox)
+
+	# Title row
+	var title_row = HBoxContainer.new()
+	main_vbox.add_child(title_row)
+
+	_alliance_dialog_title = Label.new()
+	_alliance_dialog_title.text = "Alliance Management"
+	_alliance_dialog_title.add_theme_font_size_override("font_size", 18)
+	_alliance_dialog_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_row.add_child(_alliance_dialog_title)
+
+	_alliance_dialog_close_btn = Button.new()
+	_alliance_dialog_close_btn.text = "X"
+	_alliance_dialog_close_btn.custom_minimum_size = Vector2(32, 0)
+	_alliance_dialog_close_btn.pressed.connect(_zavri_alliance_dialog)
+	title_row.add_child(_alliance_dialog_close_btn)
+
+	# Separator
+	var sep = HSeparator.new()
+	main_vbox.add_child(sep)
+
+	# Scroll area for alliance list
+	_alliance_dialog_scroll = ScrollContainer.new()
+	_alliance_dialog_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_alliance_dialog_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	main_vbox.add_child(_alliance_dialog_scroll)
+
+	_alliance_dialog_list = VBoxContainer.new()
+	_alliance_dialog_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_alliance_dialog_list.add_theme_constant_override("separation", 6)
+	_alliance_dialog_scroll.add_child(_alliance_dialog_list)
+
+	# Bottom buttons
+	var bottom_row = HBoxContainer.new()
+	bottom_row.add_theme_constant_override("separation", 8)
+	main_vbox.add_child(bottom_row)
+
+	_alliance_dialog_create_btn = Button.new()
+	_alliance_dialog_create_btn.text = "Create new alliance"
+	_alliance_dialog_create_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_alliance_dialog_create_btn.pressed.connect(_on_alliance_create_pressed)
+	_aplikuj_ingame_tlacitko_styl(_alliance_dialog_create_btn, false)
+	bottom_row.add_child(_alliance_dialog_create_btn)
+
+	var close_btn2 = Button.new()
+	close_btn2.text = "Close"
+	close_btn2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	close_btn2.pressed.connect(_zavri_alliance_dialog)
+	_aplikuj_ingame_tlacitko_styl(close_btn2, false)
+	bottom_row.add_child(close_btn2)
+
+func _vytvor_alliance_create_popup() -> void:
+	_alliance_create_popup = PanelContainer.new()
+	_alliance_create_popup.name = "AllianceCreatePopup"
+	_alliance_create_popup.custom_minimum_size = Vector2(400, 240)
+	_alliance_create_popup.visible = false
+	add_child(_alliance_create_popup)
+
+	var style = _vytvor_ingame_kartu_styl(Color(0.08, 0.12, 0.18, 0.98), Color(0.50, 0.72, 0.95, 0.65))
+	style.content_margin_left = 14
+	style.content_margin_top = 12
+	style.content_margin_right = 14
+	style.content_margin_bottom = 12
+	_alliance_create_popup.add_theme_stylebox_override("panel", style)
+
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	_alliance_create_popup.add_child(vbox)
+
+	var title = Label.new()
+	title.text = "Create New Alliance"
+	title.add_theme_font_size_override("font_size", 18)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(title)
+
+	var name_row = HBoxContainer.new()
+	name_row.add_theme_constant_override("separation", 6)
+	vbox.add_child(name_row)
+
+	var name_lbl = Label.new()
+	name_lbl.text = "Name:"
+	name_lbl.custom_minimum_size = Vector2(60, 0)
+	name_row.add_child(name_lbl)
+
+	_alliance_create_name_input = LineEdit.new()
+	_alliance_create_name_input.placeholder_text = "Alliance name..."
+	_alliance_create_name_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_row.add_child(_alliance_create_name_input)
+
+	var level_row = HBoxContainer.new()
+	level_row.add_theme_constant_override("separation", 6)
+	vbox.add_child(level_row)
+
+	var level_lbl = Label.new()
+	level_lbl.text = "Type:"
+	level_lbl.custom_minimum_size = Vector2(60, 0)
+	level_row.add_child(level_lbl)
+
+	_alliance_create_level_option = OptionButton.new()
+	_alliance_create_level_option.add_item("Defensive Alliance", 1)
+	_alliance_create_level_option.add_item("Offensive Alliance", 2)
+	_alliance_create_level_option.add_item("Full Alliance", 3)
+	_alliance_create_level_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	level_row.add_child(_alliance_create_level_option)
+
+	var color_row = HBoxContainer.new()
+	color_row.add_theme_constant_override("separation", 6)
+	vbox.add_child(color_row)
+
+	var color_lbl = Label.new()
+	color_lbl.text = "Color:"
+	color_lbl.custom_minimum_size = Vector2(60, 0)
+	color_row.add_child(color_lbl)
+
+	_alliance_create_color_picker = ColorPickerButton.new()
+	_alliance_create_color_picker.color = Color(0.27, 0.53, 1.0)
+	_alliance_create_color_picker.custom_minimum_size = Vector2(120, 0)
+	_alliance_create_color_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	color_row.add_child(_alliance_create_color_picker)
+
+	var btn_row = HBoxContainer.new()
+	btn_row.add_theme_constant_override("separation", 8)
+	vbox.add_child(btn_row)
+
+	_alliance_create_confirm_btn = Button.new()
+	_alliance_create_confirm_btn.text = "Create"
+	_alliance_create_confirm_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_alliance_create_confirm_btn.pressed.connect(_on_alliance_create_confirm)
+	_aplikuj_ingame_tlacitko_styl(_alliance_create_confirm_btn, false)
+	btn_row.add_child(_alliance_create_confirm_btn)
+
+	_alliance_create_cancel_btn = Button.new()
+	_alliance_create_cancel_btn.text = "Cancel"
+	_alliance_create_cancel_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_alliance_create_cancel_btn.pressed.connect(_zavri_alliance_create_popup)
+	_aplikuj_ingame_tlacitko_styl(_alliance_create_cancel_btn, false)
+	btn_row.add_child(_alliance_create_cancel_btn)
+
+func _pozicuj_alliance_dialog() -> void:
+	if not _alliance_dialog:
+		return
+	var vp = get_viewport().get_visible_rect().size
+	_alliance_dialog.position = Vector2((vp.x - _alliance_dialog.custom_minimum_size.x) * 0.5, (vp.y - _alliance_dialog.custom_minimum_size.y) * 0.5)
+
+func _pozicuj_alliance_create_popup() -> void:
+	if not _alliance_create_popup:
+		return
+	var vp = get_viewport().get_visible_rect().size
+	_alliance_create_popup.position = Vector2((vp.x - _alliance_create_popup.custom_minimum_size.x) * 0.5, (vp.y - _alliance_create_popup.custom_minimum_size.y) * 0.35)
+
+func _zavri_alliance_dialog() -> void:
+	if _alliance_dialog:
+		_alliance_dialog.visible = false
+	_zavri_alliance_create_popup()
+
+func _zavri_alliance_create_popup() -> void:
+	if _alliance_create_popup:
+		_alliance_create_popup.visible = false
+
+func _otevri_alliance_dialog(target_tag: String) -> void:
+	_alliance_dialog_target_tag = target_tag
+	_obnov_alliance_dialog_obsah(target_tag)
+	_pozicuj_alliance_dialog()
+	if _alliance_dialog:
+		_alliance_dialog.visible = true
+
+func _obnov_alliance_dialog_obsah(target_tag: String) -> void:
+	if not _alliance_dialog_list:
+		return
+
+	# Clear old content
+	for c in _alliance_dialog_list.get_children():
+		c.queue_free()
+
+	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
+	var target = target_tag.strip_edges().to_upper()
+	var target_name = _ziskej_jmeno_statu_podle_tagu(target)
+
+	var player_alliances: Array = []
+	if GameManager.has_method("ziskej_aliance_statu"):
+		player_alliances = GameManager.ziskej_aliance_statu(player_tag) as Array
+
+	var is_own = (target == player_tag)
+
+	if is_own:
+		# --- OWN COUNTRY VIEW: manage my alliances ---
+		if _alliance_dialog_title:
+			_alliance_dialog_title.text = "My Alliances"
+		if _alliance_dialog_create_btn:
+			_alliance_dialog_create_btn.text = "Create Alliance"
+			_alliance_dialog_create_btn.visible = true
+
+		if player_alliances.is_empty():
+			var empty_label = Label.new()
+			empty_label.text = "You have no alliances yet.\nClick 'Create Alliance' to found one."
+			empty_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			empty_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+			_alliance_dialog_list.add_child(empty_label)
+		else:
+			for alliance in player_alliances:
+				_pridej_alliance_kartu(alliance, "", "own")
+	else:
+		# --- OTHER COUNTRY VIEW: invite into alliance ---
+		if _alliance_dialog_title:
+			_alliance_dialog_title.text = "Invite %s into Alliance" % target_name
+		if _alliance_dialog_create_btn:
+			_alliance_dialog_create_btn.visible = false
+
+		if player_alliances.is_empty():
+			var empty_label = Label.new()
+			empty_label.text = "You have no alliances.\nClick your own country to create one first."
+			empty_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			empty_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+			_alliance_dialog_list.add_child(empty_label)
+		else:
+			for alliance in player_alliances:
+				_pridej_alliance_kartu(alliance, target, "invite")
+
+			# Bilateral relationship status
+			var sep2 = HSeparator.new()
+			_alliance_dialog_list.add_child(sep2)
+
+			var bilateral_level = 0
+			if GameManager.has_method("ziskej_uroven_aliance"):
+				bilateral_level = int(GameManager.ziskej_uroven_aliance(player_tag, target))
+			var rel = 0.0
+			if GameManager.has_method("ziskej_vztah_statu"):
+				rel = float(GameManager.ziskej_vztah_statu(player_tag, target))
+			var level_name = "No Alliance"
+			if GameManager.has_method("nazev_urovne_aliance"):
+				level_name = str(GameManager.nazev_urovne_aliance(bilateral_level))
+			var bilateral_label = Label.new()
+			bilateral_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			bilateral_label.text = "Bilateral status with %s: %s (relation: %.1f)" % [target_name, level_name, rel]
+			_alliance_dialog_list.add_child(bilateral_label)
+
+func _pridej_alliance_kartu(alliance: Dictionary, target_tag: String, view_mode: String = "own") -> void:
+	var card = PanelContainer.new()
+	var card_style = StyleBoxFlat.new()
+	card_style.bg_color = Color(0.10, 0.14, 0.22, 0.85)
+	card_style.border_width_left = 2
+	card_style.border_width_top = 2
+	card_style.border_width_right = 2
+	card_style.border_width_bottom = 2
+	card_style.border_color = Color(0.35, 0.55, 0.85, 0.50)
+	card_style.corner_radius_top_left = 6
+	card_style.corner_radius_top_right = 6
+	card_style.corner_radius_bottom_left = 6
+	card_style.corner_radius_bottom_right = 6
+	card_style.content_margin_left = 10
+	card_style.content_margin_top = 8
+	card_style.content_margin_right = 10
+	card_style.content_margin_bottom = 8
+	# Tint border with alliance color if available
+	var alliance_color_hex = str(alliance.get("color", "#4488ff"))
+	var parsed_color = Color.html(alliance_color_hex) if alliance_color_hex.begins_with("#") else Color(0.27, 0.53, 1.0)
+	card_style.border_color = Color(parsed_color.r, parsed_color.g, parsed_color.b, 0.75)
+	card.add_theme_stylebox_override("panel", card_style)
+	_alliance_dialog_list.add_child(card)
+
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 4)
+	card.add_child(vbox)
+
+	var alliance_id = str(alliance.get("id", ""))
+	var alliance_name = str(alliance.get("name", "Alliance"))
+	var level = int(alliance.get("level", 0))
+	var members = alliance.get("members", []) as Array
+	var founder = str(alliance.get("founder", ""))
+	var created_turn = int(alliance.get("created_turn", 0))
+
+	var level_name = "Unknown"
+	if GameManager.has_method("nazev_urovne_aliance"):
+		level_name = str(GameManager.nazev_urovne_aliance(level))
+
+	# Title row
+	var title_row = HBoxContainer.new()
+	vbox.add_child(title_row)
+
+	var title_lbl = Label.new()
+	title_lbl.text = "%s (%s)" % [alliance_name, level_name]
+	title_lbl.add_theme_font_size_override("font_size", 15)
+	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_row.add_child(title_lbl)
+
+	# Color swatch
+	var color_swatch = ColorRect.new()
+	color_swatch.color = parsed_color
+	color_swatch.custom_minimum_size = Vector2(18, 18)
+	title_row.add_child(color_swatch)
+
+	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
+	var target = target_tag.strip_edges().to_upper()
+	var is_founder = (founder == player_tag)
+
+	# Members label
+	var members_text = "Members: "
+	var member_names: Array = []
+	for m in members:
+		member_names.append(_ziskej_jmeno_statu_podle_tagu(str(m)))
+	members_text += ", ".join(member_names)
+	var members_lbl = Label.new()
+	members_lbl.text = members_text
+	members_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	members_lbl.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9))
+	vbox.add_child(members_lbl)
+
+	# Created info
+	var info_lbl = Label.new()
+	info_lbl.text = "Founded by %s, turn %d" % [_ziskej_jmeno_statu_podle_tagu(founder), created_turn]
+	info_lbl.add_theme_color_override("font_color", Color(0.5, 0.6, 0.7))
+	info_lbl.add_theme_font_size_override("font_size", 12)
+	vbox.add_child(info_lbl)
+
+	# Conditions for target to join (only in invite mode, and if not already member)
+	var target_is_member = members.has(target)
+	if view_mode == "invite" and not target_is_member and target != "" and GameManager.has_method("ziskej_podminky_clenstvi_aliance"):
+		var conditions = GameManager.ziskej_podminky_clenstvi_aliance(alliance_id, target) as Array
+		if not conditions.is_empty():
+			var cond_title = Label.new()
+			cond_title.text = "Conditions for %s to join:" % _ziskej_jmeno_statu_podle_tagu(target)
+			cond_title.add_theme_color_override("font_color", Color(0.9, 0.85, 0.6))
+			cond_title.add_theme_font_size_override("font_size", 13)
+			vbox.add_child(cond_title)
+
+			for cond in conditions:
+				var cond_label = Label.new()
+				var member_name = _ziskej_jmeno_statu_podle_tagu(str(cond.get("member", "")))
+				var cond_rel = float(cond.get("relation", 0))
+				var needed = float(cond.get("needed", 0))
+				var met = bool(cond.get("met", false))
+				var both_human = bool(cond.get("both_human", false))
+				var at_war = bool(cond.get("at_war", false))
+
+				if both_human:
+					cond_label.text = "  %s: Auto (both players)" % member_name
+					cond_label.add_theme_color_override("font_color", Color(0.5, 0.9, 0.5))
+				elif at_war:
+					cond_label.text = "  %s: AT WAR" % member_name
+					cond_label.add_theme_color_override("font_color", Color(0.95, 0.3, 0.3))
+				elif met:
+					cond_label.text = "  %s: %.1f / %.1f ✓" % [member_name, cond_rel, needed]
+					cond_label.add_theme_color_override("font_color", Color(0.5, 0.9, 0.5))
+				else:
+					cond_label.text = "  %s: %.1f / %.1f ✗" % [member_name, cond_rel, needed]
+					cond_label.add_theme_color_override("font_color", Color(0.95, 0.4, 0.4))
+				cond_label.add_theme_font_size_override("font_size", 12)
+				vbox.add_child(cond_label)
+
+	# Action buttons — differ by view mode
+	var btn_row = HBoxContainer.new()
+	btn_row.add_theme_constant_override("separation", 6)
+	vbox.add_child(btn_row)
+
+	if view_mode == "invite":
+		# Invite mode: only show invite button (+ conditions are shown above)
+		if not target_is_member and target != "":
+			var invite_btn = Button.new()
+			invite_btn.text = "Invite %s" % _ziskej_jmeno_statu_podle_tagu(target)
+			invite_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var aid_copy = alliance_id
+			var target_copy = target
+			invite_btn.pressed.connect(func(): _on_alliance_invite_pressed(aid_copy, target_copy))
+			_aplikuj_ingame_tlacitko_styl(invite_btn, false)
+			btn_row.add_child(invite_btn)
+		else:
+			var already_lbl = Label.new()
+			already_lbl.text = "%s is already a member." % _ziskej_jmeno_statu_podle_tagu(target)
+			already_lbl.add_theme_color_override("font_color", Color(0.5, 0.85, 0.5))
+			already_lbl.add_theme_font_size_override("font_size", 12)
+			btn_row.add_child(already_lbl)
+	else:
+		# Own mode: leave / kick / disband
+		var leave_btn = Button.new()
+		leave_btn.text = "Leave"
+		leave_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var aid_copy3 = alliance_id
+		leave_btn.pressed.connect(func(): _on_alliance_leave_pressed(aid_copy3))
+		_aplikuj_ingame_tlacitko_styl(leave_btn, true)
+		btn_row.add_child(leave_btn)
+
+		if is_founder:
+			var disband_btn = Button.new()
+			disband_btn.text = "Disband"
+			disband_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var aid_copy4 = alliance_id
+			disband_btn.pressed.connect(func(): _on_alliance_disband_pressed(aid_copy4))
+			_aplikuj_ingame_tlacitko_styl(disband_btn, true)
+			btn_row.add_child(disband_btn)
+
+func _on_alliance_create_pressed() -> void:
+	if _alliance_create_popup:
+		if _alliance_create_name_input:
+			_alliance_create_name_input.text = ""
+		if _alliance_create_level_option:
+			_alliance_create_level_option.select(0)
+		if _alliance_create_color_picker:
+			_alliance_create_color_picker.color = Color(0.27, 0.53, 1.0)
+		# Update popup title (own view: "Create New Alliance")
+		var popup_title_lbl = _alliance_create_popup.get_node_or_null("VBoxContainer/Label")
+		if popup_title_lbl:
+			popup_title_lbl.text = "Create New Alliance"
+		_pozicuj_alliance_create_popup()
+		_alliance_create_popup.visible = true
+
+func _on_alliance_create_confirm() -> void:
+	if not GameManager.has_method("vytvor_alianci_skupinu"):
+		return
+	var name_text = ""
+	if _alliance_create_name_input:
+		name_text = _alliance_create_name_input.text.strip_edges()
+	if name_text == "":
+		name_text = "Alliance"
+	var level_idx = 0
+	if _alliance_create_level_option:
+		level_idx = _alliance_create_level_option.selected
+	var level = _alliance_create_level_option.get_item_id(level_idx) if _alliance_create_level_option else 1
+	var color_hex = "#4488ff"
+	if _alliance_create_color_picker:
+		color_hex = "#" + _alliance_create_color_picker.color.to_html(false)
+
+	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
+
+	var result = GameManager.vytvor_alianci_skupinu(name_text, level, player_tag, [], color_hex)
+	if not bool(result.get("ok", false)):
+		zobraz_systemove_hlaseni("Alliance", str(result.get("reason", "Failed to create alliance.")))
+		return
+
+	_zavri_alliance_create_popup()
+	_obnov_alliance_dialog_obsah(_alliance_dialog_target_tag)
+	_aktualizuj_aliance_ui(_alliance_dialog_target_tag)
+	_aktualizuj_diplomacii_tlacitka(_alliance_dialog_target_tag)
+	_aktualizuj_panel_zprav()
+
+func _on_alliance_invite_pressed(alliance_id: String, target_tag: String) -> void:
+	if not GameManager.has_method("pridej_clena_do_aliance"):
+		return
+	var target_is_human = GameManager.has_method("je_lidsky_stat") and bool(GameManager.je_lidsky_stat(target_tag))
+	var ignoruj = target_is_human
+	var result = GameManager.pridej_clena_do_aliance(alliance_id, target_tag, ignoruj)
+	if not bool(result.get("ok", false)):
+		zobraz_systemove_hlaseni("Alliance", str(result.get("reason", "Failed to add member.")))
+	_obnov_alliance_dialog_obsah(_alliance_dialog_target_tag)
+	_aktualizuj_aliance_ui(_alliance_dialog_target_tag)
+	_aktualizuj_diplomacii_tlacitka(_alliance_dialog_target_tag)
+	_aktualizuj_panel_zprav()
+
+func _on_alliance_kick_pressed(alliance_id: String, target_tag: String) -> void:
+	if not GameManager.has_method("odeber_clena_z_aliance"):
+		return
+	GameManager.odeber_clena_z_aliance(alliance_id, target_tag)
+	_obnov_alliance_dialog_obsah(_alliance_dialog_target_tag)
+	_aktualizuj_aliance_ui(_alliance_dialog_target_tag)
+	_aktualizuj_diplomacii_tlacitka(_alliance_dialog_target_tag)
+	_aktualizuj_panel_zprav()
+
+func _on_alliance_leave_pressed(alliance_id: String) -> void:
+	if not GameManager.has_method("odeber_clena_z_aliance"):
+		return
+	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
+	GameManager.odeber_clena_z_aliance(alliance_id, player_tag)
+	_obnov_alliance_dialog_obsah(_alliance_dialog_target_tag)
+	_aktualizuj_aliance_ui(_alliance_dialog_target_tag)
+	_aktualizuj_diplomacii_tlacitka(_alliance_dialog_target_tag)
+	_aktualizuj_panel_zprav()
+
+func _on_alliance_disband_pressed(alliance_id: String) -> void:
+	if not GameManager.has_method("rozpust_alianci"):
+		return
+	GameManager.rozpust_alianci(alliance_id)
+	_obnov_alliance_dialog_obsah(_alliance_dialog_target_tag)
+	_aktualizuj_aliance_ui(_alliance_dialog_target_tag)
+	_aktualizuj_diplomacii_tlacitka(_alliance_dialog_target_tag)
+	_aktualizuj_panel_zprav()
 
 func _vytvor_mirovou_konferenci_dialog() -> void:
 	if _peace_dialog != null:
@@ -3940,6 +4671,11 @@ func _aktualizuj_pozice_popupu():
 			var text_area_h = max(42.0, msg_h - 68.0)
 			system_message_text.custom_minimum_size = Vector2(0.0, text_area_h)
 
+	if _alliance_dialog and _alliance_dialog.visible:
+		_pozicuj_alliance_dialog()
+	if _alliance_create_popup and _alliance_create_popup.visible:
+		_pozicuj_alliance_create_popup()
+
 func zobraz_systemove_hlaseni(titulek: String, text: String) -> void:
 	if not system_message_popup:
 		return
@@ -3967,13 +4703,8 @@ func zobraz_systemove_hlaseni(titulek: String, text: String) -> void:
 		await get_tree().process_frame
 
 func _napln_aliance_option():
-	if not alliance_level_option:
-		return
-	alliance_level_option.clear()
-	alliance_level_option.add_item("[ ] No alliance", 0)
-	alliance_level_option.add_item("[D] Defensive (ally defense)", 1)
-	alliance_level_option.add_item("[O] Offensive (joint attack)", 2)
-	alliance_level_option.add_item("[F] Full (defense + attack)", 3)
+	# Legacy stub - alliance is now managed via popup dialog
+	pass
 
 func _aktualizuj_zadost_ui(_target_tag: String):
 	_current_incoming_request = {}
@@ -4761,6 +5492,8 @@ func _formatuj_text_zadosti(req: Dictionary) -> String:
 		return "Peace proposal"
 	if req_type == "non_aggression":
 		return "Non-aggression pact (10 turns)"
+	if req_type == "military_access":
+		return "Military access request"
 	return "Diplomatic offer"
 
 func _aktualizuj_panel_rozbalene_fronty(queue: Array) -> void:
@@ -4953,38 +5686,41 @@ func _aktualizuj_vizual_fronty_diplomacii(pending_count: int) -> void:
 	_rozmistit_vizual_fronty_diplomacii()
 
 func _aktualizuj_aliance_ui(target_tag: String):
-	if not alliance_level_option:
+	if not alliance_btn:
 		return
 
 	if not GameManager.has_method("ziskej_uroven_aliance"):
-		alliance_level_option.hide()
+		alliance_btn.hide()
 		return
 
 	var level = int(GameManager.ziskej_uroven_aliance(GameManager.hrac_stat, target_tag))
-	var rel = 0.0
-	if GameManager.has_method("ziskej_vztah_statu"):
-		rel = float(GameManager.ziskej_vztah_statu(GameManager.hrac_stat, target_tag))
-
 	var at_war = GameManager.jsou_ve_valce(GameManager.hrac_stat, target_tag)
-	var alliance_request_pending = false
-	if GameManager.has_method("je_aliancni_zadost_cekajici"):
-		alliance_request_pending = bool(GameManager.je_aliancni_zadost_cekajici(GameManager.hrac_stat, target_tag))
+
+	var alliance_count = 0
+	if GameManager.has_method("ziskej_spolecne_aliance"):
+		alliance_count = (GameManager.ziskej_spolecne_aliance(GameManager.hrac_stat, target_tag) as Array).size()
 
 	_updating_alliance_ui = true
-	alliance_level_option.select(clamp(level, 0, 3))
-	alliance_level_option.disabled = at_war or alliance_request_pending
 	if at_war:
-		alliance_level_option.tooltip_text = "Alliance cannot be changed during war."
-	elif alliance_request_pending:
-		alliance_level_option.tooltip_text = "Alliance request already sent. Waiting for response."
-	elif rel < 60.0:
-		alliance_level_option.tooltip_text = "Defensive alliance requires relation at least 60."
-	elif rel < 75.0:
-		alliance_level_option.tooltip_text = "Offensive alliance requires relation at least 75."
-	elif rel < 90.0:
-		alliance_level_option.tooltip_text = "Full alliance requires relation at least 90."
+		alliance_btn.text = "Alliances (at war)"
+		alliance_btn.disabled = true
+		alliance_btn.tooltip_text = "Alliance cannot be managed during war."
+	elif level > 0:
+		var level_name = ""
+		if GameManager.has_method("nazev_urovne_aliance"):
+			level_name = str(GameManager.nazev_urovne_aliance(level))
+		else:
+			level_name = "Level %d" % level
+		if alliance_count > 0:
+			alliance_btn.text = "Alliances (%d) — %s" % [alliance_count, level_name]
+		else:
+			alliance_btn.text = "Alliances — %s" % level_name
+		alliance_btn.disabled = false
+		alliance_btn.tooltip_text = "Open alliance management menu."
 	else:
-		alliance_level_option.tooltip_text = "Higher alliance level unlocks broader call-to-war support."
+		alliance_btn.text = "Alliances"
+		alliance_btn.disabled = false
+		alliance_btn.tooltip_text = "Open alliance management menu."
 	_updating_alliance_ui = false
 
 func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
@@ -5081,10 +5817,13 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 			if improve_rel_btn: improve_rel_btn.hide()
 			if worsen_rel_btn: worsen_rel_btn.hide()
 			if gift_money_btn: gift_money_btn.hide()
-			if alliance_level_option: alliance_level_option.hide()
+			if alliance_btn:
+				alliance_btn.show()
+				_aktualizuj_aliance_ui(owner_tag)
 			declare_war_btn.hide()
 			propose_peace_btn.hide()
 			if non_aggression_btn: non_aggression_btn.hide()
+			if _military_access_btn: _military_access_btn.hide()
 			if incoming_request_label: incoming_request_label.hide()
 			if respond_request_buttons: respond_request_buttons.hide()
 			if research_btn: research_btn.show()
@@ -5098,7 +5837,7 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 			if improve_rel_btn: improve_rel_btn.show()
 			if worsen_rel_btn: worsen_rel_btn.show()
 			if gift_money_btn: gift_money_btn.show()
-			if alliance_level_option: alliance_level_option.show()
+			if alliance_btn: alliance_btn.show()
 			_aktualizuj_aliance_ui(owner_tag)
 			_aktualizuj_diplomacii_tlacitka(owner_tag)
 			if non_aggression_btn: non_aggression_btn.show()
@@ -5198,6 +5937,7 @@ func schovej_se():
 	# Keep peace conference open until player exits manually.
 	if _research_dialog and _research_dialog.visible:
 		_zavri_vyzkum_dialog()
+	_zavri_alliance_dialog()
 	if research_btn:
 		research_btn.hide()
 	_current_viewed_province_id = -1
@@ -5243,6 +5983,35 @@ func _on_non_aggression_button_pressed():
 	if success:
 		_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
 	_aktualizuj_panel_zprav()
+
+func _on_military_access_btn_pressed():
+	if current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat:
+		return
+	if not GameManager.has_method("pozadej_vojensky_pristup"):
+		return
+	# If player already has manual access, revoke it.
+	var has_access = GameManager.has_method("ma_vojensky_pristup") and bool(GameManager.ma_vojensky_pristup(GameManager.hrac_stat, current_viewed_tag))
+	var is_alliance = GameManager.has_method("ziskej_uroven_aliance") and int(GameManager.ziskej_uroven_aliance(GameManager.hrac_stat, current_viewed_tag)) > 0
+	if has_access and not is_alliance:
+		if GameManager.has_method("odvolej_vojensky_pristup"):
+			GameManager.odvolej_vojensky_pristup(current_viewed_tag, GameManager.hrac_stat)
+		_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
+		_aktualizuj_panel_zprav()
+		zobraz_systemove_hlaseni("Military Access", "You revoked military access from %s." % current_viewed_tag)
+		return
+	# Request access
+	var granted = bool(GameManager.pozadej_vojensky_pristup(GameManager.hrac_stat, current_viewed_tag))
+	_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
+	_aktualizuj_panel_zprav()
+	if GameManager.je_lidsky_stat(current_viewed_tag):
+		zobraz_systemove_hlaseni("Military Access", "Request for military access sent to %s." % current_viewed_tag)
+	elif granted:
+		zobraz_systemove_hlaseni("Military Access", "%s granted you military access to their territory." % current_viewed_tag)
+	else:
+		var rel = 0.0
+		if GameManager.has_method("ziskej_vztah_statu"):
+			rel = float(GameManager.ziskej_vztah_statu(GameManager.hrac_stat, current_viewed_tag))
+		zobraz_systemove_hlaseni("Military Access Denied", "%s refused military access.\nRelations: %.0f (minimum required: 15)." % [current_viewed_tag, rel])
 
 func _on_popup_accept_request_pressed():
 	# Legacy wrapper: accept currently highlighted request.
@@ -5313,39 +6082,15 @@ func _on_worsen_relationship_pressed():
 	_aktualizuj_vztah_ui(current_viewed_tag)
 	_aktualizuj_aliance_ui(current_viewed_tag)
 
-func _on_alliance_level_selected(index: int):
-	if _updating_alliance_ui:
-		return
-	if current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat:
-		return
-	if not GameManager.has_method("nastav_uroven_aliance"):
-		return
+func _on_alliance_level_selected(_index: int):
+	# Legacy stub - alliance management moved to popup dialog
+	pass
 
-	var current_level = 0
-	if GameManager.has_method("ziskej_uroven_aliance"):
-		current_level = int(GameManager.ziskej_uroven_aliance(GameManager.hrac_stat, current_viewed_tag))
-
-	var target_is_ai = true
-	if GameManager.has_method("je_lidsky_stat"):
-		target_is_ai = not bool(GameManager.je_lidsky_stat(current_viewed_tag))
-
-	if index > current_level and GameManager.has_method("odeslat_aliancni_zadost"):
-		var ignorovat_vztah = not target_is_ai
-		var sent = bool(GameManager.odeslat_aliancni_zadost(GameManager.hrac_stat, current_viewed_tag, index, ignorovat_vztah))
-		if sent:
-			_aktualizuj_aliance_ui(current_viewed_tag)
-			_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
-			_aktualizuj_panel_zprav()
+func _on_alliance_button_pressed():
+	if current_viewed_tag == "":
 		return
-
-	var success = bool(GameManager.nastav_uroven_aliance(GameManager.hrac_stat, current_viewed_tag, index))
-	if not success:
-		_aktualizuj_aliance_ui(current_viewed_tag)
-		return
-
-	_aktualizuj_aliance_ui(current_viewed_tag)
-	_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
-	_aktualizuj_panel_zprav()
+	_alliance_dialog_target_tag = current_viewed_tag
+	_otevri_alliance_dialog(current_viewed_tag)
 
 func _on_kolo_zmeneno():
 	_aktualizuj_popup_diplomatickych_zadosti()
@@ -5404,6 +6149,8 @@ func _aktualizuj_diplomacii_tlacitka(target_tag: String):
 		propose_peace_btn.hide()
 		if non_aggression_btn:
 			non_aggression_btn.hide()
+		if _military_access_btn:
+			_military_access_btn.hide()
 		return
 
 	if GameManager.jsou_ve_valce(GameManager.hrac_stat, target):
@@ -5418,12 +6165,14 @@ func _aktualizuj_diplomacii_tlacitka(target_tag: String):
 		propose_peace_btn.modulate = Color(1, 1, 1)
 		propose_peace_btn.show()
 
-		if alliance_level_option:
-			alliance_level_option.disabled = true
+		if alliance_btn:
+			alliance_btn.disabled = true
 		if non_aggression_btn:
 			non_aggression_btn.text = "Non-aggression pact (war locked)"
 			non_aggression_btn.disabled = true
 			non_aggression_btn.modulate = Color(1, 1, 1)
+		if _military_access_btn:
+			_military_access_btn.hide()
 	else:
 		var alliance_level = 0
 		if GameManager.has_method("ziskej_uroven_aliance"):
@@ -5452,8 +6201,8 @@ func _aktualizuj_diplomacii_tlacitka(target_tag: String):
 
 		propose_peace_btn.hide()
 
-		if alliance_level_option:
-			alliance_level_option.disabled = false
+		if alliance_btn:
+			alliance_btn.disabled = false
 
 		if non_aggression_btn:
 			var rel = 0.0
@@ -5467,3 +6216,24 @@ func _aktualizuj_diplomacii_tlacitka(target_tag: String):
 				non_aggression_btn.text = "Non-aggression pact (10T)"
 				non_aggression_btn.disabled = rel < 10.0
 				non_aggression_btn.modulate = Color(1, 1, 1)
+
+		if _military_access_btn:
+			var has_access = false
+			var pending = false
+			if GameManager.has_method("ma_vojensky_pristup"):
+				has_access = bool(GameManager.ma_vojensky_pristup(GameManager.hrac_stat, target))
+			if not has_access and GameManager.has_method("_ma_cekajici_zadost_vojenskeho_pristupu"):
+				pending = bool(GameManager._ma_cekajici_zadost_vojenskeho_pristupu(GameManager.hrac_stat, target))
+			if alliance_level > 0:
+				_military_access_btn.text = "Military access ✓ (alliance)"
+				_military_access_btn.disabled = true
+			elif has_access:
+				_military_access_btn.text = "Military access ✓ (Revoke)"
+				_military_access_btn.disabled = false
+			elif pending:
+				_military_access_btn.text = "Military access (pending...)"
+				_military_access_btn.disabled = true
+			else:
+				_military_access_btn.text = "Request military access"
+				_military_access_btn.disabled = false
+			_military_access_btn.show()

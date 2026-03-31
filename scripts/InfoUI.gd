@@ -407,7 +407,6 @@ func _posun_stavba_menu():
 	p.position.y = btn_stavet.global_position.y - p.size.y - 5
 	_stavba_last_focus_idx = -2
 	set_process(true)
-	_set_preview_text("Construction finishes in 3 turns. Civilian Factory increases income, Arms Factory boosts recruits, Port unlocks naval access.")
 
 func _on_stavba_zvyraznena(id: int) -> void:
 	_nastav_nahled_stavby_podle_id(id)
@@ -423,7 +422,7 @@ func _nastav_nahled_stavby_podle_id(id: int) -> void:
 	var province_data = _ziskej_provincie_data()
 	if not province_data.has(aktualni_provincie_id):
 		return
-	_set_preview_text(_nahled_stavby_text(id, cena, province_data[aktualni_provincie_id]))
+	_nahled_stavby_text(id, cena, province_data[aktualni_provincie_id])
 
 func _on_stavba_menu_zavreno() -> void:
 	_stavba_last_focus_idx = -2
@@ -730,7 +729,6 @@ func _on_stavba_vybrana(id: int):
 
 	if id == 2:
 		if not GameManager.muze_postavit_pristav(aktualni_provincie_id):
-			_set_preview_text("Port cannot be built: province must be yours, coastal, and not on cooldown.")
 			_ukaz_stavbu_info("PORT", "A port can only be built in your own coastal province adjacent to sea, and only once.")
 			return
 
@@ -747,7 +745,6 @@ func _on_stavba_vybrana(id: int):
 		_ukaz_stavbu_info("CONSTRUCTION STARTED", _nahled_stavby_text(id, cena, province_data[aktualni_provincie_id]))
 		GameManager.kolo_zmeneno.emit()
 	else:
-		_set_preview_text("Insufficient funds: you need %s, you have %s." % [_format_money_auto(cena, 2), _format_money_auto(GameManager.statni_kasa, 2)])
 		_ukaz_stavbu_info("INSUFFICIENT FUNDS", "You do not have enough money for this construction.")
 
 func _ukaz_stavbu_info(title: String, text: String):
@@ -775,7 +772,6 @@ func _on_verbovat_pressed():
 	var max_mozno = min(dostupni_rekruti, max_za_penize)
 	
 	if max_mozno <= 0: return
-	_set_preview_text("Recruitment increases army upkeep (reduces net income per turn).")
 		
 	recruit_slider.min_value = 0
 	recruit_slider.max_value = max_mozno
@@ -794,11 +790,10 @@ func _on_slider_zmenen(hodnota: float):
 	else:
 		recruit_info.text = "Men: %d\nCost: %s" % [int(hodnota), _format_money_auto(cena, 2)]
 	if hodnota > 0:
-		_set_preview_text(_nahled_verbovani_text(int(hodnota)))
+		_nahled_verbovani_text(int(hodnota))
 	else:
 		_clear_inline_deltas()
 		_push_overview_deltas({})
-		_set_preview_text("Recruitment increases army upkeep (reduces net income per turn).")
 	btn_potvrdit.disabled = (hodnota == 0)
 
 func _on_potvrdit_verbovani():

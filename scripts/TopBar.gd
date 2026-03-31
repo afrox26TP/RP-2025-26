@@ -1,8 +1,11 @@
 extends CanvasLayer
 
 @onready var money_label = $Panel/HBoxContainer/MoneyLabel
-@onready var turn_label = $Panel/HBoxContainer/TurnLabel
-@onready var next_btn = $Panel/HBoxContainer/NextTurnButton
+@onready var date_label = $Panel/HBoxContainer/DateLabel
+@onready var player_turn_panel = $PlayerTurnPanel
+@onready var next_btn = $PlayerTurnPanel/VBoxContainer/TurnRow/NextTurnButton
+@onready var turn_row = $PlayerTurnPanel/VBoxContainer/TurnRow
+@onready var turn_queue_flags = $PlayerTurnPanel/VBoxContainer/TurnQueueFlags
 @onready var zpravy_btn = $Panel/HBoxContainer/ZpravyButton
 @onready var top_panel = $Panel
 @onready var map_modes_box = $Panel/HBoxContainer/MapModes
@@ -15,9 +18,9 @@ extends CanvasLayer
 @onready var mode_btn_terrain = $Panel/HBoxContainer/MapModes/ModeTerrain
 @onready var mode_btn_resources = $Panel/HBoxContainer/MapModes/ModeResources
 
-# Paths to the central flag and player name based on the UI tree
-@onready var player_flag = $Panel/HBoxContainer/PlayerInfo/PlayerFlag
-@onready var player_name = $Panel/HBoxContainer/PlayerInfo/PlayerName
+# Panel rows: 1) flag + next turn, 2) state name, 3) queue flags.
+@onready var player_flag = $PlayerTurnPanel/VBoxContainer/TurnRow/PlayerFlag
+@onready var player_name = $PlayerTurnPanel/VBoxContainer/PlayerName
 
 var flag_texture_cache: Dictionary = {}
 var ideology_flag_path_index: Dictionary = {}
@@ -32,6 +35,9 @@ var _map_mode_white_icon_cache: Dictionary = {}
 var _finance_tooltip_panel: PanelContainer
 var _finance_tooltip_text: RichTextLabel
 var _finance_tooltip_visible: bool = false
+var _calendar_start_day: int = 1
+var _calendar_start_month: int = 1
+var _calendar_start_year: int = 2026
 
 const TURN_BUSY_FRAMES := ["[zpracovavam  ]", "[zpracovavam .]", "[zpracovavam ..]", "[zpracovavam ...]"]
 const MAP_MODE_BUTTON_HEIGHT := 38
@@ -159,7 +165,9 @@ func _ensure_ideology_flag_index() -> void:
 
 func _ready():
 	# Connect button clicks and GameManager signals
-	next_btn.pressed.connect(_on_next_turn_pressed)
+	_inicializuj_startovni_datum_hry()
+	if next_btn and not next_btn.pressed.is_connected(_on_next_turn_pressed):
+		next_btn.pressed.connect(_on_next_turn_pressed)
 	if zpravy_btn and not zpravy_btn.pressed.is_connected(_on_zpravy_pressed):
 		zpravy_btn.pressed.connect(_on_zpravy_pressed)
 	_zapoj_tlacitka_mapovych_modu()
@@ -172,19 +180,203 @@ func _ready():
 	_vytvor_turn_busy_indicator()
 	_on_zpracovani_tahu_zmeneno(bool(GameManager.zpracovava_se_tah))
 	_nastav_tooltipy_ui()
+	var viewport = get_viewport()
+	if viewport and viewport.has_signal("size_changed") and not viewport.size_changed.is_connected(_aktualizuj_sirku_panelu_hrace):
+		viewport.size_changed.connect(_aktualizuj_sirku_panelu_hrace)
+	aktualizuj_ui()
 	call_deferred("_registruj_anchor_zprav")
 
 func _nastav_tooltipy_ui() -> void:
-	money_label.tooltip_text = ""
-	turn_label.tooltip_text = "Current turn number."
-	next_btn.tooltip_text = "End your turn and process the next one."
-	zpravy_btn.tooltip_text = "Open the messages center (my country / global)."
-	player_flag.tooltip_text = "Flag of the country you currently control."
-	player_name.tooltip_text = "Name of the country you currently play as."
+	if money_label:
+		money_label.tooltip_text = ""
+	if date_label:
+		date_label.tooltip_text = "In-game date. Every turn advances one month."
+	if next_btn:
+		next_btn.tooltip_text = "End your turn and process the next one."
+	if turn_queue_flags:
+		turn_queue_flags.tooltip_text = "Turn order for local multiplayer players."
+	if zpravy_btn:
+		zpravy_btn.tooltip_text = "Open the messages center (my country / global)."
+	if player_flag:
+		player_flag.tooltip_text = "Flag of the country you currently control."
+	if player_name:
+		player_name.tooltip_text = "Name of the country you currently play as."
 	_nastav_tooltipy_mapovych_modu()
 	TooltipUtils.apply_default_tooltips(self)
 	# Money label uses only custom hover panel, never default Godot tooltip.
-	money_label.tooltip_text = ""
+	if money_label:
+		money_label.tooltip_text = ""
+
+func _inicializuj_startovni_datum_hry() -> void:
+	var datum: Dictionary = Time.get_datetime_dict_from_system()
+	_calendar_start_day = clampi(int(datum.get("day", 1)), 1, 31)
+	_calendar_start_month = clampi(int(datum.get("month", 1)), 1, 12)
+	_calendar_start_year = int(datum.get("year", 2026))
+
+func _ziskej_text_data_pro_kolo(kolo: int) -> String:
+	var offset_mesicu = maxi(0, kolo - 1)
+	var month_index = (_calendar_start_month - 1) + offset_mesicu
+	var month = int(month_index % 12) + 1
+	var year = _calendar_start_year + int(month_index / 12)
+	return "Date: %02d.%02d.%04d" % [_calendar_start_day, month, year]
+
+func _ziskej_jmeno_statu_pro_frontu(tag: String) -> String:
+	var wanted = tag.strip_edges().to_upper()
+	if wanted == "":
+		return ""
+	if wanted == str(GameManager.hrac_stat).strip_edges().to_upper() and str(GameManager.hrac_jmeno).strip_edges() != "":
+		return str(GameManager.hrac_jmeno).strip_edges()
+
+	var data = GameManager.map_data
+	if data is Dictionary:
+		for prov_id in data:
+			var d = data[prov_id] as Dictionary
+			if str(d.get("owner", "")).strip_edges().to_upper() != wanted:
+				continue
+			var state_name = str(d.get("country_name", wanted)).strip_edges()
+			if state_name != "":
+				return state_name
+	return wanted
+
+func _sestav_text_fronty_tahu() -> String:
+	var hraci = GameManager.lokalni_hraci_staty
+	if not (hraci is Array) or hraci.size() <= 1:
+		return "Queue: Singleplayer"
+
+	var aktivni_idx = clampi(int(GameManager.aktivni_hrac_index), 0, hraci.size() - 1)
+	var casti: Array[String] = []
+	for i in range(hraci.size()):
+		var idx = (aktivni_idx + i) % hraci.size()
+		var tag = str(hraci[idx]).strip_edges().to_upper()
+		var name = _ziskej_jmeno_statu_pro_frontu(tag)
+		if i == 0:
+			casti.append("[NOW] %s" % name)
+		else:
+			casti.append(name)
+	return "Queue: %s" % " -> ".join(casti)
+
+func _ziskej_texturu_vlajky_fronty(tag: String):
+	var cisty_tag = tag.strip_edges().to_upper()
+	for path in ["res://map_data/Flags/%s.svg" % cisty_tag, "res://map_data/Flags/%s.png" % cisty_tag]:
+		var tex = _cached_texture(path)
+		if tex:
+			return tex
+	return null
+
+func _vycisti_frontu_tahu_vlajek() -> void:
+	if turn_queue_flags == null:
+		return
+	for child in turn_queue_flags.get_children():
+		child.queue_free()
+
+func _pridej_vlajku_do_fronty(tag: String, aktivni: bool) -> void:
+	if turn_queue_flags == null:
+		return
+	var tex = _ziskej_texturu_vlajky_fronty(tag)
+	if tex == null:
+		return
+
+	var rect = TextureRect.new()
+	rect.custom_minimum_size = Vector2(40, 26)
+	rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	rect.texture = tex
+	rect.tooltip_text = _ziskej_jmeno_statu_pro_frontu(tag)
+	if aktivni:
+		rect.modulate = Color(1.0, 1.0, 1.0, 1.0)
+	else:
+		rect.modulate = Color(0.62, 0.62, 0.62, 0.52)
+	turn_queue_flags.add_child(rect)
+
+func _aktualizuj_frontu_tahu_vlajky() -> void:
+	if turn_queue_flags == null:
+		return
+	_vycisti_frontu_tahu_vlajek()
+
+	var hraci = GameManager.lokalni_hraci_staty
+	if not (hraci is Array) or hraci.size() <= 1:
+		turn_queue_flags.visible = false
+		return
+
+	turn_queue_flags.visible = true
+	var aktivni_idx = clampi(int(GameManager.aktivni_hrac_index), 0, hraci.size() - 1)
+	# Show only upcoming players in the queue, not the player currently taking the turn.
+	for i in range(1, hraci.size()):
+		var idx = (aktivni_idx + i) % hraci.size()
+		var tag = str(hraci[idx]).strip_edges().to_upper()
+		_pridej_vlajku_do_fronty(tag, false)
+
+func _aktualizuj_sirku_panelu_hrace() -> void:
+	if player_turn_panel == null:
+		return
+	var viewport = get_viewport()
+	if viewport == null:
+		return
+	var vp_width = viewport.get_visible_rect().size.x
+
+	var row_separation = 8.0
+	if turn_row:
+		row_separation = float(turn_row.get_theme_constant("separation"))
+	var flag_width = 68.0
+	if player_flag:
+		flag_width = maxf(flag_width, player_flag.custom_minimum_size.x)
+	var button_width = 180.0
+	if next_btn:
+		button_width = maxf(button_width, next_btn.custom_minimum_size.x)
+	var name_width = 90.0
+	if player_name:
+		var font = player_name.get_theme_font("font")
+		var font_size = player_name.get_theme_font_size("font_size")
+		var text_width = 0.0
+		if font:
+			text_width = font.get_string_size(player_name.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		else:
+			text_width = player_name.get_minimum_size().x
+		# Keep room for short names but prevent very long names from exploding width.
+		name_width = clampf(text_width + 8.0, 90.0, 360.0)
+
+	var queue_estimated = 0.0
+	if turn_queue_flags and turn_queue_flags.visible:
+		# Queue wraps in HFlowContainer, so it should not force extra panel width.
+		queue_estimated = 120.0
+
+	# First row: flag + next button.
+	var turn_row_estimated = flag_width + button_width + row_separation + 18.0
+	# Second row is full-width state name; third row is queue.
+	var second_row_estimated = name_width + 18.0
+
+	var desired_width = maxf(320.0, maxf(turn_row_estimated, maxf(second_row_estimated, queue_estimated)))
+	var max_width = minf(560.0, maxf(320.0, vp_width - 24.0))
+	desired_width = clampf(desired_width, 320.0, max_width)
+
+	player_turn_panel.custom_minimum_size.x = desired_width
+	player_turn_panel.offset_left = player_turn_panel.offset_right - desired_width
+
+func _aktualizuj_zarovnani_nazvu_statu() -> void:
+	if player_name == null:
+		return
+
+	var text_width = 0.0
+	var font = player_name.get_theme_font("font")
+	var font_size = player_name.get_theme_font_size("font_size")
+	if font:
+		text_width = font.get_string_size(player_name.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	else:
+		text_width = player_name.get_minimum_size().x
+
+	var flag_width = 68.0
+	if player_flag:
+		flag_width = maxf(flag_width, player_flag.custom_minimum_size.x)
+
+	# If the name fits in (or near) flag width, center it under the flag.
+	if text_width <= (flag_width + 10.0):
+		player_name.size_flags_horizontal = 0
+		player_name.custom_minimum_size.x = flag_width
+		player_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	else:
+		player_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		player_name.custom_minimum_size.x = 0.0
+		player_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 
 func _ziskej_game_ui_node() -> Node:
 	var scene_root = get_tree().current_scene
@@ -419,16 +611,20 @@ func _on_mode_resources_pressed() -> void:
 	_prepni_mapovy_mod("resources")
 
 func aktualizuj_ui():
-	# Update money and turn counters
+	# Update money and date counters
 	money_label.text = "Funds: %.2f M USD (+%.2f)" % [GameManager.statni_kasa, GameManager.celkovy_prijem]
-	turn_label.text = "Turn: %d" % GameManager.aktualni_kolo
-	if _finance_tooltip_visible:
-		_aktualizuj_financni_tooltip_text()
-		_aktualizuj_financni_tooltip_pozici()
+	if date_label:
+		date_label.text = _ziskej_text_data_pro_kolo(int(GameManager.aktualni_kolo))
 	
 	# Update player info with dynamic data from GameManager
 	var aktivni_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
 	nastav_hrace(aktivni_tag, GameManager.hrac_jmeno, GameManager.hrac_ideologie)
+	_aktualizuj_zarovnani_nazvu_statu()
+	_aktualizuj_frontu_tahu_vlajky()
+	_aktualizuj_sirku_panelu_hrace()
+	if _finance_tooltip_visible:
+		_aktualizuj_financni_tooltip_text()
+		_aktualizuj_financni_tooltip_pozici()
 
 	# In local multiplayer, center camera when control switches to another human player.
 	if GameManager.lokalni_hraci_staty.size() > 1 and _last_seen_player_tag != "" and aktivni_tag != _last_seen_player_tag:
@@ -445,6 +641,8 @@ func _on_next_turn_pressed():
 func _vytvor_turn_busy_indicator() -> void:
 	if _turn_busy_indicator != null:
 		return
+	if next_btn == null:
+		return
 	var parent = next_btn.get_parent()
 	if parent == null:
 		return
@@ -458,7 +656,8 @@ func _vytvor_turn_busy_indicator() -> void:
 
 func _on_zpracovani_tahu_zmeneno(aktivni: bool) -> void:
 	_is_turn_processing = aktivni
-	next_btn.disabled = aktivni
+	if next_btn:
+		next_btn.disabled = aktivni
 	if _turn_busy_indicator:
 		_turn_busy_indicator.visible = aktivni
 		_turn_busy_anim_step = 0

@@ -237,7 +237,10 @@ var vazalske_vztahy: Dictionary = {}
 var vazalske_odvody: Dictionary = {}
 var valecne_reparace: Array = []
 var aliance_statu: Dictionary = {}
+var aliance_skupiny: Dictionary = {}
+var _aliance_skupiny_seq: int = 0
 var neagresivni_smlouvy: Dictionary = {}
+var vojensky_pristup: Dictionary = {}
 var povalecne_cooldowny: Dictionary = {}
 var cekajici_diplomaticke_zadosti: Dictionary = {}
 var cekajici_aliancni_zadosti: Array = []
@@ -246,6 +249,7 @@ const DIP_REQUEST_PRIORITY_PLAYER := 0
 const DIP_REQUEST_PRIORITY_PEACE := 1
 const DIP_REQUEST_PRIORITY_ALLIANCE := 2
 const DIP_REQUEST_PRIORITY_NON_AGGRESSION := 3
+const DIP_REQUEST_PRIORITY_MILITARY_ACCESS := 4
 
 var zpracovava_se_tah: bool = false
 var _last_end_turn_request_ms: int = -1000000
@@ -341,7 +345,8 @@ func _je_dulezity_popup(titulek: String, text: String) -> bool:
 	# Keep visible popups only for critical war-state events.
 	var critical_tokens = [
 		"valk", "war", "kapitul", "surrender", "hlavni mesto", "capital",
-		"anex", "vyhlasil valku", "declared war", "porazen", "defeated"
+		"anex", "vyhlasil valku", "declared war", "porazen", "defeated",
+		"military access", "vojensky pristup"
 	]
 	for token in critical_tokens:
 		if combined.findn(token) != -1:
@@ -796,7 +801,10 @@ func _vytvor_save_state() -> Dictionary:
 		"vazalske_odvody": vazalske_odvody.duplicate(true),
 		"valecne_reparace": valecne_reparace.duplicate(true),
 		"aliance_statu": aliance_statu.duplicate(true),
+		"aliance_skupiny": aliance_skupiny.duplicate(true),
+		"aliance_skupiny_seq": _aliance_skupiny_seq,
 		"neagresivni_smlouvy": neagresivni_smlouvy.duplicate(true),
+		"vojensky_pristup": vojensky_pristup.duplicate(true),
 		"povalecne_cooldowny": povalecne_cooldowny.duplicate(true),
 		"cekajici_diplomaticke_zadosti": cekajici_diplomaticke_zadosti.duplicate(true),
 		"cekajici_aliancni_zadosti": cekajici_aliancni_zadosti.duplicate(true),
@@ -859,7 +867,10 @@ func _aplikuj_save_state(state: Dictionary) -> bool:
 	vazalske_odvody = (state.get("vazalske_odvody", {}) as Dictionary).duplicate(true)
 	valecne_reparace = (state.get("valecne_reparace", []) as Array).duplicate(true)
 	aliance_statu = (state.get("aliance_statu", {}) as Dictionary).duplicate(true)
+	aliance_skupiny = (state.get("aliance_skupiny", {}) as Dictionary).duplicate(true)
+	_aliance_skupiny_seq = int(state.get("aliance_skupiny_seq", 0))
 	neagresivni_smlouvy = (state.get("neagresivni_smlouvy", {}) as Dictionary).duplicate(true)
+	vojensky_pristup = (state.get("vojensky_pristup", {}) as Dictionary).duplicate(true)
 	povalecne_cooldowny = (state.get("povalecne_cooldowny", {}) as Dictionary).duplicate(true)
 	cekajici_diplomaticke_zadosti = (state.get("cekajici_diplomaticke_zadosti", {}) as Dictionary).duplicate(true)
 	cekajici_aliancni_zadosti = (state.get("cekajici_aliancni_zadosti", []) as Array).duplicate(true)
@@ -922,7 +933,10 @@ func reset_pro_novou_hru() -> void:
 	vazalske_odvody.clear()
 	valecne_reparace.clear()
 	aliance_statu.clear()
+	aliance_skupiny.clear()
+	_aliance_skupiny_seq = 0
 	neagresivni_smlouvy.clear()
+	vojensky_pristup.clear()
 	povalecne_cooldowny.clear()
 	cekajici_diplomaticke_zadosti.clear()
 	cekajici_aliancni_zadosti.clear()
@@ -2999,6 +3013,310 @@ func _synchronizuj_aliance_po_zmene_vztahu(tag_a: String, tag_b: String) -> void
 		if je_lidsky_stat(a) or je_lidsky_stat(b):
 			var text = "Relations weakened the alliance %s-%s: %s" % [a, b, nazev_urovne_aliance(new_level)]
 			_pridej_popup_zucastnenym_hracum(a, b, "Diplomacy", text)
+		if new_level == ALLIANCE_NONE:
+			_expeluj_jednotky_bez_pristupu(a)
+			_expeluj_jednotky_bez_pristupu(b)
+
+	_synchronizuj_vojensky_pristup_po_zmene_vztahu(a, b)
+
+func _synchronizuj_vojensky_pristup_po_zmene_vztahu(tag_a: String, tag_b: String) -> void:
+	var rel = ziskej_vztah_statu(tag_a, tag_b)
+	if rel >= 15.0:
+		return
+	# Revoke A→B grant if A gave B access
+	for pair in [[tag_a, tag_b], [tag_b, tag_a]]:
+		var host = pair[0]
+		var guest = pair[1]
+		var key = "%s|%s" % [host, guest]
+		if vojensky_pristup.has(key):
+			vojensky_pristup.erase(key)
+			_zaloguj_globalni_zpravu("Diplomacy", "Military access %s→%s revoked (relations dropped below 15)." % [host, guest], "diplomacy")
+			if je_lidsky_stat(guest):
+				_pridej_popup_hraci(guest, "Diplomacy", "Military access in %s revoked — relations dropped too low." % host)
+			if je_lidsky_stat(host):
+				_pridej_popup_hraci(host, "Diplomacy", "You revoked military access for %s (relations too low)." % guest)
+			_expeluj_jednotky_bez_pristupu(guest)
+
+# ---- Alliance Groups ----
+
+func _generuj_id_aliance() -> String:
+	_aliance_skupiny_seq += 1
+	return "alliance_%d" % _aliance_skupiny_seq
+
+func vytvor_alianci_skupinu(nazev: String, level: int, zakladatel: String, clenove: Array = [], barva: String = "#4488ff") -> Dictionary:
+	var founder = _normalizuj_tag(zakladatel)
+	if founder == "":
+		return {"ok": false, "reason": "Invalid founder tag."}
+	var clean_name = nazev.strip_edges()
+	if clean_name == "":
+		clean_name = "Alliance %d" % (_aliance_skupiny_seq + 1)
+	var target_level = clampi(level, ALLIANCE_DEFENSE, ALLIANCE_FULL)
+
+	var alliance_id = _generuj_id_aliance()
+	var member_list: Array = [founder]
+	for c in clenove:
+		var tag = _normalizuj_tag(str(c))
+		if tag == "" or tag == "SEA" or tag == founder:
+			continue
+		if not member_list.has(tag):
+			member_list.append(tag)
+
+	var skupina: Dictionary = {
+		"id": alliance_id,
+		"name": clean_name,
+		"level": target_level,
+		"founder": founder,
+		"members": member_list,
+		"created_turn": aktualni_kolo,
+		"color": barva
+	}
+	aliance_skupiny[alliance_id] = skupina
+
+	_synchronizuj_bilateralni_aliance_skupiny(alliance_id)
+	_zaloguj_globalni_zpravu("Alliance", "%s founded alliance '%s' (%s)." % [founder, clean_name, nazev_urovne_aliance(target_level)], "alliance")
+	return {"ok": true, "id": alliance_id}
+
+func upravit_alianci_skupinu(alliance_id: String, novy_nazev: String = "", novy_level: int = -1) -> bool:
+	if not aliance_skupiny.has(alliance_id):
+		return false
+	var skupina = aliance_skupiny[alliance_id] as Dictionary
+	var changed = false
+	if novy_nazev.strip_edges() != "":
+		skupina["name"] = novy_nazev.strip_edges()
+		changed = true
+	if novy_level >= ALLIANCE_DEFENSE and novy_level <= ALLIANCE_FULL and novy_level != int(skupina.get("level", 0)):
+		skupina["level"] = novy_level
+		changed = true
+	if changed:
+		aliance_skupiny[alliance_id] = skupina
+		_synchronizuj_bilateralni_aliance_skupiny(alliance_id)
+	return changed
+
+func pridej_clena_do_aliance(alliance_id: String, tag: String, ignoruj_vztahove_podminky: bool = false) -> Dictionary:
+	if not aliance_skupiny.has(alliance_id):
+		return {"ok": false, "reason": "Alliance does not exist."}
+	var clean = _normalizuj_tag(tag)
+	if clean == "" or clean == "SEA":
+		return {"ok": false, "reason": "Invalid country tag."}
+	var skupina = aliance_skupiny[alliance_id] as Dictionary
+	var members = skupina.get("members", []) as Array
+	if members.has(clean):
+		return {"ok": false, "reason": "%s is already a member." % clean}
+
+	var level = int(skupina.get("level", ALLIANCE_DEFENSE))
+
+	if not ignoruj_vztahove_podminky:
+		for m in members:
+			var member_tag = _normalizuj_tag(str(m))
+			if member_tag == "" or member_tag == clean:
+				continue
+			if jsou_ve_valce(clean, member_tag):
+				return {"ok": false, "reason": "%s is at war with member %s." % [clean, member_tag]}
+			var rel = ziskej_vztah_statu(clean, member_tag)
+			var needed = _minimalni_vztah_pro_alianci(level)
+			if rel < needed:
+				return {"ok": false, "reason": "Relation with %s is %.1f (needs %.1f for %s)." % [member_tag, rel, needed, nazev_urovne_aliance(level)]}
+
+	members.append(clean)
+	skupina["members"] = members
+	aliance_skupiny[alliance_id] = skupina
+
+	_synchronizuj_bilateralni_aliance_skupiny(alliance_id)
+	_zaloguj_globalni_zpravu("Alliance", "%s joined alliance '%s'." % [clean, str(skupina.get("name", ""))], "alliance")
+	if je_lidsky_stat(clean):
+		_pridej_popup_hraci(clean, "Alliance", "You joined alliance '%s'." % str(skupina.get("name", "")))
+	return {"ok": true}
+
+func odeber_clena_z_aliance(alliance_id: String, tag: String) -> bool:
+	if not aliance_skupiny.has(alliance_id):
+		return false
+	var clean = _normalizuj_tag(tag)
+	if clean == "":
+		return false
+	var skupina = aliance_skupiny[alliance_id] as Dictionary
+	var members = skupina.get("members", []) as Array
+	if not members.has(clean):
+		return false
+
+	members.erase(clean)
+	skupina["members"] = members
+
+	_zaloguj_globalni_zpravu("Alliance", "%s left alliance '%s'." % [clean, str(skupina.get("name", ""))], "alliance")
+	if je_lidsky_stat(clean):
+		_pridej_popup_hraci(clean, "Alliance", "You left alliance '%s'." % str(skupina.get("name", "")))
+
+	if members.size() < 2:
+		var old_name = str(skupina.get("name", ""))
+		aliance_skupiny.erase(alliance_id)
+		_zaloguj_globalni_zpravu("Alliance", "Alliance '%s' disbanded (too few members)." % old_name, "alliance")
+	else:
+		aliance_skupiny[alliance_id] = skupina
+
+	_resynchronizuj_bilateralni_aliance_vsech_skupin()
+	return true
+
+func rozpust_alianci(alliance_id: String) -> bool:
+	if not aliance_skupiny.has(alliance_id):
+		return false
+	var skupina = aliance_skupiny[alliance_id] as Dictionary
+	var old_name = str(skupina.get("name", ""))
+	var members = (skupina.get("members", []) as Array).duplicate()
+	aliance_skupiny.erase(alliance_id)
+
+	_zaloguj_globalni_zpravu("Alliance", "Alliance '%s' has been disbanded." % old_name, "alliance")
+	for m in members:
+		if je_lidsky_stat(str(m)):
+			_pridej_popup_hraci(str(m), "Alliance", "Alliance '%s' has been disbanded." % old_name)
+
+	_resynchronizuj_bilateralni_aliance_vsech_skupin()
+	return true
+
+func ziskej_aliance_statu(tag: String) -> Array:
+	var clean = _normalizuj_tag(tag)
+	if clean == "":
+		return []
+	var result: Array = []
+	for aid in aliance_skupiny:
+		var skupina = aliance_skupiny[aid] as Dictionary
+		var members = skupina.get("members", []) as Array
+		if members.has(clean):
+			result.append(skupina.duplicate(true))
+	return result
+
+func ziskej_alianci_podle_id(alliance_id: String) -> Dictionary:
+	if not aliance_skupiny.has(alliance_id):
+		return {}
+	return (aliance_skupiny[alliance_id] as Dictionary).duplicate(true)
+
+func ziskej_spolecne_aliance(tag_a: String, tag_b: String) -> Array:
+	var a = _normalizuj_tag(tag_a)
+	var b = _normalizuj_tag(tag_b)
+	if a == "" or b == "" or a == b:
+		return []
+	var result: Array = []
+	for aid in aliance_skupiny:
+		var skupina = aliance_skupiny[aid] as Dictionary
+		var members = skupina.get("members", []) as Array
+		if members.has(a) and members.has(b):
+			result.append(skupina.duplicate(true))
+	return result
+
+func ziskej_podminky_clenstvi_aliance(alliance_id: String, candidate_tag: String) -> Array:
+	if not aliance_skupiny.has(alliance_id):
+		return []
+	var clean = _normalizuj_tag(candidate_tag)
+	if clean == "":
+		return []
+	var skupina = aliance_skupiny[alliance_id] as Dictionary
+	var members = skupina.get("members", []) as Array
+	var level = int(skupina.get("level", ALLIANCE_DEFENSE))
+	var needed_rel = _minimalni_vztah_pro_alianci(level)
+	var conditions: Array = []
+
+	for m in members:
+		var member_tag = _normalizuj_tag(str(m))
+		if member_tag == "" or member_tag == clean:
+			continue
+		var rel = ziskej_vztah_statu(clean, member_tag)
+		var at_war = jsou_ve_valce(clean, member_tag)
+		var oba_lidske = je_lidsky_stat(clean) and je_lidsky_stat(member_tag)
+		var splneno = oba_lidske or (rel >= needed_rel and not at_war)
+		conditions.append({
+			"member": member_tag,
+			"relation": rel,
+			"needed": needed_rel,
+			"at_war": at_war,
+			"both_human": oba_lidske,
+			"met": splneno
+		})
+	return conditions
+
+func _synchronizuj_bilateralni_aliance_skupiny(alliance_id: String) -> void:
+	if not aliance_skupiny.has(alliance_id):
+		return
+	var skupina = aliance_skupiny[alliance_id] as Dictionary
+	var members = skupina.get("members", []) as Array
+	var level = int(skupina.get("level", ALLIANCE_DEFENSE))
+
+	for i in range(members.size()):
+		for j in range(i + 1, members.size()):
+			var a = _normalizuj_tag(str(members[i]))
+			var b = _normalizuj_tag(str(members[j]))
+			if a == "" or b == "":
+				continue
+			var current = ziskej_uroven_aliance(a, b)
+			if level > current:
+				_nastav_uroven_aliance_bez_kontroly(a, b, level)
+
+func _resynchronizuj_bilateralni_aliance_vsech_skupin() -> void:
+	var max_levels: Dictionary = {}
+	for aid in aliance_skupiny:
+		var skupina = aliance_skupiny[aid] as Dictionary
+		var members = skupina.get("members", []) as Array
+		var level = int(skupina.get("level", ALLIANCE_DEFENSE))
+		for i in range(members.size()):
+			for j in range(i + 1, members.size()):
+				var a = _normalizuj_tag(str(members[i]))
+				var b = _normalizuj_tag(str(members[j]))
+				if a == "" or b == "":
+					continue
+				var key = _klic_pair(a, b)
+				if key == "":
+					continue
+				var existing = int(max_levels.get(key, ALLIANCE_NONE))
+				if level > existing:
+					max_levels[key] = level
+
+	for key in aliance_statu.keys().duplicate():
+		if not max_levels.has(key):
+			aliance_statu.erase(key)
+			if _ai_phase_cache_active:
+				_ai_alliance_level_cache.erase(key)
+				_ai_allies_cache.clear()
+				_ai_war_pair_eval_cache.clear()
+
+	for key in max_levels:
+		var level = int(max_levels[key])
+		var parts = key.split("|")
+		if parts.size() == 2:
+			_nastav_uroven_aliance_bez_kontroly(parts[0], parts[1], level)
+
+func _vycisti_aliance_skupiny_mrtve_staty() -> void:
+	var active = _ziskej_aktivni_staty()
+	var changed = false
+	for aid in aliance_skupiny.keys().duplicate():
+		var skupina = aliance_skupiny[aid] as Dictionary
+		var members = (skupina.get("members", []) as Array).duplicate()
+		var new_members: Array = []
+		for m in members:
+			if active.has(str(m)):
+				new_members.append(str(m))
+		if new_members.size() != members.size():
+			changed = true
+			if new_members.size() < 2:
+				aliance_skupiny.erase(aid)
+			else:
+				skupina["members"] = new_members
+				aliance_skupiny[aid] = skupina
+	if changed:
+		_resynchronizuj_bilateralni_aliance_vsech_skupin()
+
+func _ziskej_vsechny_aliance_skupiny() -> Array:
+	var result: Array = []
+	for aid in aliance_skupiny:
+		result.append((aliance_skupiny[aid] as Dictionary).duplicate(true))
+	return result
+
+func _ziskej_aliance_kde_je_zakladatel(tag: String) -> Array:
+	var clean = _normalizuj_tag(tag)
+	if clean == "":
+		return []
+	var result: Array = []
+	for aid in aliance_skupiny:
+		var skupina = aliance_skupiny[aid] as Dictionary
+		if _normalizuj_tag(str(skupina.get("founder", ""))) == clean:
+			result.append(skupina.duplicate(true))
+	return result
 
 func _ziskej_spojence_s_min_alianci(state_tag: String, min_level: int) -> Array:
 	var out: Array = []
@@ -3147,13 +3465,155 @@ func uzavrit_neagresivni_smlouvu(tag_a: String, tag_b: String) -> bool:
 		_pridej_popup_zucastnenym_hracum(a, b, "Diplomacy", "%s and %s signed a non-aggression pact for %d turns." % [a, b, NON_AGGRESSION_DURATION_TURNS])
 	return true
 
+# ---- Military access ----
+# vojensky_pristup["HOST|GUEST"] = true  →  HOST has granted GUEST right to move troops through HOST's territory.
+# Alliance automatically grants mutual access (checked in ma_vojensky_pristup, not stored).
+
+func ma_vojensky_pristup(guest: String, host: String) -> bool:
+	var g = _normalizuj_tag(guest)
+	var h = _normalizuj_tag(host)
+	if g == "" or h == "" or g == h:
+		return false
+	# Any alliance level grants automatic mutual military access.
+	if ziskej_uroven_aliance(g, h) > ALLIANCE_NONE:
+		return true
+	# Manual grant: HOST|GUEST
+	return vojensky_pristup.has("%s|%s" % [h, g])
+
+func udelit_vojensky_pristup(host: String, guest: String) -> void:
+	var h = _normalizuj_tag(host)
+	var g = _normalizuj_tag(guest)
+	if h == "" or g == "" or h == g:
+		return
+	vojensky_pristup["%s|%s" % [h, g]] = true
+
+func odvolej_vojensky_pristup(host: String, guest: String) -> void:
+	var h = _normalizuj_tag(host)
+	var g = _normalizuj_tag(guest)
+	if h == "" or g == "":
+		return
+	vojensky_pristup.erase("%s|%s" % [h, g])
+	_expeluj_jednotky_bez_pristupu(g)
+
+func _najdi_nejblizsi_vlastni_provincii_pro_presun(tag: String, from_prov_id: int) -> int:
+	var source = map_data.get(from_prov_id, {})
+	var sx = float(source.get("x", 0.0))
+	var sy = float(source.get("y", 0.0))
+	var best_id = -1
+	var best_dist = INF
+	for p_id in map_data:
+		if p_id == from_prov_id:
+			continue
+		var d = map_data[p_id]
+		var owner = _normalizuj_tag(str(d.get("owner", "")))
+		if owner != tag:
+			continue
+		var existing_army = _normalizuj_tag(str(d.get("army_owner", "")))
+		if existing_army != "" and existing_army != tag:
+			continue
+		var dx = float(d.get("x", 0.0)) - sx
+		var dy = float(d.get("y", 0.0)) - sy
+		var dist = dx * dx + dy * dy
+		if dist < best_dist:
+			best_dist = dist
+			best_id = p_id
+	return best_id
+
+func _expeluj_jednotky_bez_pristupu(filter_tag: String = "") -> void:
+	if map_data.is_empty():
+		return
+	var ft = _normalizuj_tag(filter_tag)
+
+	var to_expel: Array = []
+	for prov_id in map_data:
+		var d = map_data[prov_id]
+		var army_tag = _normalizuj_tag(str(d.get("army_owner", "")))
+		if army_tag == "":
+			continue
+		var owner_tag = _normalizuj_tag(str(d.get("owner", "")))
+		if army_tag == owner_tag:
+			continue
+		if ft != "" and army_tag != ft:
+			continue
+		var vojaci = int(d.get("soldiers", 0))
+		if vojaci <= 0:
+			continue
+		if not muze_vstoupit_na_uzemi(army_tag, owner_tag):
+			to_expel.append({"prov_id": prov_id, "army_tag": army_tag, "soldiers": vojaci, "owner_tag": owner_tag})
+
+	if to_expel.is_empty():
+		return
+
+	var notified_tags: Array = []
+	for entry in to_expel:
+		var prov_id = entry["prov_id"]
+		var army_tag = entry["army_tag"]
+		var vojaci = entry["soldiers"]
+
+		map_data[prov_id]["army_owner"] = ""
+		map_data[prov_id]["soldiers"] = 0
+
+		var target_id = _najdi_nejblizsi_vlastni_provincii_pro_presun(army_tag, prov_id)
+		if target_id >= 0:
+			map_data[target_id]["army_owner"] = army_tag
+			map_data[target_id]["soldiers"] = int(map_data[target_id].get("soldiers", 0)) + vojaci
+
+		if je_lidsky_stat(army_tag) and not notified_tags.has(army_tag):
+			notified_tags.append(army_tag)
+
+	for ptag in notified_tags:
+		_pridej_popup_hraci(ptag, "Military", "Your units have been expelled from unauthorized territory and have returned home.")
+
+	var ml = _get_map_loader()
+	if ml and ml.has_method("aktualizuj_ikony_armad"):
+		ml.aktualizuj_ikony_armad()
+
+func pozadej_vojensky_pristup(guest: String, host: String) -> bool:
+	var g = _normalizuj_tag(guest)
+	var h = _normalizuj_tag(host)
+	if g == "" or h == "" or g == h:
+		return false
+	if jsou_ve_valce(g, h):
+		if je_lidsky_stat(g):
+			_pridej_popup_hraci(g, "Diplomacy", "Cannot request military access during war.")
+		return false
+	if ma_vojensky_pristup(g, h):
+		return false
+	# If target is AI, grant immediately when relations ≥ 15, otherwise deny.
+	if not je_lidsky_stat(h):
+		var rel = ziskej_vztah_statu(g, h)
+		if rel >= 15.0:
+			udelit_vojensky_pristup(h, g)
+			_zaloguj_globalni_zpravu("Diplomacy", "%s granted military access to %s." % [h, g], "diplomacy")
+			if je_lidsky_stat(g):
+				_pridej_popup_hraci(g, "Diplomacy", "%s granted you military access to their territory." % h)
+			return true
+		else:
+			if je_lidsky_stat(g):
+				_pridej_popup_hraci(g, "Diplomacy", "Military access denied by %s (relations too low: %.0f, need 15)." % [h, rel])
+			return false
+	# Target is human — send a diplomatic request.
+	return _pridej_diplomatickou_zadost(g, h, "military_access")
+
+func _ma_cekajici_zadost_vojenskeho_pristupu(guest: String, host: String) -> bool:
+	var g = _normalizuj_tag(guest)
+	var h = _normalizuj_tag(host)
+	if g == "" or h == "":
+		return false
+	if not cekajici_diplomaticke_zadosti.has(h):
+		return false
+	for req in (cekajici_diplomaticke_zadosti[h] as Array):
+		if _normalizuj_tag(str(req.get("from", ""))) == g and str(req.get("type", "")) == "military_access":
+			return true
+	return false
+
 func _pridej_diplomatickou_zadost(from_tag: String, to_tag: String, req_type: String, alliance_level: int = ALLIANCE_NONE) -> bool:
 	var from_clean = _normalizuj_tag(from_tag)
 	var to_clean = _normalizuj_tag(to_tag)
 	if from_clean == "" or to_clean == "" or from_clean == to_clean:
 		return false
 
-	if req_type != "alliance" and req_type != "non_aggression" and req_type != "peace":
+	if req_type != "alliance" and req_type != "non_aggression" and req_type != "peace" and req_type != "military_access":
 		return false
 
 	if not _je_essential_diplomaticka_zadost(from_clean, to_clean, req_type, alliance_level):
@@ -3190,6 +3650,8 @@ func _pridej_diplomatickou_zadost(from_tag: String, to_tag: String, req_type: St
 		_zaloguj_globalni_zpravu("Diplomacy", "%s sent peace proposal to %s." % [from_clean, to_clean], "diplomacy")
 	elif req_type == "non_aggression":
 		_zaloguj_globalni_zpravu("Diplomacy", "%s proposed non-aggression pact to %s." % [from_clean, to_clean], "diplomacy")
+	elif req_type == "military_access":
+		_zaloguj_globalni_zpravu("Diplomacy", "%s requested military access from %s." % [from_clean, to_clean], "diplomacy")
 	return true
 
 func _je_essential_diplomaticka_zadost(from_tag: String, to_tag: String, req_type: String, alliance_level: int) -> bool:
@@ -3213,6 +3675,8 @@ func _je_essential_diplomaticka_zadost(from_tag: String, to_tag: String, req_typ
 			# Show only meaningful NAPs from AI to avoid low-value spam.
 			var rel = ziskej_vztah_statu(from_clean, to_clean)
 			return rel >= maxf(35.0, NON_AGGRESSION_MIN_REL)
+		"military_access":
+			return true
 		_:
 			return false
 
@@ -3228,6 +3692,8 @@ func _diplomaticka_zadost_priorita(req: Dictionary) -> int:
 			return DIP_REQUEST_PRIORITY_ALLIANCE
 		"non_aggression":
 			return DIP_REQUEST_PRIORITY_NON_AGGRESSION
+		"military_access":
+			return DIP_REQUEST_PRIORITY_MILITARY_ACCESS
 		_:
 			return 100
 
@@ -3338,6 +3804,8 @@ func hrac_prijmi_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> boo
 		req_name = "peace offer"
 	elif req_type == "non_aggression":
 		req_name = "non-aggression pact offer"
+	elif req_type == "military_access":
+		req_name = "military access request"
 	if req_type == "alliance":
 		var level = int(req.get("level", ALLIANCE_NONE))
 		var obe_strany_lide = je_lidsky_stat(player_clean) and je_lidsky_stat(sender)
@@ -3348,6 +3816,21 @@ func hrac_prijmi_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> boo
 		else:
 			alliance_ok = nastav_uroven_aliance(player_clean, sender, level)
 		if alliance_ok:
+			# Try to place both into an alliance group
+			var placed = false
+			var sender_groups = ziskej_aliance_statu(sender)
+			for grp in sender_groups:
+				if int(grp.get("level", 0)) == level:
+					var members = grp.get("members", []) as Array
+					if not members.has(player_clean):
+						var ignoruj = obe_strany_lide
+						var res = pridej_clena_do_aliance(str(grp.get("id", "")), player_clean, ignoruj)
+						if res.get("ok", false):
+							placed = true
+							break
+			if not placed:
+				var group_name = "%s-%s Pact" % [sender, player_clean]
+				vytvor_alianci_skupinu(group_name, level, sender, [player_clean])
 			_zaloguj_globalni_zpravu("Diplomacy", "%s accepted %s from %s." % [player_clean, req_name, sender], "diplomacy")
 		return alliance_ok
 	if req_type == "non_aggression":
@@ -3362,6 +3845,12 @@ func hrac_prijmi_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> boo
 		if je_lidsky_stat(player_clean) or je_lidsky_stat(sender):
 			_pridej_popup_zucastnenym_hracum(player_clean, sender, "Diplomacy", "Peace offer accepted: %s and %s made peace." % [player_clean, sender])
 		_zaloguj_globalni_zpravu("Diplomacy", "%s accepted %s from %s." % [player_clean, req_name, sender], "diplomacy")
+		return true
+	if req_type == "military_access":
+		udelit_vojensky_pristup(player_clean, sender)
+		_zaloguj_globalni_zpravu("Diplomacy", "%s granted military access to %s." % [player_clean, sender], "diplomacy")
+		if je_lidsky_stat(sender):
+			_pridej_popup_hraci(sender, "Diplomacy", "%s granted you military access to their territory." % player_clean)
 		return true
 	_zaloguj_globalni_zpravu("Diplomacy", "%s accepted %s from %s." % [player_clean, req_name, sender], "diplomacy")
 	return false
@@ -3381,6 +3870,8 @@ func hrac_odmitni_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> bo
 		req_name = "peace offer"
 	elif req_type == "non_aggression":
 		req_name = "non-aggression pact offer"
+	elif req_type == "military_access":
+		req_name = "military access request"
 	if je_lidsky_stat(player_clean):
 		_pridej_popup_hraci(player_clean, "Diplomacy", "You declined a diplomatic request from %s." % sender)
 	_zaloguj_globalni_zpravu("Diplomacy", "%s declined %s from %s." % [player_clean, req_name, sender], "diplomacy")
@@ -3463,6 +3954,18 @@ func vycisti_stat_po_kapitulaci(tag: String):
 			continue
 		if parts[0] == target or parts[1] == target:
 			aliance_statu.erase(klic)
+
+	# Remove defeated state from alliance groups
+	for aid in aliance_skupiny.keys().duplicate():
+		var skupina = aliance_skupiny[aid] as Dictionary
+		var members = (skupina.get("members", []) as Array)
+		if members.has(target):
+			members.erase(target)
+			if members.size() < 2:
+				aliance_skupiny.erase(aid)
+			else:
+				skupina["members"] = members
+				aliance_skupiny[aid] = skupina
 
 	var smlouvy_klice = neagresivni_smlouvy.keys().duplicate()
 	for klic in smlouvy_klice:
@@ -3678,6 +4181,10 @@ func vyhlasit_valku(utocnik: String, obrance: String):
 	if not created:
 		return false
 
+	# Revoke any military access between the warring parties.
+	odvolej_vojensky_pristup(a, b)
+	odvolej_vojensky_pristup(b, a)
+
 	_aktivuj_aliance_po_vyhlaseni_valky(a, b)
 	return true
 
@@ -3732,6 +4239,7 @@ func _uzavri_mir_mezi(tag1: String, tag2: String, prepis_okupace: bool = true):
 	_nastav_povalecny_cooldown(cisty_tag1, cisty_tag2)
 	if prepis_okupace:
 		_prepis_okupace_po_miru(cisty_tag1, cisty_tag2)
+	_expeluj_jednotky_bez_pristupu()
 
 	for i in range(cekajici_kapitulace.size() - 1, -1, -1):
 		var obr = str(cekajici_kapitulace[i].get("obrance", "")).strip_edges().to_upper()
@@ -4529,6 +5037,8 @@ func muze_vstoupit_na_uzemi(actor_tag: String, owner_tag: String) -> bool:
 		return true
 	if ziskej_uroven_aliance(actor, owner_state) >= ALLIANCE_DEFENSE:
 		return true
+	if ma_vojensky_pristup(actor, owner_state):
+		return true
 	return false
 
 func propustit_vazala(overlord_tag: String, subject_tag: String) -> bool:
@@ -4848,13 +5358,63 @@ func _zpracuj_ai_aliance(ai_staty: Array) -> Array:
 							"request": true
 						})
 				else:
-					if nastav_uroven_aliance(owner_tag, other_tag, desired_level):
-						if je_lidsky_stat(owner_tag) or je_lidsky_stat(other_tag):
-							zmeny_alianci.append({
-								"a": owner_tag,
-								"b": other_tag,
-								"new_level": desired_level
-							})
+					# AI-to-AI: use alliance groups instead of raw bilateral
+					var handled = false
+					if desired_level > current_level:
+						# Try to find an existing group where owner is a member at desired level
+						var owner_groups = ziskej_aliance_statu(owner_tag)
+						for grp in owner_groups:
+							if int(grp.get("level", 0)) == desired_level:
+								var members = grp.get("members", []) as Array
+								if not members.has(other_tag):
+									var res = pridej_clena_do_aliance(str(grp.get("id", "")), other_tag, false)
+									if res.get("ok", false):
+										handled = true
+										if je_lidsky_stat(owner_tag) or je_lidsky_stat(other_tag):
+											zmeny_alianci.append({
+												"a": owner_tag,
+												"b": other_tag,
+												"new_level": desired_level
+											})
+										break
+						if not handled:
+							# Also check if other_tag has a suitable group to join
+							var other_groups = ziskej_aliance_statu(other_tag)
+							for grp in other_groups:
+								if int(grp.get("level", 0)) == desired_level:
+									var members = grp.get("members", []) as Array
+									if not members.has(owner_tag):
+										var res = pridej_clena_do_aliance(str(grp.get("id", "")), owner_tag, false)
+										if res.get("ok", false):
+											handled = true
+											if je_lidsky_stat(owner_tag) or je_lidsky_stat(other_tag):
+												zmeny_alianci.append({
+													"a": owner_tag,
+													"b": other_tag,
+													"new_level": desired_level
+												})
+											break
+						if not handled:
+							# Create a new alliance group
+							var group_name = "%s-%s Pact" % [owner_tag, other_tag]
+							var res = vytvor_alianci_skupinu(group_name, desired_level, owner_tag, [other_tag])
+							if res.get("ok", false):
+								handled = true
+								if je_lidsky_stat(owner_tag) or je_lidsky_stat(other_tag):
+									zmeny_alianci.append({
+										"a": owner_tag,
+										"b": other_tag,
+										"new_level": desired_level
+									})
+					if not handled:
+						# Fallback: use bilateral directly
+						if nastav_uroven_aliance(owner_tag, other_tag, desired_level):
+							if je_lidsky_stat(owner_tag) or je_lidsky_stat(other_tag):
+								zmeny_alianci.append({
+									"a": owner_tag,
+									"b": other_tag,
+									"new_level": desired_level
+								})
 
 	return zmeny_alianci
 
@@ -4954,6 +5514,9 @@ func _zpracuj_ai_opusteni_alianci(ai_staty: Array) -> Array:
 		if t != "":
 			aktivni_staty_norm.append(t)
 
+	# Track which AI states want to leave which alliance groups
+	var ai_group_leaves: Dictionary = {}  # tag -> Array of alliance_ids to leave
+
 	for ai_tag in ai_staty:
 		var owner_tag = _normalizuj_tag(str(ai_tag))
 		if owner_tag == "":
@@ -4978,13 +5541,35 @@ func _zpracuj_ai_opusteni_alianci(ai_staty: Array) -> Array:
 			if not should_leave:
 				continue
 
-			_nastav_uroven_aliance_bez_kontroly(owner_tag, other_tag, ALLIANCE_NONE)
+			# Find shared alliance groups and mark for leaving
+			var shared = ziskej_spolecne_aliance(owner_tag, other_tag)
+			if shared.size() > 0:
+				# The AI with the worse relationship leaves the group
+				var leaver = owner_tag
+				for grp in shared:
+					var aid = str(grp.get("id", ""))
+					if aid == "":
+						continue
+					if not ai_group_leaves.has(leaver):
+						ai_group_leaves[leaver] = []
+					if not (ai_group_leaves[leaver] as Array).has(aid):
+						(ai_group_leaves[leaver] as Array).append(aid)
+			else:
+				# No shared group, clear bilateral directly (legacy cleanup)
+				_nastav_uroven_aliance_bez_kontroly(owner_tag, other_tag, ALLIANCE_NONE)
+
 			if je_lidsky_stat(owner_tag) or je_lidsky_stat(other_tag):
 				zmeny_opusteni.append({
 					"a": owner_tag,
 					"b": other_tag,
 					"rel": rel
 				})
+
+	# Process group leaves
+	for leaver_tag in ai_group_leaves:
+		var aids = ai_group_leaves[leaver_tag] as Array
+		for aid in aids:
+			odeber_clena_z_aliance(str(aid), str(leaver_tag))
 
 	return zmeny_opusteni
 
