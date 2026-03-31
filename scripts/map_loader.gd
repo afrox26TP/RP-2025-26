@@ -50,10 +50,12 @@ var aktualni_mapovy_mod: String = "political"
 var _port_icons_dirty: bool = true
 var _naval_reachable_cache_from: int = -1
 var _naval_reachable_cache: Dictionary = {}
+var _sea_province_cache: Dictionary = {}
 var _coastal_province_cache: Dictionary = {}
 var _sea_step_neighbors_cache: Dictionary = {}
 var _land_step_neighbors_cache: Dictionary = {}
 var _land_plus_sea_step_neighbors_cache: Dictionary = {}
+var _last_army_state_signature: int = -1
 var _preview_path_key: String = ""
 var _hromadny_vyber_overlay_key: String = ""
 var _loading_layer: CanvasLayer = null
@@ -1566,6 +1568,20 @@ func _aktualizuj_zoom_pristavu(aktualni_zoom: float):
 		port_node.scale = Vector2(zvetseni, zvetseni)
 
 func aktualizuj_ikony_armad():
+	var arm_signature = _spocitej_army_state_signature()
+	if arm_signature == _last_army_state_signature:
+		_aplikuj_viditelnost_ukazatelu_jednotek()
+		if _port_icons_dirty:
+			aktualizuj_ikony_pristavu()
+		var selected_cached = -1
+		var sprite_interaction_cached = $Sprite2D
+		if sprite_interaction_cached and sprite_interaction_cached.material:
+			selected_cached = int(sprite_interaction_cached.material.get_shader_parameter("selected_id"))
+		nastav_vybranou_armadu_provincie(selected_cached)
+		return
+
+	_last_army_state_signature = arm_signature
+
 	var container = get_node_or_null("ArmyContainer")
 	if not container:
 		container = Node2D.new()
@@ -1663,12 +1679,16 @@ func aktualizuj_ikony_armad():
 # --- CORE MOVEMENT LOGIC ---
 
 func _je_more_provincie(prov_id: int) -> bool:
+	if _sea_province_cache.has(prov_id):
+		return bool(_sea_province_cache[prov_id])
 	if not provinces.has(prov_id):
 		return false
 	var d = provinces[prov_id]
 	var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
 	var typ = str(d.get("type", "")).strip_edges().to_lower()
-	return owner_tag == "SEA" or typ == "sea"
+	var is_sea = (owner_tag == "SEA" or typ == "sea")
+	_sea_province_cache[prov_id] = is_sea
+	return is_sea
 
 func _je_pobrezni_provincie(prov_id: int) -> bool:
 	if _coastal_province_cache.has(prov_id):
@@ -1688,10 +1708,12 @@ func _spocitej_je_pobrezni_provincie(prov_id: int) -> bool:
 	return false
 
 func _invalidate_movement_topology_cache() -> void:
+	_sea_province_cache.clear()
 	_coastal_province_cache.clear()
 	_sea_step_neighbors_cache.clear()
 	_land_step_neighbors_cache.clear()
 	_land_plus_sea_step_neighbors_cache.clear()
+	_last_army_state_signature = -1
 
 func _rebuild_movement_topology_cache() -> void:
 	_invalidate_movement_topology_cache()
@@ -1700,9 +1722,14 @@ func _rebuild_movement_topology_cache() -> void:
 		var p_id = int(p_id_any)
 		if not provinces.has(p_id):
 			continue
+		var p_data = provinces[p_id]
+		var p_owner = str(p_data.get("owner", "")).strip_edges().to_upper()
+		var p_type = str(p_data.get("type", "")).strip_edges().to_lower()
+		var p_is_sea = (p_owner == "SEA" or p_type == "sea")
+		_sea_province_cache[p_id] = p_is_sea
 
 		var neighbors = provinces[p_id].get("neighbors", [])
-		if _je_more_provincie(p_id):
+		if p_is_sea:
 			var sea_steps: Array = []
 			for n_id_any in neighbors:
 				var n_id = int(n_id_any)
@@ -1908,6 +1935,22 @@ func _ziskej_krokove_sousedy_presunu(from_id: int) -> Array:
 	if can_embark:
 		return _land_plus_sea_step_neighbors_cache.get(from_id, [])
 	return _land_step_neighbors_cache.get(from_id, [])
+
+func _spocitej_army_state_signature() -> int:
+	var signature := 216613626
+	for p_id_any in provinces:
+		var p_id = int(p_id_any)
+		var d = provinces[p_id]
+		var soldiers = int(d.get("soldiers", 0))
+		if soldiers <= 0:
+			continue
+		var owner_tag = str(d.get("army_owner", "")).strip_edges().to_upper()
+		if owner_tag == "":
+			owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
+		signature = int(((signature * 16777619) ^ (p_id * 1315423911) ^ soldiers ^ owner_tag.hash()) & 0x7fffffff)
+	if _port_icons_dirty:
+		signature = int((signature ^ 0x1A2B3C4D) & 0x7fffffff)
+	return signature
 
 func najdi_nejrychlejsi_cestu_presunu(from_id: int, to_id: int) -> Array:
 	if from_id == to_id:
