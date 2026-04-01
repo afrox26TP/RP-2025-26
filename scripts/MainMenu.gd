@@ -227,10 +227,25 @@ var _load_slot_btns: Dictionary = {}
 var _selected_load_slot_key: String = ""
 var _browser_helper_btn: Button = null
 var _language_hint_helper_btn: Button = null
+var _ai_aggression_overrides: Dictionary = {}
+var _ai_aggression_row: HBoxContainer = null
+var _ai_aggression_label: Label = null
+var _ai_aggression_slider: HSlider = null
+var _ai_aggression_value: Label = null
+var _browser_current_settings_panel: PanelContainer = null
+var _browser_current_settings_vbox: VBoxContainer = null
+var _browser_potato_mode_check: CheckBox = null
+var _browser_settings_country_separator: HSeparator = null
+var _selected_players_flag_list: VBoxContainer = null
+var _selected_players_scroll: ScrollContainer = null
+const _PLAYER_ROW_H := 26
+const _PLAYER_ROW_MAX_H := 180
 const BROWSER_CONFIRM_DEFAULT_TEXT := "Confirm selection"
 const BROWSER_CONFIRM_ADD_PLAYER_TEXT := "Add player"
 const BROWSER_CLOSE_DEFAULT_TEXT := "Close"
 const BROWSER_CLOSE_START_TEXT := "Start game"
+const COUNTRY_BROWSER_WIDTH := 1160.0
+const COUNTRY_BROWSER_HEIGHT := 520.0
 
 func _load_texture_cached(path: String):
 	if path == "" or not ResourceLoader.exists(path):
@@ -327,6 +342,9 @@ func _ready():
 	_nastav_texty_dialogu()
 	_nacti_data_statu_pro_browser()
 	_naplni_browser_seznam()
+	_apply_country_browser_window_size()
+	_ensure_ai_aggression_control()
+	_ensure_selected_players_flag_list()
 	_nastav_vychozi_vyber_statu()
 	_obnov_text_vyberu()
 	_nastav_stav_pokracovani()
@@ -371,6 +389,227 @@ func _ready():
 	_styluj_mainmenu_popup_dialogy()
 	_show_settings_tab(0)  # Start with Controls tab
 
+func _apply_country_browser_window_size() -> void:
+	if country_browser_panel == null:
+		return
+
+	country_browser_panel.anchor_left = 0.5
+	country_browser_panel.anchor_top = 0.5
+	country_browser_panel.anchor_right = 0.5
+	country_browser_panel.anchor_bottom = 0.5
+	country_browser_panel.custom_minimum_size = Vector2(COUNTRY_BROWSER_WIDTH, COUNTRY_BROWSER_HEIGHT)
+	country_browser_panel.offset_left = -COUNTRY_BROWSER_WIDTH * 0.5
+	country_browser_panel.offset_top = -COUNTRY_BROWSER_HEIGHT * 0.5
+	country_browser_panel.offset_right = COUNTRY_BROWSER_WIDTH * 0.5
+	country_browser_panel.offset_bottom = COUNTRY_BROWSER_HEIGHT * 0.5
+
+func _default_ai_aggression_from_ideology(ideology_raw: String) -> float:
+	var ideol = ideology_raw.strip_edges().to_lower()
+	match ideol:
+		"democracy", "democratic", "demokracie":
+			return 0.34
+		"autocracy", "autocratic", "autokracie", "dictatorship":
+			return 0.56
+		"communism", "communist", "komunismus", "socialism":
+			return 0.46
+		"monarchy", "monarchie":
+			return 0.42
+		"fascism", "fascist", "fascismus", "nazism", "nacismus":
+			return 0.72
+		_:
+			return 0.50
+
+func _get_ai_aggression_for_tag(tag: String) -> float:
+	if _ai_aggression_overrides.has(tag):
+		return clamp(float(_ai_aggression_overrides[tag]), 0.0, 1.0)
+	if country_stats.has(tag):
+		var ideol = str((country_stats[tag] as Dictionary).get("ideology", ""))
+		return _default_ai_aggression_from_ideology(ideol)
+	return 0.50
+
+func _ensure_ai_aggression_control() -> void:
+	if _browser_current_settings_panel != null:
+		return
+	if country_browser_panel == null:
+		return
+	var root_vbox = country_browser_panel.get_node_or_null("MarginContainer/RootVBox") as VBoxContainer
+	if root_vbox == null:
+		return
+
+	_browser_current_settings_panel = PanelContainer.new()
+	_browser_current_settings_panel.name = "CurrentGameSettingsPanel"
+	_browser_current_settings_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var panel_margin := MarginContainer.new()
+	panel_margin.add_theme_constant_override("margin_left", 12)
+	panel_margin.add_theme_constant_override("margin_right", 12)
+	panel_margin.add_theme_constant_override("margin_top", 10)
+	panel_margin.add_theme_constant_override("margin_bottom", 10)
+	_browser_current_settings_panel.add_child(panel_margin)
+
+	_browser_current_settings_vbox = VBoxContainer.new()
+	_browser_current_settings_vbox.name = "CurrentGameSettingsVBox"
+	_browser_current_settings_vbox.add_theme_constant_override("separation", 8)
+	panel_margin.add_child(_browser_current_settings_vbox)
+
+	var title := Label.new()
+	title.name = "CurrentGameSettingsTitle"
+	title.text = "Current Game Settings"
+	_browser_current_settings_vbox.add_child(title)
+
+	_ai_aggression_row = HBoxContainer.new()
+	_ai_aggression_row.name = "AIAggressionRow"
+	_ai_aggression_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_browser_current_settings_vbox.add_child(_ai_aggression_row)
+
+	_ai_aggression_label = Label.new()
+	_ai_aggression_label.name = "AIAggressionLabel"
+	_ai_aggression_label.text = "AI Aggression"
+	_ai_aggression_label.custom_minimum_size = Vector2(120, 0)
+	_ai_aggression_row.add_child(_ai_aggression_label)
+
+	_ai_aggression_slider = HSlider.new()
+	_ai_aggression_slider.name = "AIAggressionSlider"
+	_ai_aggression_slider.min_value = 0.0
+	_ai_aggression_slider.max_value = 100.0
+	_ai_aggression_slider.step = 1.0
+	_ai_aggression_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_ai_aggression_slider.value_changed.connect(_on_ai_aggression_changed)
+	_ai_aggression_row.add_child(_ai_aggression_slider)
+
+	_ai_aggression_value = Label.new()
+	_ai_aggression_value.name = "AIAggressionValue"
+	_ai_aggression_value.text = "50%"
+	_ai_aggression_value.custom_minimum_size = Vector2(54, 0)
+	_ai_aggression_value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_ai_aggression_row.add_child(_ai_aggression_value)
+
+	_browser_potato_mode_check = CheckBox.new()
+	_browser_potato_mode_check.name = "BrowserPotatoModeCheck"
+	_browser_potato_mode_check.text = "Potato mode"
+	_browser_potato_mode_check.button_pressed = bool(nastaveni_data.get("other", {}).get("potato_mode", false))
+	_browser_potato_mode_check.toggled.connect(_on_browser_potato_mode_toggled)
+	_browser_current_settings_vbox.add_child(_browser_potato_mode_check)
+
+	var insert_index := root_vbox.get_child_count()
+	if selected_players_title and selected_players_title.get_parent() and selected_players_title.get_parent().get_parent() and selected_players_title.get_parent().get_parent().get_parent():
+		var selected_players_panel = selected_players_title.get_parent().get_parent().get_parent()
+		insert_index = selected_players_panel.get_index()
+
+	root_vbox.add_child(_browser_current_settings_panel)
+	root_vbox.move_child(_browser_current_settings_panel, insert_index)
+
+	if _browser_settings_country_separator == null:
+		_browser_settings_country_separator = HSeparator.new()
+		_browser_settings_country_separator.name = "SettingsCountrySeparator"
+		_browser_settings_country_separator.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		root_vbox.add_child(_browser_settings_country_separator)
+	root_vbox.move_child(_browser_settings_country_separator, insert_index + 1)
+
+	# Initialize text/value from current selection when opening browser.
+	if selected_country_tag_in_browser != "":
+		_set_ai_aggression_ui_for_tag(selected_country_tag_in_browser)
+	elif selected_country_tag != "":
+		_set_ai_aggression_ui_for_tag(selected_country_tag)
+
+func _ensure_selected_players_flag_list() -> void:
+	if _selected_players_flag_list != null:
+		return
+	if selected_players_list == null or selected_players_list.get_parent() == null:
+		return
+
+	selected_players_list.visible = false
+	var parent_vbox = selected_players_list.get_parent() as VBoxContainer
+	if parent_vbox == null:
+		return
+
+	_selected_players_scroll = ScrollContainer.new()
+	_selected_players_scroll.name = "SelectedPlayersScroll"
+	_selected_players_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_selected_players_scroll.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_selected_players_scroll.custom_minimum_size = Vector2(0, 0)
+	_selected_players_scroll.clip_contents = true
+	parent_vbox.add_child(_selected_players_scroll)
+	parent_vbox.move_child(_selected_players_scroll, selected_players_list.get_index() + 1)
+
+	_selected_players_flag_list = VBoxContainer.new()
+	_selected_players_flag_list.name = "SelectedPlayersFlagList"
+	_selected_players_flag_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_selected_players_flag_list.add_theme_constant_override("separation", 4)
+	_selected_players_scroll.add_child(_selected_players_flag_list)
+
+func _clear_selected_players_flag_rows() -> void:
+	if _selected_players_flag_list == null:
+		return
+	for child in _selected_players_flag_list.get_children():
+		_selected_players_flag_list.remove_child(child)
+		child.free()
+
+func _add_selected_player_row(row_text: String, tag: String, is_active: bool) -> void:
+	if _selected_players_flag_list == null:
+		return
+
+	var row = HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 8)
+
+	var flag = TextureRect.new()
+	flag.custom_minimum_size = Vector2(28, 18)
+	flag.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	var flag_path = "res://map_data/Flags/%s.svg" % tag
+	flag.texture = _load_normalized_flag_texture(flag_path, 56, 36)
+	row.add_child(flag)
+
+	var text_lbl = Label.new()
+	text_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text_lbl.text = row_text
+	if is_active:
+		text_lbl.modulate = Color(0.95, 1.0, 0.85, 1.0)
+	row.add_child(text_lbl)
+
+	_selected_players_flag_list.add_child(row)
+
+func _set_ai_aggression_ui_for_tag(tag: String) -> void:
+	if _ai_aggression_slider == null or _ai_aggression_value == null:
+		return
+	var aggr = _get_ai_aggression_for_tag(tag)
+	var percent = int(round(aggr * 100.0))
+	_ai_aggression_slider.set_block_signals(true)
+	_ai_aggression_slider.value = percent
+	_ai_aggression_slider.set_block_signals(false)
+	_ai_aggression_value.text = "%d%%" % percent
+
+func _on_ai_aggression_changed(value: float) -> void:
+	if selected_country_tag_in_browser == "":
+		return
+	var percent = int(round(value))
+	_ai_aggression_value.text = "%d%%" % percent
+	_ai_aggression_overrides[selected_country_tag_in_browser] = clamp(value / 100.0, 0.0, 1.0)
+
+func _on_browser_potato_mode_toggled(enabled: bool) -> void:
+	nastaveni_data["other"]["potato_mode"] = enabled
+	_aplikuj_potato_mode_globalne(enabled)
+	if potato_mode_check:
+		potato_mode_check.set_block_signals(true)
+		potato_mode_check.button_pressed = enabled
+		potato_mode_check.set_block_signals(false)
+
+func _apply_ai_aggression_overrides(local_tags: Array) -> void:
+	if not GameManager or not GameManager.has_method("nastav_ai_agresivitu_statu"):
+		return
+	if _ai_aggression_overrides.is_empty():
+		return
+
+	var local_dict: Dictionary = {}
+	for t in local_tags:
+		local_dict[str(t)] = true
+
+	for key in _ai_aggression_overrides.keys():
+		var tag = str(key)
+		if local_dict.has(tag):
+			continue
+		GameManager.nastav_ai_agresivitu_statu(tag, float(_ai_aggression_overrides[key]))
+
 
 func _nastav_tooltipy_ui() -> void:
 	btn_new_game.tooltip_text = "Start a new game and open country selection."
@@ -391,6 +630,16 @@ func _nastav_tooltipy_ui() -> void:
 	detail_flag.tooltip_text = "Flag of the selected country."
 	detail_name.tooltip_text = "Name of the selected country."
 	detail_info.tooltip_text = "Short summary of country strengths and risks."
+	if _ai_aggression_slider:
+		_ai_aggression_slider.tooltip_text = "Sets AI aggression for currently selected country in browser."
+	if _ai_aggression_label:
+		_ai_aggression_label.tooltip_text = "Per-country AI aggression override for new game."
+	if _ai_aggression_value:
+		_ai_aggression_value.tooltip_text = "Current aggression override value."
+	if _browser_potato_mode_check:
+		_browser_potato_mode_check.tooltip_text = "Quick toggle for potato mode in current game setup."
+	if _browser_settings_country_separator:
+		_browser_settings_country_separator.tooltip_text = "Visual separator between setup settings and country selection."
 	if potato_mode_check:
 		potato_mode_check.tooltip_text = "Turns on low-detail rendering and power-saving updates for weak PCs."
 	TooltipUtilsScript.apply_default_tooltips(self)
@@ -941,11 +1190,16 @@ func _obnov_texty_radku_statu() -> void:
 func _aktualizuj_panel_vyberu_hracu() -> void:
 	if not selected_players_title or not selected_players_list:
 		return
+	_ensure_selected_players_flag_list()
+	_clear_selected_players_flag_rows()
 
+	var row_count := 0
 	if new_game_browser_flow:
-		selected_players_title.text = "Selected players for local multiplayer"
+		selected_players_title.text = "Selected Countries"
 		if local_player_tags.is_empty():
 			selected_players_list.text = "Nobody yet"
+			_add_selected_player_row("Nobody yet", "", false)
+			row_count = 1
 		else:
 			var lines: Array = []
 			for i in range(local_player_tags.size()):
@@ -953,14 +1207,28 @@ func _aktualizuj_panel_vyberu_hracu() -> void:
 				var prefix = "%d." % (i + 1)
 				if i == setup_active_player_index:
 					prefix = "%d. >" % (i + 1)
-				lines.append("%s %s (%s)" % [prefix, _zobrazene_jmeno_statu(tag), tag])
+				var row_text = "%s %s (%s)" % [prefix, _zobrazene_jmeno_statu(tag), tag]
+				lines.append(row_text)
+				_add_selected_player_row(row_text, tag, i == setup_active_player_index)
 			selected_players_list.text = "\n".join(lines)
+			row_count = local_player_tags.size()
 	else:
 		selected_players_title.text = "Current selection"
 		if selected_country_tag == "":
 			selected_players_list.text = "Nobody yet"
+			_add_selected_player_row("Nobody yet", "", false)
+			row_count = 1
 		else:
 			selected_players_list.text = "%s (%s)" % [_zobrazene_jmeno_statu(selected_country_tag), selected_country_tag]
+			_add_selected_player_row(selected_players_list.text, selected_country_tag, false)
+			row_count = 1
+
+	if _selected_players_scroll:
+		var needed_h = row_count * _PLAYER_ROW_H
+		_selected_players_scroll.custom_minimum_size = Vector2(0, min(needed_h, _PLAYER_ROW_MAX_H))
+
+	# Deferred reset to prevent the panel from jumping when layout recalculates
+	call_deferred("_apply_country_browser_window_size")
 
 func _zobrazene_jmeno_statu(tag: String) -> String:
 	for nazev in hratelne_staty.keys():
@@ -970,7 +1238,7 @@ func _zobrazene_jmeno_statu(tag: String) -> String:
 		return str(country_stats[tag].get("country_name_en", tag))
 	return tag
 
-func _nastav_detail_statu(tag: String):
+func _nastav_detail_statu(tag: String, update_aggression_ui: bool = true):
 	if not country_stats.has(tag):
 		return
 
@@ -991,6 +1259,8 @@ func _nastav_detail_statu(tag: String):
 	detail_soldiers.text = "Soldiers: %s" % _formatuj_cislo(int(s["soldiers"]))
 	detail_provinces.text = "Provinces: %d" % int(s["province_count"])
 	detail_info.text = _vytvor_souhrn_statu(jmeno, s)
+	if update_aggression_ui:
+		_set_ai_aggression_ui_for_tag(tag)
 
 	var flag_tex = _load_normalized_flag_texture("res://map_data/Flags/%s.svg" % tag, 240, 150)
 	detail_flag.texture = flag_tex
@@ -1097,7 +1367,7 @@ func _prirad_stat_aktivnimu_hraci(tag: String) -> void:
 	local_player_tags[setup_active_player_index] = tag
 	selected_country_tag_in_browser = tag
 	selected_country_tag = str(local_player_tags[0])
-	_nastav_detail_statu(tag)
+	_nastav_detail_statu(tag, true)
 	_obnov_text_vyberu()
 	_obnov_texty_radku_statu()
 	_aktualizuj_panel_vyberu_hracu()
@@ -1113,14 +1383,15 @@ func _pridej_dalsiho_hrace_do_setupu() -> void:
 	local_player_tags.append(novy_tag)
 	setup_active_player_index = local_player_tags.size() - 1
 	selected_country_tag_in_browser = novy_tag
-	_nastav_detail_statu(novy_tag)
+	_nastav_detail_statu(novy_tag, false)
 	_obnov_texty_radku_statu()
 	_aktualizuj_panel_vyberu_hracu()
 	_aktualizuj_browser_napovedu()
 
 func _otevri_browser_statu():
+	_apply_country_browser_window_size()
 	if selected_country_tag != "" and country_stats.has(selected_country_tag):
-		_nastav_detail_statu(selected_country_tag)
+		_nastav_detail_statu(selected_country_tag, false)
 	_aktualizuj_browser_napovedu()
 	country_browser_panel.show()
 
@@ -1524,6 +1795,8 @@ func _spust_hru_vyberem(player_tags: Array = []):
 		GameManager.nastav_lokalni_hrace(final_tags)
 	else:
 		GameManager.hrac_stat = selected_country_tag
+
+	_apply_ai_aggression_overrides(final_tags)
 
 	print("Local players: ", final_tags)
 	
