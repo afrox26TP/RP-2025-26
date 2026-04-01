@@ -7945,7 +7945,9 @@ func zpracuj_tah_ai():
 			_vyres_bankrot(owner_tag)
 
 		var state_pressure = _ai_spocitej_tlak_statu(owner_tag, owned)
-		_ai_zvaz_vyzkum(owner_tag, treasury_reserve, state_pressure)
+		# Temporary balance change: disable AI generic research projects (VYZKUM_PROJEKTY)
+		# so AI does not gain an advantage over the player through this system.
+		# _ai_zvaz_vyzkum(owner_tag, treasury_reserve, state_pressure)
 		_ai_zvaz_stavby(owner_tag, owned, treasury_reserve, state_pressure)
 		_ai_zvaz_armadni_lab(owner_tag, treasury_reserve)
 

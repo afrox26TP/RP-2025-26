@@ -223,6 +223,7 @@ var _zpravy_groups_list: VBoxContainer
 var _zpravy_category_expanded: Dictionary = {}
 var _zpravy_expanded: bool = false
 var _zpravy_historie_expanded: bool = false
+var _diplomacy_popup_dismissed_signature: String = ""
 var _turn_loading_overlay: ColorRect
 var _turn_loading_label: Label
 var _turn_loading_anim_time: float = 0.0
@@ -766,6 +767,7 @@ func _zajisti_tlacitko_vazalu() -> void:
 	_vassals_btn = Button.new()
 	_vassals_btn.name = "VassalsButton"
 	_vassals_btn.text = "Vassals"
+	_vassals_btn.focus_mode = Control.FOCUS_NONE
 	_vassals_btn.hide()
 	vbox.add_child(_vassals_btn)
 	if action_separator and action_separator.get_parent() == vbox:
@@ -2825,6 +2827,14 @@ func _on_viewport_resized():
 func _input(event):
 	if event is InputEventKey and event.pressed and not event.is_echo():
 		if event.keycode == KEY_ESCAPE:
+			if diplomacy_request_popup and diplomacy_request_popup.visible:
+				_potlac_diplomatickou_frontu_do_zmeny()
+				get_viewport().set_input_as_handled()
+				return
+			if _peace_notice_panel and _peace_notice_panel.visible:
+				_potlac_hlaseni_miru_do_dalsi_konference()
+				get_viewport().set_input_as_handled()
+				return
 			if _peace_dialog and _peace_dialog.visible:
 				_on_peace_close_pressed()
 				get_viewport().set_input_as_handled()
@@ -3800,6 +3810,9 @@ func _aktualizuj_hlaseni_mirove_konference() -> void:
 		queue_count = maxi(1, int(GameManager.ziskej_pocet_mirovych_konferenci_pro_hrace(GameManager.hrac_stat)))
 
 	var conf_id = int(conf.get("id", -1))
+	if conf_id != -1 and conf_id == _peace_notice_deferred_conf_id:
+		_peace_notice_panel.hide()
+		return
 	var waiting_decision = (conf_id != -1 and conf_id != _peace_notice_deferred_conf_id)
 	var reason = str(conf.get("reason", "peace"))
 	var loser = str(conf.get("loser", "?"))
@@ -3824,6 +3837,16 @@ func _aktualizuj_hlaseni_mirove_konference() -> void:
 
 	_peace_notice_panel.show()
 	_pozicuj_hlaseni_mirove_konference()
+
+func _potlac_hlaseni_miru_do_dalsi_konference() -> void:
+	if _peace_notice_panel == null:
+		return
+	if GameManager and GameManager.has_method("ziskej_prvni_mirovou_konferenci_pro_hrace"):
+		var conf = GameManager.ziskej_prvni_mirovou_konferenci_pro_hrace(GameManager.hrac_stat) as Dictionary
+		if not conf.is_empty():
+			_peace_notice_deferred_conf_id = int(conf.get("id", -1))
+	_peace_notice_panel.hide()
+	_aktualizuj_pozice_popupu()
 
 func _on_peace_notice_open_pressed() -> void:
 	_otevri_mirovou_konferenci_z_fronty()
@@ -4883,11 +4906,43 @@ func _aktualizuj_zadost_ui(_target_tag: String):
 	if respond_request_buttons:
 		respond_request_buttons.hide()
 
+func _vytvor_otisk_diplomaticke_fronty(queue: Array) -> String:
+	if queue.is_empty():
+		return ""
+	var parts: Array = []
+	for req_any in queue:
+		var req = req_any as Dictionary
+		parts.append("%s|%s|%d" % [
+			str(req.get("from", "")).strip_edges().to_upper(),
+			str(req.get("type", "")).strip_edges(),
+			int(req.get("level", 0))
+		])
+	parts.sort()
+	return "||".join(parts)
+
+func _potlac_diplomatickou_frontu_do_zmeny() -> void:
+	if diplomacy_request_popup == null:
+		return
+	if not GameManager or not GameManager.has_method("ziskej_cekajici_diplomaticke_zadosti"):
+		diplomacy_request_popup.hide()
+		_aktualizuj_panel_rozbalene_fronty([])
+		_aktualizuj_pozice_popupu()
+		return
+	var queue = GameManager.ziskej_cekajici_diplomaticke_zadosti(GameManager.hrac_stat)
+	_diplomacy_popup_dismissed_signature = _vytvor_otisk_diplomaticke_fronty(queue)
+	diplomacy_request_popup.hide()
+	_queue_preview_expanded = false
+	if _queue_preview_toggle_btn:
+		_queue_preview_toggle_btn.button_pressed = false
+	_aktualizuj_panel_rozbalene_fronty([])
+	_aktualizuj_pozice_popupu()
+
 func _aktualizuj_popup_diplomatickych_zadosti():
 	_popup_request_from_tag = ""
 	if not diplomacy_request_popup:
 		return
 	if not GameManager.has_method("ziskej_cekajici_diplomaticke_zadosti"):
+		_diplomacy_popup_dismissed_signature = ""
 		diplomacy_request_popup.hide()
 		_aktualizuj_vizual_fronty_diplomacii(0)
 		_aktualizuj_text_rozbaleni_fronty(0)
@@ -4896,6 +4951,7 @@ func _aktualizuj_popup_diplomatickych_zadosti():
 
 	var queue = GameManager.ziskej_cekajici_diplomaticke_zadosti(GameManager.hrac_stat)
 	if queue.is_empty():
+		_diplomacy_popup_dismissed_signature = ""
 		diplomacy_request_popup.hide()
 		_aktualizuj_vizual_fronty_diplomacii(0)
 		_aktualizuj_text_rozbaleni_fronty(0)
@@ -4912,6 +4968,7 @@ func _aktualizuj_popup_diplomatickych_zadosti():
 		return
 	_popup_request_from_tag = from_tag
 	var pending_count := queue.size()
+	var queue_signature = _vytvor_otisk_diplomaticke_fronty(queue)
 	_aktualizuj_text_rozbaleni_fronty(pending_count)
 
 	if popup_request_flag:
@@ -4923,6 +4980,19 @@ func _aktualizuj_popup_diplomatickych_zadosti():
 		popup_accept_btn.text = "Accept all"
 	if popup_decline_btn:
 		popup_decline_btn.text = "Decline all"
+
+	if _diplomacy_popup_dismissed_signature != "" and queue_signature == _diplomacy_popup_dismissed_signature:
+		diplomacy_request_popup.hide()
+		_queue_preview_expanded = false
+		if _queue_preview_toggle_btn:
+			_queue_preview_toggle_btn.button_pressed = false
+		_aktualizuj_vizual_fronty_diplomacii(pending_count)
+		_aktualizuj_panel_rozbalene_fronty([])
+		_aktualizuj_panel_zprav()
+		_aktualizuj_pozice_popupu()
+		return
+
+	_diplomacy_popup_dismissed_signature = ""
 
 	diplomacy_request_popup.show()
 	_aktualizuj_vizual_fronty_diplomacii(pending_count)
@@ -5372,7 +5442,13 @@ func nastav_zpravy_anchor_control(control: Control) -> void:
 	_aktualizuj_pozice_popupu()
 
 func prepni_zpravy_panel() -> void:
-	_on_zpravy_toggle_pressed()
+	_nastav_zpravy_panel_otevreny(not _zpravy_expanded)
+
+func _nastav_zpravy_panel_otevreny(otevreno: bool) -> void:
+	_zpravy_expanded = otevreno
+	if _zpravy_toggle_btn:
+		_zpravy_toggle_btn.button_pressed = _zpravy_expanded
+	_aktualizuj_panel_zprav()
 
 func _vyhledat_tagy_statu_v_textu(text: String) -> Array:
 	var tags: Array = []
@@ -5603,10 +5679,7 @@ func _aktualizuj_panel_zprav() -> void:
 	_aktualizuj_pozice_popupu()
 
 func _on_zpravy_toggle_pressed() -> void:
-	_zpravy_expanded = not _zpravy_expanded
-	if _zpravy_toggle_btn:
-		_zpravy_toggle_btn.button_pressed = _zpravy_expanded
-	_aktualizuj_panel_zprav()
+	_nastav_zpravy_panel_otevreny(not _zpravy_expanded)
 
 func _on_zpravy_mode_local_pressed() -> void:
 	_zpravy_mode = 0

@@ -17,6 +17,7 @@ extends CanvasLayer
 @onready var mode_btn_relations = $Panel/HBoxContainer/MapModes/ModeRelations
 @onready var mode_btn_terrain = $Panel/HBoxContainer/MapModes/ModeTerrain
 @onready var mode_btn_resources = $Panel/HBoxContainer/MapModes/ModeResources
+@onready var mode_btn_alliances = $Panel/HBoxContainer/MapModes/ModeAlliances
 
 # Panel rows: 1) flag + next turn, 2) state name, 3) queue flags.
 @onready var player_flag = $PlayerTurnPanel/VBoxContainer/TurnRow/PlayerFlag
@@ -52,7 +53,8 @@ const MAP_MODE_TO_BUTTON_PATHS := {
 	"recruitable_population": "ModeRecruits",
 	"relationships": "ModeRelations",
 	"terrain": "ModeTerrain",
-	"resources": "ModeResources"
+	"resources": "ModeResources",
+	"alliances": "ModeAlliances"
 }
 const MAP_MODE_DISPLAY_NAMES := {
 	"political": "Political Mode",
@@ -62,7 +64,8 @@ const MAP_MODE_DISPLAY_NAMES := {
 	"recruitable_population": "Recruitable Population Mode",
 	"relationships": "Diplomatic Relations Mode",
 	"terrain": "Terrain Mode",
-	"resources": "Resources Mode"
+	"resources": "Resources Mode",
+	"alliances": "Alliances Mode"
 }
 const MAP_MODE_HOTKEYS := {
 	"political": "1",
@@ -72,7 +75,8 @@ const MAP_MODE_HOTKEYS := {
 	"recruitable_population": "5",
 	"relationships": "6",
 	"terrain": "7",
-	"resources": "8"
+	"resources": "8",
+	"alliances": "9"
 }
 const MAP_MODE_ICON_PATHS := {
 	"political": "res://map_data/map.svg",
@@ -82,7 +86,8 @@ const MAP_MODE_ICON_PATHS := {
 	"recruitable_population": "res://map_data/user-round-plus.svg",
 	"relationships": "res://map_data/annoyed.svg",
 	"terrain": "res://map_data/mountain.svg",
-	"resources": "res://map_data/pickaxe.svg"
+	"resources": "res://map_data/pickaxe.svg",
+	"alliances": "res://map_data/port_icon.svg"
 }
 
 func _cached_texture(path: String):
@@ -171,6 +176,10 @@ func _ready():
 		next_btn.pressed.connect(_on_next_turn_pressed)
 	if zpravy_btn and not zpravy_btn.pressed.is_connected(_on_zpravy_pressed):
 		zpravy_btn.pressed.connect(_on_zpravy_pressed)
+	if zpravy_btn:
+		# Prevent accidental Space/Enter activation while ending turns.
+		zpravy_btn.focus_mode = Control.FOCUS_NONE
+		zpravy_btn.toggle_mode = false
 	_zapoj_tlacitka_mapovych_modu()
 	_napoj_signal_mapoveho_modu()
 	_vytvor_financni_tooltip_panel()
@@ -584,6 +593,8 @@ func _zapoj_tlacitka_mapovych_modu() -> void:
 		mode_btn_terrain.pressed.connect(_on_mode_terrain_pressed)
 	if mode_btn_resources and not mode_btn_resources.pressed.is_connected(_on_mode_resources_pressed):
 		mode_btn_resources.pressed.connect(_on_mode_resources_pressed)
+	if mode_btn_alliances and not mode_btn_alliances.pressed.is_connected(_on_mode_alliances_pressed):
+		mode_btn_alliances.pressed.connect(_on_mode_alliances_pressed)
 
 	_aktualizuj_stav_tlacitek_modu()
 
@@ -610,6 +621,9 @@ func _on_mode_terrain_pressed() -> void:
 
 func _on_mode_resources_pressed() -> void:
 	_prepni_mapovy_mod("resources")
+
+func _on_mode_alliances_pressed() -> void:
+	_prepni_mapovy_mod("alliances")
 
 func aktualizuj_ui():
 	# Update money and date counters

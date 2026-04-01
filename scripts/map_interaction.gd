@@ -695,6 +695,10 @@ func _unhandled_input(event):
 				aktualizuj_mapovy_mod("resources", root.provinces)
 				if root.has_method("nastav_mapovy_mod"):
 					root.nastav_mapovy_mod("resources")
+			elif event.keycode == KEY_9:
+				aktualizuj_mapovy_mod("alliances", root.provinces)
+				if root.has_method("nastav_mapovy_mod"):
+					root.nastav_mapovy_mod("alliances")
 			
 			elif event.keycode == KEY_C:
 				var vybrana_provincie = material.get_shader_parameter("selected_id")
@@ -1219,10 +1223,20 @@ func aktualizuj_mapovy_mod(mod: String, province_db: Dictionary):
 							barva = Color(0.50, 0.90, 0.40, 1.0)
 						_:
 							barva = Color(0.55, 0.55, 0.58, 1.0)
+				"alliances":
+					barva = _barva_aliance(owner_tag)
 				
 		data_image.set_pixel(prov_id, 0, barva)
 	data_texture.update(data_image)
 	occupation_texture.update(occupation_image)
+
+func _barva_aliance(owner_tag: String) -> Color:
+	var alliances = GameManager.ziskej_aliance_statu(owner_tag)
+	if alliances.size() == 0:
+		return Color(0.18, 0.18, 0.18, 1.0)
+	var skupina = alliances[0] as Dictionary
+	var barva_str = str(skupina.get("color", "#4488ff"))
+	return Color.html(barva_str)
 
 func dobyt_provincii(prov_id: int, novy_vlastnik: String, z_dev_nastroje: bool = false):
 	var root = get_parent()
