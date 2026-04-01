@@ -58,6 +58,7 @@ void fragment() {
 		if (capital_focus_mode) {
 			bool is_owned_state = focus_owned_flag.a > 0.5;
 			bool is_valid_target = focus_valid_flag.a > 0.5;
+			bool peace_clean_selection = peace_selection_player_color_mode;
 
 			if (!is_owned_state) {
 				base_color.rgb = mix(base_color.rgb, vec3(0.03, 0.04, 0.06), 0.68);
@@ -81,7 +82,7 @@ void fragment() {
 				if (m_d.a > 0.1 && abs(_decode_province_id(m_d) - prov_id) > 0.1) border = 1.0;
 			}
 
-			if (is_valid_target) {
+			if (is_valid_target && !peace_clean_selection) {
 				if (peace_target_visual_mode) {
 					base_color.rgb = mix(base_color.rgb, peace_target_owner_color.rgb, 0.78);
 				} else {
@@ -91,7 +92,7 @@ void fragment() {
 
 			if (is_owned_state && border > 0.5) {
 				vec3 border_col = vec3(0.62, 0.72, 0.80);
-				if (is_valid_target) {
+				if (is_valid_target && !peace_clean_selection) {
 					border_col = vec3(1.0, 0.93, 0.45);
 				}
 				base_color.rgb = mix(base_color.rgb, border_col, 0.92);

@@ -124,6 +124,7 @@ const WAR_REPARATIONS_MIN_PAYMENT := 0.15
 const VASSAL_TRIBUTE_DEFAULT_RATE := 0.15
 const VASSAL_TRIBUTE_MIN_RATE := 0.0
 const VASSAL_TRIBUTE_MAX_RATE := 0.60
+const VASSAL_TRIBUTE_CHANGE_COOLDOWN_TURNS := 3
 const RELATION_MIN := -100.0
 const RELATION_MAX := 100.0
 const RELATION_STEP_PLAYER := 10.0
@@ -241,6 +242,7 @@ var cekajici_mirove_konference: Dictionary = {}
 var mirove_konference_seq: int = 0
 var vazalske_vztahy: Dictionary = {}
 var vazalske_odvody: Dictionary = {}
+var vazalske_odvody_posledni_zmena_kolo: Dictionary = {}
 var valecne_reparace: Array = []
 var aliance_statu: Dictionary = {}
 var aliance_skupiny: Dictionary = {}
@@ -829,6 +831,7 @@ func _vytvor_save_state() -> Dictionary:
 		"mirove_konference_seq": mirove_konference_seq,
 		"vazalske_vztahy": vazalske_vztahy.duplicate(true),
 		"vazalske_odvody": vazalske_odvody.duplicate(true),
+		"vazalske_odvody_posledni_zmena_kolo": vazalske_odvody_posledni_zmena_kolo.duplicate(true),
 		"valecne_reparace": valecne_reparace.duplicate(true),
 		"aliance_statu": aliance_statu.duplicate(true),
 		"aliance_skupiny": aliance_skupiny.duplicate(true),
@@ -895,6 +898,7 @@ func _aplikuj_save_state(state: Dictionary) -> bool:
 	mirove_konference_seq = int(state.get("mirove_konference_seq", 0))
 	vazalske_vztahy = (state.get("vazalske_vztahy", {}) as Dictionary).duplicate(true)
 	vazalske_odvody = (state.get("vazalske_odvody", {}) as Dictionary).duplicate(true)
+	vazalske_odvody_posledni_zmena_kolo = (state.get("vazalske_odvody_posledni_zmena_kolo", {}) as Dictionary).duplicate(true)
 	valecne_reparace = (state.get("valecne_reparace", []) as Array).duplicate(true)
 	aliance_statu = (state.get("aliance_statu", {}) as Dictionary).duplicate(true)
 	aliance_skupiny = (state.get("aliance_skupiny", {}) as Dictionary).duplicate(true)
@@ -961,6 +965,7 @@ func reset_pro_novou_hru() -> void:
 	mirove_konference_seq = 0
 	vazalske_vztahy.clear()
 	vazalske_odvody.clear()
+	vazalske_odvody_posledni_zmena_kolo.clear()
 	valecne_reparace.clear()
 	aliance_statu.clear()
 	aliance_skupiny.clear()
@@ -4942,8 +4947,27 @@ func nastav_vazalsky_odvod(overlord_tag: String, subject_tag: String, procenta: 
 	if ziskej_overlorda_statu(subject) != overlord:
 		return false
 	var rate = clamp(float(procenta) / 100.0, VASSAL_TRIBUTE_MIN_RATE, VASSAL_TRIBUTE_MAX_RATE)
+	var current_rate = clamp(float(vazalske_odvody.get(subject, VASSAL_TRIBUTE_DEFAULT_RATE)), VASSAL_TRIBUTE_MIN_RATE, VASSAL_TRIBUTE_MAX_RATE)
+	if is_equal_approx(current_rate, rate):
+		return true
+	if ziskej_zbyvajici_cooldown_vazalskeho_odvodu(overlord, subject) > 0:
+		return false
 	vazalske_odvody[subject] = rate
+	vazalske_odvody_posledni_zmena_kolo[subject] = aktualni_kolo
 	return true
+
+func ziskej_zbyvajici_cooldown_vazalskeho_odvodu(overlord_tag: String, subject_tag: String) -> int:
+	var overlord = _normalizuj_tag(overlord_tag)
+	var subject = _normalizuj_tag(subject_tag)
+	if overlord == "" or subject == "":
+		return 0
+	if ziskej_overlorda_statu(subject) != overlord:
+		return 0
+	var last_turn = int(vazalske_odvody_posledni_zmena_kolo.get(subject, -1000000))
+	if last_turn < 0:
+		return 0
+	var turns_passed = max(0, aktualni_kolo - last_turn)
+	return maxi(0, VASSAL_TRIBUTE_CHANGE_COOLDOWN_TURNS - turns_passed)
 
 func _zpracuj_vazalske_odvody_za_kolo() -> void:
 	if vazalske_vztahy.is_empty():
@@ -5289,6 +5313,7 @@ func propustit_vazala(overlord_tag: String, subject_tag: String) -> bool:
 		return false
 	vazalske_vztahy.erase(subject)
 	vazalske_odvody.erase(subject)
+	vazalske_odvody_posledni_zmena_kolo.erase(subject)
 	_uprav_vztah_statu_bez_cooldown(overlord, subject, -20.0)
 	if ziskej_uroven_aliance(overlord, subject) > ALLIANCE_NONE:
 		nastav_uroven_aliance(overlord, subject, ALLIANCE_NONE, true)

@@ -796,7 +796,10 @@ func _vytvor_panel_vazalu() -> void:
 
 	_vassals_dialog = PopupPanel.new()
 	_vassals_dialog.name = "VassalsDialog"
-	_vassals_dialog.size = Vector2(372, 252)
+	_vassals_dialog.wrap_controls = false
+	_vassals_dialog.unresizable = true
+	_vassals_dialog.min_size = Vector2i(360, 280)
+	_vassals_dialog.size = Vector2(438, 320)
 	_vassals_dialog.exclusive = false
 	_vassals_dialog.popup_window = false
 	add_child(_vassals_dialog)
@@ -811,7 +814,7 @@ func _vytvor_panel_vazalu() -> void:
 	_vassals_dialog.add_child(margin)
 
 	var root = VBoxContainer.new()
-	root.add_theme_constant_override("separation", 6)
+	root.add_theme_constant_override("separation", 8)
 	margin.add_child(root)
 
 	var header = HBoxContainer.new()
@@ -820,7 +823,7 @@ func _vytvor_panel_vazalu() -> void:
 
 	var title = Label.new()
 	title.text = "My vassals"
-	title.add_theme_font_size_override("font_size", 18)
+	title.add_theme_font_size_override("font_size", 20)
 	title.add_theme_color_override("font_color", Color(0.93, 0.97, 1.0, 1.0))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
@@ -836,9 +839,20 @@ func _vytvor_panel_vazalu() -> void:
 	close_top_btn.pressed.connect(func(): _vassals_dialog.hide())
 	header.add_child(close_top_btn)
 
+	var subtitle = Label.new()
+	subtitle.text = "Manage tribute, open subject overview, or release vassals."
+	subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	subtitle.add_theme_font_size_override("font_size", 12)
+	subtitle.add_theme_color_override("font_color", Color(0.72, 0.81, 0.93, 0.95))
+	root.add_child(subtitle)
+
+	var separator = HSeparator.new()
+	root.add_child(separator)
+
 	var scroll = ScrollContainer.new()
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	root.add_child(scroll)
 
 	_vassals_list = VBoxContainer.new()
@@ -863,15 +877,15 @@ func _pozicuj_a_zmen_velikost_panelu_vazalu(vassal_count: int = -1) -> void:
 	if vassal_count < 0 and GameManager.has_method("ziskej_vazaly_statu"):
 		count = (GameManager.ziskej_vazaly_statu(GameManager.hrac_stat) as Array).size()
 
-	var base_w: float = 372.0
-	var base_h: float = 252.0
-	var extra_w: float = minf(90.0, float(count) * 6.0)
-	var extra_h: float = minf(320.0, float(maxi(0, count - 1)) * 32.0)
+	var base_w: float = 438.0
+	var base_h: float = 320.0
+	var extra_w: float = minf(120.0, float(count) * 8.0)
+	var extra_h: float = minf(360.0, float(maxi(0, count - 1)) * 48.0)
 
 	var max_w: float = maxf(280.0, vp.x - 24.0)
 	var max_h: float = maxf(180.0, vp.y - 24.0)
-	var w: float = clampf(base_w + extra_w, 320.0, max_w)
-	var h: float = clampf(base_h + extra_h, 220.0, max_h)
+	var w: float = clampf(base_w + extra_w, 360.0, max_w)
+	var h: float = clampf(base_h + extra_h, 280.0, max_h)
 	_vassals_dialog.size = Vector2(w, h)
 
 	var gap: float = 10.0
@@ -899,6 +913,7 @@ func _on_vassals_button_pressed() -> void:
 	_obnov_panel_vazalu()
 	_pozicuj_a_zmen_velikost_panelu_vazalu()
 	_vassals_dialog.show()
+	call_deferred("_pozicuj_a_zmen_velikost_panelu_vazalu")
 
 func _obnov_panel_vazalu() -> void:
 	if _vassals_list == null:
@@ -912,62 +927,95 @@ func _obnov_panel_vazalu() -> void:
 		vassals = GameManager.ziskej_vazaly_statu(player) as Array
 
 	if vassals.is_empty():
+		var empty_card = PanelContainer.new()
+		empty_card.add_theme_stylebox_override("panel", _vytvor_ingame_kartu_styl(Color(0.10, 0.14, 0.22, 0.90), Color(0.35, 0.47, 0.62, 0.55)))
+		_vassals_list.add_child(empty_card)
+
+		var empty_margin = MarginContainer.new()
+		empty_margin.add_theme_constant_override("margin_left", 10)
+		empty_margin.add_theme_constant_override("margin_top", 10)
+		empty_margin.add_theme_constant_override("margin_right", 10)
+		empty_margin.add_theme_constant_override("margin_bottom", 10)
+		empty_card.add_child(empty_margin)
+
 		var empty_label = Label.new()
 		empty_label.text = "You currently have no active vassals."
-		_vassals_list.add_child(empty_label)
+		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		empty_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		empty_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		empty_label.add_theme_color_override("font_color", Color(0.78, 0.86, 0.97, 0.9))
+		empty_margin.add_child(empty_label)
 		_pozicuj_a_zmen_velikost_panelu_vazalu(0)
 		return
 
 	for subject_any in vassals:
 		var subject = str(subject_any).strip_edges().to_upper()
 		var card = PanelContainer.new()
-		var card_style = StyleBoxFlat.new()
-		card_style.bg_color = Color(0.11, 0.16, 0.24, 0.94)
-		card_style.border_color = Color(0.53, 0.70, 0.92, 0.58)
-		card_style.border_width_left = 1
-		card_style.border_width_top = 1
-		card_style.border_width_right = 1
-		card_style.border_width_bottom = 1
-		card_style.corner_radius_top_left = 6
-		card_style.corner_radius_top_right = 6
-		card_style.corner_radius_bottom_left = 6
-		card_style.corner_radius_bottom_right = 6
-		card.add_theme_stylebox_override("panel", card_style)
+		card.add_theme_stylebox_override("panel", _vytvor_ingame_kartu_styl(Color(0.11, 0.16, 0.24, 0.94), Color(0.53, 0.70, 0.92, 0.58)))
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_vassals_list.add_child(card)
 
 		var card_margin = MarginContainer.new()
-		card_margin.add_theme_constant_override("margin_left", 6)
-		card_margin.add_theme_constant_override("margin_top", 4)
-		card_margin.add_theme_constant_override("margin_right", 6)
-		card_margin.add_theme_constant_override("margin_bottom", 4)
+		card_margin.add_theme_constant_override("margin_left", 8)
+		card_margin.add_theme_constant_override("margin_top", 8)
+		card_margin.add_theme_constant_override("margin_right", 8)
+		card_margin.add_theme_constant_override("margin_bottom", 8)
 		card.add_child(card_margin)
 
 		var card_v = VBoxContainer.new()
-		card_v.add_theme_constant_override("separation", 4)
+		card_v.add_theme_constant_override("separation", 7)
 		card_margin.add_child(card_v)
 
-		var row = HBoxContainer.new()
-		row.add_theme_constant_override("separation", 8)
-		card_v.add_child(row)
+		var top_row = HBoxContainer.new()
+		top_row.add_theme_constant_override("separation", 8)
+		card_v.add_child(top_row)
+
+		var ideology = _ziskej_aktualni_ideologii_statu(subject)
+		var flag = TextureRect.new()
+		flag.custom_minimum_size = Vector2(26, 18)
+		flag.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		flag.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		flag.texture = _resolve_flag_texture(subject, ideology)
+		top_row.add_child(flag)
+
+		var identity_col = VBoxContainer.new()
+		identity_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		identity_col.add_theme_constant_override("separation", 1)
+		top_row.add_child(identity_col)
 
 		var name_lbl = Label.new()
 		name_lbl.text = _ziskej_jmeno_statu_podle_tagu(subject)
-		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		name_lbl.add_theme_font_size_override("font_size", 15)
 		name_lbl.add_theme_color_override("font_color", Color(0.93, 0.97, 1.0, 1.0))
 		name_lbl.tooltip_text = subject
-		row.add_child(name_lbl)
+		identity_col.add_child(name_lbl)
+
+		var tag_lbl = Label.new()
+		tag_lbl.text = subject
+		tag_lbl.add_theme_font_size_override("font_size", 11)
+		tag_lbl.add_theme_color_override("font_color", Color(0.67, 0.78, 0.92, 0.92))
+		identity_col.add_child(tag_lbl)
+
+		var action_row = HBoxContainer.new()
+		action_row.add_theme_constant_override("separation", 8)
+		card_v.add_child(action_row)
 
 		var focus_btn = Button.new()
 		focus_btn.text = "Open"
+		focus_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_aplikuj_ingame_tlacitko_styl(focus_btn)
 		focus_btn.pressed.connect(_on_vassal_focus_pressed.bind(subject))
-		row.add_child(focus_btn)
+		action_row.add_child(focus_btn)
 
 		var release_btn = Button.new()
 		release_btn.text = "Release"
+		release_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_aplikuj_ingame_tlacitko_styl(release_btn, true)
 		release_btn.pressed.connect(_on_vassal_release_pressed.bind(subject))
-		row.add_child(release_btn)
+		action_row.add_child(release_btn)
+
+		var split = HSeparator.new()
+		card_v.add_child(split)
 
 		var tribute_row = HBoxContainer.new()
 		tribute_row.add_theme_constant_override("separation", 8)
@@ -976,7 +1024,7 @@ func _obnov_panel_vazalu() -> void:
 		var tribute_lbl = Label.new()
 		tribute_lbl.text = "Tribute"
 		tribute_lbl.add_theme_color_override("font_color", Color(0.87, 0.92, 0.98, 1.0))
-		tribute_lbl.custom_minimum_size = Vector2(88, 0)
+		tribute_lbl.custom_minimum_size = Vector2(64, 0)
 		tribute_row.add_child(tribute_lbl)
 
 		var slider = HSlider.new()
@@ -992,6 +1040,7 @@ func _obnov_panel_vazalu() -> void:
 
 		var pct_label = Label.new()
 		pct_label.text = "%d%%" % int(round(current_rate))
+		pct_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		pct_label.add_theme_color_override("font_color", Color(0.83, 0.90, 0.98, 1.0))
 		pct_label.custom_minimum_size = Vector2(44, 0)
 		slider.value_changed.connect(func(v): pct_label.text = "%d%%" % int(round(v)))
@@ -1003,12 +1052,26 @@ func _obnov_panel_vazalu() -> void:
 		apply_btn.pressed.connect(_on_vassal_tribute_apply_pressed.bind(subject, slider))
 		tribute_row.add_child(apply_btn)
 
+		var cooldown_left := 0
+		if GameManager.has_method("ziskej_zbyvajici_cooldown_vazalskeho_odvodu"):
+			cooldown_left = int(GameManager.ziskej_zbyvajici_cooldown_vazalskeho_odvodu(GameManager.hrac_stat, subject))
+		if cooldown_left > 0:
+			slider.editable = false
+			apply_btn.disabled = true
+			apply_btn.tooltip_text = "Tribute can be changed again in %d turn(s)." % cooldown_left
+			var lock_lbl = Label.new()
+			lock_lbl.text = "Tribute lock: %d turn(s) remaining" % cooldown_left
+			lock_lbl.add_theme_font_size_override("font_size", 11)
+			lock_lbl.add_theme_color_override("font_color", Color(0.96, 0.75, 0.52, 0.95))
+			card_v.add_child(lock_lbl)
+
 		if GameManager.has_method("ziskej_cisty_prijem_statu"):
 			var inc = float(GameManager.ziskej_cisty_prijem_statu(subject))
 			var est = max(0.0, inc) * (float(slider.value) / 100.0)
 			var est_lbl = Label.new()
 			est_lbl.text = "Estimated tribute/turn: $%.2f" % est
-			est_lbl.modulate = Color(0.86, 0.94, 1.0, 0.92)
+			est_lbl.add_theme_font_size_override("font_size", 12)
+			est_lbl.add_theme_color_override("font_color", Color(0.73, 0.96, 0.82, 0.95))
 			slider.value_changed.connect(func(v):
 				var est_now = max(0.0, float(GameManager.ziskej_cisty_prijem_statu(subject))) * (float(v) / 100.0)
 				est_lbl.text = "Estimated tribute/turn: $%.2f" % est_now
@@ -1020,9 +1083,17 @@ func _obnov_panel_vazalu() -> void:
 func _on_vassal_tribute_apply_pressed(subject_tag: String, slider: HSlider) -> void:
 	if slider == null or not GameManager.has_method("nastav_vazalsky_odvod"):
 		return
+	if GameManager.has_method("ziskej_zbyvajici_cooldown_vazalskeho_odvodu"):
+		var cooldown_left = int(GameManager.ziskej_zbyvajici_cooldown_vazalskeho_odvodu(GameManager.hrac_stat, subject_tag))
+		if cooldown_left > 0:
+			zobraz_systemove_hlaseni("Vassal Tribute", "You can change tribute for %s again in %d turn(s)." % [subject_tag, cooldown_left])
+			return
 	var ok = bool(GameManager.nastav_vazalsky_odvod(GameManager.hrac_stat, subject_tag, float(slider.value)))
 	if ok:
 		_aktualizuj_mirove_overview_statistiky(str(GameManager.hrac_stat).strip_edges().to_upper(), true)
+		_obnov_panel_vazalu()
+	else:
+		zobraz_systemove_hlaseni("Vassal Tribute", "Tribute change failed.")
 
 func _on_vassal_focus_pressed(subject_tag: String) -> void:
 	_otevri_prehled_statu_podle_tagu(subject_tag)
