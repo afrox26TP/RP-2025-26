@@ -65,6 +65,7 @@ var _loading_layer: CanvasLayer = null
 var _loading_label: Label = null
 var _loading_bar: ProgressBar = null
 var _potato_mode_enabled: bool = false
+var _turn_indicator_suppress_locks: int = 0
 const PORT_ICON_PATH := "res://map_data/port_icon.svg"
 const PORT_ICON_FALLBACK_PATH := "res://map_data/ArmyIcons/ArmyIconTemplate.svg"
 const SETTINGS_FILE_PATH := "user://settings.cfg"
@@ -2302,8 +2303,8 @@ func aktivuj_rezim_vyberu_miru(vitez_tag: String, porazeny_tag: String, preselec
 	var sprite = $Sprite2D
 	if sprite and sprite.has_method("nastav_nahled_hlavniho_mesta"):
 		sprite.nastav_nahled_hlavniho_mesta(participants, dostupne_cile_miru)
-	if sprite and sprite.has_method("nastav_nahled_mirovych_cilu"):
-		sprite.nastav_nahled_mirovych_cilu(porazeny)
+	if sprite and sprite.has_method("vycisti_nahled_mirovych_cilu"):
+		sprite.vycisti_nahled_mirovych_cilu()
 	if sprite and sprite.has_method("_aktualizuj_hromadny_selection_texture"):
 		sprite._aktualizuj_hromadny_selection_texture(vybrane_cile_miru)
 
@@ -2793,10 +2794,11 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int, vykreslit_
 		return
 	var is_human_owner = GameManager.je_lidsky_stat(owner_tag)
 
-	# Replace older queued move from the same source province/owner immediately.
+	# Human players can intentionally split one province army into multiple queued moves.
+	# Keep replacement behavior only for non-human owners.
 	# AI batch planning guarantees one outgoing move per source in the same phase,
-	# so we can skip the expensive full scan for non-human owners.
-	if is_human_owner or not _pozastavit_aktualizaci_ikon:
+	# so we can skip the expensive full scan when batching is active.
+	if not is_human_owner and not _pozastavit_aktualizaci_ikon:
 		for i in range(cekajici_presuny.size() - 1, -1, -1):
 			var q = cekajici_presuny[i]
 			if int(q.get("from", -1)) != from_id:
@@ -3070,6 +3072,15 @@ func zpracuj_tah_armad():
 				ma_pristup_do_cile = bool(GameManager.muze_vstoupit_na_uzemi(attacker_tag, target_land_owner))
 			if not ma_pristup_do_cile and target_owner != "" and target_owner != attacker_tag and GameManager.has_method("muze_vstoupit_na_uzemi"):
 				ma_pristup_do_cile = bool(GameManager.muze_vstoupit_na_uzemi(attacker_tag, target_owner))
+		if not target_is_sea and target_owner != "" and target_owner != attacker_tag:
+			var stale_attack_order = (not ma_pristup_do_cile) and (not GameManager.jsou_ve_valce(attacker_tag, target_owner))
+			if stale_attack_order:
+				# Diplomacy changed since order creation (peace/capitulation), so cancel this attack.
+				if not bool(move.get("deduct_on_resolve", false)) and _from_id >= 0 and provinces.has(_from_id):
+					provinces[_from_id]["soldiers"] = int(provinces[_from_id].get("soldiers", 0)) + utocnici
+					var from_owner_now = str(provinces[_from_id].get("army_owner", "")).strip_edges().to_upper()
+					provinces[_from_id]["army_owner"] = _zvol_vlastnika_pri_pratelskem_slouceni(from_owner_now, attacker_tag)
+				continue
 		var je_mirovy_vstup = (not target_is_sea and ma_pristup_do_cile and (target_owner == "" or not GameManager.jsou_ve_valce(attacker_tag, target_owner)))
 		var jmeno_provincie = str(provinces[to_id].get("province_name", "Unknown province"))
 		
@@ -3233,9 +3244,23 @@ func zpracuj_tah_armad():
 	if "cekajici_kapitulace" in GameManager and (GameManager.cekajici_kapitulace as Array).size() > 0:
 		celkovy_report = _zpracuj_odlozene_kapitulace(celkovy_report)
 	aktualizuj_ikony_armad()
+	if ownership_changed:
+		var sprite = $Sprite2D
+		if sprite and sprite.has_method("aktualizuj_mapovy_mod"):
+			sprite.aktualizuj_mapovy_mod(str(aktualni_mapovy_mod), provinces)
+
+	var je_rychle_tahove_zpracovani = _ma_rychle_zpracovani_tahu() and _potato_mode_enabled
+	var bude_zobrazen_bitevni_popup = false
+	if not bitevni_udalosti.is_empty():
+		if not je_rychle_tahove_zpracovani or FAST_TURN_SHOW_BATTLE_SUMMARY:
+			bude_zobrazen_bitevni_popup = true
+	if celkovy_report != "" and not je_rychle_tahove_zpracovani:
+		bude_zobrazen_bitevni_popup = true
+	if bude_zobrazen_bitevni_popup:
+		_ziskej_turn_indicator_suppression_lock()
 
 	if not bitevni_udalosti.is_empty():
-		if _ma_rychle_zpracovani_tahu() and _potato_mode_enabled:
+		if je_rychle_tahove_zpracovani:
 			if FAST_TURN_SHOW_BATTLE_SUMMARY:
 				await _ukaz_souhrn_bitevnich_udalosti(bitevni_udalosti)
 		else:
@@ -3249,11 +3274,14 @@ func zpracuj_tah_armad():
 			await _obnov_bitevni_kameru()
 	
 	if celkovy_report != "":
-		if _ma_rychle_zpracovani_tahu() and _potato_mode_enabled:
+		if je_rychle_tahove_zpracovani:
 			if GameManager.has_method("_zaloguj_globalni_zpravu"):
 				GameManager._zaloguj_globalni_zpravu("War", celkovy_report.strip_edges(), "war")
 		else:
 			await _ukaz_bitevni_popup("Frontline report", celkovy_report)
+
+	if bude_zobrazen_bitevni_popup:
+		_uvolni_turn_indicator_suppression_lock()
 
 	if not pokracujici_presuny.is_empty():
 		for p_move in pokracujici_presuny:
@@ -3294,9 +3322,11 @@ func _ukaz_souhrn_bitevnich_udalosti(udalosti: Array) -> void:
 	await _ukaz_bitevni_popup("Frontline Report", "\n".join(lines))
 
 func _ukaz_bitevni_popup(titulek: String, text: String):
+	_ziskej_turn_indicator_suppression_lock()
 	var game_ui = get_tree().current_scene.find_child("GameUI", true, false)
 	if game_ui and game_ui.has_method("zobraz_systemove_hlaseni"):
 		await game_ui.zobraz_systemove_hlaseni(titulek, text)
+		_uvolni_turn_indicator_suppression_lock()
 		return
 
 	var dialog = AcceptDialog.new()
@@ -3330,6 +3360,28 @@ func _ukaz_bitevni_popup(titulek: String, text: String):
 		
 	if is_instance_valid(dialog):
 		dialog.queue_free()
+	_uvolni_turn_indicator_suppression_lock()
+
+func _ziskej_turn_indicator_suppression_lock() -> void:
+	_turn_indicator_suppress_locks += 1
+	if _turn_indicator_suppress_locks == 1:
+		_nastav_pozastaveni_turn_indikatoru(true)
+
+func _uvolni_turn_indicator_suppression_lock() -> void:
+	_turn_indicator_suppress_locks = max(0, _turn_indicator_suppress_locks - 1)
+	if _turn_indicator_suppress_locks == 0:
+		_nastav_pozastaveni_turn_indikatoru(false)
+
+func _nastav_pozastaveni_turn_indikatoru(pozastavit: bool) -> void:
+	var scene = get_tree().current_scene
+	if scene == null:
+		return
+	var game_ui = scene.find_child("GameUI", true, false)
+	if game_ui and game_ui.has_method("nastav_pozastaveni_turn_overlay"):
+		game_ui.nastav_pozastaveni_turn_overlay(pozastavit)
+	var top_bar = scene.find_child("TopBar", true, false)
+	if top_bar and top_bar.has_method("nastav_pozastaveni_turn_busy_indicator"):
+		top_bar.nastav_pozastaveni_turn_busy_indicator(pozastavit)
 
 func _zacni_bitevni_kameru():
 	var kamera = $Camera2D
@@ -3368,6 +3420,46 @@ func _ukaz_bitevni_popup_na_provincii(titulek: String, text: String, province_id
 	await t1.finished
 
 	await _ukaz_bitevni_popup(titulek, text)
+
+func zrus_cekajici_utoky_na_stat(target_tag: String) -> int:
+	var target = str(target_tag).strip_edges().to_upper()
+	if target == "":
+		return 0
+	var removed := 0
+	for i in range(cekajici_presuny.size() - 1, -1, -1):
+		var move = cekajici_presuny[i] as Dictionary
+		if move == null:
+			continue
+		var attacker = str(move.get("owner", "")).strip_edges().to_upper()
+		if attacker == "" or attacker == target:
+			continue
+		var to_id = int(move.get("to", -1))
+		if to_id < 0 or not provinces.has(to_id) or _je_more_provincie(to_id):
+			continue
+		var to_owner = str(provinces[to_id].get("owner", "")).strip_edges().to_upper()
+		if to_owner != target:
+			continue
+
+		var has_access = bool(GameManager.has_method("muze_vstoupit_na_uzemi") and GameManager.muze_vstoupit_na_uzemi(attacker, target))
+		var at_war = bool(GameManager.has_method("jsou_ve_valce") and GameManager.jsou_ve_valce(attacker, target))
+		if has_access and not at_war:
+			continue
+
+		if not bool(move.get("deduct_on_resolve", false)):
+			var from_id = int(move.get("from", -1))
+			var amount = max(0, int(move.get("amount", 0)))
+			if amount > 0 and from_id >= 0 and provinces.has(from_id):
+				provinces[from_id]["soldiers"] = int(provinces[from_id].get("soldiers", 0)) + amount
+				var existing_owner = str(provinces[from_id].get("army_owner", "")).strip_edges().to_upper()
+				provinces[from_id]["army_owner"] = _zvol_vlastnika_pri_pratelskem_slouceni(existing_owner, attacker)
+
+		cekajici_presuny.remove_at(i)
+		removed += 1
+
+	if removed > 0:
+		aktualizuj_ikony_armad()
+		_vykresli_indikaci_cekajicich_presunu()
+	return removed
 
 func _ziskej_reprezentaci_statu(tag: String) -> Dictionary:
 	var hledany = tag.strip_edges().to_upper()
@@ -3532,6 +3624,32 @@ func _zpracuj_automaticke_kapitulace(celkovy_report: String) -> String:
 		var flags = state_flags[target_owner] as Dictionary
 		if bool(flags.get("has_self", false)) or not bool(flags.get("has_occupied", false)):
 			continue
+
+		# If exactly one state occupies all remaining cores, use peace conference flow
+		# (same as delayed capitulation) instead of instant split/annex.
+		var okupanti_set: Dictionary = {}
+		for p_id_any in provinces.keys():
+			var pid = int(p_id_any)
+			var pd = provinces[pid]
+			var core_owner = str(pd.get("core_owner", "")).strip_edges().to_upper()
+			if core_owner != str(target_owner):
+				continue
+			var owner_tag = str(pd.get("owner", "")).strip_edges().to_upper()
+			if owner_tag == "" or owner_tag == "SEA" or owner_tag == str(target_owner):
+				continue
+			okupanti_set[owner_tag] = true
+
+		if okupanti_set.size() == 1 and GameManager.has_method("uzavri_mir_a_zahaj_konferenci"):
+			var winner_tag = str(okupanti_set.keys()[0]).strip_edges().to_upper()
+			if winner_tag != "" and winner_tag != str(target_owner):
+				GameManager.map_data = provinces
+				var conf_result = GameManager.uzavri_mir_a_zahaj_konferenci(winner_tag, target_owner, "automatic_capitulation")
+				if bool(conf_result.get("ok", false)):
+					provinces = GameManager.map_data
+					_rebuild_movement_topology_cache()
+					if GameManager.je_lidsky_stat(winner_tag) or GameManager.je_lidsky_stat(target_owner):
+						celkovy_report += "Automatic capitulation: %s lost all non-occupied territory. Peace conference will determine war terms.\n\n" % target_owner
+					continue
 
 		var vysledek = _kapituluj_stat_rozdelenim(target_owner, "")
 		if not bool(vysledek.get("provedeno", false)):

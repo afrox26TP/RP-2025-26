@@ -580,6 +580,11 @@ func _aktualizuj_hromadny_selection_texture(ids: Array):
 		var is_peace_targeting = root != null and ("ceka_na_cil_miru" in root) and bool(root.ceka_na_cil_miru)
 		material.set_shader_parameter("selected_multi_color", _ziskej_barvu_hrace_pro_vyber())
 		material.set_shader_parameter("peace_selection_player_color_mode", is_peace_targeting)
+		if is_peace_targeting:
+			# In peace selection, only explicitly selected provinces should look claimed.
+			material.set_shader_parameter("peace_target_visual_mode", false)
+		elif not bool(material.get_shader_parameter("capital_focus_mode")):
+			material.set_shader_parameter("peace_target_visual_mode", false)
 
 	selected_multi_image.fill(Color(0, 0, 0, 0))
 	for raw_id in ids:

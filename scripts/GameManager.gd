@@ -4761,6 +4761,36 @@ func _nastav_vazala(overlord_tag: String, subject_tag: String) -> void:
 	if not ma_neagresivni_smlouvu(overlord, subject):
 		uzavrit_neagresivni_smlouvu(overlord, subject)
 
+func _uzavri_valky_statu_krome(state_tag: String, except_tags: Array = []) -> void:
+	var state = _normalizuj_tag(state_tag)
+	if state == "":
+		return
+
+	var ignore: Dictionary = {}
+	for raw in except_tags:
+		var tag = _normalizuj_tag(str(raw))
+		if tag != "":
+			ignore[tag] = true
+
+	var enemies: Array = []
+	for key_any in valky.keys():
+		var key = str(key_any)
+		var sep = key.find("_")
+		if sep <= 0 or sep >= key.length() - 1:
+			continue
+		var a = _normalizuj_tag(key.substr(0, sep))
+		var b = _normalizuj_tag(key.substr(sep + 1))
+		if a == state and b != "" and not enemies.has(b):
+			enemies.append(b)
+		elif b == state and a != "" and not enemies.has(a):
+			enemies.append(a)
+
+	for enemy_any in enemies:
+		var enemy = _normalizuj_tag(str(enemy_any))
+		if enemy == "" or ignore.has(enemy):
+			continue
+		_uzavri_mir_mezi(state, enemy, true)
+
 func _pridej_valecne_reparace(from_tag: String, to_tag: String, turns: int) -> void:
 	var from_clean = _normalizuj_tag(from_tag)
 	var to_clean = _normalizuj_tag(to_tag)
@@ -5070,6 +5100,11 @@ func _proved_mirovou_konferenci(conf: Dictionary, demands: Dictionary) -> Dictio
 
 	if make_vassal and _stat_existuje(loser):
 		_nastav_vazala(winner, loser)
+		# Protectorate outcome: third-party wars against the new vassal must stop.
+		_uzavri_valky_statu_krome(loser, [winner])
+		var map_loader_after_vassal = _get_map_loader()
+		if map_loader_after_vassal and map_loader_after_vassal.has_method("zrus_cekajici_utoky_na_stat"):
+			map_loader_after_vassal.zrus_cekajici_utoky_na_stat(loser)
 	if repar_turns > 0 and _stat_existuje(loser):
 		_pridej_valecne_reparace(loser, winner, repar_turns)
 
@@ -6846,12 +6881,21 @@ func _seradene_ai_provincie(state_tag: String) -> Array:
 		for p_id in (_turn_state_owned_provinces[state_tag] as Array):
 			if not map_data.has(p_id):
 				continue
+			var d_cached = map_data[p_id]
+			var army_owner_cached = str(d_cached.get("army_owner", "")).strip_edges().to_upper()
+			# AI can only command stacks it actually controls.
+			if army_owner_cached != "" and army_owner_cached != state_tag:
+				continue
 			if int(_turn_soldiers_by_province.get(int(p_id), int(map_data[p_id].get("soldiers", 0)))) >= AI_MIN_PROVINCE_SOLDIERS_FOR_PLANNING:
 				ids.append(p_id)
 	else:
 		for p_id in map_data:
 			var d = map_data[p_id]
 			if str(d.get("owner", "")).strip_edges().to_upper() == state_tag:
+				var army_owner = str(d.get("army_owner", "")).strip_edges().to_upper()
+				# Skip mixed-control provinces (e.g., foreign troops with military access).
+				if army_owner != "" and army_owner != state_tag:
+					continue
 				if int(d.get("soldiers", 0)) >= AI_MIN_PROVINCE_SOLDIERS_FOR_PLANNING:
 					ids.append(p_id)
 

@@ -29,6 +29,7 @@ var _last_seen_player_tag: String = ""
 var _player_focus_tween: Tween
 var _turn_busy_indicator: Label
 var _is_turn_processing: bool = false
+var _turn_busy_suppressed: bool = false
 var _turn_busy_anim_time: float = 0.0
 var _turn_busy_anim_step: int = 0
 var _map_mode_white_icon_cache: Dictionary = {}
@@ -659,17 +660,22 @@ func _on_zpracovani_tahu_zmeneno(aktivni: bool) -> void:
 	if next_btn:
 		next_btn.disabled = aktivni
 	if _turn_busy_indicator:
-		_turn_busy_indicator.visible = aktivni
+		_turn_busy_indicator.visible = aktivni and not _turn_busy_suppressed
 		_turn_busy_anim_step = 0
 		_turn_busy_indicator.text = TURN_BUSY_FRAMES[0]
 	_turn_busy_anim_time = 0.0
 	set_process(aktivni)
 
+func nastav_pozastaveni_turn_busy_indicator(pozastavit: bool) -> void:
+	_turn_busy_suppressed = pozastavit
+	if _turn_busy_indicator:
+		_turn_busy_indicator.visible = _is_turn_processing and not _turn_busy_suppressed
+
 func _process(delta: float) -> void:
 	if _finance_tooltip_visible:
 		_aktualizuj_financni_tooltip_pozici()
 
-	if not _is_turn_processing or _turn_busy_indicator == null:
+	if not _is_turn_processing or _turn_busy_indicator == null or _turn_busy_suppressed:
 		return
 	_turn_busy_anim_time += delta
 	if _turn_busy_anim_time < 0.16:

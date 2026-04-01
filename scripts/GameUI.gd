@@ -228,6 +228,7 @@ var _turn_loading_label: Label
 var _turn_loading_anim_time: float = 0.0
 var _turn_loading_anim_step: int = 0
 var _turn_loading_active: bool = false
+var _turn_loading_suppressed: bool = false
 var _country_overview_stats_cache: Dictionary = {}
 
 const POPUP_TOP_MARGIN := 6
@@ -501,11 +502,18 @@ func _on_zpracovani_tahu_zmeneno(aktivni: bool) -> void:
 	_turn_loading_anim_time = 0.0
 	_turn_loading_anim_step = 0
 	if _turn_loading_overlay:
-		_turn_loading_overlay.visible = aktivni
+		_turn_loading_overlay.visible = aktivni and not _turn_loading_suppressed
 	if _turn_loading_label:
 		_turn_loading_label.text = TURN_LOADING_FRAMES[0]
 	if aktivni:
 		set_process(true)
+
+func nastav_pozastaveni_turn_overlay(pozastavit: bool) -> void:
+	_turn_loading_suppressed = pozastavit
+	if _turn_loading_overlay:
+		_turn_loading_overlay.visible = _turn_loading_active and not _turn_loading_suppressed
+	if not _turn_loading_active and not _ideology_dropdown_open:
+		set_process(false)
 
 func _setup_popup_country_link() -> void:
 	# Sender name text in the popup was intentionally removed to keep the card compact.
@@ -4765,6 +4773,8 @@ func _aktualizuj_pozice_popupu():
 func zobraz_systemove_hlaseni(titulek: String, text: String) -> void:
 	if not system_message_popup:
 		return
+	var puvodni_pozastaveni_overlay = _turn_loading_suppressed
+	nastav_pozastaveni_turn_overlay(true)
 	if system_message_title:
 		system_message_title.text = titulek if titulek.strip_edges() != "" else "Report"
 	if system_message_text:
@@ -4776,6 +4786,7 @@ func zobraz_systemove_hlaseni(titulek: String, text: String) -> void:
 	if bool(GameManager.zpracovava_se_tah):
 		# Never block turn resolution on message acknowledgement.
 		_on_system_message_ok_pressed()
+		nastav_pozastaveni_turn_overlay(puvodni_pozastaveni_overlay)
 		return
 	var wait_start_ms = Time.get_ticks_msec()
 
@@ -4787,6 +4798,8 @@ func zobraz_systemove_hlaseni(titulek: String, text: String) -> void:
 				_on_system_message_ok_pressed()
 				break
 		await get_tree().process_frame
+
+	nastav_pozastaveni_turn_overlay(puvodni_pozastaveni_overlay)
 
 func _napln_aliance_option():
 	# Legacy stub - alliance is now managed via popup dialog
