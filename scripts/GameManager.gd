@@ -293,13 +293,14 @@ var _ai_border_cache: Dictionary = {}
 var _ai_cache_batch_depth: int = 0
 var _ai_war_pair_eval_dirty_states: Dictionary = {}
 var _ai_profily: Dictionary = {}
+var _global_ai_aggression_level: float = 0.5
 var _ai_randomized_ideologies_applied: bool = false
 var _suppress_relation_global_logs: bool = false
 var _map_loader_cache: Node = null
 var _map_loader_cache_scene: Node = null
 var _potato_mode_enabled: bool = false
 
-const AI_MIN_PROVINCE_SOLDIERS_FOR_PLANNING := 1000
+const AI_MIN_PROVINCE_SOLDIERS_FOR_PLANNING := 450
 const AI_MAX_ARMY_ORDERS_PER_STATE := 25
 const AI_MIN_TREASURY_RESERVE := 25.0
 const AI_BUILDING_COST_ECON := 150.0
@@ -828,6 +829,7 @@ func _vytvor_save_state() -> Dictionary:
 		"ai_kasy": ai_kasy.duplicate(true),
 		"ai_profily": _ai_profily.duplicate(true),
 		"ai_randomized_ideologies_applied": _ai_randomized_ideologies_applied,
+		"global_ai_aggression_level": _global_ai_aggression_level,
 		"lokalni_hraci_staty": lokalni_hraci_staty.duplicate(true),
 		"aktivni_hrac_index": aktivni_hrac_index,
 		"hrac_kasy": hrac_kasy.duplicate(true),
@@ -897,6 +899,7 @@ func _aplikuj_save_state(state: Dictionary) -> bool:
 	ai_kasy = (state.get("ai_kasy", {}) as Dictionary).duplicate(true)
 	_ai_profily = (state.get("ai_profily", {}) as Dictionary).duplicate(true)
 	_ai_randomized_ideologies_applied = bool(state.get("ai_randomized_ideologies_applied", false))
+	_global_ai_aggression_level = float(state.get("global_ai_aggression_level", 0.5))
 	lokalni_hraci_staty = (state.get("lokalni_hraci_staty", []) as Array).duplicate(true)
 	aktivni_hrac_index = int(state.get("aktivni_hrac_index", 0))
 	hrac_kasy = (state.get("hrac_kasy", {}) as Dictionary).duplicate(true)
@@ -963,6 +966,7 @@ func reset_pro_novou_hru() -> void:
 	ai_kasy.clear()
 	_ai_profily.clear()
 	_ai_randomized_ideologies_applied = false
+	_global_ai_aggression_level = 0.5
 	_hrac_kasa_inicializovana = false
 	lokalni_hraci_staty.clear()
 	aktivni_hrac_index = 0
@@ -5652,6 +5656,11 @@ func _zpracuj_ai_aliance(ai_staty: Array) -> Array:
 		var owner_tag = _normalizuj_tag(str(ai_tag))
 		if owner_tag == "":
 			continue
+		var owner_profile = _ai_ziskej_profil(owner_tag)
+		var owner_aggression = float(owner_profile.get("aggression", 0.5))
+		# Highly aggressive states should not keep creating new alliance nets.
+		if owner_aggression >= 0.62:
+			continue
 		var our_power = float(state_power.get(owner_tag, 1.0))
 		var owner_enemies = hostility_by_state.get(owner_tag, {}) as Dictionary
 
@@ -5771,6 +5780,11 @@ func _zpracuj_ai_neagresivni_smlouvy(ai_staty: Array) -> Array:
 	for ai_tag in ai_staty:
 		var owner_tag = _normalizuj_tag(str(ai_tag))
 		if owner_tag == "":
+			continue
+		var owner_profile = _ai_ziskej_profil(owner_tag)
+		var owner_aggression = float(owner_profile.get("aggression", 0.5))
+		# Aggressive states prefer open conflict options over non-aggression pacts.
+		if owner_aggression >= 0.50:
 			continue
 
 		var best_target := ""
@@ -6554,6 +6568,9 @@ func _ai_vytvor_profil_pro_ideologii(ideology: String) -> Dictionary:
 	defense = clamp(defense + randf_range(-0.12, 0.12), 0.20, 0.95)
 	unpredictability = clamp(unpredictability + randf_range(-0.10, 0.14), 0.05, 0.95)
 
+	# Blend with global aggression level (70% weight) so the slider has a strong effect.
+	aggression = clampf(lerpf(aggression, _global_ai_aggression_level, 0.70), 0.0, 1.0)
+
 	return {
 		"ideology": ideol,
 		"aggression": aggression,
@@ -6612,6 +6629,17 @@ func nastav_ai_agresivitu_statu(state_tag: String, aggression_0_to_1: float) -> 
 		"state": clean,
 		"profile": (profile as Dictionary).duplicate(true)
 	}
+
+func nastav_globalni_ai_agresi(level: float) -> void:
+	_global_ai_aggression_level = clamp(level, 0.0, 1.0)
+	# Re-bake all existing profiles so the new setting takes effect immediately.
+	for tag in _ai_profily.keys():
+		if je_lidsky_stat(str(tag)):
+			continue
+		var profile = _ai_profily[str(tag)] as Dictionary
+		var base = float(profile.get("aggression", 0.5))
+		profile["aggression"] = clampf(lerpf(base, _global_ai_aggression_level, 0.70), 0.0, 1.0)
+		_ai_profily[str(tag)] = profile
 
 func _ai_randomizuj_ideologie_a_profily(ai_staty: Array) -> void:
 	if _ai_randomized_ideologies_applied:
@@ -7141,6 +7169,9 @@ func zpracuj_tah_ai():
 	ai_phases["economy_recruit"] = Time.get_ticks_msec() - ai_phase_ms
 	ai_phase_ms = Time.get_ticks_msec()
 	_refresh_turn_runtime_owner_soldier_cache()
+	var opened_wars = _ai_otevri_valky(ai_staty)
+	if opened_wars > 0:
+		_ai_debug("war opener created %d wars" % opened_wars)
 
 	# AI movement phases:
 	# 1) Non-attacking moves inside own provinces.
@@ -7399,6 +7430,14 @@ func _naplanuj_ai_presuny(map_loader):
 					movement_war_eval_ms += Time.get_ticks_msec() - war_eval_start_ms
 					movement_war_eval_count += 1
 				if should_declare:
+					var aggr_profile = _ai_ziskej_profil(owner_tag)
+					var aggr_level = float(aggr_profile.get("aggression", 0.5))
+					if aggr_level >= 0.82:
+						var pair_key = _klic_pair(owner_tag, target_owner)
+						if pair_key != "":
+							neagresivni_smlouvy.erase(pair_key)
+						if _ziskej_uroven_aliance_ai_cached(owner_tag, target_owner) > ALLIANCE_NONE:
+							_nastav_uroven_aliance_bez_kontroly(owner_tag, target_owner, ALLIANCE_NONE)
 					var war_declare_start_ms = 0
 					if movement_profile:
 						war_declare_start_ms = Time.get_ticks_msec()
@@ -7603,13 +7642,18 @@ func _ziskej_ai_war_pair_eval_cached(state_tag: String, target_owner: String) ->
 		out["blocked"] = true
 		_ai_war_pair_eval_cache[key] = out
 		return out
-	if _je_pratelsky_vztah_ai_cached(state_tag, target_owner):
+
+	var profile = _ai_ziskej_profil(state_tag)
+	var aggression = float(profile.get("aggression", 0.5))
+	var rel = _ziskej_ai_vztah_cached(state_tag, target_owner)
+	var war_rel_cap = AI_DECLARE_WAR_MAX_RELATION + (aggression * 45.0)
+
+	if rel >= AI_FRIEND_RELATION_THRESHOLD and aggression < 0.90:
 		out["blocked"] = true
 		_ai_war_pair_eval_cache[key] = out
 		return out
 
-	var rel = _ziskej_ai_vztah_cached(state_tag, target_owner)
-	if rel > AI_DECLARE_WAR_MAX_RELATION:
+	if rel > war_rel_cap:
 		out["blocked"] = true
 		_ai_war_pair_eval_cache[key] = out
 		return out
@@ -7641,8 +7685,6 @@ func _ziskej_ai_war_pair_eval_cached(state_tag: String, target_owner: String) ->
 func _ma_smyls_vyhlasit_valku(state_tag: String, target_owner: String, from_id: int, to_id: int, amount: int) -> bool:
 	if state_tag == "" or target_owner == "" or target_owner == "SEA":
 		return false
-	if amount < AI_DECLARE_WAR_MIN_ATTACK_FORCE:
-		return false
 	if not map_data.has(from_id) or not map_data.has(to_id):
 		return false
 
@@ -7655,15 +7697,19 @@ func _ma_smyls_vyhlasit_valku(state_tag: String, target_owner: String, from_id: 
 	var strategic_ratio = float(pair_eval.get("strategic_ratio", 0.0))
 	var profile = _ai_ziskej_profil(state_tag)
 	var aggression = float(profile.get("aggression", 0.5))
+	var war_rel_cap = AI_DECLARE_WAR_MAX_RELATION + (aggression * 45.0)
+	var min_attack_force = maxf(700.0, AI_DECLARE_WAR_MIN_ATTACK_FORCE - (aggression * 1100.0))
+	if float(amount) < min_attack_force:
+		return false
 
 	if pair_eval.is_empty():
 		# Fallback path when AI phase cache is not active.
 		if _ziskej_uroven_aliance_ai_cached(state_tag, target_owner) > ALLIANCE_NONE:
 			return false
-		if _je_pratelsky_vztah_ai_cached(state_tag, target_owner):
-			return false
 		var rel = _ziskej_ai_vztah_cached(state_tag, target_owner)
-		if rel > AI_DECLARE_WAR_MAX_RELATION:
+		if rel >= AI_FRIEND_RELATION_THRESHOLD and aggression < 0.90:
+			return false
+		if rel > war_rel_cap:
 			return false
 		var border_strength = _spocitej_silu_na_hranici(state_tag, target_owner)
 		var our_border = float(int(border_strength.get("our", 0)))
@@ -7688,8 +7734,14 @@ func _ma_smyls_vyhlasit_valku(state_tag: String, target_owner: String, from_id: 
 	var rel_now = _ziskej_ai_vztah_cached(state_tag, target_owner)
 	var target_core_owner = _normalizuj_tag(str(map_data[to_id].get("core_owner", "")))
 
-	var border_need = AI_DECLARE_WAR_MIN_BORDER_ADVANTAGE - aggression * 0.18
-	var strategic_need = 0.90 - aggression * 0.10
+	var border_need = AI_DECLARE_WAR_MIN_BORDER_ADVANTAGE - aggression * 0.45
+	required_local_ratio = maxf(0.80, required_local_ratio - aggression * 0.35)
+	var strategic_need = 0.90 - aggression * 0.30
+
+	# High aggression: allow opportunistic wars instead of waiting for ideal ratios.
+	if aggression >= 0.82 and rel_now <= 30.0 and local_ratio >= 0.85 and strategic_ratio >= 0.78:
+		_ai_debug("war decide %s->%s reason=aggr_shortcut rel=%.1f local=%.2f strategic=%.2f" % [state_tag, target_owner, rel_now, local_ratio, strategic_ratio])
+		return true
 
 	# If rival blocks our core province while relations are hostile, escalate faster.
 	if target_core_owner == state_tag and rel_now <= -15.0:
@@ -7710,6 +7762,88 @@ func _ma_smyls_vyhlasit_valku(state_tag: String, target_owner: String, from_id: 
 	if final_ok:
 		_ai_debug("war decide %s->%s reason=standard border=%.2f local=%.2f strategic=%.2f" % [state_tag, target_owner, ratio, local_ratio, strategic_ratio])
 	return final_ok
+
+func _ai_otevri_valky(ai_staty: Array) -> int:
+	var opened := 0
+	for owner_any in ai_staty:
+		var owner = _normalizuj_tag(str(owner_any))
+		if owner == "" or owner == "SEA":
+			continue
+
+		var owned = _turn_state_owned_provinces.get(owner, []) as Array
+		if owned.is_empty():
+			continue
+
+		var profile = _ai_ziskej_profil(owner)
+		var aggression = float(profile.get("aggression", 0.5))
+		if aggression < 0.45:
+			continue
+
+		var candidates: Dictionary = {}
+		for p_raw in owned:
+			var p_id = int(p_raw)
+			var neighbors = (_turn_neighbors_by_province.get(p_id, map_data.get(p_id, {}).get("neighbors", [])) as Array)
+			for n_raw in neighbors:
+				var n_id = int(n_raw)
+				if not map_data.has(n_id):
+					continue
+				var n_owner = _normalizuj_tag(str(_turn_owner_by_province.get(n_id, str(map_data[n_id].get("owner", "")))))
+				if n_owner == "" or n_owner == "SEA" or n_owner == owner:
+					continue
+				candidates[n_owner] = true
+
+		var best_target := ""
+		var best_score := -INF
+		for target in candidates.keys():
+			var target_owner = _normalizuj_tag(str(target))
+			if target_owner == "":
+				continue
+			if _jsou_ve_valce_ai_cached(owner, target_owner):
+				continue
+
+			var alliance_level = _ziskej_uroven_aliance_ai_cached(owner, target_owner)
+			if alliance_level > ALLIANCE_NONE and aggression < 0.82:
+				continue
+			if _ma_neagresivni_smlouvu_ai_cached(owner, target_owner) and aggression < 0.82:
+				continue
+
+			var rel = _ziskej_ai_vztah_cached(owner, target_owner)
+			var war_rel_cap = AI_DECLARE_WAR_MAX_RELATION + (aggression * 55.0)
+			if rel > war_rel_cap and aggression < 0.92:
+				continue
+
+			var own_power = float(max(1, _spocitej_silu_statu(owner)))
+			var target_power = float(max(1, _spocitej_silu_statu(target_owner)))
+			var strategic_ratio = own_power / target_power
+			var ratio_need = lerpf(1.18, 0.72, aggression)
+			if strategic_ratio < ratio_need:
+				continue
+
+			var border = _spocitej_silu_na_hranici(owner, target_owner)
+			var border_ratio = float(int(border.get("our", 0))) / float(max(1, int(border.get("enemy", 0))))
+			var score = strategic_ratio * 110.0 + border_ratio * 95.0 + clamp(-rel, 0.0, 120.0) * 1.4 + aggression * 140.0
+			if score > best_score:
+				best_score = score
+				best_target = target_owner
+
+		if best_target == "":
+			continue
+
+		if aggression >= 0.82:
+			var pair_key = _klic_pair(owner, best_target)
+			if pair_key != "":
+				neagresivni_smlouvy.erase(pair_key)
+			if _ziskej_uroven_aliance_ai_cached(owner, best_target) > ALLIANCE_NONE:
+				_nastav_uroven_aliance_bez_kontroly(owner, best_target, ALLIANCE_NONE)
+
+		if vyhlasit_valku(owner, best_target):
+			opened += 1
+			_ai_debug("war opener %s -> %s aggr=%.2f score=%.1f" % [owner, best_target, aggression, best_score])
+			_ai_war_cache.clear()
+			_ai_war_pair_eval_cache.clear()
+			_ai_border_strength_cache.clear()
+
+	return opened
 
 func _navrhni_krizovy_protiutok(state_tag: String, from_id: int, own_capital_id: int, frontline_cache: Dictionary = {}) -> Dictionary:
 	if not map_data.has(from_id):
@@ -7972,7 +8106,7 @@ func _navrhni_utok(state_tag: String, from_id: int, frontline_cache: Dictionary 
 		return {}
 	var from_data = map_data[from_id]
 	var vojaci = int(from_data.get("soldiers", 0))
-	if vojaci <= 1000:
+	if vojaci <= 700:
 		return {}
 	if not _je_frontline_cached(state_tag, from_id, frontline_cache):
 		return {}
@@ -7984,9 +8118,9 @@ func _navrhni_utok(state_tag: String, from_id: int, frontline_cache: Dictionary 
 	var profile = _ai_ziskej_profil(state_tag)
 	var aggression = float(profile.get("aggression", 0.5))
 	var unpredictability = float(profile.get("unpredictability", 0.3))
-	var reserve = max(650, int(float(vojaci) * 0.25))
+	var reserve = max(420, int(float(vojaci) * (0.35 - aggression * 0.15)))
 	var max_attack = vojaci - reserve
-	if max_attack < 450:
+	if max_attack < 280:
 		return {}
 
 	for n_raw in (_turn_neighbors_by_province.get(from_id, from_data.get("neighbors", [])) as Array):
@@ -7997,15 +8131,15 @@ func _navrhni_utok(state_tag: String, from_id: int, frontline_cache: Dictionary 
 		var n_owner = str(_turn_owner_by_province.get(n_id, str(n_prov.get("owner", "")).strip_edges().to_upper()))
 		if n_owner == state_tag or n_owner == "SEA":
 			continue
-		if not _jsou_ve_valce_ai_cached(state_tag, n_owner) and _je_pratelsky_vztah_ai_cached(state_tag, n_owner):
+		if not _jsou_ve_valce_ai_cached(state_tag, n_owner) and _je_pratelsky_vztah_ai_cached(state_tag, n_owner) and aggression < 0.88:
 			continue
 
 		var n_vojaci = int(_turn_soldiers_by_province.get(n_id, int(n_prov.get("soldiers", 0))))
 		var threat_after_capture = _spocitej_hrozbu_nepratel_u_provincie(n_id, state_tag)
-		var needed_for_push = int(float(n_vojaci) * 1.15) + int(float(threat_after_capture) * 0.15)
+		var needed_for_push = int(float(n_vojaci) * lerpf(1.12, 0.80, aggression)) + int(float(threat_after_capture) * lerpf(0.13, 0.04, aggression))
 		var attack_amount = min(max_attack, int(float(vojaci) * 0.78))
-		var overwhelming = float(vojaci) / float(max(1, n_vojaci)) >= 8.0
-		if attack_amount < max(550, needed_for_push) and not overwhelming:
+		var overwhelming = float(vojaci) / float(max(1, n_vojaci)) >= lerpf(4.5, 1.9, aggression)
+		if attack_amount < max(320, needed_for_push) and not overwhelming:
 			continue
 
 		var score = 0.0
@@ -8034,7 +8168,7 @@ func _navrhni_utok(state_tag: String, from_id: int, frontline_cache: Dictionary 
 
 	if best_target == -1:
 		return {}
-	if best_score < 260.0:
+	if best_score < lerpf(240.0, -120.0, aggression):
 		return {}
 
 	return {

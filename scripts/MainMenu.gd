@@ -227,7 +227,7 @@ var _load_slot_btns: Dictionary = {}
 var _selected_load_slot_key: String = ""
 var _browser_helper_btn: Button = null
 var _language_hint_helper_btn: Button = null
-var _ai_aggression_overrides: Dictionary = {}
+var _global_ai_aggression: float = 0.5
 var _ai_aggression_row: HBoxContainer = null
 var _ai_aggression_label: Label = null
 var _ai_aggression_slider: HSlider = null
@@ -420,12 +420,12 @@ func _default_ai_aggression_from_ideology(ideology_raw: String) -> float:
 			return 0.50
 
 func _get_ai_aggression_for_tag(tag: String) -> float:
-	if _ai_aggression_overrides.has(tag):
-		return clamp(float(_ai_aggression_overrides[tag]), 0.0, 1.0)
-	if country_stats.has(tag):
+	if tag != "" and country_stats.has(tag):
 		var ideol = str((country_stats[tag] as Dictionary).get("ideology", ""))
-		return _default_ai_aggression_from_ideology(ideol)
-	return 0.50
+		var ideology_default = _default_ai_aggression_from_ideology(ideol)
+		# Keep slight ideology flavor while using one global setting in UI.
+		return clamp((ideology_default * 0.20) + (_global_ai_aggression * 0.80), 0.0, 1.0)
+	return clamp(_global_ai_aggression, 0.0, 1.0)
 
 func _ensure_ai_aggression_control() -> void:
 	if _browser_current_settings_panel != null:
@@ -506,11 +506,8 @@ func _ensure_ai_aggression_control() -> void:
 		root_vbox.add_child(_browser_settings_country_separator)
 	root_vbox.move_child(_browser_settings_country_separator, insert_index + 1)
 
-	# Initialize text/value from current selection when opening browser.
-	if selected_country_tag_in_browser != "":
-		_set_ai_aggression_ui_for_tag(selected_country_tag_in_browser)
-	elif selected_country_tag != "":
-		_set_ai_aggression_ui_for_tag(selected_country_tag)
+	# Initialize the global aggression slider from current stored value.
+	_set_ai_aggression_ui_for_tag("")  # tag ignored — always shows global value
 
 func _ensure_selected_players_flag_list() -> void:
 	if _selected_players_flag_list != null:
@@ -569,22 +566,20 @@ func _add_selected_player_row(row_text: String, tag: String, is_active: bool) ->
 
 	_selected_players_flag_list.add_child(row)
 
-func _set_ai_aggression_ui_for_tag(tag: String) -> void:
+func _set_ai_aggression_ui_for_tag(_tag: String) -> void:
 	if _ai_aggression_slider == null or _ai_aggression_value == null:
 		return
-	var aggr = _get_ai_aggression_for_tag(tag)
-	var percent = int(round(aggr * 100.0))
+	var percent = int(round(_global_ai_aggression * 100.0))
 	_ai_aggression_slider.set_block_signals(true)
 	_ai_aggression_slider.value = percent
 	_ai_aggression_slider.set_block_signals(false)
 	_ai_aggression_value.text = "%d%%" % percent
 
 func _on_ai_aggression_changed(value: float) -> void:
-	if selected_country_tag_in_browser == "":
-		return
 	var percent = int(round(value))
-	_ai_aggression_value.text = "%d%%" % percent
-	_ai_aggression_overrides[selected_country_tag_in_browser] = clamp(value / 100.0, 0.0, 1.0)
+	if _ai_aggression_value:
+		_ai_aggression_value.text = "%d%%" % percent
+	_global_ai_aggression = clamp(value / 100.0, 0.0, 1.0)
 
 func _on_browser_potato_mode_toggled(enabled: bool) -> void:
 	nastaveni_data["other"]["potato_mode"] = enabled
@@ -594,21 +589,10 @@ func _on_browser_potato_mode_toggled(enabled: bool) -> void:
 		potato_mode_check.button_pressed = enabled
 		potato_mode_check.set_block_signals(false)
 
-func _apply_ai_aggression_overrides(local_tags: Array) -> void:
-	if not GameManager or not GameManager.has_method("nastav_ai_agresivitu_statu"):
+func _apply_ai_aggression_overrides(_local_tags: Array) -> void:
+	if not GameManager or not GameManager.has_method("nastav_globalni_ai_agresi"):
 		return
-	if _ai_aggression_overrides.is_empty():
-		return
-
-	var local_dict: Dictionary = {}
-	for t in local_tags:
-		local_dict[str(t)] = true
-
-	for key in _ai_aggression_overrides.keys():
-		var tag = str(key)
-		if local_dict.has(tag):
-			continue
-		GameManager.nastav_ai_agresivitu_statu(tag, float(_ai_aggression_overrides[key]))
+	GameManager.nastav_globalni_ai_agresi(_global_ai_aggression)
 
 
 func _nastav_tooltipy_ui() -> void:
@@ -631,9 +615,9 @@ func _nastav_tooltipy_ui() -> void:
 	detail_name.tooltip_text = "Name of the selected country."
 	detail_info.tooltip_text = "Short summary of country strengths and risks."
 	if _ai_aggression_slider:
-		_ai_aggression_slider.tooltip_text = "Sets AI aggression for currently selected country in browser."
+		_ai_aggression_slider.tooltip_text = "Sets global AI aggression for the whole new game."
 	if _ai_aggression_label:
-		_ai_aggression_label.tooltip_text = "Per-country AI aggression override for new game."
+		_ai_aggression_label.tooltip_text = "Global AI aggression for all AI countries."
 	if _ai_aggression_value:
 		_ai_aggression_value.tooltip_text = "Current aggression override value."
 	if _browser_potato_mode_check:
