@@ -21,6 +21,7 @@ config/features=PackedStringArray("4.6")
 [autoload]
 
 GameManager="*uid://of6r8suummud"
+AlliancesManager="*uid://bb5k4wmp61jps"
 
 [display]
 

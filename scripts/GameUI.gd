@@ -1,6 +1,6 @@
 extends CanvasLayer
 
-const TooltipUtils = preload("res://scripts/TooltipUtils.gd")
+const TooltipUtilsScript = preload("res://scripts/TooltipUtils.gd")
 
 class ArmyOfferCard:
 	extends PanelContainer
@@ -129,6 +129,7 @@ var _load_slot_row_buttons: Dictionary = {}
 var _settings_dialog: PopupPanel
 var _settings_fullscreen_check: CheckBox
 var _settings_vsync_check: CheckBox
+var _settings_potato_mode_check: CheckBox
 var _settings_volume_slider: HSlider
 var _settings_volume_value: Label
 var _settings_camera_slider: HSlider
@@ -222,11 +223,14 @@ var _zpravy_groups_list: VBoxContainer
 var _zpravy_category_expanded: Dictionary = {}
 var _zpravy_expanded: bool = false
 var _zpravy_historie_expanded: bool = false
+var _diplomacy_popup_dismissed_signature: String = ""
 var _turn_loading_overlay: ColorRect
 var _turn_loading_label: Label
 var _turn_loading_anim_time: float = 0.0
 var _turn_loading_anim_step: int = 0
 var _turn_loading_active: bool = false
+var _turn_loading_suppressed: bool = false
+var _country_overview_stats_cache: Dictionary = {}
 
 const POPUP_TOP_MARGIN := 6
 const POPUP_GAP := 6
@@ -499,11 +503,18 @@ func _on_zpracovani_tahu_zmeneno(aktivni: bool) -> void:
 	_turn_loading_anim_time = 0.0
 	_turn_loading_anim_step = 0
 	if _turn_loading_overlay:
-		_turn_loading_overlay.visible = aktivni
+		_turn_loading_overlay.visible = aktivni and not _turn_loading_suppressed
 	if _turn_loading_label:
 		_turn_loading_label.text = TURN_LOADING_FRAMES[0]
 	if aktivni:
 		set_process(true)
+
+func nastav_pozastaveni_turn_overlay(pozastavit: bool) -> void:
+	_turn_loading_suppressed = pozastavit
+	if _turn_loading_overlay:
+		_turn_loading_overlay.visible = _turn_loading_active and not _turn_loading_suppressed
+	if not _turn_loading_active and not _ideology_dropdown_open:
+		set_process(false)
 
 func _setup_popup_country_link() -> void:
 	# Sender name text in the popup was intentionally removed to keep the card compact.
@@ -566,7 +577,7 @@ func _nastav_tooltipy_ui() -> void:
 	system_message_title.tooltip_text = "System message title."
 	system_message_text.tooltip_text = "Detailed system message text."
 	system_message_ok_btn.tooltip_text = "Confirm and close message."
-	TooltipUtils.apply_default_tooltips(self)
+	TooltipUtilsScript.apply_default_tooltips(self)
 
 func _on_popup_flag_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
@@ -756,6 +767,7 @@ func _zajisti_tlacitko_vazalu() -> void:
 	_vassals_btn = Button.new()
 	_vassals_btn.name = "VassalsButton"
 	_vassals_btn.text = "Vassals"
+	_vassals_btn.focus_mode = Control.FOCUS_NONE
 	_vassals_btn.hide()
 	vbox.add_child(_vassals_btn)
 	if action_separator and action_separator.get_parent() == vbox:
@@ -786,7 +798,10 @@ func _vytvor_panel_vazalu() -> void:
 
 	_vassals_dialog = PopupPanel.new()
 	_vassals_dialog.name = "VassalsDialog"
-	_vassals_dialog.size = Vector2(372, 252)
+	_vassals_dialog.wrap_controls = false
+	_vassals_dialog.unresizable = true
+	_vassals_dialog.min_size = Vector2i(360, 280)
+	_vassals_dialog.size = Vector2(438, 320)
 	_vassals_dialog.exclusive = false
 	_vassals_dialog.popup_window = false
 	add_child(_vassals_dialog)
@@ -801,7 +816,7 @@ func _vytvor_panel_vazalu() -> void:
 	_vassals_dialog.add_child(margin)
 
 	var root = VBoxContainer.new()
-	root.add_theme_constant_override("separation", 6)
+	root.add_theme_constant_override("separation", 8)
 	margin.add_child(root)
 
 	var header = HBoxContainer.new()
@@ -810,13 +825,13 @@ func _vytvor_panel_vazalu() -> void:
 
 	var title = Label.new()
 	title.text = "My vassals"
-	title.add_theme_font_size_override("font_size", 18)
+	title.add_theme_font_size_override("font_size", 20)
 	title.add_theme_color_override("font_color", Color(0.93, 0.97, 1.0, 1.0))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
 
-	var help_btn = TooltipUtils.create_help_button("Set tribute and click Apply %.")
-	help_btn.pressed.connect(func(): TooltipUtils.show_help_dropdown(self, help_btn, "Set tribute and click Apply %."))
+	var help_btn = TooltipUtilsScript.create_help_button("Set tribute and click Apply %.")
+	help_btn.pressed.connect(func(): TooltipUtilsScript.show_help_dropdown(self, help_btn, "Set tribute and click Apply %."))
 	header.add_child(help_btn)
 
 	var close_top_btn = Button.new()
@@ -826,9 +841,20 @@ func _vytvor_panel_vazalu() -> void:
 	close_top_btn.pressed.connect(func(): _vassals_dialog.hide())
 	header.add_child(close_top_btn)
 
+	var subtitle = Label.new()
+	subtitle.text = "Manage tribute, open subject overview, or release vassals."
+	subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	subtitle.add_theme_font_size_override("font_size", 12)
+	subtitle.add_theme_color_override("font_color", Color(0.72, 0.81, 0.93, 0.95))
+	root.add_child(subtitle)
+
+	var separator = HSeparator.new()
+	root.add_child(separator)
+
 	var scroll = ScrollContainer.new()
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	root.add_child(scroll)
 
 	_vassals_list = VBoxContainer.new()
@@ -853,15 +879,15 @@ func _pozicuj_a_zmen_velikost_panelu_vazalu(vassal_count: int = -1) -> void:
 	if vassal_count < 0 and GameManager.has_method("ziskej_vazaly_statu"):
 		count = (GameManager.ziskej_vazaly_statu(GameManager.hrac_stat) as Array).size()
 
-	var base_w: float = 372.0
-	var base_h: float = 252.0
-	var extra_w: float = minf(90.0, float(count) * 6.0)
-	var extra_h: float = minf(320.0, float(maxi(0, count - 1)) * 32.0)
+	var base_w: float = 438.0
+	var base_h: float = 320.0
+	var extra_w: float = minf(120.0, float(count) * 8.0)
+	var extra_h: float = minf(360.0, float(maxi(0, count - 1)) * 48.0)
 
 	var max_w: float = maxf(280.0, vp.x - 24.0)
 	var max_h: float = maxf(180.0, vp.y - 24.0)
-	var w: float = clampf(base_w + extra_w, 320.0, max_w)
-	var h: float = clampf(base_h + extra_h, 220.0, max_h)
+	var w: float = clampf(base_w + extra_w, 360.0, max_w)
+	var h: float = clampf(base_h + extra_h, 280.0, max_h)
 	_vassals_dialog.size = Vector2(w, h)
 
 	var gap: float = 10.0
@@ -889,6 +915,7 @@ func _on_vassals_button_pressed() -> void:
 	_obnov_panel_vazalu()
 	_pozicuj_a_zmen_velikost_panelu_vazalu()
 	_vassals_dialog.show()
+	call_deferred("_pozicuj_a_zmen_velikost_panelu_vazalu")
 
 func _obnov_panel_vazalu() -> void:
 	if _vassals_list == null:
@@ -902,62 +929,95 @@ func _obnov_panel_vazalu() -> void:
 		vassals = GameManager.ziskej_vazaly_statu(player) as Array
 
 	if vassals.is_empty():
+		var empty_card = PanelContainer.new()
+		empty_card.add_theme_stylebox_override("panel", _vytvor_ingame_kartu_styl(Color(0.10, 0.14, 0.22, 0.90), Color(0.35, 0.47, 0.62, 0.55)))
+		_vassals_list.add_child(empty_card)
+
+		var empty_margin = MarginContainer.new()
+		empty_margin.add_theme_constant_override("margin_left", 10)
+		empty_margin.add_theme_constant_override("margin_top", 10)
+		empty_margin.add_theme_constant_override("margin_right", 10)
+		empty_margin.add_theme_constant_override("margin_bottom", 10)
+		empty_card.add_child(empty_margin)
+
 		var empty_label = Label.new()
 		empty_label.text = "You currently have no active vassals."
-		_vassals_list.add_child(empty_label)
+		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		empty_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		empty_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		empty_label.add_theme_color_override("font_color", Color(0.78, 0.86, 0.97, 0.9))
+		empty_margin.add_child(empty_label)
 		_pozicuj_a_zmen_velikost_panelu_vazalu(0)
 		return
 
 	for subject_any in vassals:
 		var subject = str(subject_any).strip_edges().to_upper()
 		var card = PanelContainer.new()
-		var card_style = StyleBoxFlat.new()
-		card_style.bg_color = Color(0.11, 0.16, 0.24, 0.94)
-		card_style.border_color = Color(0.53, 0.70, 0.92, 0.58)
-		card_style.border_width_left = 1
-		card_style.border_width_top = 1
-		card_style.border_width_right = 1
-		card_style.border_width_bottom = 1
-		card_style.corner_radius_top_left = 6
-		card_style.corner_radius_top_right = 6
-		card_style.corner_radius_bottom_left = 6
-		card_style.corner_radius_bottom_right = 6
-		card.add_theme_stylebox_override("panel", card_style)
+		card.add_theme_stylebox_override("panel", _vytvor_ingame_kartu_styl(Color(0.11, 0.16, 0.24, 0.94), Color(0.53, 0.70, 0.92, 0.58)))
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_vassals_list.add_child(card)
 
 		var card_margin = MarginContainer.new()
-		card_margin.add_theme_constant_override("margin_left", 6)
-		card_margin.add_theme_constant_override("margin_top", 4)
-		card_margin.add_theme_constant_override("margin_right", 6)
-		card_margin.add_theme_constant_override("margin_bottom", 4)
+		card_margin.add_theme_constant_override("margin_left", 8)
+		card_margin.add_theme_constant_override("margin_top", 8)
+		card_margin.add_theme_constant_override("margin_right", 8)
+		card_margin.add_theme_constant_override("margin_bottom", 8)
 		card.add_child(card_margin)
 
 		var card_v = VBoxContainer.new()
-		card_v.add_theme_constant_override("separation", 4)
+		card_v.add_theme_constant_override("separation", 7)
 		card_margin.add_child(card_v)
 
-		var row = HBoxContainer.new()
-		row.add_theme_constant_override("separation", 8)
-		card_v.add_child(row)
+		var top_row = HBoxContainer.new()
+		top_row.add_theme_constant_override("separation", 8)
+		card_v.add_child(top_row)
+
+		var ideology = _ziskej_aktualni_ideologii_statu(subject)
+		var flag = TextureRect.new()
+		flag.custom_minimum_size = Vector2(26, 18)
+		flag.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		flag.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		flag.texture = _resolve_flag_texture(subject, ideology)
+		top_row.add_child(flag)
+
+		var identity_col = VBoxContainer.new()
+		identity_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		identity_col.add_theme_constant_override("separation", 1)
+		top_row.add_child(identity_col)
 
 		var name_lbl = Label.new()
 		name_lbl.text = _ziskej_jmeno_statu_podle_tagu(subject)
-		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		name_lbl.add_theme_font_size_override("font_size", 15)
 		name_lbl.add_theme_color_override("font_color", Color(0.93, 0.97, 1.0, 1.0))
 		name_lbl.tooltip_text = subject
-		row.add_child(name_lbl)
+		identity_col.add_child(name_lbl)
+
+		var tag_lbl = Label.new()
+		tag_lbl.text = subject
+		tag_lbl.add_theme_font_size_override("font_size", 11)
+		tag_lbl.add_theme_color_override("font_color", Color(0.67, 0.78, 0.92, 0.92))
+		identity_col.add_child(tag_lbl)
+
+		var action_row = HBoxContainer.new()
+		action_row.add_theme_constant_override("separation", 8)
+		card_v.add_child(action_row)
 
 		var focus_btn = Button.new()
 		focus_btn.text = "Open"
+		focus_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_aplikuj_ingame_tlacitko_styl(focus_btn)
 		focus_btn.pressed.connect(_on_vassal_focus_pressed.bind(subject))
-		row.add_child(focus_btn)
+		action_row.add_child(focus_btn)
 
 		var release_btn = Button.new()
 		release_btn.text = "Release"
+		release_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_aplikuj_ingame_tlacitko_styl(release_btn, true)
 		release_btn.pressed.connect(_on_vassal_release_pressed.bind(subject))
-		row.add_child(release_btn)
+		action_row.add_child(release_btn)
+
+		var split = HSeparator.new()
+		card_v.add_child(split)
 
 		var tribute_row = HBoxContainer.new()
 		tribute_row.add_theme_constant_override("separation", 8)
@@ -966,7 +1026,7 @@ func _obnov_panel_vazalu() -> void:
 		var tribute_lbl = Label.new()
 		tribute_lbl.text = "Tribute"
 		tribute_lbl.add_theme_color_override("font_color", Color(0.87, 0.92, 0.98, 1.0))
-		tribute_lbl.custom_minimum_size = Vector2(88, 0)
+		tribute_lbl.custom_minimum_size = Vector2(64, 0)
 		tribute_row.add_child(tribute_lbl)
 
 		var slider = HSlider.new()
@@ -982,6 +1042,7 @@ func _obnov_panel_vazalu() -> void:
 
 		var pct_label = Label.new()
 		pct_label.text = "%d%%" % int(round(current_rate))
+		pct_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		pct_label.add_theme_color_override("font_color", Color(0.83, 0.90, 0.98, 1.0))
 		pct_label.custom_minimum_size = Vector2(44, 0)
 		slider.value_changed.connect(func(v): pct_label.text = "%d%%" % int(round(v)))
@@ -993,12 +1054,26 @@ func _obnov_panel_vazalu() -> void:
 		apply_btn.pressed.connect(_on_vassal_tribute_apply_pressed.bind(subject, slider))
 		tribute_row.add_child(apply_btn)
 
+		var cooldown_left := 0
+		if GameManager.has_method("ziskej_zbyvajici_cooldown_vazalskeho_odvodu"):
+			cooldown_left = int(GameManager.ziskej_zbyvajici_cooldown_vazalskeho_odvodu(GameManager.hrac_stat, subject))
+		if cooldown_left > 0:
+			slider.editable = false
+			apply_btn.disabled = true
+			apply_btn.tooltip_text = "Tribute can be changed again in %d turn(s)." % cooldown_left
+			var lock_lbl = Label.new()
+			lock_lbl.text = "Tribute lock: %d turn(s) remaining" % cooldown_left
+			lock_lbl.add_theme_font_size_override("font_size", 11)
+			lock_lbl.add_theme_color_override("font_color", Color(0.96, 0.75, 0.52, 0.95))
+			card_v.add_child(lock_lbl)
+
 		if GameManager.has_method("ziskej_cisty_prijem_statu"):
 			var inc = float(GameManager.ziskej_cisty_prijem_statu(subject))
 			var est = max(0.0, inc) * (float(slider.value) / 100.0)
 			var est_lbl = Label.new()
 			est_lbl.text = "Estimated tribute/turn: $%.2f" % est
-			est_lbl.modulate = Color(0.86, 0.94, 1.0, 0.92)
+			est_lbl.add_theme_font_size_override("font_size", 12)
+			est_lbl.add_theme_color_override("font_color", Color(0.73, 0.96, 0.82, 0.95))
 			slider.value_changed.connect(func(v):
 				var est_now = max(0.0, float(GameManager.ziskej_cisty_prijem_statu(subject))) * (float(v) / 100.0)
 				est_lbl.text = "Estimated tribute/turn: $%.2f" % est_now
@@ -1010,9 +1085,17 @@ func _obnov_panel_vazalu() -> void:
 func _on_vassal_tribute_apply_pressed(subject_tag: String, slider: HSlider) -> void:
 	if slider == null or not GameManager.has_method("nastav_vazalsky_odvod"):
 		return
+	if GameManager.has_method("ziskej_zbyvajici_cooldown_vazalskeho_odvodu"):
+		var cooldown_left = int(GameManager.ziskej_zbyvajici_cooldown_vazalskeho_odvodu(GameManager.hrac_stat, subject_tag))
+		if cooldown_left > 0:
+			zobraz_systemove_hlaseni("Vassal Tribute", "You can change tribute for %s again in %d turn(s)." % [subject_tag, cooldown_left])
+			return
 	var ok = bool(GameManager.nastav_vazalsky_odvod(GameManager.hrac_stat, subject_tag, float(slider.value)))
 	if ok:
 		_aktualizuj_mirove_overview_statistiky(str(GameManager.hrac_stat).strip_edges().to_upper(), true)
+		_obnov_panel_vazalu()
+	else:
+		zobraz_systemove_hlaseni("Vassal Tribute", "Tribute change failed.")
 
 func _on_vassal_focus_pressed(subject_tag: String) -> void:
 	_otevri_prehled_statu_podle_tagu(subject_tag)
@@ -1487,7 +1570,6 @@ func _aktualizuj_vyzkum_dialog(state_tag: String) -> void:
 				cell_texts[yy * _army_research_view_w + xx] = short
 
 	if _army_research_grid:
-		var target_count = _army_research_view_w * _army_research_view_h
 		for child in _army_research_grid.get_children():
 			child.queue_free()
 		_army_research_grid_cells.clear()
@@ -1600,7 +1682,7 @@ func _aktualizuj_vyzkum_dialog(state_tag: String) -> void:
 			card.modulate = Color(1, 1, 1, 0.65)
 		card.tooltip_text = "Buying works only via drag and drop into the grid."
 
-func _vytvor_army_drag_preview(w: int, h: int, level: int = 1) -> Control:
+func _vytvor_army_drag_preview(w: int, h: int, _level: int = 1) -> Control:
 	var iw = max(1, w)
 	var ih = max(1, h)
 	var cell_w := 44.0
@@ -1784,9 +1866,9 @@ func _army_grid_cell_can_drop(cell_index: int, data) -> bool:
 		var grid_h = max(1, int(_army_research_last_info.get("grid_h", _army_research_grid_h)))
 		if x < 0 or y < 0 or x + w > grid_w or y + h > grid_h:
 			return false
-		var target_item = _army_grid_item_at_cell(cell_index)
-		if not target_item.is_empty() and str(target_item.get("offer_uid", "")) != item_uid:
-			return _army_items_mozno_sloucit(moving, target_item)
+		var move_target_item = _army_grid_item_at_cell(cell_index)
+		if not move_target_item.is_empty() and str(move_target_item.get("offer_uid", "")) != item_uid:
+			return _army_items_mozno_sloucit(moving, move_target_item)
 		var unlocked = _army_unlocked_dict()
 		var occupied: Dictionary = {}
 		for item_any in grid_items:
@@ -2344,11 +2426,44 @@ func _obnov_otevreny_prehled_statu() -> void:
 	var provinces = _ziskej_vsechny_provincie_pro_prehled()
 	if provinces.is_empty():
 		return
-	for p_id in provinces:
-		var d = provinces[p_id] as Dictionary
-		if str(d.get("owner", "")).strip_edges().to_upper() == current_viewed_tag:
-			zobraz_prehled_statu(d, provinces)
+	if _current_viewed_province_id >= 0 and provinces.has(_current_viewed_province_id):
+		var current_data = provinces[_current_viewed_province_id] as Dictionary
+		if str(current_data.get("owner", "")).strip_edges().to_upper() == current_viewed_tag:
+			zobraz_prehled_statu(current_data, provinces)
 			return
+
+	var stats = _ziskej_souhrn_statu(current_viewed_tag, provinces)
+	var representative_province_id = int(stats.get("representative_province_id", -1))
+	if representative_province_id >= 0 and provinces.has(representative_province_id):
+		zobraz_prehled_statu(provinces[representative_province_id], provinces)
+
+func _ziskej_souhrn_statu(owner_tag: String, all_provinces: Dictionary) -> Dictionary:
+	var clean_tag = owner_tag.strip_edges().to_upper()
+	if clean_tag == "":
+		return {}
+	if _country_overview_stats_cache.has(clean_tag):
+		return _country_overview_stats_cache[clean_tag]
+
+	var stats := {
+		"population": 0,
+		"gdp": 0.0,
+		"recruits": 0,
+		"soldiers": 0,
+		"representative_province_id": -1
+	}
+	for p_id in all_provinces:
+		var province = all_provinces[p_id] as Dictionary
+		if str(province.get("owner", "")).strip_edges().to_upper() != clean_tag:
+			continue
+		stats["population"] = int(stats.get("population", 0)) + int(province.get("population", 0))
+		stats["gdp"] = float(stats.get("gdp", 0.0)) + float(province.get("gdp", 0.0))
+		stats["recruits"] = int(stats.get("recruits", 0)) + int(province.get("recruitable_population", 0))
+		stats["soldiers"] = int(stats.get("soldiers", 0)) + int(province.get("soldiers", 0))
+		if int(stats.get("representative_province_id", -1)) == -1:
+			stats["representative_province_id"] = int(p_id)
+
+	_country_overview_stats_cache[clean_tag] = stats
+	return stats
 
 func _ziskej_dostupne_ideologie_pro_stat(tag: String) -> Array:
 	var out: Array = []
@@ -2712,6 +2827,14 @@ func _on_viewport_resized():
 func _input(event):
 	if event is InputEventKey and event.pressed and not event.is_echo():
 		if event.keycode == KEY_ESCAPE:
+			if diplomacy_request_popup and diplomacy_request_popup.visible:
+				_potlac_diplomatickou_frontu_do_zmeny()
+				get_viewport().set_input_as_handled()
+				return
+			if _peace_notice_panel and _peace_notice_panel.visible:
+				_potlac_hlaseni_miru_do_dalsi_konference()
+				get_viewport().set_input_as_handled()
+				return
 			if _peace_dialog and _peace_dialog.visible:
 				_on_peace_close_pressed()
 				get_viewport().set_input_as_handled()
@@ -2919,8 +3042,8 @@ func _vytvor_darovaci_dialog() -> void:
 	title.add_theme_font_size_override("font_size", 20)
 	title_row.add_child(title)
 
-	var gift_help_btn = TooltipUtils.create_help_button("Amount in M USD")
-	gift_help_btn.pressed.connect(func(): TooltipUtils.show_help_dropdown(self, gift_help_btn, "Amount in M USD"))
+	var gift_help_btn = TooltipUtilsScript.create_help_button("Amount in M USD")
+	gift_help_btn.pressed.connect(func(): TooltipUtilsScript.show_help_dropdown(self, gift_help_btn, "Amount in M USD"))
 	title_row.add_child(gift_help_btn)
 
 	var title_right_spacer = Control.new()
@@ -3308,9 +3431,14 @@ func _pridej_alliance_kartu(alliance: Dictionary, target_tag: String, view_mode:
 				var needed = float(cond.get("needed", 0))
 				var met = bool(cond.get("met", false))
 				var both_human = bool(cond.get("both_human", false))
+				var forced_by_overlord = bool(cond.get("forced_by_overlord", false))
+				var overlord_name = _ziskej_jmeno_statu_podle_tagu(str(cond.get("overlord", "")))
 				var at_war = bool(cond.get("at_war", false))
 
-				if both_human:
+				if forced_by_overlord:
+					cond_label.text = "  %s: Forced (vassal of %s)" % [member_name, overlord_name]
+					cond_label.add_theme_color_override("font_color", Color(0.5, 0.9, 0.5))
+				elif both_human:
 					cond_label.text = "  %s: Auto (both players)" % member_name
 					cond_label.add_theme_color_override("font_color", Color(0.5, 0.9, 0.5))
 				elif at_war:
@@ -3413,11 +3541,32 @@ func _on_alliance_create_confirm() -> void:
 func _on_alliance_invite_pressed(alliance_id: String, target_tag: String) -> void:
 	if not GameManager.has_method("pridej_clena_do_aliance"):
 		return
-	var target_is_human = GameManager.has_method("je_lidsky_stat") and bool(GameManager.je_lidsky_stat(target_tag))
-	var ignoruj = target_is_human
-	var result = GameManager.pridej_clena_do_aliance(alliance_id, target_tag, ignoruj)
-	if not bool(result.get("ok", false)):
-		zobraz_systemove_hlaseni("Alliance", str(result.get("reason", "Failed to add member.")))
+	var target_clean = str(target_tag).strip_edges().to_upper()
+	var target_is_human = GameManager.has_method("je_lidsky_stat") and bool(GameManager.je_lidsky_stat(target_clean))
+
+	var forced_by_overlord_member = false
+	if GameManager.has_method("ziskej_alianci_podle_id") and GameManager.has_method("ziskej_overlorda_statu"):
+		var grp = GameManager.ziskej_alianci_podle_id(alliance_id) as Dictionary
+		var members = grp.get("members", []) as Array
+		var target_overlord = str(GameManager.ziskej_overlorda_statu(target_clean)).strip_edges().to_upper()
+		forced_by_overlord_member = (target_overlord != "" and members.has(target_overlord))
+
+	if target_is_human and not forced_by_overlord_member:
+		if not GameManager.has_method("odeslat_aliancni_zadost") or not GameManager.has_method("ziskej_alianci_podle_id"):
+			zobraz_systemove_hlaseni("Alliance", "Cannot send alliance request in current game state.")
+			return
+		var grp_info = GameManager.ziskej_alianci_podle_id(alliance_id) as Dictionary
+		var lvl = int(grp_info.get("level", 1))
+		var sent = bool(GameManager.odeslat_aliancni_zadost(GameManager.hrac_stat, target_clean, lvl, true))
+		if not sent:
+			zobraz_systemove_hlaseni("Alliance", "Alliance request could not be sent.")
+		else:
+			zobraz_systemove_hlaseni("Alliance", "%s received an alliance request and can accept or decline it." % _ziskej_jmeno_statu_podle_tagu(target_clean))
+	else:
+		var ignoruj = target_is_human
+		var result = GameManager.pridej_clena_do_aliance(alliance_id, target_clean, ignoruj)
+		if not bool(result.get("ok", false)):
+			zobraz_systemove_hlaseni("Alliance", str(result.get("reason", "Failed to add member.")))
 	_obnov_alliance_dialog_obsah(_alliance_dialog_target_tag)
 	_aktualizuj_aliance_ui(_alliance_dialog_target_tag)
 	_aktualizuj_diplomacii_tlacitka(_alliance_dialog_target_tag)
@@ -3661,6 +3810,9 @@ func _aktualizuj_hlaseni_mirove_konference() -> void:
 		queue_count = maxi(1, int(GameManager.ziskej_pocet_mirovych_konferenci_pro_hrace(GameManager.hrac_stat)))
 
 	var conf_id = int(conf.get("id", -1))
+	if conf_id != -1 and conf_id == _peace_notice_deferred_conf_id:
+		_peace_notice_panel.hide()
+		return
 	var waiting_decision = (conf_id != -1 and conf_id != _peace_notice_deferred_conf_id)
 	var reason = str(conf.get("reason", "peace"))
 	var loser = str(conf.get("loser", "?"))
@@ -3685,6 +3837,16 @@ func _aktualizuj_hlaseni_mirove_konference() -> void:
 
 	_peace_notice_panel.show()
 	_pozicuj_hlaseni_mirove_konference()
+
+func _potlac_hlaseni_miru_do_dalsi_konference() -> void:
+	if _peace_notice_panel == null:
+		return
+	if GameManager and GameManager.has_method("ziskej_prvni_mirovou_konferenci_pro_hrace"):
+		var conf = GameManager.ziskej_prvni_mirovou_konferenci_pro_hrace(GameManager.hrac_stat) as Dictionary
+		if not conf.is_empty():
+			_peace_notice_deferred_conf_id = int(conf.get("id", -1))
+	_peace_notice_panel.hide()
+	_aktualizuj_pozice_popupu()
 
 func _on_peace_notice_open_pressed() -> void:
 	_otevri_mirovou_konferenci_z_fronty()
@@ -4173,6 +4335,11 @@ func _vytvor_settings_dialog() -> void:
 	_settings_vsync_check.text = "VSync"
 	settings_content.add_child(_settings_vsync_check)
 
+	_settings_potato_mode_check = CheckBox.new()
+	_settings_potato_mode_check.text = "Potato mode (low-end PC)"
+	_settings_potato_mode_check.tooltip_text = "Low-detail rendering and power-saving updates for weak PCs."
+	settings_content.add_child(_settings_potato_mode_check)
+
 	settings_content.add_child(HSeparator.new())
 
 	var audio_title = Label.new()
@@ -4318,6 +4485,7 @@ func _nacti_settings_do_ingame_ui() -> void:
 	if cfg.load(SETTINGS_FILE_PATH) != OK:
 		_settings_fullscreen_check.button_pressed = DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
 		_settings_vsync_check.button_pressed = DisplayServer.window_get_vsync_mode() != DisplayServer.VSYNC_DISABLED
+		_settings_potato_mode_check.button_pressed = false
 		_settings_volume_slider.value = 1.0
 		_settings_camera_slider.value = 1000.0
 		_settings_zoom_slider.value = 0.1
@@ -4325,6 +4493,9 @@ func _nacti_settings_do_ingame_ui() -> void:
 	else:
 		_settings_fullscreen_check.button_pressed = bool(cfg.get_value("display", "fullscreen", false))
 		_settings_vsync_check.button_pressed = bool(cfg.get_value("display", "vsync", true))
+		var potato_display = bool(cfg.get_value("display", "potato_mode", false))
+		var potato_other = bool(cfg.get_value("other", "potato_mode", potato_display))
+		_settings_potato_mode_check.button_pressed = potato_display or potato_other
 		_settings_volume_slider.value = clamp(float(cfg.get_value("audio", "master_volume", 1.0)), 0.0, 1.0)
 		_settings_camera_slider.value = float(cfg.get_value("controls", "camera_speed", 1000.0))
 		_settings_zoom_slider.value = clamp(float(cfg.get_value("controls", "zoom_speed", 0.1)), 0.03, 0.35)
@@ -4337,6 +4508,7 @@ func _nacti_settings_do_ingame_ui() -> void:
 func _uloz_a_aplikuj_ingame_settings() -> void:
 	var fullscreen = _settings_fullscreen_check.button_pressed
 	var vsync_enabled = _settings_vsync_check.button_pressed
+	var potato_mode = _settings_potato_mode_check.button_pressed if _settings_potato_mode_check else false
 	var master_volume = float(_settings_volume_slider.value)
 	var camera_speed = float(_settings_camera_slider.value)
 	var zoom_speed = float(_settings_zoom_slider.value)
@@ -4344,6 +4516,7 @@ func _uloz_a_aplikuj_ingame_settings() -> void:
 
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if fullscreen else DisplayServer.WINDOW_MODE_WINDOWED)
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if vsync_enabled else DisplayServer.VSYNC_DISABLED)
+	_aplikuj_potato_mode_runtime(potato_mode)
 
 	var master_bus_idx = AudioServer.get_bus_index("Master")
 	if master_bus_idx == -1:
@@ -4354,6 +4527,8 @@ func _uloz_a_aplikuj_ingame_settings() -> void:
 	cfg.load(SETTINGS_FILE_PATH)
 	cfg.set_value("display", "fullscreen", fullscreen)
 	cfg.set_value("display", "vsync", vsync_enabled)
+	cfg.set_value("display", "potato_mode", potato_mode)
+	cfg.set_value("other", "potato_mode", potato_mode)
 	cfg.set_value("audio", "master_volume", master_volume)
 	cfg.set_value("controls", "camera_speed", camera_speed)
 	cfg.set_value("controls", "zoom_speed", zoom_speed)
@@ -4367,6 +4542,19 @@ func _uloz_a_aplikuj_ingame_settings() -> void:
 		map_cam.speed = camera_speed
 		map_cam.zoom_speed = zoom_speed
 		map_cam.invert_zoom_wheel = invert_zoom
+
+func _aplikuj_potato_mode_runtime(enabled: bool) -> void:
+	Engine.max_fps = 45 if enabled else 0
+	OS.low_processor_usage_mode = enabled
+	OS.low_processor_usage_mode_sleep_usec = 12000 if enabled else 6900
+
+	var map_loader = _ziskej_map_loader_node()
+	if map_loader and map_loader.has_method("nastav_potato_mode"):
+		map_loader.nastav_potato_mode(enabled)
+	
+	var game_manager = get_tree().root.get_node_or_null("GameManager")
+	if game_manager and game_manager.has_method("nastav_potato_mode"):
+		game_manager.nastav_potato_mode(enabled)
 
 func _on_ingame_volume_changed(value: float) -> void:
 	if _settings_volume_value:
@@ -4679,6 +4867,8 @@ func _aktualizuj_pozice_popupu():
 func zobraz_systemove_hlaseni(titulek: String, text: String) -> void:
 	if not system_message_popup:
 		return
+	var puvodni_pozastaveni_overlay = _turn_loading_suppressed
+	nastav_pozastaveni_turn_overlay(true)
 	if system_message_title:
 		system_message_title.text = titulek if titulek.strip_edges() != "" else "Report"
 	if system_message_text:
@@ -4690,6 +4880,7 @@ func zobraz_systemove_hlaseni(titulek: String, text: String) -> void:
 	if bool(GameManager.zpracovava_se_tah):
 		# Never block turn resolution on message acknowledgement.
 		_on_system_message_ok_pressed()
+		nastav_pozastaveni_turn_overlay(puvodni_pozastaveni_overlay)
 		return
 	var wait_start_ms = Time.get_ticks_msec()
 
@@ -4702,6 +4893,8 @@ func zobraz_systemove_hlaseni(titulek: String, text: String) -> void:
 				break
 		await get_tree().process_frame
 
+	nastav_pozastaveni_turn_overlay(puvodni_pozastaveni_overlay)
+
 func _napln_aliance_option():
 	# Legacy stub - alliance is now managed via popup dialog
 	pass
@@ -4713,11 +4906,43 @@ func _aktualizuj_zadost_ui(_target_tag: String):
 	if respond_request_buttons:
 		respond_request_buttons.hide()
 
+func _vytvor_otisk_diplomaticke_fronty(queue: Array) -> String:
+	if queue.is_empty():
+		return ""
+	var parts: Array = []
+	for req_any in queue:
+		var req = req_any as Dictionary
+		parts.append("%s|%s|%d" % [
+			str(req.get("from", "")).strip_edges().to_upper(),
+			str(req.get("type", "")).strip_edges(),
+			int(req.get("level", 0))
+		])
+	parts.sort()
+	return "||".join(parts)
+
+func _potlac_diplomatickou_frontu_do_zmeny() -> void:
+	if diplomacy_request_popup == null:
+		return
+	if not GameManager or not GameManager.has_method("ziskej_cekajici_diplomaticke_zadosti"):
+		diplomacy_request_popup.hide()
+		_aktualizuj_panel_rozbalene_fronty([])
+		_aktualizuj_pozice_popupu()
+		return
+	var queue = GameManager.ziskej_cekajici_diplomaticke_zadosti(GameManager.hrac_stat)
+	_diplomacy_popup_dismissed_signature = _vytvor_otisk_diplomaticke_fronty(queue)
+	diplomacy_request_popup.hide()
+	_queue_preview_expanded = false
+	if _queue_preview_toggle_btn:
+		_queue_preview_toggle_btn.button_pressed = false
+	_aktualizuj_panel_rozbalene_fronty([])
+	_aktualizuj_pozice_popupu()
+
 func _aktualizuj_popup_diplomatickych_zadosti():
 	_popup_request_from_tag = ""
 	if not diplomacy_request_popup:
 		return
 	if not GameManager.has_method("ziskej_cekajici_diplomaticke_zadosti"):
+		_diplomacy_popup_dismissed_signature = ""
 		diplomacy_request_popup.hide()
 		_aktualizuj_vizual_fronty_diplomacii(0)
 		_aktualizuj_text_rozbaleni_fronty(0)
@@ -4726,6 +4951,7 @@ func _aktualizuj_popup_diplomatickych_zadosti():
 
 	var queue = GameManager.ziskej_cekajici_diplomaticke_zadosti(GameManager.hrac_stat)
 	if queue.is_empty():
+		_diplomacy_popup_dismissed_signature = ""
 		diplomacy_request_popup.hide()
 		_aktualizuj_vizual_fronty_diplomacii(0)
 		_aktualizuj_text_rozbaleni_fronty(0)
@@ -4742,6 +4968,7 @@ func _aktualizuj_popup_diplomatickych_zadosti():
 		return
 	_popup_request_from_tag = from_tag
 	var pending_count := queue.size()
+	var queue_signature = _vytvor_otisk_diplomaticke_fronty(queue)
 	_aktualizuj_text_rozbaleni_fronty(pending_count)
 
 	if popup_request_flag:
@@ -4753,6 +4980,19 @@ func _aktualizuj_popup_diplomatickych_zadosti():
 		popup_accept_btn.text = "Accept all"
 	if popup_decline_btn:
 		popup_decline_btn.text = "Decline all"
+
+	if _diplomacy_popup_dismissed_signature != "" and queue_signature == _diplomacy_popup_dismissed_signature:
+		diplomacy_request_popup.hide()
+		_queue_preview_expanded = false
+		if _queue_preview_toggle_btn:
+			_queue_preview_toggle_btn.button_pressed = false
+		_aktualizuj_vizual_fronty_diplomacii(pending_count)
+		_aktualizuj_panel_rozbalene_fronty([])
+		_aktualizuj_panel_zprav()
+		_aktualizuj_pozice_popupu()
+		return
+
+	_diplomacy_popup_dismissed_signature = ""
 
 	diplomacy_request_popup.show()
 	_aktualizuj_vizual_fronty_diplomacii(pending_count)
@@ -5202,7 +5442,13 @@ func nastav_zpravy_anchor_control(control: Control) -> void:
 	_aktualizuj_pozice_popupu()
 
 func prepni_zpravy_panel() -> void:
-	_on_zpravy_toggle_pressed()
+	_nastav_zpravy_panel_otevreny(not _zpravy_expanded)
+
+func _nastav_zpravy_panel_otevreny(otevreno: bool) -> void:
+	_zpravy_expanded = otevreno
+	if _zpravy_toggle_btn:
+		_zpravy_toggle_btn.button_pressed = _zpravy_expanded
+	_aktualizuj_panel_zprav()
 
 func _vyhledat_tagy_statu_v_textu(text: String) -> Array:
 	var tags: Array = []
@@ -5433,10 +5679,7 @@ func _aktualizuj_panel_zprav() -> void:
 	_aktualizuj_pozice_popupu()
 
 func _on_zpravy_toggle_pressed() -> void:
-	_zpravy_expanded = not _zpravy_expanded
-	if _zpravy_toggle_btn:
-		_zpravy_toggle_btn.button_pressed = _zpravy_expanded
-	_aktualizuj_panel_zprav()
+	_nastav_zpravy_panel_otevreny(not _zpravy_expanded)
 
 func _on_zpravy_mode_local_pressed() -> void:
 	_zpravy_mode = 0
@@ -5749,20 +5992,12 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 	if country_flag:
 		country_flag.texture = _resolve_flag_texture(owner_tag, ideologie)
 	# --------------------
-		
-	var total_pop = 0
-	var total_gdp = 0.0
-	var total_recruits = 0
-	var total_soldiers = 0
-	
-	# Calculate total country stats
-	for p_id in all_provinces:
-		var p = all_provinces[p_id]
-		if str(p.get("owner", "")).strip_edges().to_upper() == owner_tag:
-			total_pop += int(p.get("population", 0))
-			total_gdp += float(p.get("gdp", 0.0))
-			total_recruits += int(p.get("recruitable_population", 0))
-			total_soldiers += int(p.get("soldiers", 0))
+
+	var stats = _ziskej_souhrn_statu(owner_tag, all_provinces)
+	var total_pop = int(stats.get("population", 0))
+	var total_gdp = float(stats.get("gdp", 0.0))
+	var total_recruits = int(stats.get("recruits", 0))
+	var total_soldiers = int(stats.get("soldiers", 0))
 			
 	name_label.text = plne_jmeno
 	ideo_label.text = "Regime: " + ideologie.capitalize()
@@ -6093,6 +6328,7 @@ func _on_alliance_button_pressed():
 	_otevri_alliance_dialog(current_viewed_tag)
 
 func _on_kolo_zmeneno():
+	_country_overview_stats_cache.clear()
 	_aktualizuj_popup_diplomatickych_zadosti()
 	_aktualizuj_panel_zprav()
 	_aktualizuj_hlaseni_mirove_konference()

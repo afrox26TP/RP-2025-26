@@ -525,7 +525,7 @@ dialog_text = "Do you really want to quit the game?"
 
 [node name="CountryBrowserPanel" type="PanelContainer" parent="." unique_id=179100009]
 visible = false
-custom_minimum_size = Vector2(1160, 680)
+custom_minimum_size = Vector2(1160, 620)
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -533,9 +533,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -580.0
-offset_top = -340.0
+offset_top = -310.0
 offset_right = 580.0
-offset_bottom = 340.0
+offset_bottom = 310.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -646,7 +646,7 @@ theme_override_colors/font_color = Color(0.8, 0.862745, 0.952941, 1)
 text = "Click a country for details, then confirm selection"
 
 [node name="CountryListScroll" type="ScrollContainer" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/ListPanel/ListMargin/ListVBox" unique_id=179100019]
-custom_minimum_size = Vector2(0, 500)
+custom_minimum_size = Vector2(0, 260)
 layout_mode = 2
 size_flags_vertical = 3
 
@@ -670,7 +670,7 @@ layout_mode = 2
 theme_override_constants/separation = 8
 
 [node name="DetailFlag" type="TextureRect" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/DetailPanel/DetailMargin/DetailVBox" unique_id=179100024]
-custom_minimum_size = Vector2(220, 140)
+custom_minimum_size = Vector2(220, 100)
 layout_mode = 2
 size_flags_horizontal = 4
 stretch_mode = 5
@@ -710,7 +710,7 @@ layout_mode = 2
 text = "Provinces: -"
 
 [node name="DetailInfo" type="RichTextLabel" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/DetailPanel/DetailMargin/DetailVBox" unique_id=179100033]
-custom_minimum_size = Vector2(0, 120)
+custom_minimum_size = Vector2(0, 70)
 layout_mode = 2
 size_flags_vertical = 3
 bbcode_enabled = true

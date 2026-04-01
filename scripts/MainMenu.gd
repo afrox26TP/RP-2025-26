@@ -1,6 +1,6 @@
 extends Control
 
-const TooltipUtils = preload("res://scripts/TooltipUtils.gd")
+const TooltipUtilsScript = preload("res://scripts/TooltipUtils.gd")
 
 @onready var selected_country_label: Label = $CenterPanel/MarginContainer/VBoxContainer/SelectedCountryLabel
 @onready var menu_hint_label: Label = $CenterPanel/MarginContainer/VBoxContainer/MenuHint
@@ -62,11 +62,15 @@ const TooltipUtils = preload("res://scripts/TooltipUtils.gd")
 @onready var language_hint: Label = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/LanguageHint
 @onready var fullscreen_check: CheckBox = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/FullscreenCheck
 @onready var vsync_check: CheckBox = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/VsyncCheck
+var potato_mode_check: CheckBox = null
 @onready var master_volume_label: Label = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/MasterVolumeLabel
 @onready var master_volume_slider: HSlider = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/MasterVolumeRow/MasterVolumeSlider
 @onready var master_volume_value: Label = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/MasterVolumeRow/MasterVolumeValue
 @onready var btn_settings_reset: Button = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsButtons/ResetButton
 @onready var btn_settings_apply: Button = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsButtons/ApplyButton
+
+var _btn_apply_cache: Button = null
+var _btn_reset_cache: Button = null
 
 # List of playable countries (Display Name : Tag)
 var hratelne_staty = {
@@ -160,6 +164,7 @@ const UI_TEXTS := {
 		"other_info": "Other",
 		"fullscreen": "Fullscreen",
 		"vsync": "VSync",
+		"potato_mode": "Potato mode (low-end PC)",
 		"master_volume": "Master volume",
 		"reset": "Reset defaults",
 		"apply": "Apply",
@@ -195,6 +200,7 @@ const UI_TEXTS := {
 		"other_info": "Ostatni",
 		"fullscreen": "Cela obrazovka",
 		"vsync": "VSync",
+		"potato_mode": "Potato mode (slabe PC)",
 		"master_volume": "Hlavni hlasitost",
 		"reset": "Obnovit vychozi",
 		"apply": "Pouzit",
@@ -219,13 +225,27 @@ var _load_status_label: Label = null
 var _load_open_button: Button = null
 var _load_slot_btns: Dictionary = {}
 var _selected_load_slot_key: String = ""
-var _menu_hint_helper_btn: Button = null
 var _browser_helper_btn: Button = null
 var _language_hint_helper_btn: Button = null
+var _global_ai_aggression: float = 0.5
+var _ai_aggression_row: HBoxContainer = null
+var _ai_aggression_label: Label = null
+var _ai_aggression_slider: HSlider = null
+var _ai_aggression_value: Label = null
+var _browser_current_settings_panel: PanelContainer = null
+var _browser_current_settings_vbox: VBoxContainer = null
+var _browser_potato_mode_check: CheckBox = null
+var _browser_settings_country_separator: HSeparator = null
+var _selected_players_flag_list: VBoxContainer = null
+var _selected_players_scroll: ScrollContainer = null
+const _PLAYER_ROW_H := 26
+const _PLAYER_ROW_MAX_H := 180
 const BROWSER_CONFIRM_DEFAULT_TEXT := "Confirm selection"
 const BROWSER_CONFIRM_ADD_PLAYER_TEXT := "Add player"
 const BROWSER_CLOSE_DEFAULT_TEXT := "Close"
 const BROWSER_CLOSE_START_TEXT := "Start game"
+const COUNTRY_BROWSER_WIDTH := 1160.0
+const COUNTRY_BROWSER_HEIGHT := 520.0
 
 func _load_texture_cached(path: String):
 	if path == "" or not ResourceLoader.exists(path):
@@ -276,7 +296,7 @@ func _vloz_centered_helper_pred_label(label: Label) -> Button:
 	var left_spacer := Control.new()
 	left_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(left_spacer)
-	var help_btn := TooltipUtils.create_help_button(label.text)
+	var help_btn := TooltipUtilsScript.create_help_button(label.text)
 	row.add_child(help_btn)
 	var right_spacer := Control.new()
 	right_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -289,8 +309,8 @@ func _vloz_centered_helper_pred_label(label: Label) -> Button:
 
 func _vytvor_clean_helpery() -> void:
 	if _browser_helper_btn == null and btn_close_corner and btn_close_corner.get_parent() != null:
-		_browser_helper_btn = TooltipUtils.create_help_button("")
-		_browser_helper_btn.pressed.connect(func(): TooltipUtils.show_help_dropdown(self, _browser_helper_btn, _browser_helper_btn.tooltip_text))
+		_browser_helper_btn = TooltipUtilsScript.create_help_button("")
+		_browser_helper_btn.pressed.connect(func(): TooltipUtilsScript.show_help_dropdown(self, _browser_helper_btn, _browser_helper_btn.tooltip_text))
 		var browser_header := btn_close_corner.get_parent()
 		browser_header.add_child(_browser_helper_btn)
 		browser_header.move_child(_browser_helper_btn, btn_close_corner.get_index())
@@ -298,8 +318,8 @@ func _vytvor_clean_helpery() -> void:
 		browser_flow_hint.hide()
 		list_hint.hide()
 	if _language_hint_helper_btn == null and language_option and language_option.get_parent() != null:
-		_language_hint_helper_btn = TooltipUtils.create_help_button(language_hint.text)
-		_language_hint_helper_btn.pressed.connect(func(): TooltipUtils.show_help_dropdown(self, _language_hint_helper_btn, _language_hint_helper_btn.tooltip_text))
+		_language_hint_helper_btn = TooltipUtilsScript.create_help_button(language_hint.text)
+		_language_hint_helper_btn.pressed.connect(func(): TooltipUtilsScript.show_help_dropdown(self, _language_hint_helper_btn, _language_hint_helper_btn.tooltip_text))
 		language_option.get_parent().add_child(_language_hint_helper_btn)
 		language_hint.hide()
 	_aktualizuj_clean_helpery()
@@ -322,11 +342,15 @@ func _ready():
 	_nastav_texty_dialogu()
 	_nacti_data_statu_pro_browser()
 	_naplni_browser_seznam()
+	_apply_country_browser_window_size()
+	_ensure_ai_aggression_control()
+	_ensure_selected_players_flag_list()
 	_nastav_vychozi_vyber_statu()
 	_obnov_text_vyberu()
 	_nastav_stav_pokracovani()
 	_aktualizuj_browser_napovedu()
 	country_browser_panel.hide()
+	_ensure_potato_mode_checkbox()
 
 	# Connect UI signals
 	btn_new_game.pressed.connect(_on_new_game_pressed)
@@ -339,8 +363,10 @@ func _ready():
 	btn_close_corner.pressed.connect(_on_close_browser_corner_pressed)
 	controls_btn.pressed.connect(_on_controls_tab_clicked)
 	settings_btn.pressed.connect(_on_settings_tab_clicked)
-	btn_settings_apply.pressed.connect(_on_apply_settings_pressed)
-	btn_settings_reset.pressed.connect(_on_reset_settings_pressed)
+	
+	# Connect settings button signals with safe handling
+	_ensure_settings_buttons_connected()
+	
 	language_option.item_selected.connect(_on_language_option_selected)
 	camera_speed_slider.value_changed.connect(_on_settings_value_changed)
 	zoom_speed_slider.value_changed.connect(_on_settings_value_changed)
@@ -348,6 +374,8 @@ func _ready():
 	invert_zoom_check.toggled.connect(_on_settings_toggle_changed)
 	fullscreen_check.toggled.connect(_on_settings_toggle_changed)
 	vsync_check.toggled.connect(_on_settings_toggle_changed)
+	if potato_mode_check:
+		potato_mode_check.toggled.connect(_on_settings_toggle_changed)
 	exit_dialog.confirmed.connect(_on_exit_confirmed)
 
 	_napln_language_option()
@@ -360,6 +388,211 @@ func _ready():
 	_vytvor_load_dialog()
 	_styluj_mainmenu_popup_dialogy()
 	_show_settings_tab(0)  # Start with Controls tab
+
+func _apply_country_browser_window_size() -> void:
+	if country_browser_panel == null:
+		return
+
+	country_browser_panel.anchor_left = 0.5
+	country_browser_panel.anchor_top = 0.5
+	country_browser_panel.anchor_right = 0.5
+	country_browser_panel.anchor_bottom = 0.5
+	country_browser_panel.custom_minimum_size = Vector2(COUNTRY_BROWSER_WIDTH, COUNTRY_BROWSER_HEIGHT)
+	country_browser_panel.offset_left = -COUNTRY_BROWSER_WIDTH * 0.5
+	country_browser_panel.offset_top = -COUNTRY_BROWSER_HEIGHT * 0.5
+	country_browser_panel.offset_right = COUNTRY_BROWSER_WIDTH * 0.5
+	country_browser_panel.offset_bottom = COUNTRY_BROWSER_HEIGHT * 0.5
+
+func _default_ai_aggression_from_ideology(ideology_raw: String) -> float:
+	var ideol = ideology_raw.strip_edges().to_lower()
+	match ideol:
+		"democracy", "democratic", "demokracie":
+			return 0.34
+		"autocracy", "autocratic", "autokracie", "dictatorship":
+			return 0.56
+		"communism", "communist", "komunismus", "socialism":
+			return 0.46
+		"monarchy", "monarchie":
+			return 0.42
+		"fascism", "fascist", "fascismus", "nazism", "nacismus":
+			return 0.72
+		_:
+			return 0.50
+
+func _get_ai_aggression_for_tag(tag: String) -> float:
+	if tag != "" and country_stats.has(tag):
+		var ideol = str((country_stats[tag] as Dictionary).get("ideology", ""))
+		var ideology_default = _default_ai_aggression_from_ideology(ideol)
+		# Keep slight ideology flavor while using one global setting in UI.
+		return clamp((ideology_default * 0.20) + (_global_ai_aggression * 0.80), 0.0, 1.0)
+	return clamp(_global_ai_aggression, 0.0, 1.0)
+
+func _ensure_ai_aggression_control() -> void:
+	if _browser_current_settings_panel != null:
+		return
+	if country_browser_panel == null:
+		return
+	var root_vbox = country_browser_panel.get_node_or_null("MarginContainer/RootVBox") as VBoxContainer
+	if root_vbox == null:
+		return
+
+	_browser_current_settings_panel = PanelContainer.new()
+	_browser_current_settings_panel.name = "CurrentGameSettingsPanel"
+	_browser_current_settings_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var panel_margin := MarginContainer.new()
+	panel_margin.add_theme_constant_override("margin_left", 12)
+	panel_margin.add_theme_constant_override("margin_right", 12)
+	panel_margin.add_theme_constant_override("margin_top", 10)
+	panel_margin.add_theme_constant_override("margin_bottom", 10)
+	_browser_current_settings_panel.add_child(panel_margin)
+
+	_browser_current_settings_vbox = VBoxContainer.new()
+	_browser_current_settings_vbox.name = "CurrentGameSettingsVBox"
+	_browser_current_settings_vbox.add_theme_constant_override("separation", 8)
+	panel_margin.add_child(_browser_current_settings_vbox)
+
+	var title := Label.new()
+	title.name = "CurrentGameSettingsTitle"
+	title.text = "Current Game Settings"
+	_browser_current_settings_vbox.add_child(title)
+
+	_ai_aggression_row = HBoxContainer.new()
+	_ai_aggression_row.name = "AIAggressionRow"
+	_ai_aggression_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_browser_current_settings_vbox.add_child(_ai_aggression_row)
+
+	_ai_aggression_label = Label.new()
+	_ai_aggression_label.name = "AIAggressionLabel"
+	_ai_aggression_label.text = "AI Aggression"
+	_ai_aggression_label.custom_minimum_size = Vector2(120, 0)
+	_ai_aggression_row.add_child(_ai_aggression_label)
+
+	_ai_aggression_slider = HSlider.new()
+	_ai_aggression_slider.name = "AIAggressionSlider"
+	_ai_aggression_slider.min_value = 0.0
+	_ai_aggression_slider.max_value = 100.0
+	_ai_aggression_slider.step = 1.0
+	_ai_aggression_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_ai_aggression_slider.value_changed.connect(_on_ai_aggression_changed)
+	_ai_aggression_row.add_child(_ai_aggression_slider)
+
+	_ai_aggression_value = Label.new()
+	_ai_aggression_value.name = "AIAggressionValue"
+	_ai_aggression_value.text = "50%"
+	_ai_aggression_value.custom_minimum_size = Vector2(54, 0)
+	_ai_aggression_value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_ai_aggression_row.add_child(_ai_aggression_value)
+
+	_browser_potato_mode_check = CheckBox.new()
+	_browser_potato_mode_check.name = "BrowserPotatoModeCheck"
+	_browser_potato_mode_check.text = "Potato mode"
+	_browser_potato_mode_check.button_pressed = bool(nastaveni_data.get("other", {}).get("potato_mode", false))
+	_browser_potato_mode_check.toggled.connect(_on_browser_potato_mode_toggled)
+	_browser_current_settings_vbox.add_child(_browser_potato_mode_check)
+
+	var insert_index := root_vbox.get_child_count()
+	if selected_players_title and selected_players_title.get_parent() and selected_players_title.get_parent().get_parent() and selected_players_title.get_parent().get_parent().get_parent():
+		var selected_players_panel = selected_players_title.get_parent().get_parent().get_parent()
+		insert_index = selected_players_panel.get_index()
+
+	root_vbox.add_child(_browser_current_settings_panel)
+	root_vbox.move_child(_browser_current_settings_panel, insert_index)
+
+	if _browser_settings_country_separator == null:
+		_browser_settings_country_separator = HSeparator.new()
+		_browser_settings_country_separator.name = "SettingsCountrySeparator"
+		_browser_settings_country_separator.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		root_vbox.add_child(_browser_settings_country_separator)
+	root_vbox.move_child(_browser_settings_country_separator, insert_index + 1)
+
+	# Initialize the global aggression slider from current stored value.
+	_set_ai_aggression_ui_for_tag("")  # tag ignored — always shows global value
+
+func _ensure_selected_players_flag_list() -> void:
+	if _selected_players_flag_list != null:
+		return
+	if selected_players_list == null or selected_players_list.get_parent() == null:
+		return
+
+	selected_players_list.visible = false
+	var parent_vbox = selected_players_list.get_parent() as VBoxContainer
+	if parent_vbox == null:
+		return
+
+	_selected_players_scroll = ScrollContainer.new()
+	_selected_players_scroll.name = "SelectedPlayersScroll"
+	_selected_players_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_selected_players_scroll.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_selected_players_scroll.custom_minimum_size = Vector2(0, 0)
+	_selected_players_scroll.clip_contents = true
+	parent_vbox.add_child(_selected_players_scroll)
+	parent_vbox.move_child(_selected_players_scroll, selected_players_list.get_index() + 1)
+
+	_selected_players_flag_list = VBoxContainer.new()
+	_selected_players_flag_list.name = "SelectedPlayersFlagList"
+	_selected_players_flag_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_selected_players_flag_list.add_theme_constant_override("separation", 4)
+	_selected_players_scroll.add_child(_selected_players_flag_list)
+
+func _clear_selected_players_flag_rows() -> void:
+	if _selected_players_flag_list == null:
+		return
+	for child in _selected_players_flag_list.get_children():
+		_selected_players_flag_list.remove_child(child)
+		child.free()
+
+func _add_selected_player_row(row_text: String, tag: String, is_active: bool) -> void:
+	if _selected_players_flag_list == null:
+		return
+
+	var row = HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 8)
+
+	var flag = TextureRect.new()
+	flag.custom_minimum_size = Vector2(28, 18)
+	flag.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	var flag_path = "res://map_data/Flags/%s.svg" % tag
+	flag.texture = _load_normalized_flag_texture(flag_path, 56, 36)
+	row.add_child(flag)
+
+	var text_lbl = Label.new()
+	text_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text_lbl.text = row_text
+	if is_active:
+		text_lbl.modulate = Color(0.95, 1.0, 0.85, 1.0)
+	row.add_child(text_lbl)
+
+	_selected_players_flag_list.add_child(row)
+
+func _set_ai_aggression_ui_for_tag(_tag: String) -> void:
+	if _ai_aggression_slider == null or _ai_aggression_value == null:
+		return
+	var percent = int(round(_global_ai_aggression * 100.0))
+	_ai_aggression_slider.set_block_signals(true)
+	_ai_aggression_slider.value = percent
+	_ai_aggression_slider.set_block_signals(false)
+	_ai_aggression_value.text = "%d%%" % percent
+
+func _on_ai_aggression_changed(value: float) -> void:
+	var percent = int(round(value))
+	if _ai_aggression_value:
+		_ai_aggression_value.text = "%d%%" % percent
+	_global_ai_aggression = clamp(value / 100.0, 0.0, 1.0)
+
+func _on_browser_potato_mode_toggled(enabled: bool) -> void:
+	nastaveni_data["other"]["potato_mode"] = enabled
+	_aplikuj_potato_mode_globalne(enabled)
+	if potato_mode_check:
+		potato_mode_check.set_block_signals(true)
+		potato_mode_check.button_pressed = enabled
+		potato_mode_check.set_block_signals(false)
+
+func _apply_ai_aggression_overrides(_local_tags: Array) -> void:
+	if not GameManager or not GameManager.has_method("nastav_globalni_ai_agresi"):
+		return
+	GameManager.nastav_globalni_ai_agresi(_global_ai_aggression)
 
 
 func _nastav_tooltipy_ui() -> void:
@@ -381,9 +614,99 @@ func _nastav_tooltipy_ui() -> void:
 	detail_flag.tooltip_text = "Flag of the selected country."
 	detail_name.tooltip_text = "Name of the selected country."
 	detail_info.tooltip_text = "Short summary of country strengths and risks."
-	TooltipUtils.apply_default_tooltips(self)
+	if _ai_aggression_slider:
+		_ai_aggression_slider.tooltip_text = "Sets global AI aggression for the whole new game."
+	if _ai_aggression_label:
+		_ai_aggression_label.tooltip_text = "Global AI aggression for all AI countries."
+	if _ai_aggression_value:
+		_ai_aggression_value.tooltip_text = "Current aggression override value."
+	if _browser_potato_mode_check:
+		_browser_potato_mode_check.tooltip_text = "Quick toggle for potato mode in current game setup."
+	if _browser_settings_country_separator:
+		_browser_settings_country_separator.tooltip_text = "Visual separator between setup settings and country selection."
+	if potato_mode_check:
+		potato_mode_check.tooltip_text = "Turns on low-detail rendering and power-saving updates for weak PCs."
+	TooltipUtilsScript.apply_default_tooltips(self)
+
+func _ensure_potato_mode_checkbox() -> void:
+	if potato_mode_check != null or settings_content == null:
+		return
+
+	potato_mode_check = CheckBox.new()
+	potato_mode_check.name = "PotatoModeCheck"
+	potato_mode_check.text = "Potato mode (low-end PC)"
+
+	var insert_index := settings_content.get_child_count()
+	if master_volume_label and master_volume_label.get_parent() == settings_content:
+		insert_index = master_volume_label.get_index()
+
+	settings_content.add_child(potato_mode_check)
+	settings_content.move_child(potato_mode_check, insert_index)
 
 func _nastav_texty_dialogu():
+	settings_dialog.title = SETTINGS_DIALOG_TITLE
+	settings_dialog.ok_button_text = "Close"
+	credits_dialog.title = CREDITS_DIALOG_TITLE
+	credits_dialog.dialog_text = CREDITS_DIALOG_TEXT
+	credits_dialog.ok_button_text = "Close"
+	exit_dialog.title = EXIT_DIALOG_TITLE
+	exit_dialog.dialog_text = EXIT_DIALOG_TEXT
+	exit_dialog.ok_button_text = "Yes"
+	exit_dialog.cancel_button_text = "No"
+	var _exit_lbl = exit_dialog.get_label()
+	if _exit_lbl:
+		_exit_lbl.add_theme_font_size_override("font_size", 20)
+		_exit_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_exit_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_exit_lbl.size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+func _get_settings_button_apply() -> Button:
+	if _btn_apply_cache and is_instance_valid(_btn_apply_cache):
+		return _btn_apply_cache
+	
+	# Try @onready reference first
+	if btn_settings_apply and is_instance_valid(btn_settings_apply):
+		_btn_apply_cache = btn_settings_apply
+		return _btn_apply_cache
+	
+	# Fallback: find it using find_child
+	var apply_btn = settings_dialog.find_child("ApplyButton", true, false) as Button
+	if apply_btn:
+		_btn_apply_cache = apply_btn
+		return apply_btn
+	
+	return null
+
+func _get_settings_button_reset() -> Button:
+	if _btn_reset_cache and is_instance_valid(_btn_reset_cache):
+		return _btn_reset_cache
+	
+	# Try @onready reference first
+	if btn_settings_reset and is_instance_valid(btn_settings_reset):
+		_btn_reset_cache = btn_settings_reset
+		return _btn_reset_cache
+	
+	# Fallback: find it using find_child
+	var reset_btn = settings_dialog.find_child("ResetButton", true, false) as Button
+	if reset_btn:
+		_btn_reset_cache = reset_btn
+		return reset_btn
+	
+	return null
+
+func _ensure_settings_buttons_connected() -> void:
+	var apply_btn = _get_settings_button_apply()
+	var reset_btn = _get_settings_button_reset()
+	
+	print("Ensure buttons connected - apply: ", apply_btn != null, " reset: ", reset_btn != null)
+	
+	if apply_btn and not apply_btn.pressed.is_connected(_on_apply_settings_pressed):
+		apply_btn.pressed.connect(_on_apply_settings_pressed)
+		print("Connected apply button")
+	
+	if reset_btn and not reset_btn.pressed.is_connected(_on_reset_settings_pressed):
+		reset_btn.pressed.connect(_on_reset_settings_pressed)
+		print("Connected reset button")
 	settings_dialog.title = SETTINGS_DIALOG_TITLE
 	settings_dialog.ok_button_text = "Close"
 	credits_dialog.title = CREDITS_DIALOG_TITLE
@@ -433,6 +756,7 @@ func _vytvor_vychozi_nastaveni() -> Dictionary:
 		"other": {
 			"fullscreen": false,
 			"vsync": true,
+			"potato_mode": false,
 			"master_volume": 0.85
 		}
 	}
@@ -452,6 +776,7 @@ func _nacti_nastaveni() -> void:
 
 	nastaveni_data["other"]["fullscreen"] = bool(cfg.get_value("other", "fullscreen", nastaveni_data["other"]["fullscreen"]))
 	nastaveni_data["other"]["vsync"] = bool(cfg.get_value("other", "vsync", nastaveni_data["other"]["vsync"]))
+	nastaveni_data["other"]["potato_mode"] = bool(cfg.get_value("other", "potato_mode", nastaveni_data["other"]["potato_mode"]))
 	nastaveni_data["other"]["master_volume"] = float(cfg.get_value("other", "master_volume", nastaveni_data["other"]["master_volume"]))
 
 func _uloz_nastaveni() -> void:
@@ -464,6 +789,7 @@ func _uloz_nastaveni() -> void:
 
 	cfg.set_value("other", "fullscreen", bool(nastaveni_data["other"]["fullscreen"]))
 	cfg.set_value("other", "vsync", bool(nastaveni_data["other"]["vsync"]))
+	cfg.set_value("other", "potato_mode", bool(nastaveni_data["other"]["potato_mode"]))
 	cfg.set_value("other", "master_volume", float(nastaveni_data["other"]["master_volume"]))
 
 	var save_err = cfg.save(SETTINGS_FILE_PATH)
@@ -512,6 +838,8 @@ func _nastav_settings_ui_z_dat() -> void:
 
 	fullscreen_check.button_pressed = bool(nastaveni_data["other"]["fullscreen"])
 	vsync_check.button_pressed = bool(nastaveni_data["other"]["vsync"])
+	if potato_mode_check:
+		potato_mode_check.button_pressed = bool(nastaveni_data["other"].get("potato_mode", false))
 	master_volume_slider.value = clamp(float(nastaveni_data["other"]["master_volume"]), 0.0, 1.0)
 
 func _uloz_settings_ui_do_dat() -> void:
@@ -521,6 +849,7 @@ func _uloz_settings_ui_do_dat() -> void:
 	nastaveni_data["language"]["code"] = _jazyk_z_option()
 	nastaveni_data["other"]["fullscreen"] = fullscreen_check.button_pressed
 	nastaveni_data["other"]["vsync"] = vsync_check.button_pressed
+	nastaveni_data["other"]["potato_mode"] = potato_mode_check.button_pressed if potato_mode_check else false
 	nastaveni_data["other"]["master_volume"] = clamp(master_volume_slider.value, 0.0, 1.0)
 
 func _aktualizuj_settings_hodnoty(_v: float = 0.0) -> void:
@@ -534,12 +863,18 @@ func _aplikuj_nastaveni_globalne() -> void:
 
 	var vsync_mode = DisplayServer.VSYNC_ENABLED if bool(nastaveni_data["other"]["vsync"]) else DisplayServer.VSYNC_DISABLED
 	DisplayServer.window_set_vsync_mode(vsync_mode)
+	_aplikuj_potato_mode_globalne(bool(nastaveni_data["other"].get("potato_mode", false)))
 
 	var master_bus = AudioServer.get_bus_index("Master")
 	if master_bus != -1:
 		var linear_volume = clamp(float(nastaveni_data["other"]["master_volume"]), 0.0, 1.0)
 		var db_volume = -80.0 if linear_volume <= 0.0001 else linear_to_db(linear_volume)
 		AudioServer.set_bus_volume_db(master_bus, db_volume)
+
+func _aplikuj_potato_mode_globalne(enabled: bool) -> void:
+	Engine.max_fps = 45 if enabled else 0
+	OS.low_processor_usage_mode = enabled
+	OS.low_processor_usage_mode_sleep_usec = 12000 if enabled else 6900
 
 func _aktualizuj_texty_dle_jazyka() -> void:
 	var t = _texty_ui()
@@ -566,6 +901,8 @@ func _aktualizuj_texty_dle_jazyka() -> void:
 	language_hint.text = str(t["language_hint"])
 	fullscreen_check.text = str(t["fullscreen"])
 	vsync_check.text = str(t["vsync"])
+	if potato_mode_check:
+		potato_mode_check.text = str(t["potato_mode"])
 	master_volume_label.text = str(t["master_volume"])
 	btn_settings_reset.text = str(t["reset"])
 	btn_settings_apply.text = str(t["apply"])
@@ -588,11 +925,12 @@ func _read_settings_from_ui() -> Dictionary:
 		"language": _jazyk_z_option(),
 		"fullscreen": fullscreen_check.button_pressed,
 		"vsync": vsync_check.button_pressed,
+		"potato_mode": potato_mode_check.button_pressed if potato_mode_check else false,
 		"master_volume": snapped(master_volume_slider.value, 0.01)
 	}
 
 func _settings_state_equals(a: Dictionary, b: Dictionary) -> bool:
-	for key in ["camera_speed", "zoom_speed", "invert_zoom", "language", "fullscreen", "vsync", "master_volume"]:
+	for key in ["camera_speed", "zoom_speed", "invert_zoom", "language", "fullscreen", "vsync", "potato_mode", "master_volume"]:
 		if not a.has(key) or not b.has(key):
 			return false
 		if a[key] != b[key]:
@@ -600,11 +938,38 @@ func _settings_state_equals(a: Dictionary, b: Dictionary) -> bool:
 	return true
 
 func _refresh_apply_button_state() -> void:
-	var current = _read_settings_from_ui()
-	var dirty = not _settings_state_equals(current, _settings_original_ui_state)
-	btn_settings_apply.disabled = not dirty
-	btn_settings_apply.modulate = Color(1, 1, 1, 1) if dirty else Color(0.78, 0.82, 0.9, 1)
+	var apply_btn = _get_settings_button_apply()
+	var reset_btn = _get_settings_button_reset()
+	
+	if not apply_btn or not reset_btn:
+		print("ERROR: Settings buttons not found!")
+		return
+	
+	# Force visibility and size on button container
+	var btn_container = apply_btn.get_parent()
+	if btn_container:
+		btn_container.visible = true
+		if btn_container is HBoxContainer or btn_container is Control:
+			btn_container.size_flags_vertical = Control.SIZE_SHRINK_END
+	
+	# Force visibility on all parent nodes up to dialog
+	var current = apply_btn
+	while current and current != settings_dialog:
+		current.visible = true
+		current = current.get_parent()
+	
+	current = reset_btn
+	while current and current != settings_dialog:
+		current.visible = true
+		current = current.get_parent()
+	
+	var current_state = _read_settings_from_ui()
+	var dirty = not _settings_state_equals(current_state, _settings_original_ui_state)
+	apply_btn.disabled = not dirty
+	apply_btn.modulate = Color(1, 1, 1, 1) if dirty else Color(0.78, 0.82, 0.9, 1)
 	_aktualizuj_settings_header_stav(dirty)
+	
+	print("Settings buttons refreshed - apply visible: ", apply_btn.visible, " reset visible: ", reset_btn.visible)
 
 func _nastav_vychozi_vyber_statu():
 	if country_stats.has(selected_country_tag):
@@ -809,11 +1174,16 @@ func _obnov_texty_radku_statu() -> void:
 func _aktualizuj_panel_vyberu_hracu() -> void:
 	if not selected_players_title or not selected_players_list:
 		return
+	_ensure_selected_players_flag_list()
+	_clear_selected_players_flag_rows()
 
+	var row_count := 0
 	if new_game_browser_flow:
-		selected_players_title.text = "Selected players for local multiplayer"
+		selected_players_title.text = "Selected Countries"
 		if local_player_tags.is_empty():
 			selected_players_list.text = "Nobody yet"
+			_add_selected_player_row("Nobody yet", "", false)
+			row_count = 1
 		else:
 			var lines: Array = []
 			for i in range(local_player_tags.size()):
@@ -821,14 +1191,28 @@ func _aktualizuj_panel_vyberu_hracu() -> void:
 				var prefix = "%d." % (i + 1)
 				if i == setup_active_player_index:
 					prefix = "%d. >" % (i + 1)
-				lines.append("%s %s (%s)" % [prefix, _zobrazene_jmeno_statu(tag), tag])
+				var row_text = "%s %s (%s)" % [prefix, _zobrazene_jmeno_statu(tag), tag]
+				lines.append(row_text)
+				_add_selected_player_row(row_text, tag, i == setup_active_player_index)
 			selected_players_list.text = "\n".join(lines)
+			row_count = local_player_tags.size()
 	else:
 		selected_players_title.text = "Current selection"
 		if selected_country_tag == "":
 			selected_players_list.text = "Nobody yet"
+			_add_selected_player_row("Nobody yet", "", false)
+			row_count = 1
 		else:
 			selected_players_list.text = "%s (%s)" % [_zobrazene_jmeno_statu(selected_country_tag), selected_country_tag]
+			_add_selected_player_row(selected_players_list.text, selected_country_tag, false)
+			row_count = 1
+
+	if _selected_players_scroll:
+		var needed_h = row_count * _PLAYER_ROW_H
+		_selected_players_scroll.custom_minimum_size = Vector2(0, min(needed_h, _PLAYER_ROW_MAX_H))
+
+	# Deferred reset to prevent the panel from jumping when layout recalculates
+	call_deferred("_apply_country_browser_window_size")
 
 func _zobrazene_jmeno_statu(tag: String) -> String:
 	for nazev in hratelne_staty.keys():
@@ -838,7 +1222,7 @@ func _zobrazene_jmeno_statu(tag: String) -> String:
 		return str(country_stats[tag].get("country_name_en", tag))
 	return tag
 
-func _nastav_detail_statu(tag: String):
+func _nastav_detail_statu(tag: String, update_aggression_ui: bool = true):
 	if not country_stats.has(tag):
 		return
 
@@ -859,6 +1243,8 @@ func _nastav_detail_statu(tag: String):
 	detail_soldiers.text = "Soldiers: %s" % _formatuj_cislo(int(s["soldiers"]))
 	detail_provinces.text = "Provinces: %d" % int(s["province_count"])
 	detail_info.text = _vytvor_souhrn_statu(jmeno, s)
+	if update_aggression_ui:
+		_set_ai_aggression_ui_for_tag(tag)
 
 	var flag_tex = _load_normalized_flag_texture("res://map_data/Flags/%s.svg" % tag, 240, 150)
 	detail_flag.texture = flag_tex
@@ -965,7 +1351,7 @@ func _prirad_stat_aktivnimu_hraci(tag: String) -> void:
 	local_player_tags[setup_active_player_index] = tag
 	selected_country_tag_in_browser = tag
 	selected_country_tag = str(local_player_tags[0])
-	_nastav_detail_statu(tag)
+	_nastav_detail_statu(tag, true)
 	_obnov_text_vyberu()
 	_obnov_texty_radku_statu()
 	_aktualizuj_panel_vyberu_hracu()
@@ -981,14 +1367,15 @@ func _pridej_dalsiho_hrace_do_setupu() -> void:
 	local_player_tags.append(novy_tag)
 	setup_active_player_index = local_player_tags.size() - 1
 	selected_country_tag_in_browser = novy_tag
-	_nastav_detail_statu(novy_tag)
+	_nastav_detail_statu(novy_tag, false)
 	_obnov_texty_radku_statu()
 	_aktualizuj_panel_vyberu_hracu()
 	_aktualizuj_browser_napovedu()
 
 func _otevri_browser_statu():
+	_apply_country_browser_window_size()
 	if selected_country_tag != "" and country_stats.has(selected_country_tag):
-		_nastav_detail_statu(selected_country_tag)
+		_nastav_detail_statu(selected_country_tag, false)
 	_aktualizuj_browser_napovedu()
 	country_browser_panel.show()
 
@@ -1393,6 +1780,8 @@ func _spust_hru_vyberem(player_tags: Array = []):
 	else:
 		GameManager.hrac_stat = selected_country_tag
 
+	_apply_ai_aggression_overrides(final_tags)
+
 	print("Local players: ", final_tags)
 	
 	# Load the main map scene
@@ -1430,10 +1819,51 @@ func _on_settings_pressed():
 	_nastav_settings_ui_z_dat()
 	_aktualizuj_settings_hodnoty()
 	_settings_original_ui_state = _read_settings_from_ui()
-	_refresh_apply_button_state()
 	_show_settings_tab(0)  # Show Controls tab
 	_styluj_mainmenu_popup_dialogy()
+	
+	# FIX: Reduce ControlsPanel's expand flag so buttons stay visible
+	var controls_panel = settings_dialog.find_child("ControlsPanel", true, false)
+	if controls_panel:
+		controls_panel.size_flags_vertical = Control.SIZE_FILL  # Changed from EXPAND+FILL  to just FILL
+		print("ControlsPanel size_flags set")
+	
+	var settings_panel = settings_dialog.find_child("SettingsPanel", true, false)
+	if settings_panel:
+		settings_panel.size_flags_vertical = Control.SIZE_FILL
+		print("SettingsPanel size_flags set")
+	
+	# Ensure button signals are connected
+	_ensure_settings_buttons_connected()
+	
+	# Ensure buttons are ready before showing dialog
+	var apply_btn = _get_settings_button_apply()
+	var reset_btn = _get_settings_button_reset()
+	
+	if apply_btn:
+		apply_btn.visible = true
+		apply_btn.disabled = false
+		# Ensure parent container is visible
+		if apply_btn.get_parent():
+			apply_btn.get_parent().visible = true
+	
+	if reset_btn:
+		reset_btn.visible = true
+		reset_btn.disabled = false
+		# Ensure parent container is visible
+		if reset_btn.get_parent():
+			reset_btn.get_parent().visible = true
+	
 	settings_dialog.popup_centered(settings_dialog.min_size)
+	
+	# Verify buttons are visible after popup
+	if apply_btn:
+		print("Apply button visible: ", apply_btn.visible, " size: ", apply_btn.size)
+	if reset_btn:
+		print("Reset button visible: ", reset_btn.visible, " size: ", reset_btn.size)
+	
+	# Refresh button state after dialog is shown
+	call_deferred("_refresh_apply_button_state")
 
 func _show_settings_tab(tab_index: int) -> void:
 	if tab_index == 0:

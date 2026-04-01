@@ -32,6 +32,16 @@ var _mode_hover_label: Label
 var _mode_hover_debug_label: Label
 var _aktualni_mapovy_mod_local: String = "political"
 var _last_mode_hover_debug_text: String = ""
+var _root_cache: Node
+var _info_ui_cache: Node
+var _game_ui_cache: Node
+var _map_loader_cache: Node
+var _labels_node_cache: Node2D
+var _labels_by_province_id: Dictionary = {}
+var _labels_cache_dirty: bool = true
+var _selection_label_states: Dictionary = {}
+var _last_cursor_shape: int = -1
+var _potato_mode_enabled: bool = false
 const MODE_HOVER_OFFSET := Vector2(16, 18)
 const MODE_HOVER_DEBUG_LOG := false
 
@@ -123,6 +133,7 @@ func _ready():
 	material.set_shader_parameter("peace_selection_player_color_mode", false)
 	material.set_shader_parameter("peace_target_visual_mode", false)
 	material.set_shader_parameter("peace_target_owner_color", Color(0.72, 0.34, 0.34, 1.0))
+	material.set_shader_parameter("low_detail_mode", false)
 	material.set_shader_parameter("total_provinces", float(total_provinces))
 	
 	material.set_shader_parameter("has_hover", false)
@@ -131,6 +142,128 @@ func _ready():
 	material.set_shader_parameter("selected_id", -1.0)
 	_aktualizuj_hromadny_selection_texture([])
 	_ensure_mode_hover_tooltip()
+	_connect_labels_cache_signals()
+
+func nastav_potato_mode(enabled: bool) -> void:
+	_potato_mode_enabled = enabled
+	if material:
+		material.set_shader_parameter("low_detail_mode", enabled)
+
+func _get_root() -> Node:
+	var parent_node = get_parent()
+	if _root_cache == null or not is_instance_valid(_root_cache) or _root_cache != parent_node:
+		_root_cache = parent_node
+	return _root_cache
+
+func _get_info_ui() -> Node:
+	if _info_ui_cache == null or not is_instance_valid(_info_ui_cache):
+		var current_scene = get_tree().current_scene
+		_info_ui_cache = current_scene.find_child("InfoUI", true, false) if current_scene else null
+	return _info_ui_cache
+
+func _get_game_ui() -> Node:
+	if _game_ui_cache == null or not is_instance_valid(_game_ui_cache):
+		var current_scene = get_tree().current_scene
+		_game_ui_cache = current_scene.find_child("GameUI", true, false) if current_scene else null
+	return _game_ui_cache
+
+func _get_map_loader() -> Node:
+	if _map_loader_cache == null or not is_instance_valid(_map_loader_cache):
+		var current_scene = get_tree().current_scene
+		if current_scene and current_scene.has_method("zpracuj_tah_armad"):
+			_map_loader_cache = current_scene
+		elif current_scene:
+			_map_loader_cache = current_scene.find_child("Map", true, false)
+	return _map_loader_cache
+
+func _get_labels_node() -> Node2D:
+	var root = _get_root()
+	var next_labels = root.get_node_or_null("ProvinceLabels") as Node2D if root else null
+	if _labels_node_cache != next_labels:
+		_disconnect_labels_cache_signals()
+		_labels_node_cache = next_labels
+		_labels_cache_dirty = true
+		_connect_labels_cache_signals()
+	return _labels_node_cache
+
+func _connect_labels_cache_signals() -> void:
+	var labels = _labels_node_cache
+	if labels == null:
+		labels = _get_labels_node()
+	if labels == null:
+		return
+	if not labels.child_entered_tree.is_connected(_on_labels_child_changed):
+		labels.child_entered_tree.connect(_on_labels_child_changed)
+	if not labels.child_exiting_tree.is_connected(_on_labels_child_changed):
+		labels.child_exiting_tree.connect(_on_labels_child_changed)
+
+func _disconnect_labels_cache_signals() -> void:
+	if _labels_node_cache == null:
+		return
+	if _labels_node_cache.child_entered_tree.is_connected(_on_labels_child_changed):
+		_labels_node_cache.child_entered_tree.disconnect(_on_labels_child_changed)
+	if _labels_node_cache.child_exiting_tree.is_connected(_on_labels_child_changed):
+		_labels_node_cache.child_exiting_tree.disconnect(_on_labels_child_changed)
+
+func _on_labels_child_changed(_node: Node) -> void:
+	_labels_cache_dirty = true
+
+func _ensure_labels_cache() -> void:
+	var labels = _get_labels_node()
+	if labels == null:
+		_labels_by_province_id.clear()
+		_labels_cache_dirty = false
+		return
+	if not _labels_cache_dirty and _labels_by_province_id.size() == labels.get_child_count():
+		return
+	_labels_by_province_id.clear()
+	for lbl in labels.get_children():
+		_labels_by_province_id[int(lbl.get("province_id"))] = lbl
+	_labels_cache_dirty = false
+
+func _get_label_for_province(province_id: int) -> Node:
+	_ensure_labels_cache()
+	return _labels_by_province_id.get(province_id, null)
+
+func _set_cursor_shape(shape: int) -> void:
+	if _last_cursor_shape == shape:
+		return
+	_last_cursor_shape = shape
+	Input.set_default_cursor_shape(shape)
+
+func _clear_selection_label_states() -> void:
+	if _selection_label_states.is_empty():
+		return
+	for province_id in _selection_label_states.keys():
+		var lbl = _get_label_for_province(int(province_id))
+		if lbl and lbl.has_method("reset_stav"):
+			lbl.reset_stav()
+	_selection_label_states.clear()
+
+func _apply_selection_label_states(target_id: int, neighbor_ids: Array) -> void:
+	var next_states: Dictionary = {}
+	next_states[target_id] = 2
+	for raw_neighbor_id in neighbor_ids:
+		var neighbor_id = int(raw_neighbor_id)
+		if neighbor_id == target_id:
+			continue
+		next_states[neighbor_id] = 1
+
+	for province_id in _selection_label_states.keys():
+		if next_states.has(province_id):
+			continue
+		var old_lbl = _get_label_for_province(int(province_id))
+		if old_lbl and old_lbl.has_method("reset_stav"):
+			old_lbl.reset_stav()
+
+	for province_id in next_states.keys():
+		var lbl = _get_label_for_province(int(province_id))
+		if lbl == null or not lbl.has_method("nastav_stav_souseda"):
+			continue
+		var state = int(next_states[province_id])
+		lbl.nastav_stav_souseda(state == 2, state == 1)
+
+	_selection_label_states = next_states
 
 func nastav_nahled_hlavniho_mesta(owned_ids: Array, valid_ids: Array) -> void:
 	if capital_focus_owned_image == null or capital_focus_valid_image == null:
@@ -230,7 +363,7 @@ func _hide_mode_hover_tooltip() -> void:
 	if _mode_hover_debug_label:
 		_mode_hover_debug_label.visible = false
 
-func _update_mode_hover_tooltip_position(global_pos: Vector2) -> void:
+func _update_mode_hover_tooltip_position(_global_pos: Vector2) -> void:
 	if _mode_hover_panel == null or not _mode_hover_panel.visible:
 		return
 	var mouse_pos = get_viewport().get_mouse_position()
@@ -271,7 +404,7 @@ func _format_money_compact(value: float) -> String:
 		decimals = 0
 	return "%s.%02d" % [_format_int_compact(whole), decimals]
 
-func _show_capital_target_tooltip(province_id: int, data: Dictionary, root: Node) -> void:
+func _show_capital_target_tooltip(province_id: int, _data: Dictionary, root: Node) -> void:
 	if _mode_hover_panel == null or _mode_hover_label == null:
 		return
 
@@ -447,6 +580,11 @@ func _aktualizuj_hromadny_selection_texture(ids: Array):
 		var is_peace_targeting = root != null and ("ceka_na_cil_miru" in root) and bool(root.ceka_na_cil_miru)
 		material.set_shader_parameter("selected_multi_color", _ziskej_barvu_hrace_pro_vyber())
 		material.set_shader_parameter("peace_selection_player_color_mode", is_peace_targeting)
+		if is_peace_targeting:
+			# In peace selection, only explicitly selected provinces should look claimed.
+			material.set_shader_parameter("peace_target_visual_mode", false)
+		elif not bool(material.get_shader_parameter("capital_focus_mode")):
+			material.set_shader_parameter("peace_target_visual_mode", false)
 
 	selected_multi_image.fill(Color(0, 0, 0, 0))
 	for raw_id in ids:
@@ -482,8 +620,9 @@ func _unhandled_input(event):
 			var root = get_parent()
 			var is_targeting = "ceka_na_cil_presunu" in root and root.ceka_na_cil_presunu
 			var is_capital_targeting = "ceka_na_cil_hlavniho_mesta" in root and root.ceka_na_cil_hlavniho_mesta
+			var is_peace_targeting = "ceka_na_cil_miru" in root and root.ceka_na_cil_miru
 			var is_bulk_targeting = "ceka_na_hromadny_cil_presunu" in root and root.ceka_na_hromadny_cil_presunu
-			if not is_targeting and not is_bulk_targeting and not is_capital_targeting:
+			if not is_targeting and not is_bulk_targeting and not is_capital_targeting and not is_peace_targeting:
 				_drag_select_active = true
 				_drag_select_started = false
 				_drag_start_local = _ziskej_localni_pozici_mysi(get_global_mouse_position())
@@ -556,6 +695,10 @@ func _unhandled_input(event):
 				aktualizuj_mapovy_mod("resources", root.provinces)
 				if root.has_method("nastav_mapovy_mod"):
 					root.nastav_mapovy_mod("resources")
+			elif event.keycode == KEY_9:
+				aktualizuj_mapovy_mod("alliances", root.provinces)
+				if root.has_method("nastav_mapovy_mod"):
+					root.nastav_mapovy_mod("alliances")
 			
 			elif event.keycode == KEY_C:
 				var vybrana_provincie = material.get_shader_parameter("selected_id")
@@ -572,7 +715,7 @@ func _aplikuj_drag_hromadny_vyber():
 	if map_image == null:
 		return
 
-	var root = get_parent()
+	var root = _get_root()
 	if not root:
 		return
 	if not root.has_method("pridej_hromadny_vyber_provincie") or not root.has_method("ziskej_hromadne_vybrane_provincie"):
@@ -608,13 +751,13 @@ func _aplikuj_drag_hromadny_vyber():
 		root.nastav_vybranou_armadu_provincie(int(hromadny_ids[hromadny_ids.size() - 1]))
 
 	if hromadny_ids.size() > 1:
-		var info_ui_multi = get_tree().current_scene.find_child("InfoUI", true, false)
+		var info_ui_multi = _get_info_ui()
 		if info_ui_multi and info_ui_multi.has_method("zobraz_hromadna_data"):
 			info_ui_multi.zobraz_hromadna_data(hromadny_ids, root.provinces)
 	else:
 		var pid = int(hromadny_ids[0])
 		if root.provinces.has(pid):
-			var info_ui_single = get_tree().current_scene.find_child("InfoUI", true, false)
+			var info_ui_single = _get_info_ui()
 			if info_ui_single and info_ui_single.has_method("zobraz_data"):
 				info_ui_single.zobraz_data(root.provinces[pid])
 
@@ -647,7 +790,7 @@ func _odzanc_vse():
 	material.set_shader_parameter("selected_id", -1.0)
 	_hide_mode_hover_tooltip()
 	
-	var root = get_parent()
+	var root = _get_root()
 	if root and root.has_method("nastav_vybranou_armadu_provincie"):
 		root.nastav_vybranou_armadu_provincie(-1)
 	if "ceka_na_cil_presunu" in root:
@@ -664,13 +807,13 @@ func _odzanc_vse():
 		root.vycisti_hromadny_vyber_provincii()
 	_aktualizuj_hromadny_selection_texture([])
 	
-	Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+	_set_cursor_shape(Input.CURSOR_ARROW)
 	
-	var info_ui = get_tree().current_scene.find_child("InfoUI", true, false)
+	var info_ui = _get_info_ui()
 	if info_ui and info_ui.has_method("schovej_se"):
 		info_ui.schovej_se()
 		
-	var game_ui = get_tree().current_scene.find_child("GameUI", true, false)
+	var game_ui = _get_game_ui()
 	if game_ui and game_ui.has_method("zrus_vyber_cile_hlavniho_mesta_ui"):
 		game_ui.zrus_vyber_cile_hlavniho_mesta_ui()
 	if game_ui and game_ui.has_method("zrus_vyber_miru_ui"):
@@ -680,17 +823,12 @@ func _odzanc_vse():
 		ma_otevrene_mirove_jednani = bool(game_ui.ma_otevrene_mirove_jednani())
 	if game_ui and game_ui.has_method("schovej_se") and not ma_otevrene_mirove_jednani:
 		game_ui.schovej_se()
-
-	var labels = get_parent().get_node_or_null("ProvinceLabels")
-	if labels:
-		for lbl in labels.get_children():
-			if lbl.has_method("reset_stav"):
-				lbl.reset_stav()
+	_clear_selection_label_states()
 
 func _zpracuj_interakci(_mouse_pos: Vector2, je_kliknuti: bool, shift_held: bool = false):
 	if map_image == null: return
 
-	var root = get_parent()
+	var root = _get_root()
 	if je_kliknuti and root and root.has_method("ziskej_prov_id_podle_ikony_armady"):
 		var hit_prov_id = int(root.ziskej_prov_id_podle_ikony_armady(get_global_mouse_position()))
 		if hit_prov_id >= 0 and "provinces" in root and root.provinces.has(hit_prov_id):
@@ -715,7 +853,7 @@ func _zpracuj_interakci(_mouse_pos: Vector2, je_kliknuti: bool, shift_held: bool
 
 # Updates selection and hover states
 func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shift_held: bool = false):
-	var root = get_parent()
+	var root = _get_root()
 	var is_targeting = "ceka_na_cil_presunu" in root and root.ceka_na_cil_presunu
 	var is_capital_targeting = "ceka_na_cil_hlavniho_mesta" in root and root.ceka_na_cil_hlavniho_mesta
 	var is_peace_targeting = "ceka_na_cil_miru" in root and root.ceka_na_cil_miru
@@ -741,7 +879,7 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 			if bool(result_peace.get("ok", false)):
 				_aktualizuj_hromadny_selection_texture(result_peace.get("selected", []) as Array)
 
-			var game_ui_peace = get_tree().current_scene.find_child("GameUI", true, false)
+			var game_ui_peace = _get_game_ui()
 			if game_ui_peace and game_ui_peace.has_method("obsluha_vyberu_miru_z_mapy"):
 				game_ui_peace.obsluha_vyberu_miru_z_mapy(result_peace, target_peace_id)
 			return
@@ -755,10 +893,10 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 			if root.has_method("potvrd_cil_hlavniho_mesta"):
 				result = root.potvrd_cil_hlavniho_mesta(target_cap_id)
 
-			Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+			_set_cursor_shape(Input.CURSOR_ARROW)
 			material.set_shader_parameter("is_target_hover", false)
 
-			var game_ui_cap = get_tree().current_scene.find_child("GameUI", true, false)
+			var game_ui_cap = _get_game_ui()
 			if game_ui_cap and game_ui_cap.has_method("obsluha_presunu_hlavniho_mesta_z_mapy"):
 				game_ui_cap.obsluha_presunu_hlavniho_mesta_z_mapy(result, target_cap_id)
 			return
@@ -770,12 +908,12 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 				planned_count = int(root.zaregistruj_hromadny_presun_armad(bulk_to_id))
 
 			if planned_count > 0:
-				var map_loader = get_tree().current_scene.find_child("Map", true, false)
-				if not map_loader and get_parent().has_method("_ukaz_bitevni_popup"):
-					map_loader = get_parent()
+				var map_loader = _get_map_loader()
+				if not map_loader and root.has_method("_ukaz_bitevni_popup"):
+					map_loader = root
 				if map_loader and map_loader.has_method("_ukaz_bitevni_popup"):
 					map_loader._ukaz_bitevni_popup("BULK MOVE", "Planned moves: %d" % planned_count)
-				Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+				_set_cursor_shape(Input.CURSOR_ARROW)
 				material.set_shader_parameter("is_target_hover", false)
 			return
 
@@ -788,7 +926,7 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 			if from_id != to_id and root.has_method("najdi_nejrychlejsi_cestu_presunu"):
 				path = root.najdi_nejrychlejsi_cestu_presunu(from_id, to_id)
 				if path.size() >= 2:
-					var target_info_ui = get_tree().current_scene.find_child("InfoUI", true, false)
+					var target_info_ui = _get_info_ui()
 					if target_info_ui and target_info_ui.has_method("zobraz_presun_slider"):
 						target_info_ui.zobraz_presun_slider(from_id, to_id, root.vybrana_armada_max, path)
 						cil_vybran = true
@@ -798,7 +936,7 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 				root.ceka_na_cil_presunu = false
 				if root.has_method("vycisti_nahled_presunu"):
 					root.vycisti_nahled_presunu()
-				Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+				_set_cursor_shape(Input.CURSOR_ARROW)
 				material.set_shader_parameter("is_target_hover", false)
 			return
 		# -----------------------------------------------
@@ -818,8 +956,10 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 			_aktualizuj_hromadny_selection_texture(hromadny_ids)
 			material.set_shader_parameter("selected_id", prov_id)
 			material.set_shader_parameter("has_selected", true)
+			if root.has_method("nastav_vybranou_armadu_provincie"):
+				root.nastav_vybranou_armadu_provincie(int(prov_id))
 			if hromadny_ids.size() > 1:
-				var info_ui_multi = get_tree().current_scene.find_child("InfoUI", true, false)
+				var info_ui_multi = _get_info_ui()
 				if info_ui_multi and info_ui_multi.has_method("zobraz_hromadna_data"):
 					info_ui_multi.zobraz_hromadna_data(hromadny_ids, root.provinces)
 				return
@@ -840,24 +980,14 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 		
 		var vsechny_provincie = root.provinces if "provinces" in root else {}
 		
-		var info_ui = get_tree().current_scene.find_child("InfoUI", true, false)
+		var info_ui = _get_info_ui()
 		if info_ui and info_ui.has_method("zobraz_data"):
 			info_ui.zobraz_data(data)
 			
-		var game_ui = get_tree().current_scene.find_child("GameUI", true, false)
+		var game_ui = _get_game_ui()
 		if game_ui and game_ui.has_method("zobraz_prehled_statu"):
 			game_ui.zobraz_prehled_statu(data, vsechny_provincie)
-			
-		var labels = get_parent().get_node_or_null("ProvinceLabels")
-		if labels:
-			var aktualni_sousede = data.get("neighbors", [])
-			for lbl in labels.get_children():
-				var l_id = int(lbl.get("province_id"))
-				var je_cil = (l_id == int(prov_id))
-				var je_soused = l_id in aktualni_sousede
-				
-				if lbl.has_method("nastav_stav_souseda"):
-					lbl.nastav_stav_souseda(je_cil, je_soused)
+		_apply_selection_label_states(int(prov_id), data.get("neighbors", []))
 					
 	else:
 		# --- HOVER LOGIC ---
@@ -868,7 +998,7 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 				valid_multi_hover = root.je_platna_provincie_pro_hromadny_vyber(int(prov_id))
 
 			material.set_shader_parameter("is_target_hover", false)
-			Input.set_default_cursor_shape(Input.CURSOR_POINTING_HAND if valid_multi_hover else Input.CURSOR_ARROW)
+			_set_cursor_shape(Input.CURSOR_POINTING_HAND if valid_multi_hover else Input.CURSOR_ARROW)
 
 			if _posledni_hover_id == int(prov_id):
 				_show_mode_hover_tooltip(data, root)
@@ -888,9 +1018,9 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 				valid_peace_target = root.je_platna_provincie_pro_mir(int(prov_id))
 			if not valid_peace_target:
 				_vymaz_hover()
-				Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+				_set_cursor_shape(Input.CURSOR_ARROW)
 				return
-			Input.set_default_cursor_shape(Input.CURSOR_POINTING_HAND)
+			_set_cursor_shape(Input.CURSOR_POINTING_HAND)
 			material.set_shader_parameter("is_target_hover", true)
 		elif is_capital_targeting:
 			var valid_cap_target = false
@@ -898,9 +1028,9 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 				valid_cap_target = root.je_platny_cil_hlavniho_mesta(int(prov_id))
 			if not valid_cap_target:
 				_vymaz_hover()
-				Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+				_set_cursor_shape(Input.CURSOR_ARROW)
 				return
-			Input.set_default_cursor_shape(Input.CURSOR_POINTING_HAND)
+			_set_cursor_shape(Input.CURSOR_POINTING_HAND)
 			material.set_shader_parameter("is_target_hover", true)
 		elif is_bulk_targeting:
 			var bulk_valid = false
@@ -913,11 +1043,11 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 				if root.has_method("vycisti_nahled_presunu"):
 					root.vycisti_nahled_presunu()
 				_vymaz_hover()
-				Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+				_set_cursor_shape(Input.CURSOR_ARROW)
 				return
 			if bulk_hover_path.size() >= 2 and root.has_method("zobraz_nahled_presunu"):
 				root.zobraz_nahled_presunu(bulk_hover_path)
-			Input.set_default_cursor_shape(Input.CURSOR_POINTING_HAND)
+			_set_cursor_shape(Input.CURSOR_POINTING_HAND)
 			material.set_shader_parameter("is_target_hover", true)
 		elif is_targeting:
 			var from_id = root.vybrana_armada_od
@@ -931,17 +1061,17 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 				if root.has_method("vycisti_nahled_presunu"):
 					root.vycisti_nahled_presunu()
 				_vymaz_hover()
-				Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+				_set_cursor_shape(Input.CURSOR_ARROW)
 				return 
 			else:
 				if root.has_method("zobraz_nahled_presunu"):
 					root.zobraz_nahled_presunu(hover_path)
-				Input.set_default_cursor_shape(Input.CURSOR_POINTING_HAND)
+				_set_cursor_shape(Input.CURSOR_POINTING_HAND)
 				material.set_shader_parameter("is_target_hover", true)
 		else:
 			if root.has_method("vycisti_nahled_presunu"):
 				root.vycisti_nahled_presunu()
-			Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+			_set_cursor_shape(Input.CURSOR_ARROW)
 			material.set_shader_parameter("is_target_hover", false)
 			
 		if _posledni_hover_id == int(prov_id):
@@ -962,13 +1092,9 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 		material.set_shader_parameter("has_hover", true)
 		
 		# Make the currently hovered label pop up
-		var labels = get_parent().get_node_or_null("ProvinceLabels")
-		if labels:
-			for lbl in labels.get_children():
-				if int(lbl.get("province_id")) == int(prov_id):
-					if lbl.has_method("nastav_stav_souseda"):
-						lbl.nastav_stav_souseda(true, false) # Treat hover as 'target' to show it
-					break # Stop searching once found
+		var hovered_lbl = _get_label_for_province(int(prov_id))
+		if hovered_lbl and hovered_lbl.has_method("nastav_stav_souseda"):
+			hovered_lbl.nastav_stav_souseda(true, false) # Treat hover as 'target' to show it
 					
 		_posledni_hover_id = int(prov_id)
 		if is_peace_targeting:
@@ -985,10 +1111,10 @@ func _vymaz_hover():
 	material.set_shader_parameter("has_hover", false)
 	material.set_shader_parameter("is_target_hover", false)
 	_hide_mode_hover_tooltip()
-	var root = get_parent()
+	var root = _get_root()
 	if root and root.has_method("vycisti_nahled_presunu"):
 		root.vycisti_nahled_presunu()
-	Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+	_set_cursor_shape(Input.CURSOR_ARROW)
 	_vymaz_hover_labely()
 
 # Safely resets the previously hovered label to its correct persistent state
@@ -1001,23 +1127,17 @@ func _vymaz_hover_labely():
 			_posledni_hover_id = -1
 			return
 			
-		var je_soused = false
-		var root = get_parent()
-		if sel_id != -1 and "provinces" in root and root.provinces.has(sel_id):
-			je_soused = _posledni_hover_id in root.provinces[sel_id].get("neighbors", [])
-			
-		var labels = root.get_node_or_null("ProvinceLabels")
-		if labels:
-			for lbl in labels.get_children():
-				if int(lbl.get("province_id")) == _posledni_hover_id:
-					if lbl.has_method("nastav_stav_souseda"):
-						if je_soused:
-							# Restore neighbor state if it belongs to the active selection
-							lbl.nastav_stav_souseda(false, true)
-						else:
-							# Otherwise, completely hide/reset it
-							lbl.reset_stav()
-					break
+		var state = int(_selection_label_states.get(_posledni_hover_id, 0))
+		var lbl = _get_label_for_province(_posledni_hover_id)
+		if lbl and lbl.has_method("nastav_stav_souseda"):
+			if state == 2:
+				lbl.nastav_stav_souseda(true, false)
+			elif state == 1:
+				# Restore neighbor state if it belongs to the active selection.
+				lbl.nastav_stav_souseda(false, true)
+			elif lbl.has_method("reset_stav"):
+				# Otherwise, completely hide/reset it.
+				lbl.reset_stav()
 		_posledni_hover_id = -1
 
 func aktualizuj_mapovy_mod(mod: String, province_db: Dictionary):
@@ -1103,10 +1223,20 @@ func aktualizuj_mapovy_mod(mod: String, province_db: Dictionary):
 							barva = Color(0.50, 0.90, 0.40, 1.0)
 						_:
 							barva = Color(0.55, 0.55, 0.58, 1.0)
+				"alliances":
+					barva = _barva_aliance(owner_tag)
 				
 		data_image.set_pixel(prov_id, 0, barva)
 	data_texture.update(data_image)
 	occupation_texture.update(occupation_image)
+
+func _barva_aliance(owner_tag: String) -> Color:
+	var alliances = GameManager.ziskej_aliance_statu(owner_tag)
+	if alliances.size() == 0:
+		return Color(0.18, 0.18, 0.18, 1.0)
+	var skupina = alliances[0] as Dictionary
+	var barva_str = str(skupina.get("color", "#4488ff"))
+	return Color.html(barva_str)
 
 func dobyt_provincii(prov_id: int, novy_vlastnik: String, z_dev_nastroje: bool = false):
 	var root = get_parent()

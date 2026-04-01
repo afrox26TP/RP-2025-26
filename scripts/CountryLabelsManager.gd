@@ -4,8 +4,22 @@ extends Node2D
 @export var min_velikost_pro_text: float = 85.0 
 
 var aktivni_labely: Dictionary = {}
+var potato_mode_enabled: bool = false
+
+func nastav_potato_mode(enabled: bool) -> void:
+	potato_mode_enabled = enabled
+	visible = not enabled
+	if enabled:
+		for key in aktivni_labely.keys():
+			var lbl = aktivni_labely[key]
+			if lbl:
+				lbl.queue_free()
+		aktivni_labely.clear()
 
 func aktualizuj_labely_statu(all_provinces: Dictionary, prov_labels_node: Node2D):
+	if potato_mode_enabled:
+		return
+
 	var staty_data = {} 
 	
 	for child in prov_labels_node.get_children():

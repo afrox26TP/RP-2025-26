@@ -17,6 +17,7 @@ extends CanvasLayer
 @onready var mode_btn_relations = $Panel/HBoxContainer/MapModes/ModeRelations
 @onready var mode_btn_terrain = $Panel/HBoxContainer/MapModes/ModeTerrain
 @onready var mode_btn_resources = $Panel/HBoxContainer/MapModes/ModeResources
+@onready var mode_btn_alliances = $Panel/HBoxContainer/MapModes/ModeAlliances
 
 # Panel rows: 1) flag + next turn, 2) state name, 3) queue flags.
 @onready var player_flag = $PlayerTurnPanel/VBoxContainer/TurnRow/PlayerFlag
@@ -29,6 +30,7 @@ var _last_seen_player_tag: String = ""
 var _player_focus_tween: Tween
 var _turn_busy_indicator: Label
 var _is_turn_processing: bool = false
+var _turn_busy_suppressed: bool = false
 var _turn_busy_anim_time: float = 0.0
 var _turn_busy_anim_step: int = 0
 var _map_mode_white_icon_cache: Dictionary = {}
@@ -51,7 +53,8 @@ const MAP_MODE_TO_BUTTON_PATHS := {
 	"recruitable_population": "ModeRecruits",
 	"relationships": "ModeRelations",
 	"terrain": "ModeTerrain",
-	"resources": "ModeResources"
+	"resources": "ModeResources",
+	"alliances": "ModeAlliances"
 }
 const MAP_MODE_DISPLAY_NAMES := {
 	"political": "Political Mode",
@@ -61,7 +64,8 @@ const MAP_MODE_DISPLAY_NAMES := {
 	"recruitable_population": "Recruitable Population Mode",
 	"relationships": "Diplomatic Relations Mode",
 	"terrain": "Terrain Mode",
-	"resources": "Resources Mode"
+	"resources": "Resources Mode",
+	"alliances": "Alliances Mode"
 }
 const MAP_MODE_HOTKEYS := {
 	"political": "1",
@@ -71,7 +75,8 @@ const MAP_MODE_HOTKEYS := {
 	"recruitable_population": "5",
 	"relationships": "6",
 	"terrain": "7",
-	"resources": "8"
+	"resources": "8",
+	"alliances": "9"
 }
 const MAP_MODE_ICON_PATHS := {
 	"political": "res://map_data/map.svg",
@@ -81,7 +86,8 @@ const MAP_MODE_ICON_PATHS := {
 	"recruitable_population": "res://map_data/user-round-plus.svg",
 	"relationships": "res://map_data/annoyed.svg",
 	"terrain": "res://map_data/mountain.svg",
-	"resources": "res://map_data/pickaxe.svg"
+	"resources": "res://map_data/pickaxe.svg",
+	"alliances": "res://map_data/port_icon.svg"
 }
 
 func _cached_texture(path: String):
@@ -170,6 +176,10 @@ func _ready():
 		next_btn.pressed.connect(_on_next_turn_pressed)
 	if zpravy_btn and not zpravy_btn.pressed.is_connected(_on_zpravy_pressed):
 		zpravy_btn.pressed.connect(_on_zpravy_pressed)
+	if zpravy_btn:
+		# Prevent accidental Space/Enter activation while ending turns.
+		zpravy_btn.focus_mode = Control.FOCUS_NONE
+		zpravy_btn.toggle_mode = false
 	_zapoj_tlacitka_mapovych_modu()
 	_napoj_signal_mapoveho_modu()
 	_vytvor_financni_tooltip_panel()
@@ -217,7 +227,7 @@ func _ziskej_text_data_pro_kolo(kolo: int) -> String:
 	var offset_mesicu = maxi(0, kolo - 1)
 	var month_index = (_calendar_start_month - 1) + offset_mesicu
 	var month = int(month_index % 12) + 1
-	var year = _calendar_start_year + int(month_index / 12)
+	var year = _calendar_start_year + int(floor(float(month_index) / 12.0))
 	return "Date: %02d.%02d.%04d" % [_calendar_start_day, month, year]
 
 func _ziskej_jmeno_statu_pro_frontu(tag: String) -> String:
@@ -248,11 +258,11 @@ func _sestav_text_fronty_tahu() -> String:
 	for i in range(hraci.size()):
 		var idx = (aktivni_idx + i) % hraci.size()
 		var tag = str(hraci[idx]).strip_edges().to_upper()
-		var name = _ziskej_jmeno_statu_pro_frontu(tag)
+		var state_name = _ziskej_jmeno_statu_pro_frontu(tag)
 		if i == 0:
-			casti.append("[NOW] %s" % name)
+			casti.append("[NOW] %s" % state_name)
 		else:
-			casti.append(name)
+			casti.append(state_name)
 	return "Queue: %s" % " -> ".join(casti)
 
 func _ziskej_texturu_vlajky_fronty(tag: String):
@@ -583,6 +593,8 @@ func _zapoj_tlacitka_mapovych_modu() -> void:
 		mode_btn_terrain.pressed.connect(_on_mode_terrain_pressed)
 	if mode_btn_resources and not mode_btn_resources.pressed.is_connected(_on_mode_resources_pressed):
 		mode_btn_resources.pressed.connect(_on_mode_resources_pressed)
+	if mode_btn_alliances and not mode_btn_alliances.pressed.is_connected(_on_mode_alliances_pressed):
+		mode_btn_alliances.pressed.connect(_on_mode_alliances_pressed)
 
 	_aktualizuj_stav_tlacitek_modu()
 
@@ -609,6 +621,9 @@ func _on_mode_terrain_pressed() -> void:
 
 func _on_mode_resources_pressed() -> void:
 	_prepni_mapovy_mod("resources")
+
+func _on_mode_alliances_pressed() -> void:
+	_prepni_mapovy_mod("alliances")
 
 func aktualizuj_ui():
 	# Update money and date counters
@@ -659,17 +674,22 @@ func _on_zpracovani_tahu_zmeneno(aktivni: bool) -> void:
 	if next_btn:
 		next_btn.disabled = aktivni
 	if _turn_busy_indicator:
-		_turn_busy_indicator.visible = aktivni
+		_turn_busy_indicator.visible = aktivni and not _turn_busy_suppressed
 		_turn_busy_anim_step = 0
 		_turn_busy_indicator.text = TURN_BUSY_FRAMES[0]
 	_turn_busy_anim_time = 0.0
 	set_process(aktivni)
 
+func nastav_pozastaveni_turn_busy_indicator(pozastavit: bool) -> void:
+	_turn_busy_suppressed = pozastavit
+	if _turn_busy_indicator:
+		_turn_busy_indicator.visible = _is_turn_processing and not _turn_busy_suppressed
+
 func _process(delta: float) -> void:
 	if _finance_tooltip_visible:
 		_aktualizuj_financni_tooltip_pozici()
 
-	if not _is_turn_processing or _turn_busy_indicator == null:
+	if not _is_turn_processing or _turn_busy_indicator == null or _turn_busy_suppressed:
 		return
 	_turn_busy_anim_time += delta
 	if _turn_busy_anim_time < 0.16:

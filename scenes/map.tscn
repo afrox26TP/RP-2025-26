@@ -525,6 +525,11 @@ custom_minimum_size = Vector2(58, 24)
 layout_mode = 2
 theme_override_font_sizes/font_size = 11
 
+[node name="ModeAlliances" type="Button" parent="TopBar/Panel/HBoxContainer/MapModes" unique_id=1130861513]
+custom_minimum_size = Vector2(58, 24)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+
 [node name="MoneyLabel" type="Label" parent="TopBar/Panel/HBoxContainer" unique_id=649901103]
 custom_minimum_size = Vector2(425, 0)
 layout_mode = 2
