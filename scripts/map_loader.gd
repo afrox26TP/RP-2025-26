@@ -44,6 +44,9 @@ const AI_MARKER_ATTACK_SPEED := 170.0
 const AI_MARKER_MOVE_SPEED := 130.0
 const FAST_TURN_RESOLUTION := true
 const FAST_BATTLE_SUMMARY_MAX_LINES := 8
+const FAST_TURN_SHOW_BATTLE_SUMMARY := false
+const TURN_ARMY_SLICE_ENABLED := false
+const TURN_ARMY_SLICE_BATCH := 90
 var _bitevni_kamera_aktivni: bool = false
 var _bitevni_puvodni_pozice: Vector2 = Vector2.ZERO
 var aktualni_mapovy_mod: String = "political"
@@ -61,8 +64,10 @@ var _hromadny_vyber_overlay_key: String = ""
 var _loading_layer: CanvasLayer = null
 var _loading_label: Label = null
 var _loading_bar: ProgressBar = null
+var _potato_mode_enabled: bool = false
 const PORT_ICON_PATH := "res://map_data/port_icon.svg"
 const PORT_ICON_FALLBACK_PATH := "res://map_data/ArmyIcons/ArmyIconTemplate.svg"
+const SETTINGS_FILE_PATH := "user://settings.cfg"
 const PROVINCES_DATA_PATHS := [
 	"res://map_data/province.txt",
 	"res://map_data/Province.txt",
@@ -121,6 +126,44 @@ func _read_text(parts: Array, idx: int, default_val: String = "") -> String:
 	if idx < 0 or idx >= parts.size():
 		return default_val
 	return str(parts[idx]).strip_edges()
+
+func _army_turn_slice_wait(counter: int, chunk: int = TURN_ARMY_SLICE_BATCH) -> int:
+	if not TURN_ARMY_SLICE_ENABLED:
+		return counter
+	var next_counter = counter + 1
+	if next_counter >= max(1, chunk):
+		await get_tree().process_frame
+		return 0
+	return next_counter
+
+func _je_potato_mode_ze_settings() -> bool:
+	var cfg = ConfigFile.new()
+	if cfg.load(SETTINGS_FILE_PATH) != OK:
+		return false
+
+	var display_mode = bool(cfg.get_value("display", "potato_mode", false))
+	var other_mode = bool(cfg.get_value("other", "potato_mode", display_mode))
+	return display_mode or other_mode
+
+func nastav_potato_mode(enabled: bool) -> void:
+	_potato_mode_enabled = enabled
+	Engine.max_fps = 45 if enabled else 0
+	OS.low_processor_usage_mode = enabled
+	OS.low_processor_usage_mode_sleep_usec = 12000 if enabled else 6900
+
+	var sprite = $Sprite2D
+	if sprite and sprite.has_method("nastav_potato_mode"):
+		sprite.nastav_potato_mode(enabled)
+
+	var labels = get_node_or_null("ProvinceLabels")
+	if labels:
+		labels.visible = not enabled
+
+	var labels_manager = get_node_or_null("CountryLabelsManager")
+	if labels_manager and labels_manager.has_method("nastav_potato_mode"):
+		labels_manager.nastav_potato_mode(enabled)
+	elif labels_manager:
+		labels_manager.visible = not enabled
 
 func _vytvor_loading_overlay() -> void:
 	if _loading_layer != null:
@@ -842,6 +885,8 @@ func _ready():
 	else:
 		print("Chyba: Kamera nenalezena!")
 
+	nastav_potato_mode(_je_potato_mode_ze_settings())
+
 	var sprite = $Sprite2D
 	if sprite and sprite.has_method("aktualizuj_mapovy_mod"):
 		sprite.aktualizuj_mapovy_mod("political", provinces)
@@ -857,7 +902,7 @@ func _ready():
 	print("[MapInit] 4/6 country labels")
 	var labels_manager = get_node_or_null("CountryLabelsManager")
 	var prov_labels = get_node_or_null("ProvinceLabels")
-	if labels_manager and prov_labels:
+	if not _potato_mode_enabled and labels_manager and prov_labels:
 		labels_manager.aktualizuj_labely_statu(provinces, prov_labels)
 	await get_tree().process_frame
 	
@@ -1445,6 +1490,18 @@ func zaregistruj_hromadny_presun_armad(to_id: int) -> int:
 	return planned
 
 func _na_zmenu_zoomu(aktualni_zoom):
+	if _potato_mode_enabled:
+		var low_labels = get_node_or_null("ProvinceLabels")
+		if low_labels:
+			low_labels.visible = false
+		var low_labels_manager = get_node_or_null("CountryLabelsManager")
+		if low_labels_manager:
+			low_labels_manager.visible = false
+		_aktualizuj_zoom_armad(aktualni_zoom)
+		_aktualizuj_zoom_pristavu(aktualni_zoom)
+		_aktualizuj_indikatory_kapitulace()
+		return
+
 	var labels = get_node_or_null("ProvinceLabels")
 	if labels:
 		var odzoomovano = aktualni_zoom <= 0.8
@@ -2847,6 +2904,7 @@ func zpracuj_tah_armad():
 	var tahy_k_zpracovani: Array = []
 	var pokracujici_presuny: Array = []
 	var profil_statu_cache: Dictionary = {}
+	var army_slice_counter := 0
 
 	for raw_move in puvodni_tahy:
 		var move_any = raw_move as Dictionary
@@ -2876,6 +2934,7 @@ func zpracuj_tah_armad():
 			"owner": str(move_any.get("owner", "")).strip_edges().to_upper()
 		}
 		tahy_k_zpracovani.append(move)
+		army_slice_counter = await _army_turn_slice_wait(army_slice_counter)
 
 	# Auto-continued path orders are deducted only when their next turn resolves.
 	for i in range(tahy_k_zpracovani.size()):
@@ -2907,9 +2966,11 @@ func zpracuj_tah_armad():
 
 		move["amount"] = moved_amount
 		tahy_k_zpracovani[i] = move
+		army_slice_counter = await _army_turn_slice_wait(army_slice_counter)
 	
 	var celkovy_report = "" 
 	var bitevni_udalosti: Array = []
+	var ownership_changed := false
 	var protivne_smery: Dictionary = {}
 	for idx in range(tahy_k_zpracovani.size()):
 		var base_move = tahy_k_zpracovani[idx]
@@ -2919,6 +2980,7 @@ func zpracuj_tah_armad():
 		if not protivne_smery.has(pair_key):
 			protivne_smery[pair_key] = []
 		(protivne_smery[pair_key] as Array).append(idx)
+		army_slice_counter = await _army_turn_slice_wait(army_slice_counter)
 
 	# --- NEW: FIELD BATTLES (CROSS-MOVEMENT RESOLUTION) ---
 	# Pokud dvě armády táhnou proti sobě, setkají se na půli cesty
@@ -2979,8 +3041,10 @@ func zpracuj_tah_armad():
 			tahy_k_zpracovani[j] = utok2
 			if int(utok1.get("amount", 0)) <= 0:
 				break
+			army_slice_counter = await _army_turn_slice_wait(army_slice_counter)
 
 		tahy_k_zpracovani[i] = utok1
+		army_slice_counter = await _army_turn_slice_wait(army_slice_counter)
 	# ----------------------------------------------------
 	
 	# Only process surviving attacks against provinces
@@ -3099,6 +3163,7 @@ func zpracuj_tah_armad():
 			
 			# Update properties for the conquered province
 			provinces[to_id]["owner"] = attacker_tag
+			ownership_changed = true
 			# core_owner remains unchanged so occupied territory can be distinguished from core territory.
 			var profil_utocnika = profil_statu_cache.get(attacker_tag, null)
 			if profil_utocnika == null:
@@ -3161,14 +3226,18 @@ func zpracuj_tah_armad():
 				"amount": moved_survivors,
 				"owner": attacker_tag
 			})
+		army_slice_counter = await _army_turn_slice_wait(army_slice_counter)
 					
-	celkovy_report = _zpracuj_automaticke_kapitulace(celkovy_report)
-	celkovy_report = _zpracuj_odlozene_kapitulace(celkovy_report)
+	if ownership_changed:
+		celkovy_report = _zpracuj_automaticke_kapitulace(celkovy_report)
+	if "cekajici_kapitulace" in GameManager and (GameManager.cekajici_kapitulace as Array).size() > 0:
+		celkovy_report = _zpracuj_odlozene_kapitulace(celkovy_report)
 	aktualizuj_ikony_armad()
 
 	if not bitevni_udalosti.is_empty():
-		if _ma_rychle_zpracovani_tahu():
-			await _ukaz_souhrn_bitevnich_udalosti(bitevni_udalosti)
+		if _ma_rychle_zpracovani_tahu() and _potato_mode_enabled:
+			if FAST_TURN_SHOW_BATTLE_SUMMARY:
+				await _ukaz_souhrn_bitevnich_udalosti(bitevni_udalosti)
 		else:
 			_zacni_bitevni_kameru()
 			for udalost in bitevni_udalosti:
@@ -3180,11 +3249,16 @@ func zpracuj_tah_armad():
 			await _obnov_bitevni_kameru()
 	
 	if celkovy_report != "":
-		await _ukaz_bitevni_popup("Frontline report", celkovy_report)
+		if _ma_rychle_zpracovani_tahu() and _potato_mode_enabled:
+			if GameManager.has_method("_zaloguj_globalni_zpravu"):
+				GameManager._zaloguj_globalni_zpravu("War", celkovy_report.strip_edges(), "war")
+		else:
+			await _ukaz_bitevni_popup("Frontline report", celkovy_report)
 
 	if not pokracujici_presuny.is_empty():
 		for p_move in pokracujici_presuny:
 			cekajici_presuny.append(p_move)
+			army_slice_counter = await _army_turn_slice_wait(army_slice_counter)
 		
 	get_tree().call_group("duchove_armad", "queue_free")
 	_vykresli_indikaci_cekajicich_presunu()
@@ -3436,29 +3510,27 @@ func _kapituluj_stat_rozdelenim(cilovy_stat: String, fallback_vitez: String = ""
 	}
 
 func _zpracuj_automaticke_kapitulace(celkovy_report: String) -> String:
-	var kandidati: Dictionary = {}
+	var state_flags: Dictionary = {}
 	for p_id in provinces.keys():
-		var core_owner = str(provinces[p_id].get("core_owner", "")).strip_edges().to_upper()
+		var p = provinces[p_id]
+		var core_owner = str(p.get("core_owner", "")).strip_edges().to_upper()
 		if core_owner == "" or core_owner == "SEA":
 			continue
-		kandidati[core_owner] = true
+		if not state_flags.has(core_owner):
+			state_flags[core_owner] = {"has_self": false, "has_occupied": false}
+		var owner_tag = str(p.get("owner", "")).strip_edges().to_upper()
+		var flags = state_flags[core_owner] as Dictionary
+		if owner_tag == core_owner:
+			flags["has_self"] = true
+		else:
+			flags["has_occupied"] = true
+		state_flags[core_owner] = flags
 
-	for target_owner in kandidati.keys():
+	for target_owner in state_flags.keys():
 		if GameManager.has_method("ma_cekajici_mirovou_konferenci_pro_stat") and GameManager.ma_cekajici_mirovou_konferenci_pro_stat(target_owner):
 			continue
-		var ma_vlastni_uzemi = false
-		var ma_okupovane_core = false
-		for p_id in provinces.keys():
-			var p = provinces[p_id]
-			if str(p.get("core_owner", "")).strip_edges().to_upper() != target_owner:
-				continue
-			var p_owner = str(p.get("owner", "")).strip_edges().to_upper()
-			if p_owner == target_owner:
-				ma_vlastni_uzemi = true
-			else:
-				ma_okupovane_core = true
-
-		if ma_vlastni_uzemi or not ma_okupovane_core:
+		var flags = state_flags[target_owner] as Dictionary
+		if bool(flags.get("has_self", false)) or not bool(flags.get("has_occupied", false)):
 			continue
 
 		var vysledek = _kapituluj_stat_rozdelenim(target_owner, "")

@@ -62,11 +62,15 @@ const TooltipUtilsScript = preload("res://scripts/TooltipUtils.gd")
 @onready var language_hint: Label = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/LanguageHint
 @onready var fullscreen_check: CheckBox = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/FullscreenCheck
 @onready var vsync_check: CheckBox = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/VsyncCheck
+var potato_mode_check: CheckBox = null
 @onready var master_volume_label: Label = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/MasterVolumeLabel
 @onready var master_volume_slider: HSlider = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/MasterVolumeRow/MasterVolumeSlider
 @onready var master_volume_value: Label = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/MasterVolumeRow/MasterVolumeValue
 @onready var btn_settings_reset: Button = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsButtons/ResetButton
 @onready var btn_settings_apply: Button = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsButtons/ApplyButton
+
+var _btn_apply_cache: Button = null
+var _btn_reset_cache: Button = null
 
 # List of playable countries (Display Name : Tag)
 var hratelne_staty = {
@@ -160,6 +164,7 @@ const UI_TEXTS := {
 		"other_info": "Other",
 		"fullscreen": "Fullscreen",
 		"vsync": "VSync",
+		"potato_mode": "Potato mode (low-end PC)",
 		"master_volume": "Master volume",
 		"reset": "Reset defaults",
 		"apply": "Apply",
@@ -195,6 +200,7 @@ const UI_TEXTS := {
 		"other_info": "Ostatni",
 		"fullscreen": "Cela obrazovka",
 		"vsync": "VSync",
+		"potato_mode": "Potato mode (slabe PC)",
 		"master_volume": "Hlavni hlasitost",
 		"reset": "Obnovit vychozi",
 		"apply": "Pouzit",
@@ -326,6 +332,7 @@ func _ready():
 	_nastav_stav_pokracovani()
 	_aktualizuj_browser_napovedu()
 	country_browser_panel.hide()
+	_ensure_potato_mode_checkbox()
 
 	# Connect UI signals
 	btn_new_game.pressed.connect(_on_new_game_pressed)
@@ -338,8 +345,10 @@ func _ready():
 	btn_close_corner.pressed.connect(_on_close_browser_corner_pressed)
 	controls_btn.pressed.connect(_on_controls_tab_clicked)
 	settings_btn.pressed.connect(_on_settings_tab_clicked)
-	btn_settings_apply.pressed.connect(_on_apply_settings_pressed)
-	btn_settings_reset.pressed.connect(_on_reset_settings_pressed)
+	
+	# Connect settings button signals with safe handling
+	_ensure_settings_buttons_connected()
+	
 	language_option.item_selected.connect(_on_language_option_selected)
 	camera_speed_slider.value_changed.connect(_on_settings_value_changed)
 	zoom_speed_slider.value_changed.connect(_on_settings_value_changed)
@@ -347,6 +356,8 @@ func _ready():
 	invert_zoom_check.toggled.connect(_on_settings_toggle_changed)
 	fullscreen_check.toggled.connect(_on_settings_toggle_changed)
 	vsync_check.toggled.connect(_on_settings_toggle_changed)
+	if potato_mode_check:
+		potato_mode_check.toggled.connect(_on_settings_toggle_changed)
 	exit_dialog.confirmed.connect(_on_exit_confirmed)
 
 	_napln_language_option()
@@ -380,9 +391,89 @@ func _nastav_tooltipy_ui() -> void:
 	detail_flag.tooltip_text = "Flag of the selected country."
 	detail_name.tooltip_text = "Name of the selected country."
 	detail_info.tooltip_text = "Short summary of country strengths and risks."
+	if potato_mode_check:
+		potato_mode_check.tooltip_text = "Turns on low-detail rendering and power-saving updates for weak PCs."
 	TooltipUtilsScript.apply_default_tooltips(self)
 
+func _ensure_potato_mode_checkbox() -> void:
+	if potato_mode_check != null or settings_content == null:
+		return
+
+	potato_mode_check = CheckBox.new()
+	potato_mode_check.name = "PotatoModeCheck"
+	potato_mode_check.text = "Potato mode (low-end PC)"
+
+	var insert_index := settings_content.get_child_count()
+	if master_volume_label and master_volume_label.get_parent() == settings_content:
+		insert_index = master_volume_label.get_index()
+
+	settings_content.add_child(potato_mode_check)
+	settings_content.move_child(potato_mode_check, insert_index)
+
 func _nastav_texty_dialogu():
+	settings_dialog.title = SETTINGS_DIALOG_TITLE
+	settings_dialog.ok_button_text = "Close"
+	credits_dialog.title = CREDITS_DIALOG_TITLE
+	credits_dialog.dialog_text = CREDITS_DIALOG_TEXT
+	credits_dialog.ok_button_text = "Close"
+	exit_dialog.title = EXIT_DIALOG_TITLE
+	exit_dialog.dialog_text = EXIT_DIALOG_TEXT
+	exit_dialog.ok_button_text = "Yes"
+	exit_dialog.cancel_button_text = "No"
+	var _exit_lbl = exit_dialog.get_label()
+	if _exit_lbl:
+		_exit_lbl.add_theme_font_size_override("font_size", 20)
+		_exit_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_exit_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_exit_lbl.size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+func _get_settings_button_apply() -> Button:
+	if _btn_apply_cache and is_instance_valid(_btn_apply_cache):
+		return _btn_apply_cache
+	
+	# Try @onready reference first
+	if btn_settings_apply and is_instance_valid(btn_settings_apply):
+		_btn_apply_cache = btn_settings_apply
+		return _btn_apply_cache
+	
+	# Fallback: find it using find_child
+	var apply_btn = settings_dialog.find_child("ApplyButton", true, false) as Button
+	if apply_btn:
+		_btn_apply_cache = apply_btn
+		return apply_btn
+	
+	return null
+
+func _get_settings_button_reset() -> Button:
+	if _btn_reset_cache and is_instance_valid(_btn_reset_cache):
+		return _btn_reset_cache
+	
+	# Try @onready reference first
+	if btn_settings_reset and is_instance_valid(btn_settings_reset):
+		_btn_reset_cache = btn_settings_reset
+		return _btn_reset_cache
+	
+	# Fallback: find it using find_child
+	var reset_btn = settings_dialog.find_child("ResetButton", true, false) as Button
+	if reset_btn:
+		_btn_reset_cache = reset_btn
+		return reset_btn
+	
+	return null
+
+func _ensure_settings_buttons_connected() -> void:
+	var apply_btn = _get_settings_button_apply()
+	var reset_btn = _get_settings_button_reset()
+	
+	print("Ensure buttons connected - apply: ", apply_btn != null, " reset: ", reset_btn != null)
+	
+	if apply_btn and not apply_btn.pressed.is_connected(_on_apply_settings_pressed):
+		apply_btn.pressed.connect(_on_apply_settings_pressed)
+		print("Connected apply button")
+	
+	if reset_btn and not reset_btn.pressed.is_connected(_on_reset_settings_pressed):
+		reset_btn.pressed.connect(_on_reset_settings_pressed)
+		print("Connected reset button")
 	settings_dialog.title = SETTINGS_DIALOG_TITLE
 	settings_dialog.ok_button_text = "Close"
 	credits_dialog.title = CREDITS_DIALOG_TITLE
@@ -432,6 +523,7 @@ func _vytvor_vychozi_nastaveni() -> Dictionary:
 		"other": {
 			"fullscreen": false,
 			"vsync": true,
+			"potato_mode": false,
 			"master_volume": 0.85
 		}
 	}
@@ -451,6 +543,7 @@ func _nacti_nastaveni() -> void:
 
 	nastaveni_data["other"]["fullscreen"] = bool(cfg.get_value("other", "fullscreen", nastaveni_data["other"]["fullscreen"]))
 	nastaveni_data["other"]["vsync"] = bool(cfg.get_value("other", "vsync", nastaveni_data["other"]["vsync"]))
+	nastaveni_data["other"]["potato_mode"] = bool(cfg.get_value("other", "potato_mode", nastaveni_data["other"]["potato_mode"]))
 	nastaveni_data["other"]["master_volume"] = float(cfg.get_value("other", "master_volume", nastaveni_data["other"]["master_volume"]))
 
 func _uloz_nastaveni() -> void:
@@ -463,6 +556,7 @@ func _uloz_nastaveni() -> void:
 
 	cfg.set_value("other", "fullscreen", bool(nastaveni_data["other"]["fullscreen"]))
 	cfg.set_value("other", "vsync", bool(nastaveni_data["other"]["vsync"]))
+	cfg.set_value("other", "potato_mode", bool(nastaveni_data["other"]["potato_mode"]))
 	cfg.set_value("other", "master_volume", float(nastaveni_data["other"]["master_volume"]))
 
 	var save_err = cfg.save(SETTINGS_FILE_PATH)
@@ -511,6 +605,8 @@ func _nastav_settings_ui_z_dat() -> void:
 
 	fullscreen_check.button_pressed = bool(nastaveni_data["other"]["fullscreen"])
 	vsync_check.button_pressed = bool(nastaveni_data["other"]["vsync"])
+	if potato_mode_check:
+		potato_mode_check.button_pressed = bool(nastaveni_data["other"].get("potato_mode", false))
 	master_volume_slider.value = clamp(float(nastaveni_data["other"]["master_volume"]), 0.0, 1.0)
 
 func _uloz_settings_ui_do_dat() -> void:
@@ -520,6 +616,7 @@ func _uloz_settings_ui_do_dat() -> void:
 	nastaveni_data["language"]["code"] = _jazyk_z_option()
 	nastaveni_data["other"]["fullscreen"] = fullscreen_check.button_pressed
 	nastaveni_data["other"]["vsync"] = vsync_check.button_pressed
+	nastaveni_data["other"]["potato_mode"] = potato_mode_check.button_pressed if potato_mode_check else false
 	nastaveni_data["other"]["master_volume"] = clamp(master_volume_slider.value, 0.0, 1.0)
 
 func _aktualizuj_settings_hodnoty(_v: float = 0.0) -> void:
@@ -533,12 +630,18 @@ func _aplikuj_nastaveni_globalne() -> void:
 
 	var vsync_mode = DisplayServer.VSYNC_ENABLED if bool(nastaveni_data["other"]["vsync"]) else DisplayServer.VSYNC_DISABLED
 	DisplayServer.window_set_vsync_mode(vsync_mode)
+	_aplikuj_potato_mode_globalne(bool(nastaveni_data["other"].get("potato_mode", false)))
 
 	var master_bus = AudioServer.get_bus_index("Master")
 	if master_bus != -1:
 		var linear_volume = clamp(float(nastaveni_data["other"]["master_volume"]), 0.0, 1.0)
 		var db_volume = -80.0 if linear_volume <= 0.0001 else linear_to_db(linear_volume)
 		AudioServer.set_bus_volume_db(master_bus, db_volume)
+
+func _aplikuj_potato_mode_globalne(enabled: bool) -> void:
+	Engine.max_fps = 45 if enabled else 0
+	OS.low_processor_usage_mode = enabled
+	OS.low_processor_usage_mode_sleep_usec = 12000 if enabled else 6900
 
 func _aktualizuj_texty_dle_jazyka() -> void:
 	var t = _texty_ui()
@@ -565,6 +668,8 @@ func _aktualizuj_texty_dle_jazyka() -> void:
 	language_hint.text = str(t["language_hint"])
 	fullscreen_check.text = str(t["fullscreen"])
 	vsync_check.text = str(t["vsync"])
+	if potato_mode_check:
+		potato_mode_check.text = str(t["potato_mode"])
 	master_volume_label.text = str(t["master_volume"])
 	btn_settings_reset.text = str(t["reset"])
 	btn_settings_apply.text = str(t["apply"])
@@ -587,11 +692,12 @@ func _read_settings_from_ui() -> Dictionary:
 		"language": _jazyk_z_option(),
 		"fullscreen": fullscreen_check.button_pressed,
 		"vsync": vsync_check.button_pressed,
+		"potato_mode": potato_mode_check.button_pressed if potato_mode_check else false,
 		"master_volume": snapped(master_volume_slider.value, 0.01)
 	}
 
 func _settings_state_equals(a: Dictionary, b: Dictionary) -> bool:
-	for key in ["camera_speed", "zoom_speed", "invert_zoom", "language", "fullscreen", "vsync", "master_volume"]:
+	for key in ["camera_speed", "zoom_speed", "invert_zoom", "language", "fullscreen", "vsync", "potato_mode", "master_volume"]:
 		if not a.has(key) or not b.has(key):
 			return false
 		if a[key] != b[key]:
@@ -599,11 +705,38 @@ func _settings_state_equals(a: Dictionary, b: Dictionary) -> bool:
 	return true
 
 func _refresh_apply_button_state() -> void:
-	var current = _read_settings_from_ui()
-	var dirty = not _settings_state_equals(current, _settings_original_ui_state)
-	btn_settings_apply.disabled = not dirty
-	btn_settings_apply.modulate = Color(1, 1, 1, 1) if dirty else Color(0.78, 0.82, 0.9, 1)
+	var apply_btn = _get_settings_button_apply()
+	var reset_btn = _get_settings_button_reset()
+	
+	if not apply_btn or not reset_btn:
+		print("ERROR: Settings buttons not found!")
+		return
+	
+	# Force visibility and size on button container
+	var btn_container = apply_btn.get_parent()
+	if btn_container:
+		btn_container.visible = true
+		if btn_container is HBoxContainer or btn_container is Control:
+			btn_container.size_flags_vertical = Control.SIZE_SHRINK_END
+	
+	# Force visibility on all parent nodes up to dialog
+	var current = apply_btn
+	while current and current != settings_dialog:
+		current.visible = true
+		current = current.get_parent()
+	
+	current = reset_btn
+	while current and current != settings_dialog:
+		current.visible = true
+		current = current.get_parent()
+	
+	var current_state = _read_settings_from_ui()
+	var dirty = not _settings_state_equals(current_state, _settings_original_ui_state)
+	apply_btn.disabled = not dirty
+	apply_btn.modulate = Color(1, 1, 1, 1) if dirty else Color(0.78, 0.82, 0.9, 1)
 	_aktualizuj_settings_header_stav(dirty)
+	
+	print("Settings buttons refreshed - apply visible: ", apply_btn.visible, " reset visible: ", reset_btn.visible)
 
 func _nastav_vychozi_vyber_statu():
 	if country_stats.has(selected_country_tag):
@@ -1429,10 +1562,51 @@ func _on_settings_pressed():
 	_nastav_settings_ui_z_dat()
 	_aktualizuj_settings_hodnoty()
 	_settings_original_ui_state = _read_settings_from_ui()
-	_refresh_apply_button_state()
 	_show_settings_tab(0)  # Show Controls tab
 	_styluj_mainmenu_popup_dialogy()
+	
+	# FIX: Reduce ControlsPanel's expand flag so buttons stay visible
+	var controls_panel = settings_dialog.find_child("ControlsPanel", true, false)
+	if controls_panel:
+		controls_panel.size_flags_vertical = Control.SIZE_FILL  # Changed from EXPAND+FILL  to just FILL
+		print("ControlsPanel size_flags set")
+	
+	var settings_panel = settings_dialog.find_child("SettingsPanel", true, false)
+	if settings_panel:
+		settings_panel.size_flags_vertical = Control.SIZE_FILL
+		print("SettingsPanel size_flags set")
+	
+	# Ensure button signals are connected
+	_ensure_settings_buttons_connected()
+	
+	# Ensure buttons are ready before showing dialog
+	var apply_btn = _get_settings_button_apply()
+	var reset_btn = _get_settings_button_reset()
+	
+	if apply_btn:
+		apply_btn.visible = true
+		apply_btn.disabled = false
+		# Ensure parent container is visible
+		if apply_btn.get_parent():
+			apply_btn.get_parent().visible = true
+	
+	if reset_btn:
+		reset_btn.visible = true
+		reset_btn.disabled = false
+		# Ensure parent container is visible
+		if reset_btn.get_parent():
+			reset_btn.get_parent().visible = true
+	
 	settings_dialog.popup_centered(settings_dialog.min_size)
+	
+	# Verify buttons are visible after popup
+	if apply_btn:
+		print("Apply button visible: ", apply_btn.visible, " size: ", apply_btn.size)
+	if reset_btn:
+		print("Reset button visible: ", reset_btn.visible, " size: ", reset_btn.size)
+	
+	# Refresh button state after dialog is shown
+	call_deferred("_refresh_apply_button_state")
 
 func _show_settings_tab(tab_index: int) -> void:
 	if tab_index == 0:

@@ -156,6 +156,10 @@ const AI_PROFILE_WARN_MS := 500
 const AI_MOVEMENT_PROFILE_ENABLED := false
 const TURN_STUCK_WATCHDOG_MS := 15000
 const TURN_LOG_ENABLED := false
+const TURN_FRAME_SLICE_ENABLED := false
+const TURN_FRAME_SLICE_PROVINCES := 140
+const TURN_FRAME_SLICE_AI := 90
+const TURN_FRAME_SLICE_AI_STATES := 1
 const ARM_LAB_GRID_W := 3
 const ARM_LAB_GRID_H := 3
 const ARM_LAB_GRID_MAX_W := 6
@@ -286,8 +290,12 @@ var _ai_border_cache: Dictionary = {}
 var _ai_cache_batch_depth: int = 0
 var _ai_war_pair_eval_dirty_states: Dictionary = {}
 var _suppress_relation_global_logs: bool = false
+var _map_loader_cache: Node = null
+var _map_loader_cache_scene: Node = null
+var _potato_mode_enabled: bool = false
 
 const AI_MIN_PROVINCE_SOLDIERS_FOR_PLANNING := 1000
+const AI_MAX_ARMY_ORDERS_PER_STATE := 25
 
 const RELATIONSHIPS_CSV_PATH := "res://map_data/Relationships.csv"
 
@@ -1087,13 +1095,24 @@ func nacti_hru() -> bool:
 
 # Safely get the map node
 func _get_map_loader():
-	var map_loader = get_tree().current_scene
+	var current_scene = get_tree().current_scene
+	if _map_loader_cache_scene == current_scene and _map_loader_cache != null and is_instance_valid(_map_loader_cache) and _map_loader_cache.has_method("zpracuj_tah_armad"):
+		return _map_loader_cache
+
+	var map_loader = current_scene
 	if map_loader and map_loader.has_method("zpracuj_tah_armad"):
+		_map_loader_cache = map_loader
+		_map_loader_cache_scene = current_scene
 		return map_loader
 	if map_loader:
 		var child_map = map_loader.find_child("Map", true, false)
 		if child_map and child_map.has_method("zpracuj_tah_armad"):
+			_map_loader_cache = child_map
+			_map_loader_cache_scene = current_scene
 			return child_map
+
+	_map_loader_cache = null
+	_map_loader_cache_scene = current_scene
 	return null
 
 func _normalizuj_tag(tag: String) -> String:
@@ -5453,13 +5472,18 @@ func _zpracuj_ai_diplomacii(ai_staty: Array) -> Array:
 		var t = _normalizuj_tag(str(s))
 		if t != "":
 			aktivni_staty_norm.append(t)
+
+	var state_power: Dictionary = {}
+	for state_tag in aktivni_staty_norm:
+		state_power[state_tag] = float(max(1, _spocitej_silu_statu(state_tag)))
+
 	var zmeny_vztahu_k_hraci: Array = []
 	for ai_tag in ai_staty:
 		var owner_tag = _normalizuj_tag(str(ai_tag))
 		if owner_tag == "":
 			continue
 
-		var our_power = float(max(1, _spocitej_silu_statu(owner_tag)))
+		var our_power = float(state_power.get(owner_tag, 1.0))
 		var best_improve_target := ""
 		var best_improve_score := -INF
 		var best_worsen_target := ""
@@ -5474,7 +5498,7 @@ func _zpracuj_ai_diplomacii(ai_staty: Array) -> Array:
 				continue
 
 			var rel = ziskej_vztah_statu(owner_tag, other_tag)
-			var their_power = float(max(1, _spocitej_silu_statu(other_tag)))
+			var their_power = float(state_power.get(other_tag, 1.0))
 			var ratio = our_power / their_power
 			var border = _ma_spolecnou_hranici_ai_cached(owner_tag, other_tag)
 
@@ -6201,6 +6225,15 @@ func _log_ai_profile(total_ms: int, phases: Dictionary) -> void:
 		p_clean
 	])
 
+func _turn_slice_wait(counter: int, chunk: int) -> int:
+	if not TURN_FRAME_SLICE_ENABLED:
+		return counter
+	var next_counter = counter + 1
+	if next_counter >= max(1, chunk):
+		await get_tree().process_frame
+		return 0
+	return next_counter
+
 func ukonci_kolo():
 	if zpracovava_se_tah:
 		return
@@ -6266,11 +6299,14 @@ func ukonci_kolo():
 	
 	var hotove_stavby = []
 	var hlaseni_dokoncene_stavby: Dictionary = {}
+	var cooldown_slice_counter := 0
 	for prov_id in provincie_cooldowny.keys():
 		provincie_cooldowny[prov_id]["zbyva"] -= 1 
 		if provincie_cooldowny[prov_id]["zbyva"] <= 0:
 			hotove_stavby.append(prov_id)
+		cooldown_slice_counter = await _turn_slice_wait(cooldown_slice_counter, TURN_FRAME_SLICE_PROVINCES)
 			
+	var finish_slice_counter := 0
 	for prov_id in hotove_stavby:
 		var typ_budovy = provincie_cooldowny[prov_id]["budova"]
 		provincie_cooldowny.erase(prov_id)
@@ -6282,10 +6318,12 @@ func ukonci_kolo():
 				if not hlaseni_dokoncene_stavby.has(owner_tag):
 					hlaseni_dokoncene_stavby[owner_tag] = []
 				(hlaseni_dokoncene_stavby[owner_tag] as Array).append("Port completed: %s" % nazev)
+		finish_slice_counter = await _turn_slice_wait(finish_slice_counter, TURN_FRAME_SLICE_PROVINCES)
 
 	if not map_data.is_empty():
 		spocitej_prijem(map_data, false)
 		var econ_mods_by_owner: Dictionary = {}
+		var growth_slice_counter := 0
 		
 		# Occupied territory recovers recruits much slower than core land.
 		for p_id in map_data:
@@ -6317,6 +6355,7 @@ func ukonci_kolo():
 						growth_ratio *= 0.40
 					var pop_growth = max(1, int(round(float(pop) * growth_ratio)))
 					d["population"] = pop + pop_growth
+			growth_slice_counter = await _turn_slice_wait(growth_slice_counter, TURN_FRAME_SLICE_PROVINCES)
 	turn_phases["growth"] = Time.get_ticks_msec() - phase_start_ms
 	phase_start_ms = Time.get_ticks_msec()
 
@@ -6439,14 +6478,18 @@ func zpracuj_tah_ai():
 	# Evaluate pending peace offers before AI plans any attacks.
 	_vyhodnot_mirove_nabidky_pred_ai()
 	_vyhodnot_aliancni_zadosti_pred_ai()
-	var zmeny_neagrese_k_hraci = _zpracuj_ai_neagresivni_smlouvy(ai_staty)
-	_zobraz_hlaseni_neagresivnich_smluv_hrace(zmeny_neagrese_k_hraci)
-	var zmeny_vztahu_k_hraci = _zpracuj_ai_diplomacii(ai_staty)
-	_zobraz_hlaseni_vztahu_hrace(zmeny_vztahu_k_hraci)
-	var zmeny_opusteni_alianci = _zpracuj_ai_opusteni_alianci(ai_staty)
-	_zobraz_hlaseni_opusteni_alianci_hrace(zmeny_opusteni_alianci)
-	var zmeny_alianci_k_hraci = _zpracuj_ai_aliance(ai_staty)
-	_zobraz_hlaseni_alianci_hrace(zmeny_alianci_k_hraci)
+	
+	# Skip diplomacy in potato mode for performance
+	if not _potato_mode_enabled:
+		var zmeny_neagrese_k_hraci = _zpracuj_ai_neagresivni_smlouvy(ai_staty)
+		_zobraz_hlaseni_neagresivnich_smluv_hrace(zmeny_neagrese_k_hraci)
+		var zmeny_vztahu_k_hraci = _zpracuj_ai_diplomacii(ai_staty)
+		_zobraz_hlaseni_vztahu_hrace(zmeny_vztahu_k_hraci)
+		var zmeny_opusteni_alianci = _zpracuj_ai_opusteni_alianci(ai_staty)
+		_zobraz_hlaseni_opusteni_alianci_hrace(zmeny_opusteni_alianci)
+		var zmeny_alianci_k_hraci = _zpracuj_ai_aliance(ai_staty)
+		_zobraz_hlaseni_alianci_hrace(zmeny_alianci_k_hraci)
+	
 	_set_defer_log_maintenance(false)
 	ai_phases["diplomacy"] = Time.get_ticks_msec() - ai_phase_ms
 	ai_phase_ms = Time.get_ticks_msec()
@@ -6465,6 +6508,7 @@ func zpracuj_tah_ai():
 	_ai_border_cache.clear()
 		
 	var cena_za_vojaka = 0.01
+	var ai_state_slice_counter := 0
 
 	for owner_tag_raw in ai_staty:
 		var owner_tag = _normalizuj_tag(str(owner_tag_raw))
@@ -6480,6 +6524,7 @@ func zpracuj_tah_ai():
 
 		_ai_zvaz_presun_hlavniho_mesta(owner_tag)
 
+		var ai_income_slice_counter := 0
 		for p_id in owned:
 			if not map_data.has(p_id):
 				continue
@@ -6488,10 +6533,12 @@ func zpracuj_tah_ai():
 			var vojaci = int(d_income.get("soldiers", 0))
 			var prijem = (gdp * 0.1) - (vojaci * 0.001)
 			ai_kasy[owner_tag] += prijem
+			ai_income_slice_counter = await _turn_slice_wait(ai_income_slice_counter, TURN_FRAME_SLICE_AI)
 
 		if ai_kasy[owner_tag] < -100.0:
 			_vyres_bankrot(owner_tag)
 
+		var ai_recruit_slice_counter := 0
 		for p_id in owned:
 			if not map_data.has(p_id):
 				continue
@@ -6517,6 +6564,9 @@ func zpracuj_tah_ai():
 				d["recruitable_population"] -= pocet_k_verbovani
 				d["soldiers"] += pocet_k_verbovani
 				ai_kasy[owner_tag] -= (pocet_k_verbovani * cena_za_vojaka)
+			ai_recruit_slice_counter = await _turn_slice_wait(ai_recruit_slice_counter, TURN_FRAME_SLICE_AI)
+
+		ai_state_slice_counter = await _turn_slice_wait(ai_state_slice_counter, TURN_FRAME_SLICE_AI_STATES)
 	ai_phases["economy_recruit"] = Time.get_ticks_msec() - ai_phase_ms
 	ai_phase_ms = Time.get_ticks_msec()
 	_refresh_turn_runtime_owner_soldier_cache()
@@ -6633,8 +6683,12 @@ func _naplanuj_ai_presuny(map_loader):
 	if map_loader.has_method("zacni_davkovy_presun"):
 		map_loader.zacni_davkovy_presun()
 
+	var plan_slice_counter := 0
+
 	for owner_tag in ai_staty:
 		var moved_from: Dictionary = {}
+		var orders_for_state := 0  # Hard limit on movement orders per state (potato mode only)
+		var ai_limit_enabled := _potato_mode_enabled
 		owner_tag = str(owner_tag)
 		var serazene: Array = _seradene_ai_provincie(owner_tag)
 		var core_state: String = _ziskej_core_state_cached(owner_tag)
@@ -6647,12 +6701,16 @@ func _naplanuj_ai_presuny(map_loader):
 				if str(_turn_owner_by_province.get(n_id, "")) != owner_tag:
 					continue
 				_je_frontline_cached(owner_tag, n_id, frontline_cache)
+				plan_slice_counter = await _turn_slice_wait(plan_slice_counter, TURN_FRAME_SLICE_AI)
+			plan_slice_counter = await _turn_slice_wait(plan_slice_counter, TURN_FRAME_SLICE_AI)
 
 		# 1) Internal non-attacking relocation (rear to frontline by adjacent friendly move).
 		var phase_start_ms = 0
 		if movement_profile:
 			phase_start_ms = Time.get_ticks_msec()
 		for p_id in serazene:
+			if ai_limit_enabled and orders_for_state >= AI_MAX_ARMY_ORDERS_PER_STATE:
+				break  # Hard limit reached for this state
 			if moved_from.has(p_id):
 				continue
 			var move = _navrhni_neutocny_presun(owner_tag, p_id, frontline_cache)
@@ -6670,6 +6728,8 @@ func _naplanuj_ai_presuny(map_loader):
 			)
 			movement_registered += 1
 			moved_from[move["from"]] = true
+			orders_for_state += 1
+			plan_slice_counter = await _turn_slice_wait(plan_slice_counter, TURN_FRAME_SLICE_AI)
 		if movement_profile:
 			movement_non_attack_ms += Time.get_ticks_msec() - phase_start_ms
 
@@ -6677,6 +6737,8 @@ func _naplanuj_ai_presuny(map_loader):
 		if movement_profile:
 			phase_start_ms = Time.get_ticks_msec()
 		for p_id in serazene:
+			if ai_limit_enabled and orders_for_state >= AI_MAX_ARMY_ORDERS_PER_STATE:
+				break  # Hard limit reached for this state
 			if moved_from.has(p_id):
 				continue
 			var move = _navrhni_core_obranu(owner_tag, p_id, core_state, frontline_cache)
@@ -6694,6 +6756,8 @@ func _naplanuj_ai_presuny(map_loader):
 			)
 			movement_registered += 1
 			moved_from[move["from"]] = true
+			orders_for_state += 1
+			plan_slice_counter = await _turn_slice_wait(plan_slice_counter, TURN_FRAME_SLICE_AI)
 		if movement_profile:
 			movement_core_defense_ms += Time.get_ticks_msec() - phase_start_ms
 
@@ -6701,6 +6765,8 @@ func _naplanuj_ai_presuny(map_loader):
 		if movement_profile:
 			phase_start_ms = Time.get_ticks_msec()
 		for p_id in serazene:
+			if ai_limit_enabled and orders_for_state >= AI_MAX_ARMY_ORDERS_PER_STATE:
+				break  # Hard limit reached for this state
 			if moved_from.has(p_id):
 				continue
 			var move = _navrhni_utok(owner_tag, p_id, frontline_cache)
@@ -6722,6 +6788,7 @@ func _naplanuj_ai_presuny(map_loader):
 				)
 				movement_registered += 1
 				moved_from[move["from"]] = true
+				orders_for_state += 1
 			else:
 				var war_eval_start_ms = 0
 				if movement_profile:
@@ -6748,8 +6815,12 @@ func _naplanuj_ai_presuny(map_loader):
 						)
 						movement_registered += 1
 						moved_from[move["from"]] = true
+						orders_for_state += 1
+			plan_slice_counter = await _turn_slice_wait(plan_slice_counter, TURN_FRAME_SLICE_AI)
 		if movement_profile:
 			movement_offense_ms += Time.get_ticks_msec() - phase_start_ms
+
+		plan_slice_counter = await _turn_slice_wait(plan_slice_counter, TURN_FRAME_SLICE_AI_STATES)
 
 	if map_loader.has_method("ukonci_davkovy_presun"):
 		map_loader.ukonci_davkovy_presun()
@@ -7269,4 +7340,7 @@ func _navrhni_utok(state_tag: String, from_id: int, frontline_cache: Dictionary 
 		"to": best_target,
 		"amount": best_amount
 	}
+
+func nastav_potato_mode(enabled: bool) -> void:
+	_potato_mode_enabled = enabled
 

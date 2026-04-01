@@ -129,6 +129,7 @@ var _load_slot_row_buttons: Dictionary = {}
 var _settings_dialog: PopupPanel
 var _settings_fullscreen_check: CheckBox
 var _settings_vsync_check: CheckBox
+var _settings_potato_mode_check: CheckBox
 var _settings_volume_slider: HSlider
 var _settings_volume_value: Label
 var _settings_camera_slider: HSlider
@@ -4232,6 +4233,11 @@ func _vytvor_settings_dialog() -> void:
 	_settings_vsync_check.text = "VSync"
 	settings_content.add_child(_settings_vsync_check)
 
+	_settings_potato_mode_check = CheckBox.new()
+	_settings_potato_mode_check.text = "Potato mode (low-end PC)"
+	_settings_potato_mode_check.tooltip_text = "Low-detail rendering and power-saving updates for weak PCs."
+	settings_content.add_child(_settings_potato_mode_check)
+
 	settings_content.add_child(HSeparator.new())
 
 	var audio_title = Label.new()
@@ -4377,6 +4383,7 @@ func _nacti_settings_do_ingame_ui() -> void:
 	if cfg.load(SETTINGS_FILE_PATH) != OK:
 		_settings_fullscreen_check.button_pressed = DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
 		_settings_vsync_check.button_pressed = DisplayServer.window_get_vsync_mode() != DisplayServer.VSYNC_DISABLED
+		_settings_potato_mode_check.button_pressed = false
 		_settings_volume_slider.value = 1.0
 		_settings_camera_slider.value = 1000.0
 		_settings_zoom_slider.value = 0.1
@@ -4384,6 +4391,9 @@ func _nacti_settings_do_ingame_ui() -> void:
 	else:
 		_settings_fullscreen_check.button_pressed = bool(cfg.get_value("display", "fullscreen", false))
 		_settings_vsync_check.button_pressed = bool(cfg.get_value("display", "vsync", true))
+		var potato_display = bool(cfg.get_value("display", "potato_mode", false))
+		var potato_other = bool(cfg.get_value("other", "potato_mode", potato_display))
+		_settings_potato_mode_check.button_pressed = potato_display or potato_other
 		_settings_volume_slider.value = clamp(float(cfg.get_value("audio", "master_volume", 1.0)), 0.0, 1.0)
 		_settings_camera_slider.value = float(cfg.get_value("controls", "camera_speed", 1000.0))
 		_settings_zoom_slider.value = clamp(float(cfg.get_value("controls", "zoom_speed", 0.1)), 0.03, 0.35)
@@ -4396,6 +4406,7 @@ func _nacti_settings_do_ingame_ui() -> void:
 func _uloz_a_aplikuj_ingame_settings() -> void:
 	var fullscreen = _settings_fullscreen_check.button_pressed
 	var vsync_enabled = _settings_vsync_check.button_pressed
+	var potato_mode = _settings_potato_mode_check.button_pressed if _settings_potato_mode_check else false
 	var master_volume = float(_settings_volume_slider.value)
 	var camera_speed = float(_settings_camera_slider.value)
 	var zoom_speed = float(_settings_zoom_slider.value)
@@ -4403,6 +4414,7 @@ func _uloz_a_aplikuj_ingame_settings() -> void:
 
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if fullscreen else DisplayServer.WINDOW_MODE_WINDOWED)
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if vsync_enabled else DisplayServer.VSYNC_DISABLED)
+	_aplikuj_potato_mode_runtime(potato_mode)
 
 	var master_bus_idx = AudioServer.get_bus_index("Master")
 	if master_bus_idx == -1:
@@ -4413,6 +4425,8 @@ func _uloz_a_aplikuj_ingame_settings() -> void:
 	cfg.load(SETTINGS_FILE_PATH)
 	cfg.set_value("display", "fullscreen", fullscreen)
 	cfg.set_value("display", "vsync", vsync_enabled)
+	cfg.set_value("display", "potato_mode", potato_mode)
+	cfg.set_value("other", "potato_mode", potato_mode)
 	cfg.set_value("audio", "master_volume", master_volume)
 	cfg.set_value("controls", "camera_speed", camera_speed)
 	cfg.set_value("controls", "zoom_speed", zoom_speed)
@@ -4426,6 +4440,19 @@ func _uloz_a_aplikuj_ingame_settings() -> void:
 		map_cam.speed = camera_speed
 		map_cam.zoom_speed = zoom_speed
 		map_cam.invert_zoom_wheel = invert_zoom
+
+func _aplikuj_potato_mode_runtime(enabled: bool) -> void:
+	Engine.max_fps = 45 if enabled else 0
+	OS.low_processor_usage_mode = enabled
+	OS.low_processor_usage_mode_sleep_usec = 12000 if enabled else 6900
+
+	var map_loader = _ziskej_map_loader_node()
+	if map_loader and map_loader.has_method("nastav_potato_mode"):
+		map_loader.nastav_potato_mode(enabled)
+	
+	var game_manager = get_tree().root.get_node_or_null("GameManager")
+	if game_manager and game_manager.has_method("nastav_potato_mode"):
+		game_manager.nastav_potato_mode(enabled)
 
 func _on_ingame_volume_changed(value: float) -> void:
 	if _settings_volume_value:

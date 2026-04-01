@@ -41,6 +41,7 @@ var _labels_by_province_id: Dictionary = {}
 var _labels_cache_dirty: bool = true
 var _selection_label_states: Dictionary = {}
 var _last_cursor_shape: int = -1
+var _potato_mode_enabled: bool = false
 const MODE_HOVER_OFFSET := Vector2(16, 18)
 const MODE_HOVER_DEBUG_LOG := false
 
@@ -132,6 +133,7 @@ func _ready():
 	material.set_shader_parameter("peace_selection_player_color_mode", false)
 	material.set_shader_parameter("peace_target_visual_mode", false)
 	material.set_shader_parameter("peace_target_owner_color", Color(0.72, 0.34, 0.34, 1.0))
+	material.set_shader_parameter("low_detail_mode", false)
 	material.set_shader_parameter("total_provinces", float(total_provinces))
 	
 	material.set_shader_parameter("has_hover", false)
@@ -141,6 +143,11 @@ func _ready():
 	_aktualizuj_hromadny_selection_texture([])
 	_ensure_mode_hover_tooltip()
 	_connect_labels_cache_signals()
+
+func nastav_potato_mode(enabled: bool) -> void:
+	_potato_mode_enabled = enabled
+	if material:
+		material.set_shader_parameter("low_detail_mode", enabled)
 
 func _get_root() -> Node:
 	var parent_node = get_parent()
