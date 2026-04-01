@@ -293,6 +293,8 @@ var _ai_border_cache: Dictionary = {}
 var _ai_cache_batch_depth: int = 0
 var _ai_war_pair_eval_dirty_states: Dictionary = {}
 var _ai_profily: Dictionary = {}
+var _ai_mindset_cache: Dictionary = {}
+var _ai_goal_cache: Dictionary = {}
 var _global_ai_aggression_level: float = 0.5
 var _ai_randomized_ideologies_applied: bool = false
 var _suppress_relation_global_logs: bool = false
@@ -310,6 +312,8 @@ const AI_BUILD_MAX_PER_TURN := 1
 const AI_ARM_LAB_MIN_SURPLUS := 45.0
 const AI_RECRUIT_BASE_FRACTION := 0.32
 const AI_RECRUIT_MAX_FRACTION := 0.68
+const AI_GOAL_RETARGET_TURNS := 4
+const AI_GOAL_STAGNATION_RETARGET := 2
 
 const RELATIONSHIPS_CSV_PATH := "res://map_data/Relationships.csv"
 
@@ -900,6 +904,7 @@ func _aplikuj_save_state(state: Dictionary) -> bool:
 	_ai_profily = (state.get("ai_profily", {}) as Dictionary).duplicate(true)
 	_ai_randomized_ideologies_applied = bool(state.get("ai_randomized_ideologies_applied", false))
 	_global_ai_aggression_level = float(state.get("global_ai_aggression_level", 0.5))
+	_ai_goal_cache.clear()
 	lokalni_hraci_staty = (state.get("lokalni_hraci_staty", []) as Array).duplicate(true)
 	aktivni_hrac_index = int(state.get("aktivni_hrac_index", 0))
 	hrac_kasy = (state.get("hrac_kasy", {}) as Dictionary).duplicate(true)
@@ -967,6 +972,7 @@ func reset_pro_novou_hru() -> void:
 	_ai_profily.clear()
 	_ai_randomized_ideologies_applied = false
 	_global_ai_aggression_level = 0.5
+	_ai_goal_cache.clear()
 	_hrac_kasa_inicializovana = false
 	lokalni_hraci_staty.clear()
 	aktivni_hrac_index = 0
@@ -5401,6 +5407,36 @@ func _ma_ai_prijmout_mir(prijemce: String, odesilatel: String) -> bool:
 	# War fatigue diplomacy: better relations increase peace acceptance.
 	var rel = ziskej_vztah_statu(prij, ode)
 	chance += clamp(rel / 120.0, -0.20, 0.25)
+	var exhaustion = _ai_spocitej_war_exhaustion(prij)
+	chance += exhaustion * 0.30
+	if pomer < 0.92:
+		chance += exhaustion * 0.18
+
+	# Strategic-goal aware peace behavior.
+	var goal = _ai_ziskej_strategicky_cil(prij)
+	var goal_target = _normalizuj_tag(str(goal.get("target", "")))
+	if goal_target == ode:
+		var goal_type = str(goal.get("type", "none"))
+		var stagnation = int(goal.get("stagnation", 0))
+		var sig = _ai_goal_signature(prij, ode)
+		var enemy_holds_our_cores = int(sig.get("owner_cores_held_by_target", 0))
+		var we_hold_enemy_cores = int(sig.get("target_cores_held_by_owner", 0))
+
+		if goal_type == "reclaim_core" and enemy_holds_our_cores > 0:
+			chance -= 0.30
+		elif goal_type == "break_rival" and pomer >= 1.08:
+			chance -= 0.18
+		elif goal_type == "expand_border" and we_hold_enemy_cores > 0 and pomer >= 0.95:
+			chance -= 0.14
+
+		# If the strategic plan is stalled, AI becomes more willing to cut losses.
+		if stagnation >= AI_GOAL_STAGNATION_RETARGET:
+			chance += 0.24
+		elif stagnation >= 1:
+			chance += 0.10
+		# Even goal-focused AI should de-escalate when heavily exhausted.
+		if exhaustion >= 0.76:
+			chance += 0.18
 
 	chance = clamp(chance, 0.05, 0.95)
 	return randf() < chance
@@ -5656,10 +5692,10 @@ func _zpracuj_ai_aliance(ai_staty: Array) -> Array:
 		var owner_tag = _normalizuj_tag(str(ai_tag))
 		if owner_tag == "":
 			continue
-		var owner_profile = _ai_ziskej_profil(owner_tag)
-		var owner_aggression = float(owner_profile.get("aggression", 0.5))
+		var owner_mindset = _ai_ziskej_mindset(owner_tag)
+		var owner_attack_bias = float(owner_mindset.get("attack_bias", 0.5))
 		# Highly aggressive states should not keep creating new alliance nets.
-		if owner_aggression >= 0.62:
+		if owner_attack_bias >= 0.62:
 			continue
 		var our_power = float(state_power.get(owner_tag, 1.0))
 		var owner_enemies = hostility_by_state.get(owner_tag, {}) as Dictionary
@@ -5781,10 +5817,10 @@ func _zpracuj_ai_neagresivni_smlouvy(ai_staty: Array) -> Array:
 		var owner_tag = _normalizuj_tag(str(ai_tag))
 		if owner_tag == "":
 			continue
-		var owner_profile = _ai_ziskej_profil(owner_tag)
-		var owner_aggression = float(owner_profile.get("aggression", 0.5))
+		var owner_mindset = _ai_ziskej_mindset(owner_tag)
+		var owner_attack_bias = float(owner_mindset.get("attack_bias", 0.5))
 		# Aggressive states prefer open conflict options over non-aggression pacts.
-		if owner_aggression >= 0.50:
+		if owner_attack_bias >= 0.52:
 			continue
 
 		var best_target := ""
@@ -6540,28 +6576,34 @@ func _ai_vytvor_profil_pro_ideologii(ideology: String) -> Dictionary:
 	var aggression := 0.50
 	var defense := 0.55
 	var unpredictability := 0.30
+	var personality := "balanced"
 
 	match ideol:
 		"demokracie":
 			aggression = 0.34
 			defense = 0.58
 			unpredictability = 0.22
+			personality = "tactician"
 		"autokracie":
 			aggression = 0.56
 			defense = 0.50
 			unpredictability = 0.32
+			personality = "expansionist"
 		"komunismus":
 			aggression = 0.46
 			defense = 0.60
 			unpredictability = 0.28
+			personality = "planner"
 		"monarchie":
 			aggression = 0.42
 			defense = 0.66
 			unpredictability = 0.20
+			personality = "fortress"
 		"fascismus", "nacismus":
 			aggression = 0.72
 			defense = 0.42
 			unpredictability = 0.40
+			personality = "warlord"
 
 	# Add mild random drift so same ideology still plays differently each game.
 	aggression = clamp(aggression + randf_range(-0.12, 0.12), 0.20, 0.95)
@@ -6571,17 +6613,30 @@ func _ai_vytvor_profil_pro_ideologii(ideology: String) -> Dictionary:
 	# Blend with global aggression level (70% weight) so the slider has a strong effect.
 	aggression = clampf(lerpf(aggression, _global_ai_aggression_level, 0.70), 0.0, 1.0)
 
+	# Final personality pass: profile can drift based on generated traits.
+	if defense >= 0.70:
+		personality = "fortress"
+	elif aggression >= 0.76 and unpredictability >= 0.36:
+		personality = "warlord"
+	elif aggression >= 0.63:
+		personality = "expansionist"
+	elif unpredictability >= 0.46:
+		personality = "opportunist"
+	elif defense >= 0.60:
+		personality = "tactician"
+
 	return {
 		"ideology": ideol,
 		"aggression": aggression,
 		"defense": defense,
-		"unpredictability": unpredictability
+		"unpredictability": unpredictability,
+		"personality": personality
 	}
 
 func _ai_ziskej_profil(state_tag: String) -> Dictionary:
 	var clean = _normalizuj_tag(state_tag)
 	if clean == "" or clean == "SEA":
-		return {"aggression": 0.5, "defense": 0.55, "unpredictability": 0.30, "ideology": ""}
+		return {"aggression": 0.5, "defense": 0.55, "unpredictability": 0.30, "ideology": "", "personality": "balanced"}
 	if _ai_profily.has(clean):
 		return (_ai_profily[clean] as Dictionary)
 	var created = _ai_vytvor_profil_pro_ideologii(_ziskej_ideologii_statu(clean))
@@ -6711,12 +6766,402 @@ func _ai_sdili_nepritele_s(state_a: String, state_b: String) -> bool:
 			return true
 	return false
 
+func _ai_ziskej_mindset(state_tag: String) -> Dictionary:
+	var clean = _normalizuj_tag(state_tag)
+	if clean == "" or clean == "SEA":
+		return {
+			"attack_bias": 0.5,
+			"defense_bias": 0.5,
+			"risk": 0.5,
+			"war_rel_bonus": 0.0,
+			"local_ratio_shift": 0.0,
+			"strategic_shift": 0.0
+		}
+
+	if _ai_mindset_cache.has(clean):
+		return _ai_mindset_cache[clean] as Dictionary
+
+	var profile = _ai_ziskej_profil(clean)
+	var aggression = float(profile.get("aggression", 0.5))
+	var defense = float(profile.get("defense", 0.55))
+	var unpredictability = float(profile.get("unpredictability", 0.30))
+	var personality = str(profile.get("personality", "balanced"))
+	var attack_mod := 0.0
+	var defense_mod := 0.0
+	var risk_mod := 0.0
+	match personality:
+		"warlord":
+			attack_mod = 0.14
+			defense_mod = -0.10
+			risk_mod = 0.12
+		"expansionist":
+			attack_mod = 0.10
+			defense_mod = -0.05
+			risk_mod = 0.08
+		"fortress":
+			attack_mod = -0.12
+			defense_mod = 0.16
+			risk_mod = -0.10
+		"tactician":
+			attack_mod = -0.02
+			defense_mod = 0.10
+			risk_mod = -0.02
+		"planner":
+			attack_mod = -0.04
+			defense_mod = 0.08
+			risk_mod = -0.05
+		"opportunist":
+			attack_mod = 0.06
+			defense_mod = -0.02
+			risk_mod = 0.14
+
+	var owned = _turn_state_owned_provinces.get(clean, []) as Array
+	var frontline := 0
+	var border_rivals: Dictionary = {}
+	var total_threat := 0.0
+	for p_any in owned:
+		var p_id = int(p_any)
+		if not map_data.has(p_id):
+			continue
+		var is_frontline = _ma_nepratelskeho_souseda(clean, p_id)
+		if is_frontline:
+			frontline += 1
+		total_threat += float(_spocitej_hrozbu_nepratel_u_provincie(p_id, clean))
+		for n_raw in (_turn_neighbors_by_province.get(p_id, map_data[p_id].get("neighbors", [])) as Array):
+			var n_id = int(n_raw)
+			if not map_data.has(n_id):
+				continue
+			var n_owner = _normalizuj_tag(str(_turn_owner_by_province.get(n_id, str(map_data[n_id].get("owner", "")))))
+			if n_owner == "" or n_owner == "SEA" or n_owner == clean:
+				continue
+			border_rivals[n_owner] = true
+
+	var enemies = _ai_ziskej_nepratele_statu(clean)
+	var own_power = float(max(1, _spocitej_silu_statu(clean)))
+	var enemy_power := 0.0
+	for e in enemies:
+		enemy_power += float(max(1, _spocitej_silu_statu(_normalizuj_tag(str(e)))))
+	var war_pressure = enemy_power / own_power if enemy_power > 0.0 else 0.0
+
+	var avg_threat = total_threat / float(max(1, owned.size()))
+	var pressure = clamp(avg_threat / 2400.0, 0.0, 1.0)
+	var frontline_ratio = float(frontline) / float(max(1, owned.size()))
+	var treasury = _ziskej_kasu_statu(clean)
+	var gdp = max(1.0, _spocitej_hdp_statu(clean))
+	var economy_health = clamp(treasury / (gdp * 0.10), -0.6, 1.8)
+
+	var attack_bias = clamp(
+		aggression * 0.58 +
+		(1.0 - defense) * 0.16 +
+		(1.0 - pressure) * 0.24 +
+		(1.0 - frontline_ratio) * 0.12 +
+		clamp(economy_health, 0.0, 1.0) * 0.16 -
+		clamp(war_pressure - 1.0, 0.0, 1.0) * 0.26 +
+		attack_mod,
+		0.05,
+		0.98
+	)
+
+	var defense_bias = clamp(
+		defense * 0.62 +
+		pressure * 0.34 +
+		frontline_ratio * 0.24 +
+		clamp(war_pressure - 1.0, 0.0, 1.2) * 0.25 +
+		defense_mod,
+		0.05,
+		0.98
+	)
+
+	# Fast crisis reaction around capital.
+	var cap_id = _ziskej_hlavni_mesto_statu(clean)
+	if cap_id > 0 and _ma_nepratelskeho_souseda(clean, cap_id):
+		defense_bias = clamp(defense_bias + 0.18, 0.05, 0.98)
+		attack_bias = clamp(attack_bias - 0.10, 0.05, 0.98)
+
+	var risk = clamp(
+		aggression * 0.44 + unpredictability * 0.36 + attack_bias * 0.26 - defense_bias * 0.18 + risk_mod,
+		0.05,
+		0.98
+	)
+
+	var mindset := {
+		"attack_bias": attack_bias,
+		"defense_bias": defense_bias,
+		"risk": risk,
+		"war_rel_bonus": (attack_bias - 0.50) * 52.0,
+		"local_ratio_shift": (attack_bias - defense_bias) * -0.36,
+		"strategic_shift": (attack_bias - defense_bias) * -0.26
+	}
+
+	_ai_mindset_cache[clean] = mindset
+	return mindset
+
+func _ai_ziskej_strategicky_cil(state_tag: String) -> Dictionary:
+	var clean = _normalizuj_tag(state_tag)
+	if clean == "" or clean == "SEA":
+		return {"type": "none", "target": "", "expires_turn": aktualni_kolo}
+
+	if _ai_goal_cache.has(clean):
+		var cached = _ai_goal_cache[clean] as Dictionary
+		var exp = int(cached.get("expires_turn", -1))
+		var target_cached = _normalizuj_tag(str(cached.get("target", "")))
+		if exp >= aktualni_kolo and (target_cached == "" or _turn_state_owned_provinces.has(target_cached)):
+			return cached
+
+	var mindset = _ai_ziskej_mindset(clean)
+	var attack_bias = float(mindset.get("attack_bias", 0.5))
+	var defense_bias = float(mindset.get("defense_bias", 0.5))
+
+	var neighbors: Dictionary = {}
+	var owned = _turn_state_owned_provinces.get(clean, []) as Array
+	for p_any in owned:
+		var p_id = int(p_any)
+		if not map_data.has(p_id):
+			continue
+		for n_raw in (_turn_neighbors_by_province.get(p_id, map_data[p_id].get("neighbors", [])) as Array):
+			var n_id = int(n_raw)
+			if not map_data.has(n_id):
+				continue
+			var n_owner = _normalizuj_tag(str(_turn_owner_by_province.get(n_id, str(map_data[n_id].get("owner", "")))))
+			if n_owner == "" or n_owner == "SEA" or n_owner == clean:
+				continue
+			neighbors[n_owner] = true
+
+	var best_goal := {"type": "none", "target": "", "score": -INF}
+	var own_power = float(max(1, _spocitej_silu_statu(clean)))
+
+	for target_any in neighbors.keys():
+		var target = _normalizuj_tag(str(target_any))
+		if target == "":
+			continue
+
+		var rel = _ziskej_ai_vztah_cached(clean, target)
+		var target_power = float(max(1, _spocitej_silu_statu(target)))
+		var power_ratio = own_power / target_power
+		var border = _spocitej_silu_na_hranici(clean, target)
+		var border_ratio = float(int(border.get("our", 0))) / float(max(1, int(border.get("enemy", 0))))
+
+		var reclaim_bonus := 0.0
+		for p_id in map_data:
+			var d = map_data[p_id]
+			if _normalizuj_tag(str(d.get("core_owner", ""))) != clean:
+				continue
+			if _normalizuj_tag(str(d.get("owner", ""))) != target:
+				continue
+			reclaim_bonus += 1.0
+
+		var war_now = _jsou_ve_valce_ai_cached(clean, target)
+		var score = attack_bias * 120.0 + clamp(-rel, 0.0, 100.0) * 1.7 + border_ratio * 80.0 + power_ratio * 90.0
+		score += reclaim_bonus * 320.0
+		if war_now:
+			score += 240.0
+		if _ziskej_uroven_aliance_ai_cached(clean, target) > ALLIANCE_NONE:
+			score -= 220.0
+		if _ma_neagresivni_smlouvu_ai_cached(clean, target):
+			score -= 180.0
+		score -= defense_bias * 90.0
+
+		var goal_type = "expand_border"
+		if reclaim_bonus >= 1.0:
+			goal_type = "reclaim_core"
+		elif war_now and power_ratio >= 0.95:
+			goal_type = "break_rival"
+
+		if score > float(best_goal.get("score", -INF)):
+			best_goal = {"type": goal_type, "target": target, "score": score}
+
+	var out = {
+		"type": str(best_goal.get("type", "none")),
+		"target": _normalizuj_tag(str(best_goal.get("target", ""))),
+		"expires_turn": aktualni_kolo + AI_GOAL_RETARGET_TURNS,
+		"stagnation": 0,
+		"last_signature": {}
+	}
+	_ai_goal_cache[clean] = out
+	return out
+
+func _ai_goal_signature(owner_tag: String, target_tag: String) -> Dictionary:
+	var owner = _normalizuj_tag(owner_tag)
+	var target = _normalizuj_tag(target_tag)
+	var owner_owned := 0
+	var owner_cores_held_by_target := 0
+	var target_cores_held_by_owner := 0
+
+	if owner == "" or target == "" or owner == target:
+		return {
+			"owner_owned": owner_owned,
+			"owner_cores_held_by_target": owner_cores_held_by_target,
+			"target_cores_held_by_owner": target_cores_held_by_owner,
+			"border_ratio": 0.0,
+			"power_ratio": 0.0
+		}
+
+	for p_id in map_data:
+		var d = map_data[p_id]
+		var owner_now = _normalizuj_tag(str(d.get("owner", "")))
+		var core_owner = _normalizuj_tag(str(d.get("core_owner", owner_now)))
+		if owner_now == owner:
+			owner_owned += 1
+		if owner_now == target and core_owner == owner:
+			owner_cores_held_by_target += 1
+		if owner_now == owner and core_owner == target:
+			target_cores_held_by_owner += 1
+
+	var border = _spocitej_silu_na_hranici(owner, target)
+	var border_ratio = float(int(border.get("our", 0))) / float(max(1, int(border.get("enemy", 0))))
+	var power_ratio = float(max(1, _spocitej_silu_statu(owner))) / float(max(1, _spocitej_silu_statu(target)))
+	return {
+		"owner_owned": owner_owned,
+		"owner_cores_held_by_target": owner_cores_held_by_target,
+		"target_cores_held_by_owner": target_cores_held_by_owner,
+		"border_ratio": border_ratio,
+		"power_ratio": power_ratio
+	}
+
+func _ai_aktualizuj_goal_progres(state_tag: String) -> void:
+	var owner = _normalizuj_tag(state_tag)
+	if owner == "" or not _ai_goal_cache.has(owner):
+		return
+
+	var goal = (_ai_goal_cache[owner] as Dictionary).duplicate(true)
+	var target = _normalizuj_tag(str(goal.get("target", "")))
+	if target == "":
+		return
+
+	var sig = _ai_goal_signature(owner, target)
+	var prev = goal.get("last_signature", {}) as Dictionary
+	var stagnation = int(goal.get("stagnation", 0))
+
+	if prev.is_empty():
+		goal["last_signature"] = sig
+		goal["stagnation"] = 0
+		_ai_goal_cache[owner] = goal
+		return
+
+	var progress := false
+	if int(sig.get("owner_owned", 0)) > int(prev.get("owner_owned", 0)):
+		progress = true
+	if int(sig.get("target_cores_held_by_owner", 0)) > int(prev.get("target_cores_held_by_owner", 0)):
+		progress = true
+	if int(sig.get("owner_cores_held_by_target", 0)) < int(prev.get("owner_cores_held_by_target", 0)):
+		progress = true
+	if float(sig.get("border_ratio", 0.0)) > float(prev.get("border_ratio", 0.0)) + 0.08:
+		progress = true
+
+	if progress:
+		stagnation = 0
+	else:
+		stagnation += 1
+
+	goal["stagnation"] = stagnation
+	goal["last_signature"] = sig
+
+	if stagnation >= AI_GOAL_STAGNATION_RETARGET:
+		goal["expires_turn"] = aktualni_kolo - 1
+		_ai_debug("goal retarget %s reason=stagnation target=%s" % [owner, target])
+
+	_ai_goal_cache[owner] = goal
+
+func _ai_spocitej_war_exhaustion(state_tag: String) -> float:
+	var clean = _normalizuj_tag(state_tag)
+	if clean == "" or clean == "SEA":
+		return 0.0
+
+	var owned = _turn_state_owned_provinces.get(clean, []) as Array
+	if owned.is_empty():
+		return 1.0
+
+	var own_power = float(max(1, _spocitej_silu_statu(clean)))
+	var enemies = _ai_ziskej_nepratele_statu(clean)
+	var enemy_power := 0.0
+	for e in enemies:
+		enemy_power += float(max(1, _spocitej_silu_statu(_normalizuj_tag(str(e)))))
+	var war_pressure = enemy_power / own_power if enemy_power > 0.0 else 0.0
+
+	var frontline := 0
+	for p_any in owned:
+		if _ma_nepratelskeho_souseda(clean, int(p_any)):
+			frontline += 1
+	var frontline_ratio = float(frontline) / float(max(1, owned.size()))
+
+	var treasury = _ziskej_kasu_statu(clean)
+	var gdp = max(1.0, _spocitej_hdp_statu(clean))
+	var eco_stress = clamp((0.04 - (treasury / gdp)) / 0.08, 0.0, 1.0)
+
+	var goal = _ai_ziskej_strategicky_cil(clean)
+	var stagnation = int(goal.get("stagnation", 0))
+	var stagnation_stress = clamp(float(stagnation) / float(max(1, AI_GOAL_STAGNATION_RETARGET + 1)), 0.0, 1.0)
+
+	var exhaustion = clamp(
+		clamp(war_pressure - 0.95, 0.0, 1.5) * 0.35 +
+		frontline_ratio * 0.28 +
+		eco_stress * 0.25 +
+		stagnation_stress * 0.22,
+		0.0,
+		1.0
+	)
+	return exhaustion
+
+func _ai_ziskej_primarni_front(state_tag: String) -> Dictionary:
+	var clean = _normalizuj_tag(state_tag)
+	if clean == "" or clean == "SEA":
+		return {"target": "", "score": -INF}
+
+	var goal = _ai_ziskej_strategicky_cil(clean)
+	var goal_target = _normalizuj_tag(str(goal.get("target", "")))
+	if goal_target != "":
+		return {"target": goal_target, "score": 9999.0}
+
+	var profile = _ai_ziskej_profil(clean)
+	var aggression = float(profile.get("aggression", 0.5))
+	var candidates: Dictionary = {}
+	for p_any in (_turn_state_owned_provinces.get(clean, []) as Array):
+		var p_id = int(p_any)
+		if not map_data.has(p_id):
+			continue
+		for n_raw in (_turn_neighbors_by_province.get(p_id, map_data[p_id].get("neighbors", [])) as Array):
+			var n_id = int(n_raw)
+			if not map_data.has(n_id):
+				continue
+			var n_owner = _normalizuj_tag(str(_turn_owner_by_province.get(n_id, str(map_data[n_id].get("owner", "")))))
+			if n_owner == "" or n_owner == "SEA" or n_owner == clean:
+				continue
+			candidates[n_owner] = true
+
+	var best_target := ""
+	var best_score := -INF
+	for t_any in candidates.keys():
+		var t = _normalizuj_tag(str(t_any))
+		if t == "":
+			continue
+		var border = _spocitej_silu_na_hranici(clean, t)
+		var border_ratio = float(int(border.get("our", 0))) / float(max(1, int(border.get("enemy", 0))))
+		var rel = _ziskej_ai_vztah_cached(clean, t)
+		var in_war = _jsou_ve_valce_ai_cached(clean, t)
+		var score = border_ratio * 70.0 + clamp(-rel, 0.0, 100.0) * 1.5 + aggression * 60.0
+		if in_war:
+			score += 180.0
+		if score > best_score:
+			best_score = score
+			best_target = t
+
+	return {"target": best_target, "score": best_score}
+
 func _ai_ziskej_recruit_kandidaty(state_tag: String, owned: Array, pressure: float) -> Array:
 	var scored: Array = []
 	var cap_id = _ziskej_hlavni_mesto_statu(state_tag)
 	var profile = _ai_ziskej_profil(state_tag)
+	var mindset = _ai_ziskej_mindset(state_tag)
+	var goal = _ai_ziskej_strategicky_cil(state_tag)
+	var primary_front = _ai_ziskej_primarni_front(state_tag)
 	var defense = float(profile.get("defense", 0.55))
 	var aggression = float(profile.get("aggression", 0.50))
+	var attack_bias = float(mindset.get("attack_bias", 0.5))
+	var exhaustion = _ai_spocitej_war_exhaustion(state_tag)
+	var goal_target = _normalizuj_tag(str(goal.get("target", "")))
+	var front_target = _normalizuj_tag(str(primary_front.get("target", "")))
+	var at_war = not _ai_ziskej_nepratele_statu(state_tag).is_empty()
+	var base_threat_gate = 260 if at_war else 520
 
 	for p_id_any in owned:
 		var p_id = int(p_id_any)
@@ -6726,15 +7171,37 @@ func _ai_ziskej_recruit_kandidaty(state_tag: String, owned: Array, pressure: flo
 		var recruits = int(d.get("recruitable_population", 0))
 		if recruits <= 120:
 			continue
+		var is_capital = bool(d.get("is_capital", false)) or p_id == cap_id
+		var is_frontline = _ma_nepratelskeho_souseda(state_tag, p_id)
+		var threat = _spocitej_hrozbu_nepratel_u_provincie(p_id, state_tag)
+		var focused_front = false
+		if goal_target != "" or front_target != "":
+			for n_raw in (_turn_neighbors_by_province.get(p_id, d.get("neighbors", [])) as Array):
+				var n_id = int(n_raw)
+				if not map_data.has(n_id):
+					continue
+				var n_owner = _normalizuj_tag(str(_turn_owner_by_province.get(n_id, str(map_data[n_id].get("owner", "")))))
+				if n_owner == "" or n_owner == "SEA" or n_owner == state_tag:
+					continue
+				if n_owner == goal_target or n_owner == front_target:
+					focused_front = true
+					break
+
+		# Avoid recruiting everywhere: in low-threat areas recruit only if strategic anchor exists.
+		if not is_capital and not is_frontline and not focused_front and threat < base_threat_gate:
+			continue
 		var score = 0.0
-		if p_id == cap_id:
+		if is_capital:
 			score += 3000.0
-		if _ma_nepratelskeho_souseda(state_tag, p_id):
+		if is_frontline:
 			score += 1800.0
-		score += min(1800.0, float(_spocitej_hrozbu_nepratel_u_provincie(p_id, state_tag)) * 0.20)
+		if focused_front:
+			score += 1300.0
+		score += min(2100.0, float(threat) * (0.24 + attack_bias * 0.10))
 		score += float(recruits) * 0.12
 		score += float(d.get("gdp", 0.0)) * 14.0 * aggression
-		score += (220.0 * defense) if bool(d.get("is_capital", false)) else 0.0
+		score += (320.0 * defense) if is_capital else 0.0
+		score -= exhaustion * 220.0
 		scored.append({"id": p_id, "score": score})
 
 	if scored.is_empty():
@@ -6744,16 +7211,30 @@ func _ai_ziskej_recruit_kandidaty(state_tag: String, owned: Array, pressure: flo
 		return float((a as Dictionary).get("score", 0.0)) > float((b as Dictionary).get("score", 0.0))
 	)
 
-	var war_pressure = 1.0 if _ai_ziskej_nepratele_statu(state_tag).is_empty() else 1.45
+	var war_pressure = 1.0 if not at_war else 1.30
 	var pressure_factor = clamp(pressure / 1800.0, 0.0, 1.0)
-	var fraction = clamp(AI_RECRUIT_BASE_FRACTION + (pressure_factor * 0.22) + (defense * 0.20), AI_RECRUIT_BASE_FRACTION, AI_RECRUIT_MAX_FRACTION)
+	var fraction = clamp(0.12 + (pressure_factor * 0.18) + (defense * 0.10) + (attack_bias * 0.08), 0.10, 0.45)
 	fraction *= war_pressure
-	fraction = clamp(fraction, AI_RECRUIT_BASE_FRACTION, 0.92)
-	var keep_n = clampi(int(ceil(float(scored.size()) * fraction)), 2, max(2, scored.size()))
+	fraction = clamp(fraction, 0.10, 0.58)
+	var max_targets = 2
+	if at_war:
+		max_targets = 4
+	if pressure_factor >= 0.55:
+		max_targets += 1
+	if attack_bias >= 0.70:
+		max_targets += 1
+	if exhaustion >= 0.70:
+		max_targets = max(2, max_targets - 1)
+	var keep_n = clampi(int(ceil(float(scored.size()) * fraction)), 1, min(max_targets, scored.size()))
+	var top_score = float((scored[0] as Dictionary).get("score", 0.0))
 
 	var out: Array = []
 	for i in range(min(keep_n, scored.size())):
-		out.append(int((scored[i] as Dictionary).get("id", -1)))
+		var row = scored[i] as Dictionary
+		var s = float(row.get("score", 0.0))
+		if i > 0 and s < max(top_score * 0.46, top_score - 1700.0):
+			continue
+		out.append(int(row.get("id", -1)))
 	return out
 
 func _ai_spocitej_tlak_statu(state_tag: String, owned: Array) -> float:
@@ -7034,6 +7515,7 @@ func zpracuj_tah_ai():
 	_ai_non_aggr_cache.clear()
 	_ai_can_adjust_relation_cache.clear()
 	_ai_border_cache.clear()
+	_ai_mindset_cache.clear()
 	_rebuild_turn_cache()
 	var ai_staty = _ziskej_ai_staty()
 	_ai_randomizuj_ideologie_a_profily(ai_staty)
@@ -7073,6 +7555,7 @@ func zpracuj_tah_ai():
 	_ai_non_aggr_cache.clear()
 	_ai_can_adjust_relation_cache.clear()
 	_ai_border_cache.clear()
+	_ai_mindset_cache.clear()
 		
 	var ai_state_slice_counter := 0
 
@@ -7116,6 +7599,19 @@ func zpracuj_tah_ai():
 		var cena_za_vojaka = max(0.001, ziskej_cenu_za_vojaka(owner_tag))
 
 		var recruit_targets = _ai_ziskej_recruit_kandidaty(owner_tag, owned, state_pressure)
+		var state_exhaustion = _ai_spocitej_war_exhaustion(owner_tag)
+		var state_mindset = _ai_ziskej_mindset(owner_tag)
+		var state_attack_bias = float(state_mindset.get("attack_bias", 0.5))
+		var at_war_state = not _ai_ziskej_nepratele_statu(owner_tag).is_empty()
+		var recruit_order_cap = 2
+		if at_war_state:
+			recruit_order_cap = 4
+		if state_pressure >= 950.0:
+			recruit_order_cap += 1
+		if state_attack_bias >= 0.70:
+			recruit_order_cap += 1
+		if state_exhaustion >= 0.72:
+			recruit_order_cap = max(2, recruit_order_cap - 1)
 		_ai_debug("recruit plan %s targets=%d pressure=%.1f reserve=%.2f treasury=%.2f" % [
 			owner_tag,
 			recruit_targets.size(),
@@ -7125,7 +7621,10 @@ func zpracuj_tah_ai():
 		])
 		var ai_recruit_slice_counter := 0
 		var recruited_total := 0
+		var recruit_orders_done := 0
 		for p_id in recruit_targets:
+			if recruit_orders_done >= recruit_order_cap:
+				break
 			if not map_data.has(p_id):
 				continue
 			var d = map_data[p_id]
@@ -7157,6 +7656,7 @@ func zpracuj_tah_ai():
 				d["soldiers"] += pocet_k_verbovani
 				ai_kasy[owner_tag] -= (pocet_k_verbovani * cena_za_vojaka)
 				recruited_total += pocet_k_verbovani
+				recruit_orders_done += 1
 			ai_recruit_slice_counter = await _turn_slice_wait(ai_recruit_slice_counter, TURN_FRAME_SLICE_AI)
 		_ai_debug("state summary %s recruited=%d treasury_before=%.2f treasury_after=%.2f" % [
 			owner_tag,
@@ -7172,6 +7672,8 @@ func zpracuj_tah_ai():
 	var opened_wars = _ai_otevri_valky(ai_staty)
 	if opened_wars > 0:
 		_ai_debug("war opener created %d wars" % opened_wars)
+	for ai_tag in ai_staty:
+		_ai_aktualizuj_goal_progres(str(ai_tag))
 
 	# AI movement phases:
 	# 1) Non-attacking moves inside own provinces.
@@ -7192,6 +7694,7 @@ func zpracuj_tah_ai():
 	_ai_alliance_level_cache.clear()
 	_ai_can_adjust_relation_cache.clear()
 	_ai_border_cache.clear()
+	_ai_mindset_cache.clear()
 	_invalidate_turn_cache()
 	ai_phases["cleanup"] = Time.get_ticks_msec() - ai_phase_ms
 	_log_ai_profile(Time.get_ticks_msec() - ai_start_ms, ai_phases)
@@ -7295,6 +7798,13 @@ func _naplanuj_ai_presuny(map_loader):
 		var serazene: Array = _seradene_ai_provincie(owner_tag)
 		var own_capital_id = _ziskej_hlavni_mesto_statu(owner_tag)
 		var core_state: String = _ziskej_core_state_cached(owner_tag)
+		var front_info = _ai_ziskej_primarni_front(owner_tag)
+		var preferred_front_owner = _normalizuj_tag(str(front_info.get("target", "")))
+		var war_exhaustion = _ai_spocitej_war_exhaustion(owner_tag)
+		var is_consolidating = war_exhaustion >= 0.68
+		var coordinated_commitment: Dictionary = {}
+		if preferred_front_owner != "":
+			coordinated_commitment["owner:" + preferred_front_owner] = 1
 		var frontline_cache: Dictionary = {}
 		for p_any in serazene:
 			var p_id_int = int(p_any)
@@ -7396,12 +7906,18 @@ func _naplanuj_ai_presuny(map_loader):
 		# 3) Offensive attacks.
 		if movement_profile:
 			phase_start_ms = Time.get_ticks_msec()
+		var offense_orders := 0
+		var offense_order_cap := 999999
+		if is_consolidating:
+			offense_order_cap = 1
 		for p_id in serazene:
 			if ai_limit_enabled and orders_for_state >= AI_MAX_ARMY_ORDERS_PER_STATE:
 				break  # Hard limit reached for this state
+			if offense_orders >= offense_order_cap:
+				break
 			if moved_from.has(p_id):
 				continue
-			var move = _navrhni_utok(owner_tag, p_id, frontline_cache)
+			var move = _navrhni_utok(owner_tag, p_id, frontline_cache, preferred_front_owner, coordinated_commitment)
 			if move.is_empty():
 				continue
 			var amount = int(move.get("amount", 0))
@@ -7411,6 +7927,11 @@ func _naplanuj_ai_presuny(map_loader):
 			var target_id = int(move["to"])
 			var target_owner = str(_turn_owner_by_province.get(target_id, str(map_data[target_id].get("owner", "")).strip_edges().to_upper()))
 			if jsou_ve_valce(owner_tag, target_owner):
+				if is_consolidating:
+					var local_enemy = int(_turn_soldiers_by_province.get(target_id, int(map_data[target_id].get("soldiers", 0))))
+					if float(amount) / float(max(1, local_enemy)) < 1.20:
+						plan_slice_counter = await _turn_slice_wait(plan_slice_counter, TURN_FRAME_SLICE_AI)
+						continue
 				map_loader.zaregistruj_presun_armady(
 					int(move["from"]),
 					int(move["to"]),
@@ -7421,7 +7942,13 @@ func _naplanuj_ai_presuny(map_loader):
 				movement_registered += 1
 				moved_from[move["from"]] = true
 				orders_for_state += 1
+				offense_orders += 1
+				coordinated_commitment["owner:" + _normalizuj_tag(target_owner)] = int(coordinated_commitment.get("owner:" + _normalizuj_tag(target_owner), 0)) + 1
+				coordinated_commitment["prov:" + str(target_id)] = int(coordinated_commitment.get("prov:" + str(target_id), 0)) + 1
 			else:
+				if is_consolidating:
+					plan_slice_counter = await _turn_slice_wait(plan_slice_counter, TURN_FRAME_SLICE_AI)
+					continue
 				var war_eval_start_ms = 0
 				if movement_profile:
 					war_eval_start_ms = Time.get_ticks_msec()
@@ -7456,6 +7983,9 @@ func _naplanuj_ai_presuny(map_loader):
 						movement_registered += 1
 						moved_from[move["from"]] = true
 						orders_for_state += 1
+						offense_orders += 1
+						coordinated_commitment["owner:" + _normalizuj_tag(target_owner)] = int(coordinated_commitment.get("owner:" + _normalizuj_tag(target_owner), 0)) + 1
+						coordinated_commitment["prov:" + str(target_id)] = int(coordinated_commitment.get("prov:" + str(target_id), 0)) + 1
 			plan_slice_counter = await _turn_slice_wait(plan_slice_counter, TURN_FRAME_SLICE_AI)
 		if movement_profile:
 			movement_offense_ms += Time.get_ticks_msec() - phase_start_ms
@@ -7696,9 +8226,22 @@ func _ma_smyls_vyhlasit_valku(state_tag: String, target_owner: String, from_id: 
 	var required_local_ratio = float(pair_eval.get("required_local_ratio", 1.25))
 	var strategic_ratio = float(pair_eval.get("strategic_ratio", 0.0))
 	var profile = _ai_ziskej_profil(state_tag)
+	var mindset = _ai_ziskej_mindset(state_tag)
+	var goal = _ai_ziskej_strategicky_cil(state_tag)
 	var aggression = float(profile.get("aggression", 0.5))
-	var war_rel_cap = AI_DECLARE_WAR_MAX_RELATION + (aggression * 45.0)
-	var min_attack_force = maxf(700.0, AI_DECLARE_WAR_MIN_ATTACK_FORCE - (aggression * 1100.0))
+	var attack_bias = float(mindset.get("attack_bias", 0.5))
+	var defense_bias = float(mindset.get("defense_bias", 0.5))
+	var risk = float(mindset.get("risk", 0.5))
+	var goal_target = _normalizuj_tag(str(goal.get("target", "")))
+	var goal_type = str(goal.get("type", "none"))
+	var goal_focus = goal_target != "" and goal_target == target_owner
+	var war_rel_bonus = float(mindset.get("war_rel_bonus", 0.0))
+	if goal_focus:
+		war_rel_bonus += 12.0
+	var war_rel_cap = AI_DECLARE_WAR_MAX_RELATION + (aggression * 45.0) + war_rel_bonus
+	var min_attack_force = maxf(550.0, AI_DECLARE_WAR_MIN_ATTACK_FORCE - (aggression * 1000.0) - (attack_bias * 520.0) + (defense_bias * 260.0))
+	if goal_focus:
+		min_attack_force = maxf(450.0, min_attack_force - 180.0)
 	if float(amount) < min_attack_force:
 		return false
 
@@ -7734,12 +8277,17 @@ func _ma_smyls_vyhlasit_valku(state_tag: String, target_owner: String, from_id: 
 	var rel_now = _ziskej_ai_vztah_cached(state_tag, target_owner)
 	var target_core_owner = _normalizuj_tag(str(map_data[to_id].get("core_owner", "")))
 
-	var border_need = AI_DECLARE_WAR_MIN_BORDER_ADVANTAGE - aggression * 0.45
-	required_local_ratio = maxf(0.80, required_local_ratio - aggression * 0.35)
-	var strategic_need = 0.90 - aggression * 0.30
+	var border_need = AI_DECLARE_WAR_MIN_BORDER_ADVANTAGE - aggression * 0.45 - attack_bias * 0.20 + defense_bias * 0.12
+	required_local_ratio = maxf(0.72, required_local_ratio - aggression * 0.35 + float(mindset.get("local_ratio_shift", 0.0)))
+	var strategic_need = maxf(0.58, 0.90 - aggression * 0.30 + float(mindset.get("strategic_shift", 0.0)))
+	if goal_focus:
+		border_need -= 0.10
+		required_local_ratio = maxf(0.68, required_local_ratio - 0.08)
+		if goal_type == "reclaim_core":
+			strategic_need = maxf(0.54, strategic_need - 0.08)
 
 	# High aggression: allow opportunistic wars instead of waiting for ideal ratios.
-	if aggression >= 0.82 and rel_now <= 30.0 and local_ratio >= 0.85 and strategic_ratio >= 0.78:
+	if (aggression >= 0.78 or risk >= 0.72) and rel_now <= (35.0 + attack_bias * 18.0) and local_ratio >= 0.82 and strategic_ratio >= 0.75:
 		_ai_debug("war decide %s->%s reason=aggr_shortcut rel=%.1f local=%.2f strategic=%.2f" % [state_tag, target_owner, rel_now, local_ratio, strategic_ratio])
 		return true
 
@@ -7775,9 +8323,16 @@ func _ai_otevri_valky(ai_staty: Array) -> int:
 			continue
 
 		var profile = _ai_ziskej_profil(owner)
+		var goal = _ai_ziskej_strategicky_cil(owner)
+		var primary_front = _ai_ziskej_primarni_front(owner)
+		var front_target = _normalizuj_tag(str(primary_front.get("target", "")))
+		var exhaustion = _ai_spocitej_war_exhaustion(owner)
 		var aggression = float(profile.get("aggression", 0.5))
-		if aggression < 0.45:
+		var personality = str(profile.get("personality", "balanced"))
+		if aggression < 0.45 or exhaustion >= 0.86:
 			continue
+		var goal_target = _normalizuj_tag(str(goal.get("target", "")))
+		var goal_type = str(goal.get("type", "none"))
 
 		var candidates: Dictionary = {}
 		for p_raw in owned:
@@ -7815,13 +8370,28 @@ func _ai_otevri_valky(ai_staty: Array) -> int:
 			var own_power = float(max(1, _spocitej_silu_statu(owner)))
 			var target_power = float(max(1, _spocitej_silu_statu(target_owner)))
 			var strategic_ratio = own_power / target_power
-			var ratio_need = lerpf(1.18, 0.72, aggression)
+			var ratio_need = lerpf(1.18, 0.72, aggression) + exhaustion * 0.22
+			if personality == "fortress" or personality == "planner":
+				ratio_need += 0.08
+			elif personality == "warlord" or personality == "opportunist":
+				ratio_need -= 0.08
+			if goal_target == target_owner:
+				ratio_need -= 0.12
+				if goal_type == "reclaim_core":
+					ratio_need -= 0.08
 			if strategic_ratio < ratio_need:
 				continue
 
 			var border = _spocitej_silu_na_hranici(owner, target_owner)
 			var border_ratio = float(int(border.get("our", 0))) / float(max(1, int(border.get("enemy", 0))))
 			var score = strategic_ratio * 110.0 + border_ratio * 95.0 + clamp(-rel, 0.0, 120.0) * 1.4 + aggression * 140.0
+			score -= exhaustion * 180.0
+			if front_target != "" and target_owner == front_target:
+				score += 200.0
+			if goal_target == target_owner:
+				score += 280.0
+				if goal_type == "reclaim_core":
+					score += 200.0
 			if score > best_score:
 				best_score = score
 				best_target = target_owner
@@ -8101,7 +8671,7 @@ func _navrhni_core_obranu(state_tag: String, from_id: int, core_state: String = 
 
 	return {"from": from_id, "to": best_target, "amount": amount}
 
-func _navrhni_utok(state_tag: String, from_id: int, frontline_cache: Dictionary = {}) -> Dictionary:
+func _navrhni_utok(state_tag: String, from_id: int, frontline_cache: Dictionary = {}, preferred_front_owner: String = "", coordinated_commitment: Dictionary = {}) -> Dictionary:
 	if not map_data.has(from_id):
 		return {}
 	var from_data = map_data[from_id]
@@ -8116,9 +8686,15 @@ func _navrhni_utok(state_tag: String, from_id: int, frontline_cache: Dictionary 
 	var best_amount = 0
 	var own_capital_id = _ziskej_hlavni_mesto_statu(state_tag)
 	var profile = _ai_ziskej_profil(state_tag)
+	var mindset = _ai_ziskej_mindset(state_tag)
+	var goal = _ai_ziskej_strategicky_cil(state_tag)
 	var aggression = float(profile.get("aggression", 0.5))
 	var unpredictability = float(profile.get("unpredictability", 0.3))
-	var reserve = max(420, int(float(vojaci) * (0.35 - aggression * 0.15)))
+	var attack_bias = float(mindset.get("attack_bias", 0.5))
+	var defense_bias = float(mindset.get("defense_bias", 0.5))
+	var goal_target = _normalizuj_tag(str(goal.get("target", "")))
+	var goal_type = str(goal.get("type", "none"))
+	var reserve = max(360, int(float(vojaci) * (0.40 - aggression * 0.15 + defense_bias * 0.10 - attack_bias * 0.08)))
 	var max_attack = vojaci - reserve
 	if max_attack < 280:
 		return {}
@@ -8131,14 +8707,24 @@ func _navrhni_utok(state_tag: String, from_id: int, frontline_cache: Dictionary 
 		var n_owner = str(_turn_owner_by_province.get(n_id, str(n_prov.get("owner", "")).strip_edges().to_upper()))
 		if n_owner == state_tag or n_owner == "SEA":
 			continue
-		if not _jsou_ve_valce_ai_cached(state_tag, n_owner) and _je_pratelsky_vztah_ai_cached(state_tag, n_owner) and aggression < 0.88:
+		if not _jsou_ve_valce_ai_cached(state_tag, n_owner) and _je_pratelsky_vztah_ai_cached(state_tag, n_owner) and attack_bias < 0.72:
 			continue
 
 		var n_vojaci = int(_turn_soldiers_by_province.get(n_id, int(n_prov.get("soldiers", 0))))
 		var threat_after_capture = _spocitej_hrozbu_nepratel_u_provincie(n_id, state_tag)
-		var needed_for_push = int(float(n_vojaci) * lerpf(1.12, 0.80, aggression)) + int(float(threat_after_capture) * lerpf(0.13, 0.04, aggression))
+		var needed_for_push = int(float(n_vojaci) * lerpf(1.14, 0.78, attack_bias)) + int(float(threat_after_capture) * lerpf(0.14, 0.04, attack_bias))
 		var attack_amount = min(max_attack, int(float(vojaci) * 0.78))
-		var overwhelming = float(vojaci) / float(max(1, n_vojaci)) >= lerpf(4.5, 1.9, aggression)
+		var source_threat = _spocitej_hrozbu_nepratel_u_provincie(from_id, state_tag)
+		var remaining_after = vojaci - attack_amount
+		# Do not overextend from threatened source provinces.
+		if source_threat > int(float(max(1, remaining_after)) * 1.45):
+			if not (goal_type == "reclaim_core" and goal_target != "" and n_owner == goal_target):
+				continue
+		# Protect capital garrison unless this is a direct reclaim objective.
+		if from_id == own_capital_id and remaining_after < max(700, int(float(source_threat) * 0.85)):
+			if not (goal_type == "reclaim_core" and goal_target != "" and n_owner == goal_target):
+				continue
+		var overwhelming = float(vojaci) / float(max(1, n_vojaci)) >= lerpf(4.8, 1.7, attack_bias)
 		if attack_amount < max(320, needed_for_push) and not overwhelming:
 			continue
 
@@ -8159,7 +8745,18 @@ func _navrhni_utok(state_tag: String, from_id: int, frontline_cache: Dictionary 
 		if enemy_core != "" and str(n_prov.get("state", "")) == enemy_core:
 			score += 900.0
 		score += randf_range(-220.0, 220.0) * unpredictability
-		score += 220.0 * aggression
+		score += 240.0 * attack_bias
+		score -= 140.0 * defense_bias
+		if preferred_front_owner != "" and _normalizuj_tag(n_owner) == _normalizuj_tag(preferred_front_owner):
+			score += 900.0
+		var owner_focus_key = "owner:" + _normalizuj_tag(n_owner)
+		var prov_focus_key = "prov:" + str(n_id)
+		score += float(int(coordinated_commitment.get(owner_focus_key, 0))) * 180.0
+		score += float(int(coordinated_commitment.get(prov_focus_key, 0))) * 140.0
+		if goal_target != "" and n_owner == goal_target:
+			score += 1800.0
+			if goal_type == "reclaim_core" and _normalizuj_tag(str(n_prov.get("core_owner", ""))) == state_tag:
+				score += 2200.0
 
 		if score > best_score:
 			best_score = score
@@ -8168,7 +8765,7 @@ func _navrhni_utok(state_tag: String, from_id: int, frontline_cache: Dictionary 
 
 	if best_target == -1:
 		return {}
-	if best_score < lerpf(240.0, -120.0, aggression):
+	if best_score < lerpf(260.0, -160.0, attack_bias):
 		return {}
 
 	return {
