@@ -578,13 +578,13 @@ func _aktualizuj_hromadny_selection_texture(ids: Array):
 	if material:
 		var root = get_parent()
 		var is_peace_targeting = root != null and ("ceka_na_cil_miru" in root) and bool(root.ceka_na_cil_miru)
+		var is_trade_targeting = root != null and ("ceka_na_cil_trade_provincie" in root) and bool(root.ceka_na_cil_trade_provincie)
+		var is_clean_selection_mode = is_peace_targeting or is_trade_targeting
 		material.set_shader_parameter("selected_multi_color", _ziskej_barvu_hrace_pro_vyber())
-		material.set_shader_parameter("peace_selection_player_color_mode", is_peace_targeting)
-		if is_peace_targeting:
-			# In peace selection, only explicitly selected provinces should look claimed.
-			material.set_shader_parameter("peace_target_visual_mode", false)
-		elif not bool(material.get_shader_parameter("capital_focus_mode")):
-			material.set_shader_parameter("peace_target_visual_mode", false)
+		# In peace/trade picking modes, tint only explicitly selected provinces.
+		material.set_shader_parameter("peace_selection_player_color_mode", is_clean_selection_mode)
+		# Prevent stale peace-target owner coloring from affecting trade mode.
+		material.set_shader_parameter("peace_target_visual_mode", false)
 
 	selected_multi_image.fill(Color(0, 0, 0, 0))
 	for raw_id in ids:
@@ -621,8 +621,11 @@ func _unhandled_input(event):
 			var is_targeting = "ceka_na_cil_presunu" in root and root.ceka_na_cil_presunu
 			var is_capital_targeting = "ceka_na_cil_hlavniho_mesta" in root and root.ceka_na_cil_hlavniho_mesta
 			var is_peace_targeting = "ceka_na_cil_miru" in root and root.ceka_na_cil_miru
+			var is_trade_targeting = "ceka_na_cil_trade_provincie" in root and root.ceka_na_cil_trade_provincie
 			var is_bulk_targeting = "ceka_na_hromadny_cil_presunu" in root and root.ceka_na_hromadny_cil_presunu
-			if not is_targeting and not is_bulk_targeting and not is_capital_targeting and not is_peace_targeting:
+			var game_ui = _get_game_ui()
+			var is_trade_war_targeting = game_ui and game_ui.has_method("je_aktivni_vyber_trade_valky_na_mape") and bool(game_ui.je_aktivni_vyber_trade_valky_na_mape())
+			if not is_targeting and not is_bulk_targeting and not is_capital_targeting and not is_peace_targeting and not is_trade_targeting and not is_trade_war_targeting:
 				_drag_select_active = true
 				_drag_select_started = false
 				_drag_start_local = _ziskej_localni_pozici_mysi(get_global_mouse_position())
@@ -799,6 +802,8 @@ func _odzanc_vse():
 		root.zrus_rezim_vyberu_hlavniho_mesta()
 	if root.has_method("zrus_rezim_vyberu_miru"):
 		root.zrus_rezim_vyberu_miru()
+	if root.has_method("zrus_rezim_vyberu_trade_provincie"):
+		root.zrus_rezim_vyberu_trade_provincie()
 	if "ceka_na_hromadny_cil_presunu" in root:
 		root.ceka_na_hromadny_cil_presunu = false
 	if root.has_method("vycisti_nahled_presunu"):
@@ -818,6 +823,10 @@ func _odzanc_vse():
 		game_ui.zrus_vyber_cile_hlavniho_mesta_ui()
 	if game_ui and game_ui.has_method("zrus_vyber_miru_ui"):
 		game_ui.zrus_vyber_miru_ui()
+	if game_ui and game_ui.has_method("zrus_vyber_trade_provincie_ui"):
+		game_ui.zrus_vyber_trade_provincie_ui()
+	if game_ui and game_ui.has_method("zrus_vyber_trade_valecneho_cile_ui"):
+		game_ui.zrus_vyber_trade_valecneho_cile_ui()
 	var ma_otevrene_mirove_jednani = false
 	if game_ui and game_ui.has_method("ma_otevrene_mirove_jednani"):
 		ma_otevrene_mirove_jednani = bool(game_ui.ma_otevrene_mirove_jednani())
@@ -857,9 +866,12 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 	var is_targeting = "ceka_na_cil_presunu" in root and root.ceka_na_cil_presunu
 	var is_capital_targeting = "ceka_na_cil_hlavniho_mesta" in root and root.ceka_na_cil_hlavniho_mesta
 	var is_peace_targeting = "ceka_na_cil_miru" in root and root.ceka_na_cil_miru
+	var is_trade_targeting = "ceka_na_cil_trade_provincie" in root and root.ceka_na_cil_trade_provincie
 	var is_bulk_targeting = "ceka_na_hromadny_cil_presunu" in root and root.ceka_na_hromadny_cil_presunu
+	var game_ui_trade_war = _get_game_ui()
+	var is_trade_war_targeting = game_ui_trade_war and game_ui_trade_war.has_method("je_aktivni_vyber_trade_valky_na_mape") and bool(game_ui_trade_war.je_aktivni_vyber_trade_valky_na_mape())
 	if material:
-		material.set_shader_parameter("peace_selection_player_color_mode", is_peace_targeting)
+		material.set_shader_parameter("peace_selection_player_color_mode", is_peace_targeting or is_trade_targeting)
 	var multi_ids: Array = []
 	if root.has_method("ziskej_hromadne_vybrane_provincie"):
 		multi_ids = root.ziskej_hromadne_vybrane_provincie()
@@ -883,6 +895,28 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 			if game_ui_peace and game_ui_peace.has_method("obsluha_vyberu_miru_z_mapy"):
 				game_ui_peace.obsluha_vyberu_miru_z_mapy(result_peace, target_peace_id)
 			return
+
+		if is_trade_targeting:
+			var target_trade_id = int(prov_id)
+			if not root.has_method("je_platna_provincie_pro_trade") or not root.je_platna_provincie_pro_trade(target_trade_id):
+				return
+
+			var result_trade: Dictionary = {"ok": false, "reason": "Failed to select province for trade transfer."}
+			if root.has_method("prepni_vyber_trade_provincie"):
+				result_trade = root.prepni_vyber_trade_provincie(target_trade_id)
+
+			if bool(result_trade.get("ok", false)):
+				_aktualizuj_hromadny_selection_texture(result_trade.get("selected", []) as Array)
+
+			var game_ui_trade = _get_game_ui()
+			if game_ui_trade and game_ui_trade.has_method("obsluha_vyberu_trade_provincie_z_mapy"):
+				game_ui_trade.obsluha_vyberu_trade_provincie_z_mapy(result_trade, target_trade_id)
+			return
+
+		if is_trade_war_targeting:
+			if game_ui_trade_war and game_ui_trade_war.has_method("obsluha_vyberu_trade_valky_z_mapy"):
+				if bool(game_ui_trade_war.obsluha_vyberu_trade_valky_z_mapy(data)):
+					return
 
 		if is_capital_targeting:
 			var target_cap_id = int(prov_id)
@@ -1017,6 +1051,27 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 			if root.has_method("je_platna_provincie_pro_mir"):
 				valid_peace_target = root.je_platna_provincie_pro_mir(int(prov_id))
 			if not valid_peace_target:
+				_vymaz_hover()
+				_set_cursor_shape(Input.CURSOR_ARROW)
+				return
+			_set_cursor_shape(Input.CURSOR_POINTING_HAND)
+			material.set_shader_parameter("is_target_hover", true)
+		elif is_trade_targeting:
+			var valid_trade_target = false
+			if root.has_method("je_platna_provincie_pro_trade"):
+				valid_trade_target = root.je_platna_provincie_pro_trade(int(prov_id))
+			if not valid_trade_target:
+				_vymaz_hover()
+				_set_cursor_shape(Input.CURSOR_ARROW)
+				return
+			_set_cursor_shape(Input.CURSOR_POINTING_HAND)
+			material.set_shader_parameter("is_target_hover", true)
+		elif is_trade_war_targeting:
+			var owner_tag = str(data.get("owner", "")).strip_edges().to_upper()
+			var valid_country_target = owner_tag != "" and owner_tag != "SEA"
+			if game_ui_trade_war and game_ui_trade_war.has_method("je_platny_trade_cil_statu_na_mape"):
+				valid_country_target = bool(game_ui_trade_war.je_platny_trade_cil_statu_na_mape(owner_tag))
+			if not valid_country_target:
 				_vymaz_hover()
 				_set_cursor_shape(Input.CURSOR_ARROW)
 				return

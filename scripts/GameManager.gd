@@ -257,9 +257,27 @@ var cekajici_aliancni_zadosti: Array = []
 
 const DIP_REQUEST_PRIORITY_PLAYER := 0
 const DIP_REQUEST_PRIORITY_PEACE := 1
-const DIP_REQUEST_PRIORITY_ALLIANCE := 2
-const DIP_REQUEST_PRIORITY_NON_AGGRESSION := 3
-const DIP_REQUEST_PRIORITY_MILITARY_ACCESS := 4
+const DIP_REQUEST_PRIORITY_TRADE := 2
+const DIP_REQUEST_PRIORITY_ALLIANCE := 3
+const DIP_REQUEST_PRIORITY_NON_AGGRESSION := 4
+const DIP_REQUEST_PRIORITY_MILITARY_ACCESS := 5
+
+const TRADE_SLOT_GOLD := "gold"
+const TRADE_SLOT_PROVINCE := "province"
+const TRADE_SLOT_DECLARE_WAR := "declare_war"
+const TRADE_SLOT_JOIN_ALLIANCE := "join_alliance"
+const TRADE_SLOT_IMPROVE_RELATIONSHIP_WITH := "improve_relationship_with"
+const TRADE_SLOT_WORSEN_RELATIONSHIP_WITH := "worsen_relationship_with"
+const TRADE_SLOT_NON_AGGRESSION := "non_aggression"
+const TRADE_SUPPORTED_SLOTS := {
+	TRADE_SLOT_GOLD: true,
+	TRADE_SLOT_PROVINCE: true,
+	TRADE_SLOT_DECLARE_WAR: true,
+	TRADE_SLOT_JOIN_ALLIANCE: true,
+	TRADE_SLOT_IMPROVE_RELATIONSHIP_WITH: true,
+	TRADE_SLOT_WORSEN_RELATIONSHIP_WITH: true,
+	TRADE_SLOT_NON_AGGRESSION: true
+}
 
 var zpracovava_se_tah: bool = false
 var _last_end_turn_request_ms: int = -1000000
@@ -2802,6 +2820,405 @@ func daruj_penize_statu(odesilatel: String, prijemce: String, amount: float) -> 
 		"to_cash": _ziskej_kasu_statu(to_tag)
 	}
 
+func odeslat_obchodni_nabidku(odesilatel: String, prijemce: String, terms_from_sender_raw: Dictionary, terms_from_receiver_raw: Dictionary) -> Dictionary:
+	var from_tag = _normalizuj_tag(odesilatel)
+	var to_tag = _normalizuj_tag(prijemce)
+	if from_tag == "" or to_tag == "" or from_tag == to_tag:
+		return {"ok": false, "reason": "Invalid countries for trade."}
+	if from_tag == "SEA" or to_tag == "SEA":
+		return {"ok": false, "reason": "Trade cannot involve sea provinces."}
+	if not _stat_existuje(from_tag) or not _stat_existuje(to_tag):
+		return {"ok": false, "reason": "One of the countries does not exist on the current map."}
+
+	var terms_from_sender = _normalizuj_trade_terms(terms_from_sender_raw)
+	var terms_from_receiver = _normalizuj_trade_terms(terms_from_receiver_raw)
+	if terms_from_sender.is_empty() and terms_from_receiver.is_empty():
+		return {"ok": false, "reason": "Trade offer must contain at least one term."}
+
+	var check_sender = _trade_validate_terms(from_tag, to_tag, terms_from_sender)
+	if not bool(check_sender.get("ok", false)):
+		return check_sender
+	var check_receiver = _trade_validate_terms(to_tag, from_tag, terms_from_receiver)
+	if not bool(check_receiver.get("ok", false)):
+		return check_receiver
+
+	var payload = {
+		"from_terms": terms_from_sender,
+		"to_terms": terms_from_receiver
+	}
+
+	if je_lidsky_stat(to_tag):
+		var queued = _pridej_diplomatickou_zadost(from_tag, to_tag, "trade", ALLIANCE_NONE, payload)
+		if not queued:
+			return {"ok": false, "reason": "Trade offer could not be queued."}
+		if je_lidsky_stat(from_tag):
+			_pridej_popup_hraci(from_tag, "Trade", "Trade offer was sent to %s." % to_tag)
+		return {
+			"ok": true,
+			"queued": true,
+			"accepted": false,
+			"from_terms": terms_from_sender,
+			"to_terms": terms_from_receiver
+		}
+
+	var ai_accepts = _vyhodnot_trade_nabidku_ai(from_tag, to_tag, terms_from_sender, terms_from_receiver)
+	if not ai_accepts:
+		_zaloguj_globalni_zpravu("Trade", "%s rejected trade offer from %s." % [to_tag, from_tag], "trade")
+		if je_lidsky_stat(from_tag):
+			_pridej_popup_hraci(from_tag, "Trade", "%s rejected your trade offer." % to_tag)
+		return {"ok": true, "queued": false, "accepted": false, "reason": "AI rejected the offer."}
+
+	var apply_result = _proved_trade_dohodu(from_tag, to_tag, payload)
+	if not bool(apply_result.get("ok", false)):
+		return apply_result
+	apply_result["queued"] = false
+	apply_result["accepted"] = true
+	return apply_result
+
+func _normalizuj_trade_terms(raw_terms: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	for slot_any in raw_terms.keys():
+		var slot = str(slot_any).strip_edges().to_lower()
+		if not TRADE_SUPPORTED_SLOTS.has(slot):
+			continue
+		var entry_any = raw_terms.get(slot_any, {})
+		if not (entry_any is Dictionary):
+			continue
+		var entry = entry_any as Dictionary
+		var value_a = str(entry.get("a", "")).strip_edges()
+		var value_b = str(entry.get("b", "")).strip_edges()
+		if value_a == "" and value_b == "":
+			continue
+		out[slot] = {"a": value_a, "b": value_b}
+	return out
+
+func _trade_parse_amount(raw: String) -> float:
+	var sanitized = raw.strip_edges().replace(",", ".").to_lower()
+	if sanitized == "":
+		return -1.0
+	if sanitized.is_valid_float():
+		return float(sanitized)
+
+	var re := RegEx.new()
+	var err = re.compile("[-+]?[0-9]*\\.?[0-9]+")
+	if err != OK:
+		return -1.0
+	var m = re.search(sanitized)
+	if m == null:
+		return -1.0
+	var parsed = m.get_string(0)
+	if parsed == "" or not parsed.is_valid_float():
+		return -1.0
+	return float(parsed)
+
+func _trade_parse_province_id(raw: String) -> int:
+	var sanitized = raw.strip_edges()
+	if sanitized == "":
+		return -1
+	if not sanitized.is_valid_int():
+		return -1
+	return int(sanitized)
+
+func _trade_parse_province_ids(raw: String) -> Array:
+	var text = raw.strip_edges().replace(";", ",").replace(" ", "")
+	if text == "":
+		return []
+	var out: Array = []
+	for part in text.split(",", false):
+		var token = part.strip_edges()
+		if token == "" or not token.is_valid_int():
+			continue
+		var pid = int(token)
+		if not out.has(pid):
+			out.append(pid)
+	return out
+
+func _trade_parse_target_tag(raw: String) -> String:
+	return _normalizuj_tag(raw)
+
+func _trade_can_declare_war(attacker_tag: String, defender_tag: String) -> bool:
+	var a = _normalizuj_tag(attacker_tag)
+	var b = _normalizuj_tag(defender_tag)
+	if a == "" or b == "" or a == b or b == "SEA":
+		return false
+	if not _stat_existuje(a) or not _stat_existuje(b):
+		return false
+	if jsou_ve_valce(a, b):
+		return false
+	if zbyva_kol_do_dalsi_valky(a, b) > 0:
+		return false
+	if ma_neagresivni_smlouvu(a, b):
+		return false
+	if ziskej_uroven_aliance(a, b) > ALLIANCE_NONE:
+		return false
+	return true
+
+func _trade_validate_terms(provider_tag: String, receiver_tag: String, terms: Dictionary) -> Dictionary:
+	var provider = _normalizuj_tag(provider_tag)
+	var receiver = _normalizuj_tag(receiver_tag)
+	if provider == "" or receiver == "" or provider == receiver:
+		return {"ok": false, "reason": "Invalid trade term parties."}
+
+	for slot_any in terms.keys():
+		var slot = str(slot_any)
+		var entry = terms.get(slot_any, {}) as Dictionary
+		var value_a = str(entry.get("a", "")).strip_edges()
+		match slot:
+			TRADE_SLOT_GOLD:
+				var amount = _trade_parse_amount(value_a)
+				if amount <= 0.0:
+					return {"ok": false, "reason": "Trade term 'Money' must be a positive number (mil. USD)."}
+				var provider_cash = _ziskej_kasu_statu(provider)
+				if provider_cash + 0.0001 < amount:
+					return {
+						"ok": false,
+						"reason": "%s does not have enough treasury for this money transfer (required %.2f mil. USD, available %.2f mil. USD)." % [provider, amount, provider_cash],
+						"required": amount,
+						"available": provider_cash
+					}
+			TRADE_SLOT_PROVINCE:
+				var province_ids = _trade_parse_province_ids(value_a)
+				if province_ids.is_empty():
+					return {"ok": false, "reason": "Trade term 'Province' requires at least one valid numeric province ID."}
+				for province_id_any in province_ids:
+					var province_id = int(province_id_any)
+					if province_id < 0 or not map_data.has(province_id):
+						return {"ok": false, "reason": "Province %d does not exist." % province_id}
+					var province = map_data[province_id] as Dictionary
+					var owner = _normalizuj_tag(str(province.get("owner", "")))
+					if owner != provider:
+						return {"ok": false, "reason": "Province %d is not owned by %s." % [province_id, provider]}
+					if bool(province.get("is_capital", false)):
+						return {"ok": false, "reason": "Capital province cannot be traded (province %d)." % province_id}
+			TRADE_SLOT_DECLARE_WAR:
+				var war_target = _trade_parse_target_tag(value_a)
+				if war_target == "" or war_target == provider or war_target == receiver:
+					return {"ok": false, "reason": "Trade term 'Declare War' needs a valid third-party tag."}
+				if not _trade_can_declare_war(provider, war_target):
+					return {"ok": false, "reason": "%s cannot declare war on %s under current diplomacy constraints." % [provider, war_target]}
+			TRADE_SLOT_JOIN_ALLIANCE:
+				var alliance_id = value_a
+				if alliance_id == "":
+					return {"ok": false, "reason": "Trade term 'Join Alliance' requires an alliance selection."}
+				var alliance = ziskej_alianci_podle_id(alliance_id)
+				if alliance.is_empty():
+					return {"ok": false, "reason": "Selected alliance does not exist anymore."}
+				var members = alliance.get("members", []) as Array
+				if members.has(provider):
+					return {"ok": false, "reason": "%s is already in selected alliance." % provider}
+				var conditions = ziskej_podminky_clenstvi_aliance(alliance_id, provider)
+				for cond_any in conditions:
+					var cond = cond_any as Dictionary
+					if not bool(cond.get("met", false)):
+						return {
+							"ok": false,
+							"reason": "%s does not meet conditions to join alliance '%s'." % [provider, str(alliance.get("name", alliance_id))]
+						}
+			TRADE_SLOT_IMPROVE_RELATIONSHIP_WITH:
+				var improve_target = _trade_parse_target_tag(value_a)
+				if improve_target == "" or improve_target == "SEA" or improve_target == provider:
+					return {"ok": false, "reason": "Trade term 'Improve Relationship With' needs a valid target country."}
+				if not _stat_existuje(improve_target):
+					return {"ok": false, "reason": "Target country for relation change does not exist on current map."}
+			TRADE_SLOT_WORSEN_RELATIONSHIP_WITH:
+				var worsen_target = _trade_parse_target_tag(value_a)
+				if worsen_target == "" or worsen_target == "SEA" or worsen_target == provider:
+					return {"ok": false, "reason": "Trade term 'Worsen Relationship With' needs a valid target country."}
+				if not _stat_existuje(worsen_target):
+					return {"ok": false, "reason": "Target country for relation change does not exist on current map."}
+			TRADE_SLOT_NON_AGGRESSION:
+				if jsou_ve_valce(provider, receiver):
+					return {"ok": false, "reason": "Non-aggression pact cannot be signed during war."}
+			_:
+				return {"ok": false, "reason": "Unsupported trade term: %s" % slot}
+
+	return {"ok": true}
+
+func _trade_transfer_province(provider_tag: String, receiver_tag: String, province_id: int) -> Dictionary:
+	var provider = _normalizuj_tag(provider_tag)
+	var receiver = _normalizuj_tag(receiver_tag)
+	if not map_data.has(province_id):
+		return {"ok": false, "reason": "Province not found."}
+	var d = map_data[province_id] as Dictionary
+	if _normalizuj_tag(str(d.get("owner", ""))) != provider:
+		return {"ok": false, "reason": "Province is no longer owned by trade provider."}
+	if bool(d.get("is_capital", false)):
+		return {"ok": false, "reason": "Capital province cannot be traded."}
+
+	var profile = _ziskej_profile_statu_pro_mir(receiver)
+	d["owner"] = receiver
+	d["core_owner"] = receiver
+	d["country_name"] = str(profile.get("country_name", receiver))
+	d["ideology"] = str(profile.get("ideology", ""))
+	d["army_owner"] = receiver if int(d.get("soldiers", 0)) > 0 else ""
+	return {"ok": true}
+
+func _trade_execute_terms(provider_tag: String, receiver_tag: String, terms: Dictionary) -> Dictionary:
+	var provider = _normalizuj_tag(provider_tag)
+	var receiver = _normalizuj_tag(receiver_tag)
+	var map_changed := false
+
+	for slot_any in terms.keys():
+		var slot = str(slot_any)
+		var entry = terms.get(slot_any, {}) as Dictionary
+		var value_a = str(entry.get("a", "")).strip_edges()
+		match slot:
+			TRADE_SLOT_GOLD:
+				var amount = _trade_parse_amount(value_a)
+				if amount <= 0.0:
+					return {"ok": false, "reason": "Invalid money amount in trade execution."}
+				var provider_cash = _ziskej_kasu_statu(provider)
+				if provider_cash + 0.0001 < amount:
+					return {
+						"ok": false,
+						"reason": "%s does not have enough treasury to complete trade (required %.2f mil. USD, available %.2f mil. USD)." % [provider, amount, provider_cash],
+						"required": amount,
+						"available": provider_cash
+					}
+				var receiver_cash = _ziskej_kasu_statu(receiver)
+				_nastav_kasu_statu(provider, provider_cash - amount)
+				_nastav_kasu_statu(receiver, receiver_cash + amount)
+				_uprav_vztah_statu_bez_cooldown(provider, receiver, clamp(amount / 40.0, 0.5, 12.0))
+			TRADE_SLOT_PROVINCE:
+				var province_ids = _trade_parse_province_ids(value_a)
+				if province_ids.is_empty():
+					return {"ok": false, "reason": "No provinces were provided for transfer."}
+				for province_id_any in province_ids:
+					var province_id = int(province_id_any)
+					var transfer_res = _trade_transfer_province(provider, receiver, province_id)
+					if not bool(transfer_res.get("ok", false)):
+						return transfer_res
+				map_changed = true
+			TRADE_SLOT_DECLARE_WAR:
+				var war_target = _trade_parse_target_tag(value_a)
+				if not vyhlasit_valku(provider, war_target):
+					return {"ok": false, "reason": "%s failed to declare war on %s." % [provider, war_target]}
+			TRADE_SLOT_JOIN_ALLIANCE:
+				var alliance_id = value_a
+				var join_result = pridej_clena_do_aliance(alliance_id, provider, false)
+				if not bool(join_result.get("ok", false)):
+					return {"ok": false, "reason": str(join_result.get("reason", "Failed to join selected alliance."))}
+			TRADE_SLOT_IMPROVE_RELATIONSHIP_WITH:
+				var improve_target = _trade_parse_target_tag(value_a)
+				_uprav_vztah_statu_bez_cooldown(provider, improve_target, absf(RELATION_STEP_PLAYER))
+			TRADE_SLOT_WORSEN_RELATIONSHIP_WITH:
+				var worsen_target = _trade_parse_target_tag(value_a)
+				_uprav_vztah_statu_bez_cooldown(provider, worsen_target, -absf(RELATION_STEP_PLAYER))
+			TRADE_SLOT_NON_AGGRESSION:
+				if not ma_neagresivni_smlouvu(provider, receiver):
+					if not uzavrit_neagresivni_smlouvu(provider, receiver):
+						return {"ok": false, "reason": "Non-aggression pact term could not be executed."}
+			_:
+				return {"ok": false, "reason": "Unsupported trade term during execution: %s" % slot}
+
+	return {"ok": true, "map_changed": map_changed}
+
+func _trade_update_map_after_changes() -> void:
+	var map_loader = _get_map_loader()
+	if map_loader:
+		if "provinces" in map_loader:
+			map_loader.provinces = map_data
+		if map_loader.has_method("_aktualizuj_aktivni_mapovy_mod"):
+			map_loader._aktualizuj_aktivni_mapovy_mod()
+		if map_loader.has_method("aktualizuj_ikony_armad"):
+			map_loader.aktualizuj_ikony_armad()
+
+func _trade_spocitej_hodnotu_terms(receiver_tag: String, provider_tag: String, terms: Dictionary) -> float:
+	var receiver = _normalizuj_tag(receiver_tag)
+	var provider = _normalizuj_tag(provider_tag)
+	var score := 0.0
+	for slot_any in terms.keys():
+		var slot = str(slot_any)
+		var entry = terms.get(slot_any, {}) as Dictionary
+		var value_a = str(entry.get("a", "")).strip_edges()
+		match slot:
+			TRADE_SLOT_GOLD:
+				var amount = max(0.0, _trade_parse_amount(value_a))
+				score += clamp(amount / 20.0, 0.5, 35.0)
+			TRADE_SLOT_PROVINCE:
+				var province_ids = _trade_parse_province_ids(value_a)
+				for province_id_any in province_ids:
+					var province_id = int(province_id_any)
+					if province_id >= 0 and map_data.has(province_id):
+						var d = map_data[province_id] as Dictionary
+						var gdp = max(0.0, float(d.get("gdp", 0.0)))
+						score += 8.0 + clamp(gdp / 60.0, 0.0, 28.0)
+			TRADE_SLOT_DECLARE_WAR:
+				var target = _trade_parse_target_tag(value_a)
+				if target != "":
+					var rel = ziskej_vztah_statu(provider, target)
+					score += 4.0 if rel < -10.0 else -8.0
+			TRADE_SLOT_JOIN_ALLIANCE:
+				var alliance = ziskej_alianci_podle_id(value_a)
+				if not alliance.is_empty():
+					var members = alliance.get("members", []) as Array
+					if members.has(receiver):
+						score += 12.0
+					else:
+						score += 5.0
+			TRADE_SLOT_IMPROVE_RELATIONSHIP_WITH:
+				var improve_target = _trade_parse_target_tag(value_a)
+				if improve_target != "":
+					var rel_improve = ziskej_vztah_statu(receiver, improve_target)
+					score += 6.0 if rel_improve >= 0.0 else -4.0
+			TRADE_SLOT_WORSEN_RELATIONSHIP_WITH:
+				var worsen_target = _trade_parse_target_tag(value_a)
+				if worsen_target != "":
+					var rel_worsen = ziskej_vztah_statu(receiver, worsen_target)
+					score += 6.0 if rel_worsen < 0.0 else -5.0
+			TRADE_SLOT_NON_AGGRESSION:
+				score += 7.0
+	return score
+
+func _vyhodnot_trade_nabidku_ai(from_tag: String, to_tag: String, from_terms: Dictionary, to_terms: Dictionary) -> bool:
+	var ai_gain = _trade_spocitej_hodnotu_terms(to_tag, from_tag, from_terms)
+	var ai_cost = _trade_spocitej_hodnotu_terms(to_tag, from_tag, to_terms)
+	var relation = ziskej_vztah_statu(from_tag, to_tag)
+	var threshold = 1.0 - clamp(relation / 25.0, -2.0, 2.0)
+	return (ai_gain - ai_cost) >= threshold
+
+func _proved_trade_dohodu(from_tag: String, to_tag: String, payload: Dictionary) -> Dictionary:
+	var from_clean = _normalizuj_tag(from_tag)
+	var to_clean = _normalizuj_tag(to_tag)
+	var from_terms = _normalizuj_trade_terms(payload.get("from_terms", {}) as Dictionary)
+	var to_terms = _normalizuj_trade_terms(payload.get("to_terms", {}) as Dictionary)
+
+	var check_sender = _trade_validate_terms(from_clean, to_clean, from_terms)
+	if not bool(check_sender.get("ok", false)):
+		return check_sender
+	var check_receiver = _trade_validate_terms(to_clean, from_clean, to_terms)
+	if not bool(check_receiver.get("ok", false)):
+		return check_receiver
+
+	var sender_exec = _trade_execute_terms(from_clean, to_clean, from_terms)
+	if not bool(sender_exec.get("ok", false)):
+		return sender_exec
+	var receiver_exec = _trade_execute_terms(to_clean, from_clean, to_terms)
+	if not bool(receiver_exec.get("ok", false)):
+		return receiver_exec
+
+	var map_changed = bool(sender_exec.get("map_changed", false)) or bool(receiver_exec.get("map_changed", false))
+	if map_changed:
+		_trade_update_map_after_changes()
+
+	_invalidate_turn_cache()
+	if not map_data.is_empty():
+		spocitej_prijem(map_data, false)
+	kolo_zmeneno.emit()
+
+	_zaloguj_globalni_zpravu("Trade", "%s and %s completed a trade agreement." % [from_clean, to_clean], "trade")
+	if je_lidsky_stat(from_clean) or je_lidsky_stat(to_clean):
+		_pridej_popup_zucastnenym_hracum(from_clean, to_clean, "Trade", "%s and %s completed a trade agreement." % [from_clean, to_clean])
+
+	return {
+		"ok": true,
+		"from": from_clean,
+		"to": to_clean,
+		"map_changed": map_changed,
+		"from_terms": from_terms,
+		"to_terms": to_terms
+	}
+
 func _je_more_provincie(prov_id: int) -> bool:
 	if not map_data.has(prov_id):
 		return false
@@ -3750,13 +4167,13 @@ func _ma_cekajici_zadost_vojenskeho_pristupu(guest: String, host: String) -> boo
 			return true
 	return false
 
-func _pridej_diplomatickou_zadost(from_tag: String, to_tag: String, req_type: String, alliance_level: int = ALLIANCE_NONE) -> bool:
+func _pridej_diplomatickou_zadost(from_tag: String, to_tag: String, req_type: String, alliance_level: int = ALLIANCE_NONE, payload: Dictionary = {}) -> bool:
 	var from_clean = _normalizuj_tag(from_tag)
 	var to_clean = _normalizuj_tag(to_tag)
 	if from_clean == "" or to_clean == "" or from_clean == to_clean:
 		return false
 
-	if req_type != "alliance" and req_type != "non_aggression" and req_type != "peace" and req_type != "military_access":
+	if req_type != "alliance" and req_type != "non_aggression" and req_type != "peace" and req_type != "military_access" and req_type != "trade":
 		return false
 
 	if not _je_essential_diplomaticka_zadost(from_clean, to_clean, req_type, alliance_level):
@@ -3771,6 +4188,8 @@ func _pridej_diplomatickou_zadost(from_tag: String, to_tag: String, req_type: St
 			"level": alliance_level,
 			"turn": aktualni_kolo
 		}
+		if not payload.is_empty():
+			forced_req["payload"] = payload.duplicate(true)
 		var forced_ok = _vykonej_prijeti_diplomaticke_zadosti(to_clean, forced_req, true)
 		if forced_ok:
 			_zaloguj_globalni_zpravu("Diplomacy", "%s automatically accepted %s from overlord %s." % [to_clean, req_type, from_clean], "diplomacy")
@@ -3787,6 +4206,8 @@ func _pridej_diplomatickou_zadost(from_tag: String, to_tag: String, req_type: St
 		"level": alliance_level,
 		"turn": aktualni_kolo
 	}
+	if not payload.is_empty():
+		new_req["payload"] = payload.duplicate(true)
 
 	# Keep max one visible request per sender to avoid spam; replace only when the
 	# new request is more important than the currently queued one.
@@ -3809,6 +4230,8 @@ func _pridej_diplomatickou_zadost(from_tag: String, to_tag: String, req_type: St
 		_zaloguj_globalni_zpravu("Diplomacy", "%s proposed non-aggression pact to %s." % [from_clean, to_clean], "diplomacy")
 	elif req_type == "military_access":
 		_zaloguj_globalni_zpravu("Diplomacy", "%s requested military access from %s." % [from_clean, to_clean], "diplomacy")
+	elif req_type == "trade":
+		_zaloguj_globalni_zpravu("Trade", "%s sent trade offer to %s." % [from_clean, to_clean], "trade")
 	return true
 
 func _je_essential_diplomaticka_zadost(from_tag: String, to_tag: String, req_type: String, alliance_level: int) -> bool:
@@ -3834,6 +4257,8 @@ func _je_essential_diplomaticka_zadost(from_tag: String, to_tag: String, req_typ
 			return rel >= maxf(35.0, NON_AGGRESSION_MIN_REL)
 		"military_access":
 			return true
+		"trade":
+			return true
 		_:
 			return false
 
@@ -3851,6 +4276,8 @@ func _diplomaticka_zadost_priorita(req: Dictionary) -> int:
 			return DIP_REQUEST_PRIORITY_NON_AGGRESSION
 		"military_access":
 			return DIP_REQUEST_PRIORITY_MILITARY_ACCESS
+		"trade":
+			return DIP_REQUEST_PRIORITY_TRADE
 		_:
 			return 100
 
@@ -3965,6 +4392,8 @@ func _vykonej_prijeti_diplomaticke_zadosti(player_clean: String, req: Dictionary
 		req_name = "non-aggression pact offer"
 	elif req_type == "military_access":
 		req_name = "military access request"
+	elif req_type == "trade":
+		req_name = "trade offer"
 
 	if req_type == "alliance":
 		var level = int(req.get("level", ALLIANCE_NONE))
@@ -4012,6 +4441,14 @@ func _vykonej_prijeti_diplomaticke_zadosti(player_clean: String, req: Dictionary
 		if je_lidsky_stat(sender):
 			_pridej_popup_hraci(sender, "Diplomacy", "%s granted you military access to their territory." % player_clean)
 		return true
+	if req_type == "trade":
+		var payload = req.get("payload", {}) as Dictionary
+		var trade_ok = _proved_trade_dohodu(sender, player_clean, payload)
+		if bool(trade_ok.get("ok", false)):
+			_zaloguj_globalni_zpravu("Trade", "%s accepted trade offer from %s." % [player_clean, sender], "trade")
+			if je_lidsky_stat(sender):
+				_pridej_popup_hraci(sender, "Trade", "%s accepted your trade offer." % player_clean)
+		return bool(trade_ok.get("ok", false))
 
 	# Keep generic fallback for future diplomatic request types.
 	_zaloguj_globalni_zpravu("Diplomacy", "%s accepted %s from %s." % [player_clean, req_name, sender], "diplomacy")
@@ -4047,6 +4484,8 @@ func hrac_odmitni_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> bo
 		req_name = "non-aggression pact offer"
 	elif req_type == "military_access":
 		req_name = "military access request"
+	elif req_type == "trade":
+		req_name = "trade offer"
 	if je_lidsky_stat(player_clean):
 		_pridej_popup_hraci(player_clean, "Diplomacy", "You declined a diplomatic request from %s." % sender)
 	_zaloguj_globalni_zpravu("Diplomacy", "%s declined %s from %s." % [player_clean, req_name, sender], "diplomacy")

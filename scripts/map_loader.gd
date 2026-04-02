@@ -28,6 +28,10 @@ var stat_mirove_konference_vitez: String = ""
 var stat_mirove_konference_porazeny: String = ""
 var dostupne_cile_miru: Array = []
 var vybrane_cile_miru: Array = []
+var ceka_na_cil_trade_provincie: bool = false
+var stat_trade_province_source: String = ""
+var dostupne_cile_trade_provincie: Array = []
+var vybrane_cile_trade_provincie: Array = []
 var ceka_na_hromadny_cil_presunu: bool = false
 var hromadny_presun_zdroje: Array = []
 var hromadne_vybrane_provincie: Array = []
@@ -2344,6 +2348,122 @@ func prepni_vyber_mirove_provincie(prov_id: int) -> Dictionary:
 
 func ziskej_vybrane_mirove_provincie() -> Array:
 	return vybrane_cile_miru.duplicate()
+
+func zrus_rezim_vyberu_trade_provincie() -> void:
+	ceka_na_cil_trade_provincie = false
+	stat_trade_province_source = ""
+	dostupne_cile_trade_provincie.clear()
+	vybrane_cile_trade_provincie.clear()
+	var sprite = $Sprite2D
+	if sprite and sprite.has_method("vycisti_nahled_hlavniho_mesta"):
+		sprite.vycisti_nahled_hlavniho_mesta()
+	if sprite and sprite.has_method("vycisti_nahled_mirovych_cilu"):
+		sprite.vycisti_nahled_mirovych_cilu()
+	if sprite and sprite.has_method("_aktualizuj_hromadny_selection_texture"):
+		sprite._aktualizuj_hromadny_selection_texture([])
+
+func aktivuj_rezim_vyberu_trade_provincie(source_tag: String, preselected_ids: Array = []) -> Dictionary:
+	var source = source_tag.strip_edges().to_upper()
+	zrus_rezim_vyberu_trade_provincie()
+	if source == "" or source == "SEA":
+		return {"ok": false, "reason": "Invalid source country for trade province transfer."}
+
+	var valid_ids: Array = []
+	for pid_any in _ziskej_provincie_statu_v_mape(source):
+		var pid = int(pid_any)
+		if not provinces.has(pid):
+			continue
+		var d = provinces[pid]
+		if _je_more_provincie(pid):
+			continue
+		if bool(d.get("is_capital", false)):
+			continue
+		valid_ids.append(pid)
+
+	if valid_ids.is_empty():
+		return {"ok": false, "reason": "No tradable provinces available (capital is excluded)."}
+
+	ceka_na_cil_trade_provincie = true
+	stat_trade_province_source = source
+	dostupne_cile_trade_provincie = valid_ids.duplicate()
+	vybrane_cile_trade_provincie.clear()
+	for raw_id in preselected_ids:
+		var pid_pre = int(raw_id)
+		if not dostupne_cile_trade_provincie.has(pid_pre):
+			continue
+		if not vybrane_cile_trade_provincie.has(pid_pre):
+			vybrane_cile_trade_provincie.append(pid_pre)
+
+	var sprite = $Sprite2D
+	if sprite and sprite.has_method("nastav_nahled_hlavniho_mesta"):
+		sprite.nastav_nahled_hlavniho_mesta(_ziskej_provincie_statu_v_mape(source), dostupne_cile_trade_provincie)
+	if sprite and sprite.has_method("vycisti_nahled_mirovych_cilu"):
+		sprite.vycisti_nahled_mirovych_cilu()
+	if sprite and sprite.has_method("_aktualizuj_hromadny_selection_texture"):
+		sprite._aktualizuj_hromadny_selection_texture(vybrane_cile_trade_provincie)
+
+	return {
+		"ok": true,
+		"count": dostupne_cile_trade_provincie.size(),
+		"selected": vybrane_cile_trade_provincie.duplicate(),
+		"selected_count": vybrane_cile_trade_provincie.size(),
+		"source": stat_trade_province_source
+	}
+
+func je_platna_provincie_pro_trade(prov_id: int) -> bool:
+	if not ceka_na_cil_trade_provincie:
+		return false
+	return dostupne_cile_trade_provincie.has(int(prov_id))
+
+func prepni_vyber_trade_provincie(prov_id: int) -> Dictionary:
+	var pid = int(prov_id)
+	if not je_platna_provincie_pro_trade(pid):
+		return {"ok": false, "reason": "This province cannot be selected for trade transfer."}
+	if vybrane_cile_trade_provincie.has(pid):
+		vybrane_cile_trade_provincie.erase(pid)
+	else:
+		vybrane_cile_trade_provincie.append(pid)
+
+	var sprite = $Sprite2D
+	if sprite and sprite.has_method("_aktualizuj_hromadny_selection_texture"):
+		sprite._aktualizuj_hromadny_selection_texture(vybrane_cile_trade_provincie)
+
+	return {
+		"ok": true,
+		"province_id": pid,
+		"selected": vybrane_cile_trade_provincie.duplicate(),
+		"selected_count": vybrane_cile_trade_provincie.size(),
+		"source": stat_trade_province_source
+	}
+
+func ziskej_vybrane_trade_provincie() -> Array:
+	return vybrane_cile_trade_provincie.duplicate()
+
+func potvrd_vyber_trade_provincii() -> Dictionary:
+	if not ceka_na_cil_trade_provincie:
+		return {"ok": false, "reason": "Trade province selection mode is not active."}
+	if vybrane_cile_trade_provincie.is_empty():
+		return {"ok": false, "reason": "Select at least one province."}
+
+	var selected_ids = vybrane_cile_trade_provincie.duplicate()
+	selected_ids.sort()
+	var selected_names: Array = []
+	for pid_any in selected_ids:
+		var pid = int(pid_any)
+		var name = "Province %d" % pid
+		if provinces.has(pid):
+			name = str((provinces[pid] as Dictionary).get("province_name", name))
+		selected_names.append(name)
+	var source = stat_trade_province_source
+
+	zrus_rezim_vyberu_trade_provincie()
+	return {
+		"ok": true,
+		"selected": selected_ids,
+		"selected_names": selected_names,
+		"selected_count": selected_ids.size(),
+		"source": source
+	}
 
 func _ziskej_dostupne_cile_hlavniho_mesta(state_tag: String) -> Array:
 	var state = state_tag.strip_edges().to_upper()

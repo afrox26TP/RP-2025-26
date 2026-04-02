@@ -14,47 +14,44 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_settings_tab_unselected"]
-bg_color = Color(0.08, 0.12, 0.2, 0.85)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 0
-border_color = Color(0.28, 0.38, 0.53, 0.75)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-content_margin_left = 16.0
-content_margin_top = 8.0
-content_margin_right = 16.0
-content_margin_bottom = 8.0
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_settings_tab_hover"]
-bg_color = Color(0.14, 0.22, 0.38, 0.9)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 0
-border_color = Color(0.45, 0.6, 0.82, 0.85)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-content_margin_left = 16.0
-content_margin_top = 8.0
-content_margin_right = 16.0
-content_margin_bottom = 8.0
-
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_settings_tab_selected"]
+content_margin_left = 16.0
+content_margin_top = 8.0
+content_margin_right = 16.0
+content_margin_bottom = 8.0
 bg_color = Color(0.09, 0.145, 0.235, 0.95)
 border_width_left = 1
 border_width_top = 2
 border_width_right = 1
-border_width_bottom = 0
 border_color = Color(0.6, 0.78, 0.98, 0.9)
 corner_radius_top_left = 6
 corner_radius_top_right = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_settings_tab_hover"]
 content_margin_left = 16.0
 content_margin_top = 8.0
 content_margin_right = 16.0
 content_margin_bottom = 8.0
+bg_color = Color(0.14, 0.22, 0.38, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_color = Color(0.45, 0.6, 0.82, 0.85)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_settings_tab_unselected"]
+content_margin_left = 16.0
+content_margin_top = 8.0
+content_margin_right = 16.0
+content_margin_bottom = 8.0
+bg_color = Color(0.08, 0.12, 0.2, 0.85)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_color = Color(0.28, 0.38, 0.53, 0.75)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_settings_card"]
 bg_color = Color(0.09, 0.145, 0.235, 0.95)
@@ -63,7 +60,6 @@ border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
 border_color = Color(0.6, 0.78, 0.98, 0.9)
-corner_radius_top_left = 0
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
@@ -221,15 +217,14 @@ autowrap_mode = 3
 
 [node name="SettingsDialog" type="AcceptDialog" parent="Dialogs" unique_id=179100006]
 title = "Settings"
-min_size = Vector2i(960, 840)
 size = Vector2i(960, 840)
 wrap_controls = false
 unresizable = true
+min_size = Vector2i(960, 840)
 theme_override_styles/panel = SubResource("StyleBoxFlat_settings_tabs_bg")
 ok_button_text = "Close"
 
 [node name="SettingsRoot" type="MarginContainer" parent="Dialogs/SettingsDialog" unique_id=570571029]
-layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -266,24 +261,22 @@ theme_override_constants/separation = 2
 [node name="ControlsTabBtn" type="Button" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/TabSwitcher" unique_id=752677941]
 custom_minimum_size = Vector2(140, 38)
 layout_mode = 2
-text = "Controls"
-flat = false
 theme_override_styles/normal = SubResource("StyleBoxFlat_settings_tab_selected")
-theme_override_styles/hover = SubResource("StyleBoxFlat_settings_tab_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_settings_tab_selected")
-theme_override_styles/focus = SubResource("StyleBoxFlat_settings_tab_selected")
+theme_override_styles/hover = SubResource("StyleBoxFlat_settings_tab_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_settings_tab_unselected")
+theme_override_styles/focus = SubResource("StyleBoxFlat_settings_tab_selected")
+text = "Controls"
 
 [node name="SettingsTabBtn" type="Button" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/TabSwitcher" unique_id=373208800]
 custom_minimum_size = Vector2(140, 38)
 layout_mode = 2
-text = "Settings"
-flat = false
 theme_override_styles/normal = SubResource("StyleBoxFlat_settings_tab_unselected")
-theme_override_styles/hover = SubResource("StyleBoxFlat_settings_tab_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_settings_tab_selected")
-theme_override_styles/focus = SubResource("StyleBoxFlat_settings_tab_unselected")
+theme_override_styles/hover = SubResource("StyleBoxFlat_settings_tab_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_settings_tab_unselected")
+theme_override_styles/focus = SubResource("StyleBoxFlat_settings_tab_unselected")
+text = "Settings"
 
 [node name="TabSpacer" type="Control" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/TabSwitcher" unique_id=600282671]
 layout_mode = 2
@@ -409,8 +402,8 @@ bbcode_enabled = true
 text = "[b]1[/b] Political   [b]2[/b] Population   [b]3[/b] GDP
 [b]4[/b] Ideology   [b]5[/b] Recruitable Pop.   [b]6[/b] Relationships
 [b]7[/b] Terrain   [b]8[/b] Resources"
-scroll_active = false
 fit_content = true
+scroll_active = false
 
 [node name="SettingsPanel" type="PanelContainer" parent="Dialogs/SettingsDialog/SettingsRoot/SettingsVBox" unique_id=1016459936]
 visible = false

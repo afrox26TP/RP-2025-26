@@ -228,7 +228,7 @@ func _ziskej_text_data_pro_kolo(kolo: int) -> String:
 	var month_index = (_calendar_start_month - 1) + offset_mesicu
 	var month = int(month_index % 12) + 1
 	var year = _calendar_start_year + int(floor(float(month_index) / 12.0))
-	return "Date: %02d.%02d.%04d" % [_calendar_start_day, month, year]
+	return "Date: %02d.%02d.%04d (Turn %d)" % [_calendar_start_day, month, year, maxi(1, kolo)]
 
 func _ziskej_jmeno_statu_pro_frontu(tag: String) -> String:
 	var wanted = tag.strip_edges().to_upper()

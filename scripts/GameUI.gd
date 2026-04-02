@@ -1,4 +1,4 @@
-extends CanvasLayer
+﻿extends CanvasLayer
 
 const TooltipUtilsScript = preload("res://scripts/TooltipUtils.gd")
 
@@ -144,6 +144,42 @@ var _settings_options_panel: PanelContainer
 var _gift_dialog: PopupPanel
 var _gift_amount_input: LineEdit
 var gift_money_btn: Button
+var trade_btn: Button
+var _trade_dialog: PopupPanel
+var _trade_title_label: Label
+var _trade_success_label: Label
+var _trade_left_title_label: Label
+var _trade_right_title_label: Label
+var _trade_left_buttons: Dictionary = {}
+var _trade_right_buttons: Dictionary = {}
+var _trade_left_editor: Dictionary = {}
+var _trade_right_editor: Dictionary = {}
+var _trade_left_values: Dictionary = {}
+var _trade_right_values: Dictionary = {}
+var _trade_left_selected_slot: String = ""
+var _trade_right_selected_slot: String = ""
+var _trade_target_tag: String = ""
+var _trade_province_picker_popup: PopupPanel
+var _trade_province_picker_title: Label
+var _trade_province_picker_info: Label
+var _trade_province_picker_count: Label
+var _trade_province_picker_confirm_btn: Button
+var _trade_province_picker_cancel_btn: Button
+var _ceka_na_vyber_trade_provincie: bool = false
+var _trade_map_pick_side: int = -1
+var _trade_map_pick_source_tag: String = ""
+var _trade_map_selected_ids: Array = []
+var _trade_dialog_hidden_for_map_pick: bool = false
+var _ceka_na_vyber_trade_war_cile: bool = false
+var _trade_war_pick_side: int = -1
+var _trade_war_provider_tag: String = ""
+var _trade_war_receiver_tag: String = ""
+var _trade_war_pick_slot: String = ""
+var _trade_dialog_hidden_for_war_pick: bool = false
+var _ceka_na_vyber_trade_aliance: bool = false
+var _trade_alliance_pick_side: int = -1
+var _trade_alliance_pick_provider_tag: String = ""
+var _trade_dialog_hidden_for_alliance_pick: bool = false
 var _peace_dialog: PopupPanel
 var _peace_title_label: Label
 var _peace_points_label: Label
@@ -348,12 +384,14 @@ func _ready():
 	_zajisti_mirove_overview_labely()
 	_zajisti_tlacitko_vazalu()
 	_zajisti_tlacitko_daru()
+	_zajisti_tlacitko_obchodu()
 	_zajisti_tlacitko_vojenskeho_pristupu()
 	_zajisti_ideology_controls()
 	_zajisti_vyzkum_controls()
 	_setup_popup_country_link()
 	_vytvor_alliance_dialog()
 	_vytvor_alliance_create_popup()
+	_vytvor_trade_dialog()
 	
 	# Automatically connect the button signal if it exists
 	if declare_war_btn and not declare_war_btn.pressed.is_connected(_on_declare_war_button_pressed):
@@ -380,6 +418,8 @@ func _ready():
 		worsen_rel_btn.pressed.connect(_on_worsen_relationship_pressed)
 	if gift_money_btn and not gift_money_btn.pressed.is_connected(_on_gift_money_pressed):
 		gift_money_btn.pressed.connect(_on_gift_money_pressed)
+	if trade_btn and not trade_btn.pressed.is_connected(_on_trade_button_pressed):
+		trade_btn.pressed.connect(_on_trade_button_pressed)
 	if _vassals_btn and not _vassals_btn.pressed.is_connected(_on_vassals_button_pressed):
 		_vassals_btn.pressed.connect(_on_vassals_button_pressed)
 	if ideology_option and not ideology_option.item_selected.is_connected(_on_ideology_option_selected):
@@ -558,6 +598,8 @@ func _nastav_tooltipy_ui() -> void:
 	worsen_rel_btn.tooltip_text = "Worsen relations by 10 points."
 	if gift_money_btn:
 		gift_money_btn.tooltip_text = "Send a financial gift to the target country."
+	if trade_btn:
+		trade_btn.tooltip_text = "Open trade negotiation preview with the target country."
 	declare_war_btn.tooltip_text = "Declare war on the selected country."
 	propose_peace_btn.tooltip_text = "Send a peace proposal."
 	non_aggression_btn.tooltip_text = "Sign a non-aggression pact for 10 turns."
@@ -756,6 +798,24 @@ func _zajisti_tlacitko_daru() -> void:
 	vbox.add_child(gift_money_btn)
 	if insert_after and insert_after.get_parent() == vbox:
 		vbox.move_child(gift_money_btn, insert_after.get_index() + 1)
+
+func _zajisti_tlacitko_obchodu() -> void:
+	trade_btn = get_node_or_null("OverviewPanel/VBoxContainer/TradeButton") as Button
+	if trade_btn:
+		return
+	var vbox = get_node_or_null("OverviewPanel/VBoxContainer") as VBoxContainer
+	if vbox == null:
+		return
+	trade_btn = Button.new()
+	trade_btn.name = "TradeButton"
+	trade_btn.text = "Trade"
+	trade_btn.focus_mode = Control.FOCUS_NONE
+	trade_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	trade_btn.hide()
+	_aplikuj_overview_tlacitko_vzhled(trade_btn)
+	vbox.add_child(trade_btn)
+	if gift_money_btn and gift_money_btn.get_parent() == vbox:
+		vbox.move_child(trade_btn, gift_money_btn.get_index() + 1)
 
 func _zajisti_tlacitko_vazalu() -> void:
 	_vassals_btn = get_node_or_null("OverviewPanel/VBoxContainer/VassalsButton") as Button
@@ -2819,6 +2879,10 @@ func _on_viewport_resized():
 	_pozicuj_gift_dialog()
 	_pozicuj_mirovou_konferenci_dialog()
 	_pozicuj_hlaseni_mirove_konference()
+	if _trade_dialog and _trade_dialog.visible:
+		_pozicuj_trade_dialog()
+	if _trade_province_picker_popup and _trade_province_picker_popup.visible:
+		_trade_pozicuj_province_picker_popup()
 	if _vassals_dialog and _vassals_dialog.visible:
 		_pozicuj_a_zmen_velikost_panelu_vazalu()
 	if _research_dialog and _research_dialog.visible:
@@ -3250,6 +3314,8 @@ func _pozicuj_alliance_create_popup() -> void:
 	_alliance_create_popup.position = Vector2((vp.x - _alliance_create_popup.custom_minimum_size.x) * 0.5, (vp.y - _alliance_create_popup.custom_minimum_size.y) * 0.35)
 
 func _zavri_alliance_dialog() -> void:
+	if _ceka_na_vyber_trade_aliance:
+		_trade_zrus_vyber_aliance_z_menu(true)
 	if _alliance_dialog:
 		_alliance_dialog.visible = false
 	_zavri_alliance_create_popup()
@@ -3276,6 +3342,25 @@ func _obnov_alliance_dialog_obsah(target_tag: String) -> void:
 	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
 	var target = target_tag.strip_edges().to_upper()
 	var target_name = _ziskej_jmeno_statu_podle_tagu(target)
+	if _ceka_na_vyber_trade_aliance:
+		if _alliance_dialog_title:
+			_alliance_dialog_title.text = "Select Alliance for %s" % _ziskej_jmeno_statu_podle_tagu(_trade_alliance_pick_provider_tag)
+		if _alliance_dialog_create_btn:
+			_alliance_dialog_create_btn.visible = false
+
+		var all_alliances: Array = []
+		if GameManager.has_method("_ziskej_vsechny_aliance_skupiny"):
+			all_alliances = GameManager._ziskej_vsechny_aliance_skupiny() as Array
+		if all_alliances.is_empty():
+			var empty_trade_label = Label.new()
+			empty_trade_label.text = "No alliance exists yet."
+			empty_trade_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			empty_trade_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+			_alliance_dialog_list.add_child(empty_trade_label)
+		else:
+			for alliance in all_alliances:
+				_pridej_alliance_kartu(alliance, _trade_alliance_pick_provider_tag, "trade_select")
+		return
 
 	var player_alliances: Array = []
 	if GameManager.has_method("ziskej_aliance_statu"):
@@ -3415,7 +3500,7 @@ func _pridej_alliance_kartu(alliance: Dictionary, target_tag: String, view_mode:
 
 	# Conditions for target to join (only in invite mode, and if not already member)
 	var target_is_member = members.has(target)
-	if view_mode == "invite" and not target_is_member and target != "" and GameManager.has_method("ziskej_podminky_clenstvi_aliance"):
+	if (view_mode == "invite" or view_mode == "trade_select") and not target_is_member and target != "" and GameManager.has_method("ziskej_podminky_clenstvi_aliance"):
 		var conditions = GameManager.ziskej_podminky_clenstvi_aliance(alliance_id, target) as Array
 		if not conditions.is_empty():
 			var cond_title = Label.new()
@@ -3475,6 +3560,31 @@ func _pridej_alliance_kartu(alliance: Dictionary, target_tag: String, view_mode:
 			already_lbl.add_theme_color_override("font_color", Color(0.5, 0.85, 0.5))
 			already_lbl.add_theme_font_size_override("font_size", 12)
 			btn_row.add_child(already_lbl)
+	elif view_mode == "trade_select":
+		if target_is_member:
+			var already_in_lbl = Label.new()
+			already_in_lbl.text = "%s is already a member." % _ziskej_jmeno_statu_podle_tagu(target)
+			already_in_lbl.add_theme_color_override("font_color", Color(0.5, 0.85, 0.5))
+			already_in_lbl.add_theme_font_size_override("font_size", 12)
+			btn_row.add_child(already_in_lbl)
+		else:
+			var select_btn = Button.new()
+			select_btn.text = "Select for Trade"
+			select_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var can_select = true
+			if GameManager.has_method("ziskej_podminky_clenstvi_aliance"):
+				var trade_conditions = GameManager.ziskej_podminky_clenstvi_aliance(alliance_id, target) as Array
+				for cond_any in trade_conditions:
+					var cond = cond_any as Dictionary
+					if not bool(cond.get("met", false)):
+						can_select = false
+						break
+			select_btn.disabled = not can_select
+			var aid_trade = alliance_id
+			var aname_trade = alliance_name
+			select_btn.pressed.connect(func(): _trade_vyber_aliance_z_menu(aid_trade, aname_trade))
+			_aplikuj_ingame_tlacitko_styl(select_btn, false)
+			btn_row.add_child(select_btn)
 	else:
 		# Own mode: leave / kick / disband
 		var leave_btn = Button.new()
@@ -4053,6 +4163,11 @@ func _on_gift_money_pressed() -> void:
 	_gift_amount_input.grab_focus()
 	_gift_amount_input.select_all()
 
+func _on_trade_button_pressed() -> void:
+	if current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat:
+		return
+	_otevri_trade_dialog(current_viewed_tag)
+
 func _on_confirm_gift_money() -> void:
 	if current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat:
 		return
@@ -4080,6 +4195,907 @@ func _on_confirm_gift_money() -> void:
 		return
 
 	await zobraz_systemove_hlaseni("Diplomacy", str(result.get("reason", "Failed to send gift.")))
+
+func _trade_option_specs() -> Array:
+	return [
+		{"slot": "gold", "label": "Money", "placeholder_a": "Amount (mil. USD)", "placeholder_b": "Currency / note"},
+		{"slot": "province", "label": "Provinces", "placeholder_a": "Province ID / name", "placeholder_b": "Count / note"},
+		{"slot": "declare_war", "label": "Declare War", "placeholder_a": "Target TAG", "placeholder_b": "Reason / note"},
+		{"slot": "join_alliance", "label": "Join Alliance", "placeholder_a": "Alliance ID", "placeholder_b": "Alliance name"},
+		{"slot": "improve_relationship_with", "label": "Improve Relations With", "placeholder_a": "Target TAG", "placeholder_b": "Optional note"},
+		{"slot": "worsen_relationship_with", "label": "Worsen Relations With", "placeholder_a": "Target TAG", "placeholder_b": "Optional note"},
+		{"slot": "non_aggression", "label": "Non-Aggression Pact", "placeholder_a": "Duration", "placeholder_b": "Note"}
+	]
+
+func _trade_option_spec(slot: String) -> Dictionary:
+	for spec_any in _trade_option_specs():
+		var spec = spec_any as Dictionary
+		if str(spec.get("slot", "")) == slot:
+			return spec
+	return {}
+
+func _vytvor_trade_dialog() -> void:
+	if _trade_dialog != null:
+		return
+	_trade_dialog = PopupPanel.new()
+	_trade_dialog.name = "TradeDialog"
+	_trade_dialog.wrap_controls = false
+	_trade_dialog.unresizable = true
+	_trade_dialog.min_size = Vector2i(760, 500)
+	_trade_dialog.size = Vector2(960, 620)
+	_trade_dialog.exclusive = false
+	_trade_dialog.popup_window = false
+	add_child(_trade_dialog)
+	_aplikuj_ingame_popup_styl(_trade_dialog)
+
+	var margin = MarginContainer.new()
+	margin.offset_left = 10
+	margin.offset_top = 10
+	margin.offset_right = -10
+	margin.offset_bottom = -10
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_trade_dialog.add_child(margin)
+
+	var root = VBoxContainer.new()
+	root.add_theme_constant_override("separation", 10)
+	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	margin.add_child(root)
+
+	_trade_title_label = Label.new()
+	_trade_title_label.text = "Trade Request"
+	_trade_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_trade_title_label.add_theme_font_size_override("font_size", 22)
+	root.add_child(_trade_title_label)
+
+	_trade_success_label = Label.new()
+	_trade_success_label.text = "Configure terms and send"
+	_trade_success_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_trade_success_label.add_theme_color_override("font_color", Color(0.96, 0.84, 0.44, 1.0))
+	root.add_child(_trade_success_label)
+
+	var split = HSplitContainer.new()
+	split.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	split.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_child(split)
+
+	# Left panel is foreign state, right panel is player state.
+	split.add_child(_trade_vytvor_stranu(1))
+	split.add_child(_trade_vytvor_stranu(0))
+
+	var bottom = HBoxContainer.new()
+	bottom.add_theme_constant_override("separation", 8)
+	bottom.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bottom.custom_minimum_size = Vector2(0, 46)
+	root.add_child(bottom)
+
+	var send_btn = Button.new()
+	send_btn.text = "Send offer"
+	send_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	send_btn.custom_minimum_size = Vector2(0, 38)
+	_aplikuj_ingame_tlacitko_styl(send_btn)
+	send_btn.pressed.connect(_on_trade_send_pressed)
+	bottom.add_child(send_btn)
+
+	var close_btn = Button.new()
+	close_btn.text = "Close"
+	close_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	close_btn.custom_minimum_size = Vector2(0, 38)
+	_aplikuj_ingame_tlacitko_styl(close_btn)
+	close_btn.pressed.connect(_trade_close_dialog)
+	bottom.add_child(close_btn)
+	_trade_vytvor_province_picker_popup()
+
+func _trade_close_dialog() -> void:
+	_trade_zrus_vyber_provincii_z_mapy(false)
+	_trade_zrus_vyber_valecneho_cile_z_mapy(false)
+	_trade_zrus_vyber_aliance_z_menu(false)
+	if _trade_dialog:
+		_trade_dialog.hide()
+
+func je_aktivni_vyber_trade_valky_na_mape() -> bool:
+	return _ceka_na_vyber_trade_war_cile
+
+func je_platny_trade_cil_statu_na_mape(owner_tag: String) -> bool:
+	if not _ceka_na_vyber_trade_war_cile:
+		return false
+	var target_tag = owner_tag.strip_edges().to_upper()
+	if target_tag == "" or target_tag == "SEA":
+		return false
+	if target_tag == _trade_war_provider_tag:
+		return false
+	if _trade_war_pick_slot == "declare_war" and target_tag == _trade_war_receiver_tag:
+		return false
+	return true
+
+func zrus_vyber_trade_valecneho_cile_ui() -> void:
+	_trade_zrus_vyber_valecneho_cile_z_mapy(false)
+
+func _trade_otevri_join_alliance_picker(side: int) -> void:
+	_trade_zrus_vyber_provincii_z_mapy(false)
+	_trade_zrus_vyber_valecneho_cile_z_mapy(false)
+	var provider_tag = str(GameManager.hrac_stat).strip_edges().to_upper() if side == 0 else _trade_target_tag
+	if provider_tag == "" or provider_tag == "SEA":
+		zobraz_systemove_hlaseni("Trade", "Invalid state for alliance selection.")
+		return
+	if _ceka_na_vyber_trade_aliance and _trade_alliance_pick_side == side:
+		_trade_zrus_vyber_aliance_z_menu()
+		return
+
+	_ceka_na_vyber_trade_aliance = true
+	_trade_alliance_pick_side = side
+	_trade_alliance_pick_provider_tag = provider_tag
+	_trade_dialog_hidden_for_alliance_pick = _trade_dialog != null and _trade_dialog.visible
+	if _trade_dialog_hidden_for_alliance_pick and _trade_dialog:
+		_trade_dialog.hide()
+	_otevri_alliance_dialog(provider_tag)
+
+func _trade_zrus_vyber_aliance_z_menu(obnovit_hlavni_dialog: bool = true) -> void:
+	_ceka_na_vyber_trade_aliance = false
+	_trade_alliance_pick_side = -1
+	_trade_alliance_pick_provider_tag = ""
+	if obnovit_hlavni_dialog and _trade_dialog and _trade_dialog_hidden_for_alliance_pick:
+		_pozicuj_trade_dialog()
+		_trade_dialog.popup()
+		_pozicuj_trade_dialog()
+	_trade_dialog_hidden_for_alliance_pick = false
+
+func _trade_vyber_aliance_z_menu(alliance_id: String, alliance_name: String) -> void:
+	if not _ceka_na_vyber_trade_aliance:
+		return
+	if alliance_id.strip_edges() == "":
+		return
+	var side = _trade_alliance_pick_side
+	if side < 0:
+		return
+	_trade_side_values(side)["join_alliance"] = {
+		"a": alliance_id.strip_edges(),
+		"b": alliance_name.strip_edges()
+	}
+	_trade_set_selected_slot(side, "join_alliance")
+	_trade_zrus_vyber_aliance_z_menu(true)
+	if _alliance_dialog:
+		_alliance_dialog.visible = false
+	_trade_refresh_dialog_ui()
+
+func obsluha_vyberu_trade_valky_z_mapy(data: Dictionary) -> bool:
+	if not _ceka_na_vyber_trade_war_cile:
+		return false
+	var target_tag = str(data.get("owner", "")).strip_edges().to_upper()
+	if not je_platny_trade_cil_statu_na_mape(target_tag):
+		return true
+	var side = _trade_war_pick_side
+	var slot = _trade_war_pick_slot if _trade_war_pick_slot != "" else "declare_war"
+	var note = "Map target"
+	if slot == "improve_relationship_with":
+		note = "Improve via map"
+	elif slot == "worsen_relationship_with":
+		note = "Worsen via map"
+	_trade_side_values(side)[slot] = {
+		"a": target_tag,
+		"b": note
+	}
+	_trade_zrus_vyber_valecneho_cile_z_mapy(true)
+	_trade_set_selected_slot(side, slot)
+	_trade_refresh_dialog_ui()
+	return true
+
+func _trade_vytvor_province_picker_popup() -> void:
+	if _trade_province_picker_popup != null:
+		return
+	_trade_province_picker_popup = PopupPanel.new()
+	_trade_province_picker_popup.name = "TradeProvincePicker"
+	_trade_province_picker_popup.size = Vector2(360, 156)
+	_trade_province_picker_popup.min_size = Vector2i(300, 130)
+	_trade_province_picker_popup.exclusive = false
+	_trade_province_picker_popup.popup_window = false
+	add_child(_trade_province_picker_popup)
+	_aplikuj_ingame_popup_styl(_trade_province_picker_popup)
+
+	var margin = MarginContainer.new()
+	margin.offset_left = 12
+	margin.offset_top = 12
+	margin.offset_right = -12
+	margin.offset_bottom = -12
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_trade_province_picker_popup.add_child(margin)
+
+	var root = VBoxContainer.new()
+	root.add_theme_constant_override("separation", 8)
+	margin.add_child(root)
+
+	_trade_province_picker_title = Label.new()
+	_trade_province_picker_title.text = "Province Transfer Selection"
+	_trade_province_picker_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_trade_province_picker_title.add_theme_font_size_override("font_size", 18)
+	root.add_child(_trade_province_picker_title)
+
+	_trade_province_picker_info = Label.new()
+	_trade_province_picker_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_trade_province_picker_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_trade_province_picker_info.text = "Source: -"
+	root.add_child(_trade_province_picker_info)
+
+	_trade_province_picker_count = Label.new()
+	_trade_province_picker_count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_trade_province_picker_count.text = "Selected provinces: 0"
+	root.add_child(_trade_province_picker_count)
+
+	var close_row = HBoxContainer.new()
+	close_row.add_theme_constant_override("separation", 8)
+	close_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root.add_child(close_row)
+	_trade_province_picker_confirm_btn = Button.new()
+	_trade_province_picker_confirm_btn.text = "Confirm selection"
+	_trade_province_picker_confirm_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_aplikuj_ingame_tlacitko_styl(_trade_province_picker_confirm_btn)
+	_trade_province_picker_confirm_btn.pressed.connect(_trade_potvrd_vyber_provincii_z_mapy)
+	close_row.add_child(_trade_province_picker_confirm_btn)
+
+	_trade_province_picker_cancel_btn = Button.new()
+	_trade_province_picker_cancel_btn.text = "Cancel"
+	_trade_province_picker_cancel_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_aplikuj_ingame_tlacitko_styl(_trade_province_picker_cancel_btn, true)
+	_trade_province_picker_cancel_btn.pressed.connect(_trade_zrus_vyber_provincii_z_mapy)
+	close_row.add_child(_trade_province_picker_cancel_btn)
+
+func _trade_seznam_provincii_statu(state_tag: String) -> Array:
+	var tag = state_tag.strip_edges().to_upper()
+	var out: Array = []
+	if tag == "" or tag == "SEA":
+		return out
+
+	var provinces = _ziskej_vsechny_provincie_pro_prehled()
+	for p_id_any in provinces.keys():
+		var p_id = int(p_id_any)
+		if not provinces.has(p_id):
+			continue
+		var d = provinces[p_id] as Dictionary
+		if str(d.get("owner", "")).strip_edges().to_upper() != tag:
+			continue
+		if bool(d.get("is_capital", false)):
+			continue
+		out.append({
+			"id": p_id,
+			"name": str(d.get("province_name", "Province %d" % p_id)),
+			"gdp": float(d.get("gdp", 0.0))
+		})
+
+	out.sort_custom(func(a, b):
+		var da = a as Dictionary
+		var db = b as Dictionary
+		return float(da.get("gdp", 0.0)) > float(db.get("gdp", 0.0))
+	)
+	return out
+
+func _trade_otevri_province_picker(side: int) -> void:
+	_trade_zrus_vyber_valecneho_cile_z_mapy(false)
+	_trade_zrus_vyber_aliance_z_menu(false)
+	var source_tag = str(GameManager.hrac_stat).strip_edges().to_upper() if side == 0 else _trade_target_tag
+	if source_tag == "":
+		zobraz_systemove_hlaseni("Trade", "No source state selected for province transfer.")
+		return
+	var map_node = _ziskej_map_node_pro_mir()
+	if map_node == null:
+		zobraz_systemove_hlaseni("Trade", "Map module was not found.")
+		return
+	if not map_node.has_method("aktivuj_rezim_vyberu_trade_provincie"):
+		zobraz_systemove_hlaseni("Trade", "Map does not support trade province selection.")
+		return
+
+	if _ceka_na_vyber_trade_provincie and _trade_map_pick_side == side:
+		_trade_zrus_vyber_provincii_z_mapy()
+		return
+
+	var editor = _trade_side_editor(side)
+	var preselected: Array = []
+	var values = _trade_side_values(side)
+	if values.has("province"):
+		var province_entry = values["province"] as Dictionary
+		preselected = _trade_parse_selected_province_ids(str(province_entry.get("a", "")))
+	elif not editor.is_empty():
+		preselected = _trade_parse_selected_province_ids((editor["input_a"] as LineEdit).text)
+
+	var activation = map_node.aktivuj_rezim_vyberu_trade_provincie(source_tag, preselected)
+	if not bool((activation as Dictionary).get("ok", false)):
+		zobraz_systemove_hlaseni("Trade", str((activation as Dictionary).get("reason", "Failed to start map selection.")))
+		return
+
+	_trade_map_pick_side = side
+	_trade_map_pick_source_tag = source_tag
+	_ceka_na_vyber_trade_provincie = true
+	_trade_map_selected_ids = ((activation as Dictionary).get("selected", []) as Array).duplicate()
+	_trade_dialog_hidden_for_map_pick = _trade_dialog != null and _trade_dialog.visible
+	if _trade_dialog_hidden_for_map_pick:
+		_trade_dialog.hide()
+	_trade_obnov_popup_vyberu_provincii_info()
+	if _trade_province_picker_popup:
+		_trade_pozicuj_province_picker_popup()
+		_trade_province_picker_popup.popup()
+		_trade_pozicuj_province_picker_popup()
+	_trade_refresh_dialog_ui()
+	zobraz_systemove_hlaseni("Trade", "Click state territory on map for %s and confirm in small panel." % source_tag)
+
+func _trade_otevri_declare_war_picker(side: int) -> void:
+	_trade_otevri_country_relation_picker(side, "declare_war")
+
+func _trade_otevri_country_relation_picker(side: int, slot: String) -> void:
+	_trade_zrus_vyber_provincii_z_mapy(false)
+	_trade_zrus_vyber_aliance_z_menu(false)
+	var provider_tag = str(GameManager.hrac_stat).strip_edges().to_upper() if side == 0 else _trade_target_tag
+	var receiver_tag = _trade_target_tag if side == 0 else str(GameManager.hrac_stat).strip_edges().to_upper()
+	if provider_tag == "" or provider_tag == "SEA" or receiver_tag == "":
+		zobraz_systemove_hlaseni("Trade", "Invalid states for country target selection.")
+		return
+	if _ceka_na_vyber_trade_war_cile and _trade_war_pick_side == side and _trade_war_pick_slot == slot:
+		_trade_zrus_vyber_valecneho_cile_z_mapy()
+		return
+
+	_trade_war_pick_side = side
+	_trade_war_provider_tag = provider_tag
+	_trade_war_receiver_tag = receiver_tag
+	_trade_war_pick_slot = slot
+	_ceka_na_vyber_trade_war_cile = true
+	_trade_dialog_hidden_for_war_pick = _trade_dialog != null and _trade_dialog.visible
+	if _trade_dialog_hidden_for_war_pick:
+		_trade_dialog.hide()
+	_trade_refresh_dialog_ui()
+	var action_name = "Declare War target"
+	if slot == "improve_relationship_with":
+		action_name = "Improve Relations target"
+	elif slot == "worsen_relationship_with":
+		action_name = "Worsen Relations target"
+	zobraz_systemove_hlaseni("Trade", "Click target state territory for %s by %s." % [action_name, provider_tag])
+
+func _trade_zrus_vyber_valecneho_cile_z_mapy(obnovit_hlavni_dialog: bool = true) -> void:
+	_ceka_na_vyber_trade_war_cile = false
+	_trade_war_pick_side = -1
+	_trade_war_provider_tag = ""
+	_trade_war_receiver_tag = ""
+	_trade_war_pick_slot = ""
+	if obnovit_hlavni_dialog and _trade_dialog and _trade_dialog_hidden_for_war_pick:
+		_pozicuj_trade_dialog()
+		_trade_dialog.popup()
+		_pozicuj_trade_dialog()
+	_trade_dialog_hidden_for_war_pick = false
+
+func obsluha_vyberu_trade_provincie_z_mapy(result: Dictionary, _province_id: int) -> void:
+	if not _ceka_na_vyber_trade_provincie:
+		return
+	if not bool(result.get("ok", false)):
+		return
+	_trade_map_selected_ids = (result.get("selected", []) as Array).duplicate()
+	_trade_obnov_popup_vyberu_provincii_info()
+
+func _trade_obnov_popup_vyberu_provincii_info() -> void:
+	if _trade_province_picker_info:
+		_trade_province_picker_info.text = "Source state: %s" % (_trade_map_pick_source_tag if _trade_map_pick_source_tag != "" else "-")
+	if _trade_province_picker_count:
+		_trade_province_picker_count.text = "Selected provinces: %d" % _trade_map_selected_ids.size()
+	if _trade_province_picker_confirm_btn:
+		_trade_province_picker_confirm_btn.disabled = _trade_map_selected_ids.is_empty()
+	if _trade_province_picker_popup and _trade_province_picker_popup.visible:
+		_trade_pozicuj_province_picker_popup()
+
+func _trade_pozicuj_province_picker_popup() -> void:
+	if _trade_province_picker_popup == null:
+		return
+	var viewport_size = get_viewport().get_visible_rect().size
+	var panel_size = _trade_province_picker_popup.size
+	if panel_size.x < float(_trade_province_picker_popup.min_size.x):
+		panel_size.x = float(_trade_province_picker_popup.min_size.x)
+	if panel_size.y < float(_trade_province_picker_popup.min_size.y):
+		panel_size.y = float(_trade_province_picker_popup.min_size.y)
+	_trade_province_picker_popup.size = panel_size
+
+	var margin = 12.0
+	var x = viewport_size.x - panel_size.x - margin
+	var y = viewport_size.y - panel_size.y - margin
+	var next_btn = get_tree().current_scene.find_child("NextTurnButton", true, false) as Control
+	if next_btn and next_btn.is_visible_in_tree():
+		x = minf(x, next_btn.global_position.x + next_btn.size.x - panel_size.x)
+		y = next_btn.global_position.y + next_btn.size.y + 8.0
+	var min_y = _topbar_bottom_y() + 6.0
+	x = clampf(x, margin, viewport_size.x - panel_size.x - margin)
+	y = clampf(y, min_y, viewport_size.y - panel_size.y - margin)
+	_trade_province_picker_popup.position = Vector2(x, y)
+
+func _trade_parse_selected_province_ids(raw_text: String) -> Array:
+	var text = raw_text.strip_edges().replace(";", ",").replace(" ", "")
+	if text == "":
+		return []
+	var out: Array = []
+	for part in text.split(",", false):
+		var token = part.strip_edges()
+		if token == "" or not token.is_valid_int():
+			continue
+		var pid = int(token)
+		if not out.has(pid):
+			out.append(pid)
+	return out
+
+func _trade_potvrd_vyber_provincii_z_mapy() -> void:
+	if not _ceka_na_vyber_trade_provincie:
+		return
+	var side = _trade_map_pick_side
+	if side < 0:
+		return
+	var map_node = _ziskej_map_node_pro_mir()
+	if map_node == null or not map_node.has_method("potvrd_vyber_trade_provincii"):
+		zobraz_systemove_hlaseni("Trade", "Map cannot confirm trade province selection.")
+		return
+	var result = map_node.potvrd_vyber_trade_provincii() as Dictionary
+	if not bool(result.get("ok", false)):
+		zobraz_systemove_hlaseni("Trade", str(result.get("reason", "Failed to confirm trade province selection.")))
+		return
+
+	var ids = (result.get("selected", []) as Array).duplicate()
+	ids.sort()
+	var id_parts: Array = []
+	for raw_id in ids:
+		id_parts.append(str(int(raw_id)))
+	var source = str(result.get("source", _trade_map_pick_source_tag)).strip_edges().to_upper()
+	_trade_side_values(side)["province"] = {
+		"a": ",".join(id_parts),
+		"b": "%d provinces from %s" % [ids.size(), source]
+	}
+
+	_ceka_na_vyber_trade_provincie = false
+	_trade_map_pick_side = -1
+	_trade_map_pick_source_tag = ""
+	_trade_map_selected_ids.clear()
+	if _trade_province_picker_popup:
+		_trade_province_picker_popup.hide()
+	if _trade_dialog and _trade_dialog_hidden_for_map_pick:
+		_pozicuj_trade_dialog()
+		_trade_dialog.popup()
+		_pozicuj_trade_dialog()
+	_trade_dialog_hidden_for_map_pick = false
+	_trade_zrus_vyber_valecneho_cile_z_mapy(false)
+	_trade_set_selected_slot(side, "province")
+	_trade_refresh_dialog_ui()
+
+func _trade_zrus_vyber_provincii_z_mapy(obnovit_hlavni_dialog: bool = true) -> void:
+	var map_node = _ziskej_map_node_pro_mir()
+	if map_node and map_node.has_method("zrus_rezim_vyberu_trade_provincie"):
+		map_node.zrus_rezim_vyberu_trade_provincie()
+	_ceka_na_vyber_trade_provincie = false
+	_trade_map_pick_side = -1
+	_trade_map_pick_source_tag = ""
+	_trade_map_selected_ids.clear()
+	if _trade_province_picker_popup:
+		_trade_province_picker_popup.hide()
+	if obnovit_hlavni_dialog and _trade_dialog and _trade_dialog_hidden_for_map_pick:
+		_pozicuj_trade_dialog()
+		_trade_dialog.popup()
+		_pozicuj_trade_dialog()
+	_trade_dialog_hidden_for_map_pick = false
+	_trade_refresh_dialog_ui()
+
+func _trade_vytvor_stranu(side: int) -> PanelContainer:
+	var panel = PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var panel_style = _vytvor_ingame_kartu_styl(
+		Color(0.09, 0.14, 0.22, 0.96) if side == 0 else Color(0.15, 0.11, 0.09, 0.96),
+		Color(0.42, 0.63, 0.90, 0.70) if side == 0 else Color(0.88, 0.62, 0.36, 0.70)
+	)
+	panel.add_theme_stylebox_override("panel", panel_style)
+
+	var margin = MarginContainer.new()
+	margin.offset_left = 8
+	margin.offset_top = 8
+	margin.offset_right = -8
+	margin.offset_bottom = -8
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	panel.add_child(margin)
+
+	var root = VBoxContainer.new()
+	root.add_theme_constant_override("separation", 8)
+	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	margin.add_child(root)
+
+	var title = Label.new()
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 18)
+	title.text = "Player state" if side == 0 else "Target state"
+	root.add_child(title)
+	if side == 0:
+		_trade_left_title_label = title
+	else:
+		_trade_right_title_label = title
+
+	var buttons_box = VBoxContainer.new()
+	buttons_box.add_theme_constant_override("separation", 6)
+	buttons_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root.add_child(buttons_box)
+
+	for spec_any in _trade_option_specs():
+		var spec = spec_any as Dictionary
+		var slot = str(spec.get("slot", ""))
+		var btn = Button.new()
+		btn.text = str(spec.get("label", slot))
+		btn.custom_minimum_size = Vector2(0, 38)
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_aplikuj_overview_tlacitko_vzhled(btn)
+		btn.pressed.connect(_trade_on_slot_pressed.bind(side, slot))
+		buttons_box.add_child(btn)
+		if side == 0:
+			_trade_left_buttons[slot] = btn
+		else:
+			_trade_right_buttons[slot] = btn
+
+	var editor_panel = PanelContainer.new()
+	editor_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	editor_panel.add_theme_stylebox_override("panel", _vytvor_ingame_kartu_styl(Color(0.05, 0.08, 0.14, 0.96), Color(0.32, 0.49, 0.74, 0.55)))
+	root.add_child(editor_panel)
+
+	var editor_margin = MarginContainer.new()
+	editor_margin.offset_left = 8
+	editor_margin.offset_top = 8
+	editor_margin.offset_right = -8
+	editor_margin.offset_bottom = -8
+	editor_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	editor_panel.add_child(editor_margin)
+
+	var editor_scroll = ScrollContainer.new()
+	editor_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	editor_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	editor_margin.add_child(editor_scroll)
+
+	var editor_box = VBoxContainer.new()
+	editor_box.add_theme_constant_override("separation", 8)
+	editor_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	editor_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	editor_scroll.add_child(editor_box)
+
+	var info = Label.new()
+	info.text = "Select an option above"
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	editor_box.add_child(info)
+
+	var input_a = LineEdit.new()
+	input_a.placeholder_text = "Value"
+	input_a.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	editor_box.add_child(input_a)
+
+	var input_b = LineEdit.new()
+	input_b.placeholder_text = "Optional note"
+	input_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	editor_box.add_child(input_b)
+
+	var pick_province_btn = Button.new()
+	pick_province_btn.text = "Select territory on map"
+	pick_province_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pick_province_btn.custom_minimum_size = Vector2(0, 34)
+	pick_province_btn.visible = false
+	_aplikuj_ingame_tlacitko_styl(pick_province_btn)
+	pick_province_btn.pressed.connect(_trade_otevri_province_picker.bind(side))
+	editor_box.add_child(pick_province_btn)
+
+	var pick_war_target_btn = Button.new()
+	pick_war_target_btn.text = "Select war target on map"
+	pick_war_target_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pick_war_target_btn.custom_minimum_size = Vector2(0, 34)
+	pick_war_target_btn.visible = false
+	_aplikuj_ingame_tlacitko_styl(pick_war_target_btn)
+	pick_war_target_btn.pressed.connect(_trade_on_country_target_pick_pressed.bind(side))
+	editor_box.add_child(pick_war_target_btn)
+
+	var pick_alliance_btn = Button.new()
+	pick_alliance_btn.text = "Select alliance"
+	pick_alliance_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pick_alliance_btn.custom_minimum_size = Vector2(0, 34)
+	pick_alliance_btn.visible = false
+	_aplikuj_ingame_tlacitko_styl(pick_alliance_btn)
+	pick_alliance_btn.pressed.connect(_trade_otevri_join_alliance_picker.bind(side))
+	editor_box.add_child(pick_alliance_btn)
+
+	var preview = Label.new()
+	preview.text = "No configured item"
+	preview.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	preview.custom_minimum_size = Vector2(0, 46)
+	editor_box.add_child(preview)
+
+	var action_row = HBoxContainer.new()
+	action_row.add_theme_constant_override("separation", 8)
+	action_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	action_row.custom_minimum_size = Vector2(0, 40)
+	editor_box.add_child(action_row)
+
+	var apply_btn = Button.new()
+	apply_btn.text = "Apply"
+	apply_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	apply_btn.custom_minimum_size = Vector2(0, 36)
+	_aplikuj_ingame_tlacitko_styl(apply_btn)
+	apply_btn.pressed.connect(_trade_apply_side.bind(side))
+	action_row.add_child(apply_btn)
+
+	var clear_btn = Button.new()
+	clear_btn.text = "Clear"
+	clear_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	clear_btn.custom_minimum_size = Vector2(0, 36)
+	_aplikuj_ingame_tlacitko_styl(clear_btn, true)
+	clear_btn.pressed.connect(_trade_clear_side.bind(side))
+	action_row.add_child(clear_btn)
+
+	var editor_ref = {
+		"info": info,
+		"input_a": input_a,
+		"input_b": input_b,
+		"preview": preview,
+		"pick_province": pick_province_btn,
+		"pick_war_target": pick_war_target_btn,
+		"pick_alliance": pick_alliance_btn,
+		"slot": ""
+	}
+	if side == 0:
+		_trade_left_editor = editor_ref
+	else:
+		_trade_right_editor = editor_ref
+
+	return panel
+
+func _trade_side_values(side: int) -> Dictionary:
+	return _trade_left_values if side == 0 else _trade_right_values
+
+func _trade_side_editor(side: int) -> Dictionary:
+	return _trade_left_editor if side == 0 else _trade_right_editor
+
+func _trade_side_buttons(side: int) -> Dictionary:
+	return _trade_left_buttons if side == 0 else _trade_right_buttons
+
+func _trade_selected_slot(side: int) -> String:
+	return _trade_left_selected_slot if side == 0 else _trade_right_selected_slot
+
+func _trade_set_selected_slot(side: int, slot: String) -> void:
+	if side == 0:
+		_trade_left_selected_slot = slot
+	else:
+		_trade_right_selected_slot = slot
+
+func _trade_on_country_target_pick_pressed(side: int) -> void:
+	var slot = _trade_selected_slot(side)
+	if slot == "declare_war" or slot == "improve_relationship_with" or slot == "worsen_relationship_with":
+		_trade_otevri_country_relation_picker(side, slot)
+
+func _trade_on_slot_pressed(side: int, slot: String) -> void:
+	_trade_set_selected_slot(side, slot)
+	var spec = _trade_option_spec(slot)
+	var editor = _trade_side_editor(side)
+	if editor.is_empty():
+		return
+	editor["slot"] = slot
+	var values = _trade_side_values(side)
+	var stored = values.get(slot, {"a": "", "b": ""}) as Dictionary
+	editor["info"].text = str(spec.get("label", slot))
+	(editor["input_a"] as LineEdit).placeholder_text = str(spec.get("placeholder_a", "Value"))
+	(editor["input_b"] as LineEdit).placeholder_text = str(spec.get("placeholder_b", "Optional note"))
+	(editor["input_a"] as LineEdit).text = str(stored.get("a", ""))
+	(editor["input_b"] as LineEdit).text = str(stored.get("b", ""))
+	var is_province_slot = slot == "province"
+	var is_declare_war_slot = slot == "declare_war"
+	var is_improve_rel_slot = slot == "improve_relationship_with"
+	var is_worsen_rel_slot = slot == "worsen_relationship_with"
+	var is_country_target_slot = is_declare_war_slot or is_improve_rel_slot or is_worsen_rel_slot
+	var is_join_alliance_slot = slot == "join_alliance"
+	var hide_inputs = is_province_slot or is_country_target_slot or is_join_alliance_slot
+	(editor["input_a"] as LineEdit).visible = not hide_inputs
+	(editor["input_b"] as LineEdit).visible = not hide_inputs
+	if editor.has("pick_province"):
+		var pick_btn = editor["pick_province"] as Button
+		pick_btn.visible = is_province_slot
+		if is_province_slot:
+			pick_btn.text = "Finish map selection" if (_ceka_na_vyber_trade_provincie and _trade_map_pick_side == side) else "Click state territory on map"
+	if editor.has("pick_war_target"):
+		var war_btn = editor["pick_war_target"] as Button
+		war_btn.visible = is_country_target_slot
+		if is_country_target_slot:
+			var is_current_picker = _ceka_na_vyber_trade_war_cile and _trade_war_pick_side == side and _trade_war_pick_slot == slot
+			war_btn.text = "Finish target selection" if is_current_picker else "Click country on map"
+	if editor.has("pick_alliance"):
+		var alliance_btn = editor["pick_alliance"] as Button
+		alliance_btn.visible = is_join_alliance_slot
+		if is_join_alliance_slot:
+			alliance_btn.text = "Finish alliance selection" if (_ceka_na_vyber_trade_aliance and _trade_alliance_pick_side == side) else "Select alliance"
+	_trade_refresh_dialog_ui()
+
+func _trade_apply_side(side: int) -> void:
+	var slot = _trade_selected_slot(side)
+	if slot == "":
+		await zobraz_systemove_hlaseni("Trade", "Select an option first.")
+		return
+	if slot == "province":
+		if not _trade_side_values(side).has("province"):
+			await zobraz_systemove_hlaseni("Trade", "Use map selection for provinces.")
+			return
+		_trade_refresh_dialog_ui()
+		return
+	if slot == "declare_war":
+		if not _trade_side_values(side).has("declare_war"):
+			await zobraz_systemove_hlaseni("Trade", "Use map selection for Declare War target.")
+			return
+		_trade_refresh_dialog_ui()
+		return
+	if slot == "improve_relationship_with":
+		if not _trade_side_values(side).has("improve_relationship_with"):
+			await zobraz_systemove_hlaseni("Trade", "Use map selection for Improve Relations target.")
+			return
+		_trade_refresh_dialog_ui()
+		return
+	if slot == "worsen_relationship_with":
+		if not _trade_side_values(side).has("worsen_relationship_with"):
+			await zobraz_systemove_hlaseni("Trade", "Use map selection for Worsen Relations target.")
+			return
+		_trade_refresh_dialog_ui()
+		return
+	if slot == "join_alliance":
+		if not _trade_side_values(side).has("join_alliance"):
+			await zobraz_systemove_hlaseni("Trade", "Select alliance from alliance menu.")
+			return
+		_trade_refresh_dialog_ui()
+		return
+	var editor = _trade_side_editor(side)
+	if editor.is_empty():
+		return
+	var value_a = (editor["input_a"] as LineEdit).text.strip_edges()
+	var value_b = (editor["input_b"] as LineEdit).text.strip_edges()
+	if value_a == "" and slot != "non_aggression":
+		await zobraz_systemove_hlaseni("Trade", "Fill in the main value for the selected option.")
+		return
+	_trade_side_values(side)[slot] = {"a": value_a if value_a != "" else "ON", "b": value_b}
+	_trade_refresh_dialog_ui()
+
+func _trade_clear_side(side: int) -> void:
+	var slot = _trade_selected_slot(side)
+	if slot == "":
+		return
+	_trade_side_values(side).erase(slot)
+	var editor = _trade_side_editor(side)
+	if not editor.is_empty():
+		(editor["input_a"] as LineEdit).text = ""
+		(editor["input_b"] as LineEdit).text = ""
+	_trade_refresh_dialog_ui()
+
+func _trade_compact_value(entry: Dictionary) -> String:
+	var value_a = str(entry.get("a", "")).strip_edges()
+	var value_b = str(entry.get("b", "")).strip_edges()
+	if value_a == "" and value_b == "":
+		return ""
+	if value_b == "":
+		return value_a
+	return "%s | %s" % [value_a, value_b]
+
+func _trade_refresh_side_ui(side: int) -> void:
+	var values = _trade_side_values(side)
+	var buttons = _trade_side_buttons(side)
+	var editor = _trade_side_editor(side)
+	var selected_slot = _trade_selected_slot(side)
+	for spec_any in _trade_option_specs():
+		var spec = spec_any as Dictionary
+		var slot = str(spec.get("slot", ""))
+		var btn = buttons.get(slot, null) as Button
+		if btn == null:
+			continue
+		var text = str(spec.get("label", slot))
+		if values.has(slot):
+			var compact = _trade_compact_value(values[slot] as Dictionary)
+			if compact != "":
+				text += " [%s]" % compact
+		btn.text = text
+		btn.modulate = Color(1.0, 0.92, 0.45, 1.0) if slot == selected_slot else Color(1, 1, 1, 1)
+	if editor.is_empty():
+		return
+	if selected_slot == "":
+		editor["preview"].text = "No configured item"
+		return
+	var spec = _trade_option_spec(selected_slot)
+	if values.has(selected_slot):
+		editor["preview"].text = "Current value: %s" % _trade_compact_value(values[selected_slot] as Dictionary)
+	else:
+		editor["preview"].text = "No value set for %s" % str(spec.get("label", selected_slot))
+
+func _trade_refresh_dialog_ui() -> void:
+	if _trade_title_label:
+		_trade_title_label.text = "Trade Request"
+	if _trade_success_label:
+		var configured = _trade_left_values.size() + _trade_right_values.size()
+		_trade_success_label.text = "Configured items: %d" % configured
+	if _trade_left_title_label:
+		_trade_left_title_label.text = str(GameManager.hrac_stat)
+	if _trade_right_title_label:
+		_trade_right_title_label.text = _trade_target_tag if _trade_target_tag != "" else "Target state"
+	_trade_refresh_side_ui(0)
+	_trade_refresh_side_ui(1)
+
+func _otevri_trade_dialog(target_tag: String) -> void:
+	_vytvor_trade_dialog()
+	_trade_target_tag = target_tag.strip_edges().to_upper()
+	_trade_left_selected_slot = ""
+	_trade_right_selected_slot = ""
+	_ceka_na_vyber_trade_provincie = false
+	_trade_map_pick_side = -1
+	_trade_dialog_hidden_for_map_pick = false
+	_trade_zrus_vyber_valecneho_cile_z_mapy(false)
+	_trade_zrus_vyber_aliance_z_menu(false)
+	if _trade_province_picker_popup:
+		_trade_province_picker_popup.hide()
+	_trade_refresh_dialog_ui()
+	call_deferred("_trade_open_popup_deferred")
+
+func _trade_open_popup_deferred() -> void:
+	if _trade_dialog == null:
+		return
+	var map_node = _ziskej_map_node_pro_mir()
+	if map_node and map_node.has_method("zrus_rezim_vyberu_trade_provincie"):
+		map_node.zrus_rezim_vyberu_trade_provincie()
+	_ceka_na_vyber_trade_provincie = false
+	_trade_map_pick_side = -1
+	_trade_dialog_hidden_for_map_pick = false
+	_trade_zrus_vyber_valecneho_cile_z_mapy(false)
+	_trade_zrus_vyber_aliance_z_menu(false)
+	if _trade_province_picker_popup:
+		_trade_province_picker_popup.hide()
+	_pozicuj_trade_dialog()
+	_trade_dialog.popup()
+	_pozicuj_trade_dialog()
+
+func _pozicuj_trade_dialog() -> void:
+	if _trade_dialog == null:
+		return
+	var vp = get_viewport().get_visible_rect().size
+	var w = clamp(vp.x - 40.0, 760.0, 1180.0)
+	var h = clamp(vp.y - 40.0, 500.0, 760.0)
+	_trade_dialog.size = Vector2(w, h)
+	_trade_dialog.position = Vector2((vp.x - _trade_dialog.size.x) * 0.5, (vp.y - _trade_dialog.size.y) * 0.5)
+
+func _on_trade_send_pressed() -> void:
+	if _trade_target_tag == "" or _trade_target_tag == GameManager.hrac_stat:
+		await zobraz_systemove_hlaseni("Trade", "Select a valid target country first.")
+		return
+	if not GameManager.has_method("odeslat_obchodni_nabidku"):
+		await zobraz_systemove_hlaseni("Trade", "Trade backend is not available in current game build.")
+		return
+
+	var sender_terms = _trade_left_values.duplicate(true)
+	var receiver_terms = _trade_right_values.duplicate(true)
+	var result = GameManager.odeslat_obchodni_nabidku(GameManager.hrac_stat, _trade_target_tag, sender_terms, receiver_terms)
+	if not bool(result.get("ok", false)):
+		await zobraz_systemove_hlaseni("Trade", str(result.get("reason", "Failed to send trade offer.")))
+		return
+
+	var queued = bool(result.get("queued", false))
+	var accepted = bool(result.get("accepted", false))
+	if queued:
+		await zobraz_systemove_hlaseni("Trade", "Trade offer was sent to %s." % _trade_target_tag)
+	elif accepted:
+		await zobraz_systemove_hlaseni("Trade", "%s accepted your trade offer and terms were applied." % _trade_target_tag)
+	else:
+		await zobraz_systemove_hlaseni("Trade", "%s declined your trade offer." % _trade_target_tag)
+
+	if queued or accepted:
+		var map_node = _ziskej_map_node_pro_mir()
+		if map_node and map_node.has_method("zrus_rezim_vyberu_trade_provincie"):
+			map_node.zrus_rezim_vyberu_trade_provincie()
+		_ceka_na_vyber_trade_provincie = false
+		_trade_map_pick_side = -1
+		_trade_dialog_hidden_for_map_pick = false
+		_trade_zrus_vyber_valecneho_cile_z_mapy(false)
+		_trade_zrus_vyber_aliance_z_menu(false)
+		if _trade_province_picker_popup:
+			_trade_province_picker_popup.hide()
+		_trade_left_values.clear()
+		_trade_right_values.clear()
+		_trade_left_selected_slot = ""
+		_trade_right_selected_slot = ""
+		_trade_refresh_dialog_ui()
+		if _trade_dialog:
+			_trade_dialog.hide()
+
+	_aktualizuj_popup_diplomatickych_zadosti()
+	if current_viewed_tag != "":
+		_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
 
 func _pozicuj_pause_menu() -> void:
 	if not _pause_menu_panel:
@@ -5737,6 +6753,11 @@ func _formatuj_text_zadosti(req: Dictionary) -> String:
 		return "Non-aggression pact (10 turns)"
 	if req_type == "military_access":
 		return "Military access request"
+	if req_type == "trade":
+		var payload = req.get("payload", {}) as Dictionary
+		var from_terms = payload.get("from_terms", {}) as Dictionary
+		var to_terms = payload.get("to_terms", {}) as Dictionary
+		return "Trade offer (%d + %d terms)" % [from_terms.size(), to_terms.size()]
 	return "Diplomatic offer"
 
 func _aktualizuj_panel_rozbalene_fronty(queue: Array) -> void:
@@ -6369,6 +7390,10 @@ func _aktualizuj_vztah_ui(target_tag: String):
 	if gift_money_btn:
 		gift_money_btn.text = "Send gift"
 		gift_money_btn.disabled = current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat
+	if trade_btn:
+		trade_btn.text = "Trade"
+		trade_btn.disabled = current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat
+		trade_btn.visible = not (current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat)
 
 	_aktualizuj_aliance_ui(target_tag)
 	_aktualizuj_diplomacii_tlacitka(target_tag)
@@ -6385,9 +7410,18 @@ func _aktualizuj_diplomacii_tlacitka(target_tag: String):
 		propose_peace_btn.hide()
 		if non_aggression_btn:
 			non_aggression_btn.hide()
+		if gift_money_btn:
+			gift_money_btn.hide()
+		if trade_btn:
+			trade_btn.hide()
 		if _military_access_btn:
 			_military_access_btn.hide()
 		return
+
+	if gift_money_btn:
+		gift_money_btn.show()
+	if trade_btn:
+		trade_btn.show()
 
 	if GameManager.jsou_ve_valce(GameManager.hrac_stat, target):
 		declare_war_btn.text = "AT WAR"
@@ -6407,6 +7441,8 @@ func _aktualizuj_diplomacii_tlacitka(target_tag: String):
 			non_aggression_btn.text = "Non-aggression pact (war locked)"
 			non_aggression_btn.disabled = true
 			non_aggression_btn.modulate = Color(1, 1, 1)
+		if trade_btn:
+			trade_btn.disabled = false
 		if _military_access_btn:
 			_military_access_btn.hide()
 	else:
