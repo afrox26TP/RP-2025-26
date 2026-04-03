@@ -2,6 +2,24 @@
 
 All notable changes are documented here.
 
+## v0.2.1 - 2026-04-03
+Compared to: v0.2.0
+
+### Added
+- New `Statistics` button in the top bar with a dedicated country statistics popup.
+- Per-turn historical tracking for all active countries (GDP, population, army size, province count, income, expenses, net profit).
+
+### Improved
+- Statistics popup now supports selecting both player and non-player countries.
+- Added trend visualization with line charts that refresh after each turn update.
+- Reworked the statistics popup into a dashboard layout with KPI cards, tab navigation (Overview/Charts/Finance), line charts, and finance composition bars.
+- Added cross-state comparison chart with custom multi-select country list (including quick Select all / Clear actions).
+- Added history window filters (`Last 12`, `Last 24`, `Last 48`, `All`) applied to trend charts.
+- Added interactive chart hover tooltips with exact turn and value for selected data points.
+
+### Technical
+- Implemented in `scripts/TopBar.gd` using existing `GameManager` data sources and `kolo_zmeneno` updates.
+
 ## v0.2.0 - 2026-04-01
 Compared to: v0.1.1-pre-alpha (0.1.1 line)
 
