@@ -24,6 +24,7 @@ var hrac_kasa_inicializovana: Dictionary = {}
 var cekajici_popupy_hracu: Dictionary = {}
 var log_zprav_hracu: Dictionary = {}
 var log_globalnich_zprav: Array = []
+var notifikace_pujcek_hracu: Dictionary = {}
 var vyzkum_statu: Dictionary = {}
 var armadni_lab_statu: Dictionary = {}
 var _defer_log_maintenance: bool = false
@@ -246,6 +247,8 @@ var vazalske_vztahy: Dictionary = {}
 var vazalske_odvody: Dictionary = {}
 var vazalske_odvody_posledni_zmena_kolo: Dictionary = {}
 var valecne_reparace: Array = []
+var aktivni_pujcky: Array = []
+var cekajici_pujcky: Array = []
 var aliance_statu: Dictionary = {}
 var aliance_skupiny: Dictionary = {}
 var _aliance_skupiny_seq: int = 0
@@ -258,6 +261,7 @@ var cekajici_aliancni_zadosti: Array = []
 const DIP_REQUEST_PRIORITY_PLAYER := 0
 const DIP_REQUEST_PRIORITY_PEACE := 1
 const DIP_REQUEST_PRIORITY_TRADE := 2
+const DIP_REQUEST_PRIORITY_LOAN := 2
 const DIP_REQUEST_PRIORITY_ALLIANCE := 3
 const DIP_REQUEST_PRIORITY_NON_AGGRESSION := 4
 const DIP_REQUEST_PRIORITY_MILITARY_ACCESS := 5
@@ -278,6 +282,12 @@ const TRADE_SUPPORTED_SLOTS := {
 	TRADE_SLOT_WORSEN_RELATIONSHIP_WITH: true,
 	TRADE_SLOT_NON_AGGRESSION: true
 }
+
+const LOAN_MIN_TURNS := 1
+const LOAN_MAX_TURNS := 36
+const LOAN_MIN_INTEREST_PCT := 0.0
+const LOAN_MAX_INTEREST_PCT := 100.0
+const LOAN_DEFAULT_INTEREST_PCT := 6.0
 
 var zpracovava_se_tah: bool = false
 var _last_end_turn_request_ms: int = -1000000
@@ -369,6 +379,7 @@ func nastav_lokalni_hrace(staty: Array) -> void:
 	hrac_prijmy.clear()
 	hrac_kasa_inicializovana.clear()
 	cekajici_popupy_hracu.clear()
+	notifikace_pujcek_hracu.clear()
 	log_zprav_hracu.clear()
 	log_globalnich_zprav.clear()
 	vyzkum_statu.clear()
@@ -382,14 +393,14 @@ func nastav_lokalni_hrace(staty: Array) -> void:
 
 	_synchronizuj_jmeno_a_ideologii_hrace()
 
-func _pridej_popup_hraci(tag: String, titulek: String, text: String) -> void:
+func _pridej_popup_hraci(tag: String, titulek: String, text: String, force_popup: bool = false) -> void:
 	var cisty_tag = _normalizuj_tag(tag)
 	if cisty_tag == "" or not je_lidsky_stat(cisty_tag):
 		return
 	if titulek.strip_edges() == "" or text.strip_edges() == "":
 		return
 	_zaloguj_zpravu_hraci(cisty_tag, titulek, text, "popup")
-	if not _je_dulezity_popup(titulek, text):
+	if not force_popup and not _je_dulezity_popup(titulek, text):
 		return
 	if not cekajici_popupy_hracu.has(cisty_tag):
 		cekajici_popupy_hracu[cisty_tag] = []
@@ -397,6 +408,24 @@ func _pridej_popup_hraci(tag: String, titulek: String, text: String) -> void:
 		"title": titulek,
 		"text": text
 	})
+
+func _pridej_notifikaci_pujcky_hraci(tag: String, text: String) -> void:
+	var cisty = _normalizuj_tag(tag)
+	if cisty == "" or not je_lidsky_stat(cisty):
+		return
+	if text.strip_edges() == "":
+		return
+	if not notifikace_pujcek_hracu.has(cisty):
+		notifikace_pujcek_hracu[cisty] = []
+	(notifikace_pujcek_hracu[cisty] as Array).append(text)
+
+func vyzvedni_notifikace_pujcek_hrace(tag: String) -> Array:
+	var cisty = _normalizuj_tag(tag)
+	if cisty == "" or not notifikace_pujcek_hracu.has(cisty):
+		return []
+	var arr = (notifikace_pujcek_hracu[cisty] as Array).duplicate(true)
+	notifikace_pujcek_hracu.erase(cisty)
+	return arr
 
 func _je_dulezity_popup(titulek: String, text: String) -> bool:
 	var t = titulek.to_lower()
@@ -865,6 +894,7 @@ func _vytvor_save_state() -> Dictionary:
 		"hrac_kasy": hrac_kasy.duplicate(true),
 		"hrac_prijmy": hrac_prijmy.duplicate(true),
 		"hrac_kasa_inicializovana": hrac_kasa_inicializovana.duplicate(true),
+		"notifikace_pujcek_hracu": notifikace_pujcek_hracu.duplicate(true),
 		"log_zprav_hracu": log_zprav_hracu.duplicate(true),
 		"log_globalnich_zprav": log_globalnich_zprav.duplicate(true),
 		"vyzkum_statu": vyzkum_statu.duplicate(true),
@@ -878,6 +908,8 @@ func _vytvor_save_state() -> Dictionary:
 		"vazalske_odvody": vazalske_odvody.duplicate(true),
 		"vazalske_odvody_posledni_zmena_kolo": vazalske_odvody_posledni_zmena_kolo.duplicate(true),
 		"valecne_reparace": valecne_reparace.duplicate(true),
+		"aktivni_pujcky": aktivni_pujcky.duplicate(true),
+		"cekajici_pujcky": cekajici_pujcky.duplicate(true),
 		"aliance_statu": aliance_statu.duplicate(true),
 		"aliance_skupiny": aliance_skupiny.duplicate(true),
 		"aliance_skupiny_seq": _aliance_skupiny_seq,
@@ -937,6 +969,7 @@ func _aplikuj_save_state(state: Dictionary) -> bool:
 	hrac_kasy = (state.get("hrac_kasy", {}) as Dictionary).duplicate(true)
 	hrac_prijmy = (state.get("hrac_prijmy", {}) as Dictionary).duplicate(true)
 	hrac_kasa_inicializovana = (state.get("hrac_kasa_inicializovana", {}) as Dictionary).duplicate(true)
+	notifikace_pujcek_hracu = (state.get("notifikace_pujcek_hracu", {}) as Dictionary).duplicate(true)
 	log_zprav_hracu = (state.get("log_zprav_hracu", {}) as Dictionary).duplicate(true)
 	log_globalnich_zprav = (state.get("log_globalnich_zprav", []) as Array).duplicate(true)
 	vyzkum_statu = (state.get("vyzkum_statu", {}) as Dictionary).duplicate(true)
@@ -950,6 +983,8 @@ func _aplikuj_save_state(state: Dictionary) -> bool:
 	vazalske_odvody = (state.get("vazalske_odvody", {}) as Dictionary).duplicate(true)
 	vazalske_odvody_posledni_zmena_kolo = (state.get("vazalske_odvody_posledni_zmena_kolo", {}) as Dictionary).duplicate(true)
 	valecne_reparace = (state.get("valecne_reparace", []) as Array).duplicate(true)
+	aktivni_pujcky = (state.get("aktivni_pujcky", []) as Array).duplicate(true)
+	cekajici_pujcky = (state.get("cekajici_pujcky", []) as Array).duplicate(true)
 	aliance_statu = (state.get("aliance_statu", {}) as Dictionary).duplicate(true)
 	aliance_skupiny = (state.get("aliance_skupiny", {}) as Dictionary).duplicate(true)
 	_aliance_skupiny_seq = int(state.get("aliance_skupiny_seq", 0))
@@ -1008,6 +1043,7 @@ func reset_pro_novou_hru() -> void:
 	hrac_prijmy.clear()
 	hrac_kasa_inicializovana.clear()
 	cekajici_popupy_hracu.clear()
+	notifikace_pujcek_hracu.clear()
 	log_zprav_hracu.clear()
 	log_globalnich_zprav.clear()
 	vyzkum_statu.clear()
@@ -1022,6 +1058,8 @@ func reset_pro_novou_hru() -> void:
 	vazalske_odvody.clear()
 	vazalske_odvody_posledni_zmena_kolo.clear()
 	valecne_reparace.clear()
+	aktivni_pujcky.clear()
+	cekajici_pujcky.clear()
 	aliance_statu.clear()
 	aliance_skupiny.clear()
 	_aliance_skupiny_seq = 0
@@ -1096,6 +1134,9 @@ func ma_ulozene_hry() -> bool:
 	if FileAccess.file_exists(SAVEGAME_STATE_PATH):
 		return true
 	return not ziskej_save_sloty().is_empty()
+
+func ziskej_aktivni_pujcky() -> Array:
+	return aktivni_pujcky.duplicate(true)
 
 func uloz_hru_do_slotu(slot_name: String) -> bool:
 	_zajisti_slozku_save()
@@ -2936,6 +2977,318 @@ func _trade_parse_province_ids(raw: String) -> Array:
 func _trade_parse_target_tag(raw: String) -> String:
 	return _normalizuj_tag(raw)
 
+func _trade_extract_numeric_tokens(raw: String) -> Array:
+	var text = raw.strip_edges().replace(",", ".")
+	if text == "":
+		return []
+	var re := RegEx.new()
+	if re.compile("[-+]?[0-9]*\\.?[0-9]+") != OK:
+		return []
+	var out: Array = []
+	for m in re.search_all(text):
+		var token = m.get_string(0)
+		if token != "" and token.is_valid_float():
+			out.append(float(token))
+	return out
+
+func _trade_parse_loan_terms(value_a: String, value_b: String) -> Dictionary:
+	var numbers: Array = []
+	numbers.append_array(_trade_extract_numeric_tokens(value_a))
+	numbers.append_array(_trade_extract_numeric_tokens(value_b))
+	if numbers.size() < 3:
+		return {
+			"ok": false,
+			"reason": "Loan requires 3 numbers: principal, interest%, turns. Example: '120, 7.5, 10'."
+		}
+
+	var principal = float(numbers[0])
+	var interest_pct = float(numbers[1])
+	var turns = int(round(float(numbers[2])))
+
+	if principal <= 0.0:
+		return {"ok": false, "reason": "Loan principal must be positive."}
+	if interest_pct < LOAN_MIN_INTEREST_PCT or interest_pct > LOAN_MAX_INTEREST_PCT:
+		return {
+			"ok": false,
+			"reason": "Loan interest must be between %.1f%% and %.1f%%." % [LOAN_MIN_INTEREST_PCT, LOAN_MAX_INTEREST_PCT]
+		}
+	if turns < LOAN_MIN_TURNS or turns > LOAN_MAX_TURNS:
+		return {
+			"ok": false,
+			"reason": "Loan duration must be between %d and %d turns." % [LOAN_MIN_TURNS, LOAN_MAX_TURNS]
+		}
+
+	return {
+		"ok": true,
+		"principal": principal,
+		"interest_pct": interest_pct,
+		"turns": turns
+	}
+
+func _vytvor_statni_pujcku(lender_tag: String, borrower_tag: String, principal: float, interest_pct: float, turns: int) -> Dictionary:
+	var lender = _normalizuj_tag(lender_tag)
+	var borrower = _normalizuj_tag(borrower_tag)
+	if lender == "" or borrower == "" or lender == borrower:
+		return {"ok": false, "reason": "Invalid lender/borrower for loan."}
+	if principal <= 0.0:
+		return {"ok": false, "reason": "Loan principal must be positive."}
+	if turns < LOAN_MIN_TURNS or turns > LOAN_MAX_TURNS:
+		return {"ok": false, "reason": "Invalid loan duration."}
+	if interest_pct < LOAN_MIN_INTEREST_PCT or interest_pct > LOAN_MAX_INTEREST_PCT:
+		return {"ok": false, "reason": "Invalid loan interest."}
+
+	var lender_cash = _ziskej_kasu_statu(lender)
+	if lender_cash + 0.0001 < principal:
+		return {
+			"ok": false,
+			"reason": "%s does not have enough treasury to fund loan (required %.2f mil. USD, available %.2f mil. USD)." % [lender, principal, lender_cash],
+			"required": principal,
+			"available": lender_cash
+		}
+
+	var total_due = principal * (1.0 + (interest_pct / 100.0) * float(turns))
+	var installment = total_due / max(1.0, float(turns))
+	_nastav_kasu_statu(lender, lender_cash - principal)
+	_nastav_kasu_statu(borrower, _ziskej_kasu_statu(borrower) + principal)
+
+	var loan = {
+		"lender": lender,
+		"borrower": borrower,
+		"principal": principal,
+		"interest_pct": interest_pct,
+		"turns_total": turns,
+		"remaining_turns": turns,
+		"installment": installment,
+		"remaining_due": total_due,
+		"created_turn": aktualni_kolo
+	}
+	aktivni_pujcky.append(loan)
+
+	var relation_delta = clamp(principal / 120.0, 0.4, 5.0)
+	_uprav_vztah_statu_bez_cooldown(lender, borrower, relation_delta)
+
+	var msg = "%s gave %.2f mil. USD loan to %s (interest %.2f%%, %d turns)." % [lender, principal, borrower, interest_pct, turns]
+	_zaloguj_globalni_zpravu("Loans", msg, "trade")
+	if je_lidsky_stat(lender) or je_lidsky_stat(borrower):
+		_pridej_popup_zucastnenym_hracum(lender, borrower, "Loans", msg)
+
+	return {
+		"ok": true,
+		"loan": loan,
+		"total_due": total_due,
+		"installment": installment
+	}
+
+func navrhni_statni_pujcku(lender_tag: String, borrower_tag: String, principal: float, interest_pct: float, turns: int, requester_tag: String = "") -> Dictionary:
+	var lender = _normalizuj_tag(lender_tag)
+	var borrower = _normalizuj_tag(borrower_tag)
+	var requester = _normalizuj_tag(requester_tag)
+	if lender == "" or borrower == "" or lender == borrower:
+		return {"ok": false, "reason": "Invalid lender/borrower for loan offer."}
+	if not _stat_existuje(lender) or not _stat_existuje(borrower):
+		return {"ok": false, "reason": "State does not exist on current map."}
+	if principal <= 0.0:
+		return {"ok": false, "reason": "Loan principal must be positive."}
+	if turns < LOAN_MIN_TURNS or turns > LOAN_MAX_TURNS:
+		return {"ok": false, "reason": "Invalid loan duration."}
+	if interest_pct < LOAN_MIN_INTEREST_PCT or interest_pct > LOAN_MAX_INTEREST_PCT:
+		return {"ok": false, "reason": "Invalid loan interest."}
+	var lender_is_human = je_lidsky_stat(lender)
+	var borrower_is_human = je_lidsky_stat(borrower)
+	if lender_is_human and borrower_is_human:
+		var receiver = borrower
+		if requester == borrower:
+			receiver = lender
+		var payload = {
+			"lender": lender,
+			"borrower": borrower,
+			"principal": principal,
+			"interest_pct": interest_pct,
+			"turns": turns
+		}
+		var queued = _pridej_diplomatickou_zadost(requester if requester != "" else lender, receiver, "loan", ALLIANCE_NONE, payload)
+		if not queued:
+			return {"ok": false, "reason": "Loan proposal could not be queued."}
+		return {"ok": true, "queued": true, "receiver": receiver, "payload": payload}
+
+	var lender_cash = _ziskej_kasu_statu(lender)
+	if lender_cash + 0.0001 < principal:
+		return {
+			"ok": false,
+			"reason": "%s does not have enough treasury to fund loan (required %.2f mil. USD, available %.2f mil. USD)." % [lender, principal, lender_cash],
+			"required": principal,
+			"available": lender_cash
+		}
+
+	var offer = {
+		"lender": lender,
+		"borrower": borrower,
+		"principal": principal,
+		"interest_pct": interest_pct,
+		"turns": turns,
+		"decision_maker": borrower if not borrower_is_human else lender,
+		"request_kind": "give" if requester != borrower else "take",
+		"created_turn": aktualni_kolo,
+		"resolve_turn": aktualni_kolo + 1
+	}
+	cekajici_pujcky.append(offer)
+
+	var msg = "%s offered %.2f mil. USD loan to %s (interest %.2f%%, %d turns). Awaiting response next turn." % [lender, principal, borrower, interest_pct, turns]
+	if requester == borrower:
+		msg = "%s requested %.2f mil. USD loan from %s (interest %.2f%%, %d turns). Awaiting response next turn." % [borrower, principal, lender, interest_pct, turns]
+	_zaloguj_globalni_zpravu("Loans", msg, "trade")
+	if je_lidsky_stat(lender):
+		_pridej_popup_hraci(lender, "Loans", msg)
+	if je_lidsky_stat(borrower):
+		_pridej_popup_hraci(borrower, "Loans", msg)
+
+	return {"ok": true, "pending": true, "offer": offer}
+
+func _ai_ma_prijmout_pujcku_nabidku(lender: String, borrower: String, principal: float, interest_pct: float, turns: int) -> bool:
+	var borrower_cash = _ziskej_kasu_statu(borrower)
+	var income = max(0.0, _spocitej_cisty_prijem_statu(borrower))
+	var total_due = principal * (1.0 + (interest_pct / 100.0) * float(turns))
+	var installment = total_due / max(1.0, float(turns))
+	var rel = ziskej_vztah_statu(borrower, lender)
+
+	var score = 0.0
+	if borrower_cash < 25.0:
+		score += 0.55
+	elif borrower_cash < 90.0:
+		score += 0.30
+
+	if interest_pct <= 4.0:
+		score += 0.35
+	elif interest_pct <= 8.0:
+		score += 0.15
+	elif interest_pct >= 16.0:
+		score -= 0.55
+
+	if installment > max(6.0, income * 0.55):
+		score -= 1.0
+
+	score += clamp((rel - 10.0) / 100.0, -0.6, 0.6)
+	if ziskej_uroven_aliance(lender, borrower) > ALLIANCE_NONE:
+		score += 0.15
+	if ma_neagresivni_smlouvu(lender, borrower):
+		score += 0.10
+
+	var accept_chance = clamp(0.5 + score, 0.05, 0.95)
+	return randf() < accept_chance
+
+func _ai_ma_poskytnout_pujcku(lender: String, borrower: String, principal: float, interest_pct: float, turns: int) -> bool:
+	var lender_cash = _ziskej_kasu_statu(lender)
+	var lender_income = max(0.0, _spocitej_cisty_prijem_statu(lender))
+	var borrower_cash = _ziskej_kasu_statu(borrower)
+	var rel = ziskej_vztah_statu(lender, borrower)
+	var total_due = principal * (1.0 + (interest_pct / 100.0) * float(turns))
+	var total_profit = max(0.0, total_due - principal)
+
+	var score = 0.0
+	if lender_cash >= principal * 3.5:
+		score += 0.45
+	elif lender_cash >= principal * 2.0:
+		score += 0.25
+	elif lender_cash + lender_income * 2.0 < principal:
+		score -= 1.1
+	elif lender_cash < principal:
+		score -= 0.45
+
+	if borrower_cash < 30.0:
+		score += 0.18
+	elif borrower_cash > 180.0:
+		score -= 0.18
+
+	if interest_pct >= 10.0:
+		score += 0.25
+	elif interest_pct >= 6.0:
+		score += 0.12
+	elif interest_pct <= 2.0:
+		score -= 0.20
+
+	if turns >= 20:
+		score -= 0.18
+	elif turns <= 10:
+		score += 0.08
+
+	if total_profit >= max(8.0, principal * 0.20):
+		score += 0.15
+
+	score += clamp((rel - 10.0) / 100.0, -0.55, 0.55)
+	if ziskej_uroven_aliance(lender, borrower) > ALLIANCE_NONE:
+		score += 0.15
+	if ma_neagresivni_smlouvu(lender, borrower):
+		score += 0.08
+
+	var accept_chance = clamp(0.45 + score, 0.05, 0.95)
+	return randf() < accept_chance
+
+func _zpracuj_cekajici_pujcky_za_kolo() -> void:
+	if cekajici_pujcky.is_empty():
+		return
+
+	var stale: Array = []
+	for offer_any in cekajici_pujcky:
+		var offer = offer_any as Dictionary
+		var lender = _normalizuj_tag(str(offer.get("lender", "")))
+		var borrower = _normalizuj_tag(str(offer.get("borrower", "")))
+		var resolve_turn = int(offer.get("resolve_turn", int(offer.get("created_turn", aktualni_kolo)) + 1))
+		if lender == "" or borrower == "" or lender == borrower:
+			continue
+		if aktualni_kolo < resolve_turn:
+			stale.append(offer)
+			continue
+		if not _stat_existuje(lender) or not _stat_existuje(borrower):
+			continue
+
+		var principal = float(offer.get("principal", 0.0))
+		var interest_pct = float(offer.get("interest_pct", 0.0))
+		var turns = int(offer.get("turns", 0))
+		var decision_maker = _normalizuj_tag(str(offer.get("decision_maker", borrower)))
+		var request_kind = str(offer.get("request_kind", "give"))
+		if principal <= 0.0 or turns <= 0:
+			continue
+
+		var accepted = false
+		if decision_maker == lender:
+			accepted = _ai_ma_poskytnout_pujcku(lender, borrower, principal, interest_pct, turns)
+		else:
+			accepted = _ai_ma_prijmout_pujcku_nabidku(lender, borrower, principal, interest_pct, turns)
+		if accepted:
+			var result = _vytvor_statni_pujcku(lender, borrower, principal, interest_pct, turns)
+			if not bool(result.get("ok", false)):
+				if request_kind == "take" and je_lidsky_stat(borrower):
+					var fail_take_text = "%s could not grant your loan request: %s" % [lender, str(result.get("reason", "failed"))]
+					_pridej_popup_hraci(borrower, "Loans", fail_take_text, true)
+					_pridej_notifikaci_pujcky_hraci(borrower, fail_take_text)
+				elif je_lidsky_stat(lender):
+					var fail_text = "%s could not accept your loan offer: %s" % [borrower, str(result.get("reason", "failed"))]
+					_pridej_popup_hraci(lender, "Loans", fail_text, true)
+					_pridej_notifikaci_pujcky_hraci(lender, fail_text)
+			elif request_kind == "take" and je_lidsky_stat(borrower):
+				var granted_text = "%s granted your loan request." % lender
+				_pridej_popup_hraci(borrower, "Loans", granted_text, true)
+				_pridej_notifikaci_pujcky_hraci(borrower, granted_text)
+			elif je_lidsky_stat(lender):
+				var accept_text = "%s accepted your loan offer." % borrower
+				_pridej_popup_hraci(lender, "Loans", accept_text, true)
+				_pridej_notifikaci_pujcky_hraci(lender, accept_text)
+		else:
+			var reject_msg = "%s rejected loan offer from %s (%.2f mil. USD, %.2f%%, %d turns)." % [borrower, lender, principal, interest_pct, turns]
+			if request_kind == "take":
+				reject_msg = "%s rejected loan request from %s (%.2f mil. USD, %.2f%%, %d turns)." % [lender, borrower, principal, interest_pct, turns]
+			_zaloguj_globalni_zpravu("Loans", reject_msg, "trade")
+			if request_kind == "take" and je_lidsky_stat(borrower):
+				var reject_take_text = "%s rejected your loan request." % lender
+				_pridej_popup_hraci(borrower, "Loans", reject_take_text, true)
+				_pridej_notifikaci_pujcky_hraci(borrower, reject_take_text)
+			elif je_lidsky_stat(lender):
+				var reject_text = "%s rejected your loan offer." % borrower
+				_pridej_popup_hraci(lender, "Loans", reject_text, true)
+				_pridej_notifikaci_pujcky_hraci(lender, reject_text)
+
+	cekajici_pujcky = stale
+
 func _trade_can_declare_war(attacker_tag: String, defender_tag: String) -> bool:
 	var a = _normalizuj_tag(attacker_tag)
 	var b = _normalizuj_tag(defender_tag)
@@ -4173,7 +4526,7 @@ func _pridej_diplomatickou_zadost(from_tag: String, to_tag: String, req_type: St
 	if from_clean == "" or to_clean == "" or from_clean == to_clean:
 		return false
 
-	if req_type != "alliance" and req_type != "non_aggression" and req_type != "peace" and req_type != "military_access" and req_type != "trade":
+	if req_type != "alliance" and req_type != "non_aggression" and req_type != "peace" and req_type != "military_access" and req_type != "trade" and req_type != "loan":
 		return false
 
 	if not _je_essential_diplomaticka_zadost(from_clean, to_clean, req_type, alliance_level):
@@ -4232,6 +4585,8 @@ func _pridej_diplomatickou_zadost(from_tag: String, to_tag: String, req_type: St
 		_zaloguj_globalni_zpravu("Diplomacy", "%s requested military access from %s." % [from_clean, to_clean], "diplomacy")
 	elif req_type == "trade":
 		_zaloguj_globalni_zpravu("Trade", "%s sent trade offer to %s." % [from_clean, to_clean], "trade")
+	elif req_type == "loan":
+		_zaloguj_globalni_zpravu("Loans", "%s sent loan proposal to %s." % [from_clean, to_clean], "trade")
 	return true
 
 func _je_essential_diplomaticka_zadost(from_tag: String, to_tag: String, req_type: String, alliance_level: int) -> bool:
@@ -4259,6 +4614,8 @@ func _je_essential_diplomaticka_zadost(from_tag: String, to_tag: String, req_typ
 			return true
 		"trade":
 			return true
+		"loan":
+			return true
 		_:
 			return false
 
@@ -4278,6 +4635,8 @@ func _diplomaticka_zadost_priorita(req: Dictionary) -> int:
 			return DIP_REQUEST_PRIORITY_MILITARY_ACCESS
 		"trade":
 			return DIP_REQUEST_PRIORITY_TRADE
+		"loan":
+			return DIP_REQUEST_PRIORITY_LOAN
 		_:
 			return 100
 
@@ -4394,6 +4753,8 @@ func _vykonej_prijeti_diplomaticke_zadosti(player_clean: String, req: Dictionary
 		req_name = "military access request"
 	elif req_type == "trade":
 		req_name = "trade offer"
+	elif req_type == "loan":
+		req_name = "loan proposal"
 
 	if req_type == "alliance":
 		var level = int(req.get("level", ALLIANCE_NONE))
@@ -4449,6 +4810,26 @@ func _vykonej_prijeti_diplomaticke_zadosti(player_clean: String, req: Dictionary
 			if je_lidsky_stat(sender):
 				_pridej_popup_hraci(sender, "Trade", "%s accepted your trade offer." % player_clean)
 		return bool(trade_ok.get("ok", false))
+	if req_type == "loan":
+		var payload = req.get("payload", {}) as Dictionary
+		var lender = _normalizuj_tag(str(payload.get("lender", "")))
+		var borrower = _normalizuj_tag(str(payload.get("borrower", "")))
+		var principal = float(payload.get("principal", 0.0))
+		var interest_pct = float(payload.get("interest_pct", 0.0))
+		var turns = int(payload.get("turns", 0))
+		var loan_ok = _vytvor_statni_pujcku(lender, borrower, principal, interest_pct, turns)
+		if bool(loan_ok.get("ok", false)):
+			_zaloguj_globalni_zpravu("Loans", "%s accepted loan proposal from %s." % [player_clean, sender], "trade")
+			if je_lidsky_stat(sender):
+				_pridej_popup_hraci(sender, "Loans", "%s accepted your loan proposal." % player_clean, true)
+			if je_lidsky_stat(player_clean):
+				_pridej_popup_hraci(player_clean, "Loans", "You accepted loan proposal from %s." % sender, true)
+			return true
+		if je_lidsky_stat(player_clean):
+			_pridej_popup_hraci(player_clean, "Loans", str(loan_ok.get("reason", "Loan proposal failed.")), true)
+		if je_lidsky_stat(sender):
+			_pridej_popup_hraci(sender, "Loans", "%s could not finalize the loan proposal." % player_clean, true)
+		return false
 
 	# Keep generic fallback for future diplomatic request types.
 	_zaloguj_globalni_zpravu("Diplomacy", "%s accepted %s from %s." % [player_clean, req_name, sender], "diplomacy")
@@ -4486,8 +4867,12 @@ func hrac_odmitni_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> bo
 		req_name = "military access request"
 	elif req_type == "trade":
 		req_name = "trade offer"
+	elif req_type == "loan":
+		req_name = "loan proposal"
 	if je_lidsky_stat(player_clean):
 		_pridej_popup_hraci(player_clean, "Diplomacy", "You declined a diplomatic request from %s." % sender)
+	if req_type == "loan" and je_lidsky_stat(sender):
+		_pridej_popup_hraci(sender, "Loans", "%s rejected your loan proposal." % player_clean, true)
 	_zaloguj_globalni_zpravu("Diplomacy", "%s declined %s from %s." % [player_clean, req_name, sender], "diplomacy")
 	return true
 
@@ -5377,10 +5762,40 @@ func ziskej_financni_rozpad_statu(state_tag: String = "") -> Dictionary:
 
 	var prijem_ostatni := 0.0
 	var vydaj_investice := 0.0
+	var prijem_uroky_pujcky := 0.0
+	var vydaj_uroky_pujcky := 0.0
+	for loan_any in aktivni_pujcky:
+		var loan = loan_any as Dictionary
+		var lender = _normalizuj_tag(str(loan.get("lender", "")))
+		var borrower = _normalizuj_tag(str(loan.get("borrower", "")))
+		var remaining_turns = int(loan.get("remaining_turns", 0))
+		var remaining_due = max(0.0, float(loan.get("remaining_due", 0.0)))
+		if remaining_turns <= 0 or remaining_due <= 0.0001:
+			continue
+		if lender != state and borrower != state:
+			continue
+
+		var installment = max(0.0, float(loan.get("installment", 0.0)))
+		var due_this_turn = min(remaining_due, installment)
+		if due_this_turn <= 0.0:
+			continue
+
+		# Estimate the interest portion of this turn's installment.
+		var turns_total = max(1, int(loan.get("turns_total", remaining_turns)))
+		var principal = max(0.0, float(loan.get("principal", 0.0)))
+		var interest_pct = max(0.0, float(loan.get("interest_pct", 0.0)))
+		var total_interest = principal * (interest_pct / 100.0) * float(turns_total)
+		var interest_this_turn = min(due_this_turn, max(0.0, total_interest / float(turns_total)))
+
+		if lender == state:
+			prijem_uroky_pujcky += interest_this_turn
+		if borrower == state:
+			vydaj_uroky_pujcky += interest_this_turn
+
 	var vydaj_ostatni := vydaj_vazalsky_odvod + vydaj_reparace
 
-	var celkove_prijmy = prijem_hdp + prijem_vazalove + prijem_reparace + prijem_ostatni
-	var celkove_vydaje = vydaj_armada + vydaj_investice + vydaj_ostatni
+	var celkove_prijmy = prijem_hdp + prijem_vazalove + prijem_reparace + prijem_ostatni + prijem_uroky_pujcky
+	var celkove_vydaje = vydaj_armada + vydaj_investice + vydaj_ostatni + vydaj_uroky_pujcky
 	var profit = celkove_prijmy - celkove_vydaje
 
 	return {
@@ -5390,12 +5805,14 @@ func ziskej_financni_rozpad_statu(state_tag: String = "") -> Dictionary:
 			"gdp": prijem_hdp,
 			"vassals": prijem_vazalove,
 			"reparations": prijem_reparace,
+			"loan_interest": prijem_uroky_pujcky,
 			"other": prijem_ostatni,
 			"total": celkove_prijmy
 		},
 		"expenses": {
 			"army_upkeep": vydaj_armada,
 			"investments": vydaj_investice,
+			"loan_interest": vydaj_uroky_pujcky,
 			"other": vydaj_ostatni,
 			"total": celkove_vydaje
 		},
@@ -5497,6 +5914,58 @@ func _zpracuj_valecne_reparace_za_kolo() -> void:
 			active.append(rep)
 
 	valecne_reparace = active
+
+func _zpracuj_aktivni_pujcky_za_kolo() -> void:
+	if aktivni_pujcky.is_empty():
+		return
+
+	var active: Array = []
+	for loan_any in aktivni_pujcky:
+		var loan = loan_any as Dictionary
+		var lender = _normalizuj_tag(str(loan.get("lender", "")))
+		var borrower = _normalizuj_tag(str(loan.get("borrower", "")))
+		var remaining_turns = int(loan.get("remaining_turns", 0))
+		var remaining_due = max(0.0, float(loan.get("remaining_due", 0.0)))
+		var installment = max(0.0, float(loan.get("installment", 0.0)))
+		if lender == "" or borrower == "" or lender == borrower:
+			continue
+		if remaining_turns <= 0 or remaining_due <= 0.0001:
+			continue
+		if not _stat_existuje(lender) or not _stat_existuje(borrower):
+			continue
+
+		var due_this_turn = min(remaining_due, installment)
+		var borrower_cash = _ziskej_kasu_statu(borrower)
+		var paid = clamp(due_this_turn, 0.0, max(0.0, borrower_cash + 100.0))
+
+		if paid > 0.0:
+			_nastav_kasu_statu(borrower, borrower_cash - paid)
+			_nastav_kasu_statu(lender, _ziskej_kasu_statu(lender) + paid)
+
+		if paid + 0.0001 < due_this_turn:
+			var default_msg = "%s defaulted on loan payment to %s (paid %.2f / %.2f mil. USD)." % [borrower, lender, paid, due_this_turn]
+			_zaloguj_globalni_zpravu("Loans", default_msg, "trade")
+			if je_lidsky_stat(lender) or je_lidsky_stat(borrower):
+				_pridej_popup_zucastnenym_hracum(lender, borrower, "Loans", default_msg)
+			_uprav_vztah_statu_bez_cooldown(borrower, lender, -clamp((due_this_turn - paid) / 20.0, 2.0, 18.0))
+			continue
+
+		remaining_due = max(0.0, remaining_due - paid)
+		remaining_turns -= 1
+
+		if remaining_due <= 0.0001 or remaining_turns <= 0:
+			var paid_off_msg = "%s fully repaid loan to %s." % [borrower, lender]
+			_zaloguj_globalni_zpravu("Loans", paid_off_msg, "trade")
+			if je_lidsky_stat(lender) or je_lidsky_stat(borrower):
+				_pridej_popup_zucastnenym_hracum(lender, borrower, "Loans", paid_off_msg)
+			_uprav_vztah_statu_bez_cooldown(borrower, lender, 2.0)
+			continue
+
+		loan["remaining_due"] = remaining_due
+		loan["remaining_turns"] = remaining_turns
+		active.append(loan)
+
+	aktivni_pujcky = active
 
 func _odstran_neplatne_mirove_konference() -> void:
 	var keys = cekajici_mirove_konference.keys().duplicate()
@@ -6887,6 +7356,8 @@ func ukonci_kolo():
 	aktualni_kolo += 1
 	_zpracuj_valecne_reparace_za_kolo()
 	_zpracuj_vazalske_odvody_za_kolo()
+	_zpracuj_cekajici_pujcky_za_kolo()
+	_zpracuj_aktivni_pujcky_za_kolo()
 	
 	var hotove_stavby = []
 	var hlaseni_dokoncene_stavby: Dictionary = {}

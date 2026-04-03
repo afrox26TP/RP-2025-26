@@ -627,7 +627,12 @@ func _on_mode_alliances_pressed() -> void:
 
 func aktualizuj_ui():
 	# Update money and date counters
-	money_label.text = "Funds: %.2f M USD (+%.2f)" % [GameManager.statni_kasa, GameManager.celkovy_prijem]
+	var topbar_balance = float(GameManager.celkovy_prijem)
+	if GameManager.has_method("ziskej_financni_rozpad_statu"):
+		var finance = GameManager.ziskej_financni_rozpad_statu(str(GameManager.hrac_stat)) as Dictionary
+		if bool(finance.get("ok", false)):
+			topbar_balance = float(finance.get("profit", topbar_balance))
+	money_label.text = "Funds: %.2f M USD (+%.2f)" % [GameManager.statni_kasa, topbar_balance]
 	if date_label:
 		date_label.text = _ziskej_text_data_pro_kolo(int(GameManager.aktualni_kolo))
 	
@@ -781,11 +786,13 @@ func _aktualizuj_financni_tooltip_text() -> void:
 	t += "[color=#65D96E]GDP: %s[/color]\n" % _format_finance_value(float(income.get("gdp", 0.0)))
 	t += "[color=#65D96E]Vassals: %s[/color]\n" % _format_finance_value(float(income.get("vassals", 0.0)))
 	t += "[color=#65D96E]Reparations: %s[/color]\n" % _format_finance_value(float(income.get("reparations", 0.0)))
+	t += "[color=#65D96E]Loan interest: %s[/color]\n" % _format_finance_value(float(income.get("loan_interest", 0.0)))
 	t += "[color=#65D96E]Other: %s[/color]\n\n" % _format_finance_value(float(income.get("other", 0.0)))
 
 	t += "[b][color=#FFFFFF]EXPENSES[/color][/b]\n"
 	t += "[color=#FF6666]Army upkeep: %s[/color]\n" % _format_finance_value(float(expenses.get("army_upkeep", 0.0)))
 	t += "[color=#FF6666]Investments: %s[/color]\n" % _format_finance_value(float(expenses.get("investments", 0.0)))
+	t += "[color=#FF6666]Loan interest: %s[/color]\n" % _format_finance_value(float(expenses.get("loan_interest", 0.0)))
 	t += "[color=#FF6666]Other: %s[/color]\n\n" % _format_finance_value(float(expenses.get("other", 0.0)))
 
 	t += "[b][color=#FFFFFF]BALANCE (PROFIT): %s[/color][/b]" % _format_finance_signed(profit)

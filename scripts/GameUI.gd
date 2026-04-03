@@ -74,6 +74,8 @@ var war_reparations_label: Label
 @onready var declare_war_btn = $OverviewPanel/VBoxContainer/DeclareWarButton
 @onready var propose_peace_btn = $OverviewPanel/VBoxContainer/ProposePeaceButton
 @onready var non_aggression_btn = $OverviewPanel/VBoxContainer/NonAggressionButton
+@onready var give_loan_btn = $OverviewPanel/VBoxContainer/LoansHBox/GiveLoanButton
+@onready var take_loan_btn = $OverviewPanel/VBoxContainer/LoansHBox/TakeLoanButton
 @onready var incoming_request_label = $OverviewPanel/VBoxContainer/IncomingRequestLabel
 @onready var respond_request_buttons = $OverviewPanel/VBoxContainer/RespondRequestButtons
 @onready var accept_request_btn = $OverviewPanel/VBoxContainer/RespondRequestButtons/AcceptRequestButton
@@ -111,6 +113,17 @@ var _alliance_create_confirm_btn: Button
 var _alliance_create_cancel_btn: Button
 var _alliance_dialog_target_tag: String = ""
 var _system_message_ack: bool = false
+var _loans_dialog: PopupPanel
+var _loans_list: VBoxContainer
+var _loans_mode: String = ""  # "give" or "take"
+var _loan_principal_slider: HSlider
+var _loan_principal_input: LineEdit
+var _loan_interest_slider: HSlider
+var _loan_interest_input: LineEdit
+var _loan_duration_slider: HSlider
+var _loan_duration_input: LineEdit
+var _pending_loan_notes: Array = []
+var _showing_loan_notes: bool = false
 var _pause_menu_panel: PopupPanel
 var _pause_confirm_dialog: ConfirmationDialog
 var _pause_pending_action: String = ""
@@ -400,6 +413,12 @@ func _ready():
 		propose_peace_btn.pressed.connect(_on_propose_peace_button_pressed)
 	if non_aggression_btn and not non_aggression_btn.pressed.is_connected(_on_non_aggression_button_pressed):
 		non_aggression_btn.pressed.connect(_on_non_aggression_button_pressed)
+	if give_loan_btn and not give_loan_btn.pressed.is_connected(func(): _on_loan_button_pressed("give")):
+		give_loan_btn.pressed.connect(func(): _on_loan_button_pressed("give"))
+		give_loan_btn.focus_mode = Control.FOCUS_NONE
+	if take_loan_btn and not take_loan_btn.pressed.is_connected(func(): _on_loan_button_pressed("take")):
+		take_loan_btn.pressed.connect(func(): _on_loan_button_pressed("take"))
+		take_loan_btn.focus_mode = Control.FOCUS_NONE
 	if accept_request_btn and not accept_request_btn.pressed.is_connected(_on_accept_request_pressed):
 		accept_request_btn.pressed.connect(_on_accept_request_pressed)
 	if decline_request_btn and not decline_request_btn.pressed.is_connected(_on_decline_request_pressed):
@@ -482,6 +501,7 @@ func _ready():
 	_vytvor_hlaseni_mirove_konference()
 	_vytvor_panel_vazalu()
 	_vytvor_vyzkum_dialog()
+	_vytvor_loans_dialog()
 	# Pre-layout research dialog once in hidden mode; fixes broken first open in turn 0.
 	call_deferred("_predhrej_vyzkum_dialog_layout")
 	_nastav_tooltipy_ui()
@@ -546,8 +566,26 @@ func _on_zpracovani_tahu_zmeneno(aktivni: bool) -> void:
 		_turn_loading_overlay.visible = aktivni and not _turn_loading_suppressed
 	if _turn_loading_label:
 		_turn_loading_label.text = TURN_LOADING_FRAMES[0]
+	if not aktivni and not _pending_loan_notes.is_empty():
+		call_deferred("_zobraz_pending_loan_notes")
 	if aktivni:
 		set_process(true)
+
+func _zobraz_pending_loan_notes() -> void:
+	if _showing_loan_notes:
+		return
+	if _pending_loan_notes.is_empty():
+		return
+	if GameManager and bool(GameManager.zpracovava_se_tah):
+		return
+
+	_showing_loan_notes = true
+	while not _pending_loan_notes.is_empty():
+		var note = str(_pending_loan_notes.pop_front()).strip_edges()
+		if note == "":
+			continue
+		await zobraz_systemove_hlaseni("Loans", note)
+	_showing_loan_notes = false
 
 func nastav_pozastaveni_turn_overlay(pozastavit: bool) -> void:
 	_turn_loading_suppressed = pozastavit
@@ -3143,6 +3181,331 @@ func _pozicuj_gift_dialog() -> void:
 		return
 	var vp = get_viewport().get_visible_rect().size
 	_gift_dialog.position = Vector2((vp.x - _gift_dialog.size.x) * 0.5, (vp.y - _gift_dialog.size.y) * 0.5)
+
+# ---- Loans Dialog ----
+
+func _vytvor_loans_dialog() -> void:
+	if _loans_dialog != null:
+		return
+
+	_loans_dialog = PopupPanel.new()
+	_loans_dialog.name = "LoansDialog"
+	_loans_dialog.wrap_controls = false
+	_loans_dialog.unresizable = true
+	_loans_dialog.min_size = Vector2i(380, 280)
+	_loans_dialog.size = Vector2(480, 350)
+	_loans_dialog.exclusive = false
+	_loans_dialog.popup_window = false
+	add_child(_loans_dialog)
+	_aplikuj_ingame_popup_styl(_loans_dialog)
+
+	var margin = MarginContainer.new()
+	margin.offset_left = 8
+	margin.offset_top = 8
+	margin.offset_right = -8
+	margin.offset_bottom = -8
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_loans_dialog.add_child(margin)
+
+	var root = VBoxContainer.new()
+	root.add_theme_constant_override("separation", 8)
+	margin.add_child(root)
+
+	var header = HBoxContainer.new()
+	header.add_theme_constant_override("separation", 8)
+	root.add_child(header)
+
+	var title = Label.new()
+	title.text = "Loan Request"
+	title.add_theme_font_size_override("font_size", 18)
+	title.add_theme_color_override("font_color", Color(0.93, 0.97, 1.0, 1.0))
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(title)
+
+	var close_btn = Button.new()
+	close_btn.text = "X"
+	close_btn.custom_minimum_size = Vector2(32, 0)
+	_aplikuj_ingame_tlacitko_styl(close_btn)
+	close_btn.pressed.connect(func(): _loans_dialog.hide())
+	header.add_child(close_btn)
+
+	var form = VBoxContainer.new()
+	form.add_theme_constant_override("separation", 10)
+	root.add_child(form)
+
+	# === Principal Slider + Input Row ===
+	var principal_title = Label.new()
+	principal_title.text = "Principal (M USD):"
+	principal_title.add_theme_font_size_override("font_size", 12)
+	form.add_child(principal_title)
+
+	var principal_slider_row = HBoxContainer.new()
+	principal_slider_row.add_theme_constant_override("separation", 6)
+	form.add_child(principal_slider_row)
+
+	var principal_slider = HSlider.new()
+	_loan_principal_slider = principal_slider
+	principal_slider.min_value = 0.0
+	principal_slider.max_value = 1000.0
+	principal_slider.value = 500.0
+	principal_slider.step = 1.0
+	principal_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	principal_slider_row.add_child(principal_slider)
+
+	var principal_input = LineEdit.new()
+	_loan_principal_input = principal_input
+	principal_input.text = "500"
+	principal_input.custom_minimum_size = Vector2(60, 24)
+	principal_slider_row.add_child(principal_input)
+
+	principal_slider.value_changed.connect(func(val): principal_input.text = str(int(val)))
+	principal_input.text_changed.connect(func(txt):
+		if txt.strip_edges() != "":
+			var val = float(txt) if txt.is_valid_float() else 0.0
+			var clamped = clampf(val, principal_slider.min_value, principal_slider.max_value)
+			principal_slider.set_value_no_signal(clamped)
+			if val != clamped:
+				principal_input.text = str(int(clamped))
+	)
+
+	# === Interest Slider + Input Row ===
+	var interest_title = Label.new()
+	interest_title.text = "Interest (%):"
+	interest_title.add_theme_font_size_override("font_size", 12)
+	form.add_child(interest_title)
+
+	var interest_slider_row = HBoxContainer.new()
+	interest_slider_row.add_theme_constant_override("separation", 6)
+	form.add_child(interest_slider_row)
+
+	var interest_slider = HSlider.new()
+	_loan_interest_slider = interest_slider
+	interest_slider.min_value = 0.0
+	interest_slider.max_value = 100.0
+	interest_slider.value = 6.0
+	interest_slider.step = 0.5
+	interest_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	interest_slider_row.add_child(interest_slider)
+
+	var interest_input = LineEdit.new()
+	_loan_interest_input = interest_input
+	interest_input.text = "6.0"
+	interest_input.custom_minimum_size = Vector2(60, 24)
+	interest_slider_row.add_child(interest_input)
+
+	interest_slider.value_changed.connect(func(val): interest_input.text = "%.1f" % val)
+	interest_input.text_changed.connect(func(txt):
+		if txt.strip_edges() != "":
+			var val = float(txt) if txt.is_valid_float() else 0.0
+			val = clampf(val, interest_slider.min_value, interest_slider.max_value)
+			interest_input.text = "%.1f" % val
+			interest_slider.set_value_no_signal(val)
+	)
+
+	# === Duration Slider + Input Row ===
+	var duration_title = Label.new()
+	duration_title.text = "Duration (turns):"
+	duration_title.add_theme_font_size_override("font_size", 12)
+	form.add_child(duration_title)
+
+	var duration_slider_row = HBoxContainer.new()
+	duration_slider_row.add_theme_constant_override("separation", 6)
+	form.add_child(duration_slider_row)
+
+	var duration_slider = HSlider.new()
+	_loan_duration_slider = duration_slider
+	duration_slider.min_value = 5.0
+	duration_slider.max_value = 36.0
+	duration_slider.value = 10.0
+	duration_slider.step = 1.0
+	duration_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	duration_slider_row.add_child(duration_slider)
+
+	var duration_input = LineEdit.new()
+	_loan_duration_input = duration_input
+	duration_input.text = "10"
+	duration_input.custom_minimum_size = Vector2(60, 24)
+	duration_slider_row.add_child(duration_input)
+
+	duration_slider.value_changed.connect(func(val): duration_input.text = str(int(val)))
+	duration_input.text_changed.connect(func(txt):
+		if txt.strip_edges() != "":
+			var val = float(txt) if txt.is_valid_float() else 5.0
+			val = clampf(val, duration_slider.min_value, duration_slider.max_value)
+			duration_input.text = str(int(val))
+			duration_slider.set_value_no_signal(val)
+	)
+
+	# Buttons
+	var button_row = HBoxContainer.new()
+	button_row.add_theme_constant_override("separation", 8)
+	form.add_child(button_row)
+
+	var confirm_btn = Button.new()
+	confirm_btn.text = "Confirm"
+	confirm_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button_row.add_child(confirm_btn)
+	confirm_btn.pressed.connect(func(): _on_loan_confirmed(principal_input.text, interest_input.text, duration_input.text))
+
+	var cancel_btn = Button.new()
+	cancel_btn.text = "Cancel"
+	cancel_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button_row.add_child(cancel_btn)
+	cancel_btn.pressed.connect(func(): _loans_dialog.hide())
+
+	_loans_dialog.hide()
+
+func _ziskej_dostupne_funds_statu(tag: String) -> float:
+	if GameManager == null:
+		return 0.0
+	var normalized = str(tag).strip_edges().to_upper()
+	if normalized == "":
+		return 0.0
+	if GameManager.has_method("_ziskej_kasu_statu"):
+		return maxf(0.0, float(GameManager._ziskej_kasu_statu(normalized)))
+	if normalized == str(GameManager.hrac_stat).strip_edges().to_upper():
+		return maxf(0.0, float(GameManager.statni_kasa))
+	return 0.0
+
+func _ziskej_max_principal_pro_rezim(player_tag: String, target_tag: String) -> float:
+	if _loans_mode == "take":
+		return _ziskej_dostupne_funds_statu(target_tag)
+	return _ziskej_dostupne_funds_statu(player_tag)
+
+func _aktualizuj_loans_dialog_cap(player_tag: String, target_tag: String) -> void:
+	if _loan_principal_slider == null or _loan_principal_input == null:
+		return
+
+	var max_principal = _ziskej_max_principal_pro_rezim(player_tag, target_tag)
+	max_principal = maxf(0.0, floor(max_principal))
+	_loan_principal_slider.max_value = max_principal
+	_loan_principal_slider.step = 1.0
+	_loan_principal_slider.editable = max_principal > 0.0
+	if _loan_principal_input:
+		_loan_principal_input.editable = max_principal > 0.0
+	_loan_principal_input.placeholder_text = "max %.0f" % max_principal
+
+	var clamped = clampf(_loan_principal_slider.value, _loan_principal_slider.min_value, _loan_principal_slider.max_value)
+	_loan_principal_slider.set_value_no_signal(clamped)
+	_loan_principal_input.text = str(int(clamped))
+
+func _pozicuj_loans_dialog() -> void:
+	if _loans_dialog == null:
+		return
+
+	var vp = get_viewport().get_visible_rect().size
+	var gap = 10.0
+	var x = 16.0
+	var y = _topbar_bottom_y() + 8.0
+
+	if panel:
+		var ov = panel.get_global_rect()
+		x = ov.position.x + ov.size.x + gap
+		y = maxf(ov.position.y + 14.0, _topbar_bottom_y() + 8.0)
+		if x + _loans_dialog.size.x > vp.x - 8.0:
+			x = ov.position.x - _loans_dialog.size.x - gap
+
+	x = clampf(x, 8.0, maxf(8.0, vp.x - _loans_dialog.size.x - 8.0))
+	y = clampf(y, _topbar_bottom_y() + 8.0, maxf(_topbar_bottom_y() + 8.0, vp.y - _loans_dialog.size.y - 8.0))
+	_loans_dialog.position = Vector2(x, y)
+
+func _on_loan_button_pressed(mode: String) -> void:
+	if current_viewed_tag == "" or GameManager == null:
+		zobraz_systemove_hlaseni("Chyba", "Nejdřív si vyber stát.")
+		return
+	if current_viewed_tag == str(GameManager.hrac_stat).strip_edges().to_upper():
+		zobraz_systemove_hlaseni("Chyba", "Sám sobě půjčku dát nelze.")
+		return
+	
+	# Store mode for later use in confirmation
+	_loans_mode = mode
+	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
+	_aktualizuj_loans_dialog_cap(player_tag, current_viewed_tag)
+	
+	# Close other dialogs
+	_zavri_vyzkum_dialog()
+	
+	# Show the loans dialog
+	_pozicuj_loans_dialog()
+	_loans_dialog.show()
+
+func _on_loan_confirmed(principal_str: String, interest_str: String, turns_str: String) -> void:
+	# Validate state
+	var target = current_viewed_tag.strip_edges().to_upper()
+	if target == "":
+		zobraz_systemove_hlaseni("Chyba", "Nejdřív si vyber stát.")
+		return
+	
+	# Get player country
+	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
+	if player_tag == "":
+		zobraz_systemove_hlaseni("Chyba", "Hráčův stát nebyl stanoven.")
+		return
+	if target == player_tag:
+		zobraz_systemove_hlaseni("Chyba", "Sám sobě půjčku dát nelze.")
+		return
+	
+	# Parse and validate principal
+	var principal = 0.0
+	if principal_str.strip_edges() != "":
+		principal = float(principal_str)
+	if principal <= 0.0:
+		zobraz_systemove_hlaseni("Chyba", "Částka musí být kladná.")
+		return
+	
+	# Parse and validate interest
+	var interest = 6.0
+	if interest_str.strip_edges() != "":
+		interest = float(interest_str)
+		if interest < 0.0 or interest > 100.0:
+			zobraz_systemove_hlaseni("Chyba", "Úrok musí být 0-100%.")
+			return
+	
+	# Parse and validate turns
+	var turns = 5
+	if turns_str.strip_edges() != "":
+		turns = int(turns_str)
+	if turns < 5 or turns > 36:
+		zobraz_systemove_hlaseni("Chyba", "Doba trvání musí být 5-36 kol.")
+		return
+
+	var max_principal = _ziskej_max_principal_pro_rezim(player_tag, target)
+	if max_principal <= 0.0:
+		zobraz_systemove_hlaseni("Chyba", "Dostupné funds pro tuto půjčku jsou 0.")
+		return
+	if principal > max_principal:
+		principal = max_principal
+		if _loan_principal_slider:
+			_loan_principal_slider.set_value_no_signal(principal)
+		if _loan_principal_input:
+			_loan_principal_input.text = str(int(principal))
+	
+	# Create the loan
+	if GameManager.has_method("_vytvor_statni_pujcku"):
+		if _loans_mode == "give":
+			# Player is lender, target is borrower.
+			var result: Dictionary = {}
+			if GameManager.has_method("navrhni_statni_pujcku"):
+				result = GameManager.navrhni_statni_pujcku(player_tag, target, principal, interest, turns, player_tag)
+			else:
+				result = GameManager._vytvor_statni_pujcku(player_tag, target, principal, interest, turns)
+			if bool(result.get("ok", false)):
+				zobraz_systemove_hlaseni("Půjčka nabídnuta", "Nabídnuto %.0f M za %.1f%% na %d kol státu %s." % [principal, interest, turns, _ziskej_jmeno_statu_podle_tagu(target)])
+				_loans_dialog.hide()
+			else:
+				zobraz_systemove_hlaseni("Chyba", str(result.get("reason", "Selhalo.")))
+		else:  # "take"
+			# Player is borrower, target is lender.
+			var result: Dictionary = {}
+			if GameManager.has_method("navrhni_statni_pujcku"):
+				result = GameManager.navrhni_statni_pujcku(target, player_tag, principal, interest, turns, player_tag)
+			else:
+				result = GameManager._vytvor_statni_pujcku(target, player_tag, principal, interest, turns)
+			if bool(result.get("ok", false)):
+				zobraz_systemove_hlaseni("Půjčka požadována", "Požadováno %.0f M za %.1f%% na %d kol od státu %s." % [principal, interest, turns, _ziskej_jmeno_statu_podle_tagu(target)])
+				_loans_dialog.hide()
+			else:
+				zobraz_systemove_hlaseni("Chyba", str(result.get("reason", "Selhalo.")))
 
 # ---- Alliance Dialog ----
 
@@ -5990,7 +6353,10 @@ func _aktualizuj_popup_diplomatickych_zadosti():
 	if popup_request_flag:
 		popup_request_flag.texture = _resolve_flag_texture(from_tag, "")
 	if popup_request_text:
-		popup_request_text.text = "Diplomacy (%d)" % pending_count
+		var first_summary = _formatuj_text_zadosti(first_req)
+		if first_summary.length() > 170:
+			first_summary = first_summary.substr(0, 167) + "..."
+		popup_request_text.text = "%s | %s (%d)" % [_ziskej_jmeno_statu_podle_tagu(from_tag), first_summary, pending_count]
 
 	if popup_accept_btn:
 		popup_accept_btn.text = "Accept all"
@@ -6757,8 +7123,80 @@ func _formatuj_text_zadosti(req: Dictionary) -> String:
 		var payload = req.get("payload", {}) as Dictionary
 		var from_terms = payload.get("from_terms", {}) as Dictionary
 		var to_terms = payload.get("to_terms", {}) as Dictionary
-		return "Trade offer (%d + %d terms)" % [from_terms.size(), to_terms.size()]
+		var receive_parts = _trade_formatuj_terms_pro_zadost(from_terms)
+		var provide_parts = _trade_formatuj_terms_pro_zadost(to_terms)
+		var receive_text = ", ".join(receive_parts) if not receive_parts.is_empty() else "nothing"
+		var provide_text = ", ".join(provide_parts) if not provide_parts.is_empty() else "nothing"
+		return "Trade: You receive [%s] | You provide [%s]" % [receive_text, provide_text]
+	if req_type == "loan":
+		var payload = req.get("payload", {}) as Dictionary
+		var lender = str(payload.get("lender", "")).strip_edges().to_upper()
+		var borrower = str(payload.get("borrower", "")).strip_edges().to_upper()
+		var principal = float(payload.get("principal", 0.0))
+		var interest_pct = float(payload.get("interest_pct", 0.0))
+		var turns = int(payload.get("turns", 0))
+		if str(GameManager.hrac_stat).strip_edges().to_upper() == lender:
+			return "Loan request: %s wants %.0f M at %.1f%% for %d turns" % [_ziskej_jmeno_statu_podle_tagu(borrower), principal, interest_pct, turns]
+		return "Loan offer: %.0f M at %.1f%% for %d turns" % [principal, interest_pct, turns]
 	return "Diplomatic offer"
+
+func _trade_formatuj_terms_pro_zadost(terms: Dictionary) -> Array:
+	var out: Array = []
+	if terms.is_empty():
+		return out
+	var order = [
+		"gold",
+		"province",
+		"declare_war",
+		"join_alliance",
+		"improve_relationship_with",
+		"worsen_relationship_with",
+		"non_aggression"
+	]
+	for slot_any in order:
+		var slot = str(slot_any)
+		if not terms.has(slot):
+			continue
+		var entry = terms.get(slot, {}) as Dictionary
+		var value_a = str(entry.get("a", "")).strip_edges()
+		var value_b = str(entry.get("b", "")).strip_edges()
+		var value = value_a
+		if value == "":
+			value = value_b
+		if value == "":
+			value = "ON"
+		out.append("%s: %s" % [_trade_label_slotu_pro_zadost(slot), value])
+	for slot_any in terms.keys():
+		var slot_extra = str(slot_any)
+		if order.has(slot_extra):
+			continue
+		var entry_extra = terms.get(slot_any, {}) as Dictionary
+		var value_extra = str(entry_extra.get("a", "")).strip_edges()
+		if value_extra == "":
+			value_extra = str(entry_extra.get("b", "")).strip_edges()
+		if value_extra == "":
+			value_extra = "ON"
+		out.append("%s: %s" % [slot_extra, value_extra])
+	return out
+
+func _trade_label_slotu_pro_zadost(slot: String) -> String:
+	match slot:
+		"gold":
+			return "Money"
+		"province":
+			return "Provinces"
+		"declare_war":
+			return "Declare War"
+		"join_alliance":
+			return "Join Alliance"
+		"improve_relationship_with":
+			return "Improve Relations"
+		"worsen_relationship_with":
+			return "Worsen Relations"
+		"non_aggression":
+			return "Non-Aggression"
+		_:
+			return slot
 
 func _aktualizuj_panel_rozbalene_fronty(queue: Array) -> void:
 	if _queue_preview_panel == null or _queue_preview_list == null:
@@ -6821,9 +7259,10 @@ func _aktualizuj_panel_rozbalene_fronty(queue: Array) -> void:
 		label.custom_minimum_size = Vector2(220, 0)
 		label.clip_text = true
 		label.autowrap_mode = TextServer.AUTOWRAP_OFF
-		label.text = "%d. %s | Offer: %s" % [i + 1, _ziskej_jmeno_statu_podle_tagu(from_tag), _formatuj_text_zadosti(req)]
+		var offer_text = _formatuj_text_zadosti(req)
+		label.text = "%d. %s | Offer: %s" % [i + 1, _ziskej_jmeno_statu_podle_tagu(from_tag), offer_text]
 		label.add_theme_color_override("font_color", Color(0.94, 0.96, 1.0, 1.0))
-		label.tooltip_text = "Click the flag to move camera to country %s." % from_tag
+		label.tooltip_text = "Offer detail: %s" % offer_text
 		row_content.add_child(label)
 
 		var btn_accept = Button.new()
@@ -6868,7 +7307,17 @@ func _on_queue_preview_toggle_pressed() -> void:
 func _on_queue_row_accept_pressed(from_tag: String) -> void:
 	if not GameManager.has_method("hrac_prijmi_diplomatickou_zadost"):
 		return
-	GameManager.hrac_prijmi_diplomatickou_zadost(GameManager.hrac_stat, from_tag)
+	var req: Dictionary = {}
+	if GameManager.has_method("ziskej_cekajici_zadost_od_statu"):
+		req = GameManager.ziskej_cekajici_zadost_od_statu(GameManager.hrac_stat, from_tag)
+	var accepted = GameManager.hrac_prijmi_diplomatickou_zadost(GameManager.hrac_stat, from_tag)
+	if accepted and str(req.get("type", "")) == "loan":
+		var topbar = get_tree().current_scene.find_child("TopBar", true, false)
+		if topbar and topbar.has_method("aktualizuj_ui"):
+			topbar.aktualizuj_ui()
+		var payload = req.get("payload", {}) as Dictionary
+		var principal = float(payload.get("principal", 0.0))
+		zobraz_systemove_hlaseni("Loans", "Loan accepted: %.0f M USD transferred." % principal)
 	_aktualizuj_popup_diplomatickych_zadosti()
 	_aktualizuj_panel_zprav()
 	if current_viewed_tag == from_tag:
@@ -7073,16 +7522,21 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 			if improve_rel_btn: improve_rel_btn.hide()
 			if worsen_rel_btn: worsen_rel_btn.hide()
 			if gift_money_btn: gift_money_btn.hide()
+			if trade_btn: trade_btn.hide()
 			if alliance_btn:
 				alliance_btn.show()
 				_aktualizuj_aliance_ui(owner_tag)
 			declare_war_btn.hide()
 			propose_peace_btn.hide()
 			if non_aggression_btn: non_aggression_btn.hide()
+			if give_loan_btn: give_loan_btn.hide()
+			if take_loan_btn: take_loan_btn.hide()
 			if _military_access_btn: _military_access_btn.hide()
 			if incoming_request_label: incoming_request_label.hide()
 			if respond_request_buttons: respond_request_buttons.hide()
 			if research_btn: research_btn.show()
+			if _loans_dialog and _loans_dialog.visible:
+				_loans_dialog.hide()
 		else:
 			_aktualizuj_ideology_ui(owner_tag, ideologie)
 			_aktualizuj_vztah_ui(owner_tag)
@@ -7097,6 +7551,8 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 			_aktualizuj_aliance_ui(owner_tag)
 			_aktualizuj_diplomacii_tlacitka(owner_tag)
 			if non_aggression_btn: non_aggression_btn.show()
+			if give_loan_btn: give_loan_btn.show()
+			if take_loan_btn: take_loan_btn.show()
 			_aktualizuj_zadost_ui(owner_tag)
 			if research_btn: research_btn.hide()
 	
@@ -7308,7 +7764,15 @@ func _on_accept_request_pressed():
 		return
 	if not GameManager.has_method("hrac_prijmi_diplomatickou_zadost"):
 		return
-	GameManager.hrac_prijmi_diplomatickou_zadost(GameManager.hrac_stat, current_viewed_tag)
+	var req = _current_incoming_request.duplicate(true)
+	var accepted = GameManager.hrac_prijmi_diplomatickou_zadost(GameManager.hrac_stat, current_viewed_tag)
+	if accepted and str(req.get("type", "")) == "loan":
+		var topbar = get_tree().current_scene.find_child("TopBar", true, false)
+		if topbar and topbar.has_method("aktualizuj_ui"):
+			topbar.aktualizuj_ui()
+		var payload = req.get("payload", {}) as Dictionary
+		var principal = float(payload.get("principal", 0.0))
+		zobraz_systemove_hlaseni("Loans", "Loan accepted: %.0f M USD transferred." % principal)
 	_aktualizuj_zadost_ui(current_viewed_tag)
 	_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
 	_aktualizuj_popup_diplomatickych_zadosti()
@@ -7350,6 +7814,17 @@ func _on_alliance_button_pressed():
 
 func _on_kolo_zmeneno():
 	_country_overview_stats_cache.clear()
+	_diplomacy_popup_dismissed_signature = ""
+	if _loans_dialog:
+		_loans_dialog.hide()
+	if GameManager and GameManager.has_method("vyzvedni_notifikace_pujcek_hrace"):
+		var loan_notes = GameManager.vyzvedni_notifikace_pujcek_hrace(GameManager.hrac_stat) as Array
+		for note_any in loan_notes:
+			var note = str(note_any).strip_edges()
+			if note != "":
+				_pending_loan_notes.append(note)
+	if not _pending_loan_notes.is_empty() and not (GameManager and bool(GameManager.zpracovava_se_tah)):
+		call_deferred("_zobraz_pending_loan_notes")
 	_aktualizuj_popup_diplomatickych_zadosti()
 	_aktualizuj_panel_zprav()
 	_aktualizuj_hlaseni_mirove_konference()

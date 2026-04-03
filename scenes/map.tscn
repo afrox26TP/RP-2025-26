@@ -363,6 +363,21 @@ text = "Offer peace"
 layout_mode = 2
 text = "Non-aggression pact (10 turns)"
 
+[node name="LoansHBox" type="HBoxContainer" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=1428863003]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="GiveLoanButton" type="Button" parent="GameUI/OverviewPanel/VBoxContainer/LoansHBox" unique_id=1428863004]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Give Loan"
+
+[node name="TakeLoanButton" type="Button" parent="GameUI/OverviewPanel/VBoxContainer/LoansHBox" unique_id=1428863005]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Take Loan"
+
 [node name="IncomingRequestLabel" type="Label" parent="GameUI/OverviewPanel/VBoxContainer" unique_id=1419987804]
 layout_mode = 2
 
