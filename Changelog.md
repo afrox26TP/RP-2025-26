@@ -2,7 +2,7 @@
 
 All notable changes are documented here.
 
-## v0.2.1 - 2026-04-03
+## v0.2.7 - 2026-04-03
 Compared to: v0.2.0
 
 ### Added

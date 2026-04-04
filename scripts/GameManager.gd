@@ -2906,6 +2906,8 @@ func odeslat_obchodni_nabidku(odesilatel: String, prijemce: String, terms_from_s
 	if not ai_accepts:
 		_zaloguj_globalni_zpravu("Trade", "%s rejected trade offer from %s." % [to_tag, from_tag], "trade")
 		if je_lidsky_stat(from_tag):
+			_zaloguj_zpravu_hraci(from_tag, "Trade", "%s rejected your trade offer." % to_tag, "trade")
+		if je_lidsky_stat(from_tag):
 			_pridej_popup_hraci(from_tag, "Trade", "%s rejected your trade offer." % to_tag)
 		return {"ok": true, "queued": false, "accepted": false, "reason": "AI rejected the offer."}
 
@@ -3280,10 +3282,12 @@ func _zpracuj_cekajici_pujcky_za_kolo() -> void:
 			_zaloguj_globalni_zpravu("Loans", reject_msg, "trade")
 			if request_kind == "take" and je_lidsky_stat(borrower):
 				var reject_take_text = "%s rejected your loan request." % lender
+				_zaloguj_zpravu_hraci(borrower, "Loans", reject_take_text, "trade")
 				_pridej_popup_hraci(borrower, "Loans", reject_take_text, true)
 				_pridej_notifikaci_pujcky_hraci(borrower, reject_take_text)
 			elif je_lidsky_stat(lender):
 				var reject_text = "%s rejected your loan offer." % borrower
+				_zaloguj_zpravu_hraci(lender, "Loans", reject_text, "trade")
 				_pridej_popup_hraci(lender, "Loans", reject_text, true)
 				_pridej_notifikaci_pujcky_hraci(lender, reject_text)
 
@@ -4343,6 +4347,7 @@ func _vyhodnot_aliancni_zadosti_pred_ai() -> void:
 		else:
 			_zaloguj_globalni_zpravu("Alliance", "%s declined %s request for %s." % [to_tag, from_tag, nazev_urovne_aliance(level)], "alliance")
 			if je_lidsky_stat(from_tag):
+				_zaloguj_zpravu_hraci(from_tag, "Alliance", "Country %s rejected your request for %s." % [to_tag, nazev_urovne_aliance(level)], "alliance")
 				_pridej_popup_hraci(from_tag, "Diplomacy", "Country %s rejected your request for %s." % [to_tag, nazev_urovne_aliance(level)])
 
 func uzavrit_neagresivni_smlouvu(tag_a: String, tag_b: String) -> bool:
@@ -4870,7 +4875,10 @@ func hrac_odmitni_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> bo
 	elif req_type == "loan":
 		req_name = "loan proposal"
 	if je_lidsky_stat(player_clean):
+		_zaloguj_zpravu_hraci(player_clean, "Diplomacy", "You declined %s from %s." % [req_name, sender], "diplomacy")
 		_pridej_popup_hraci(player_clean, "Diplomacy", "You declined a diplomatic request from %s." % sender)
+	if je_lidsky_stat(sender):
+		_zaloguj_zpravu_hraci(sender, "Diplomacy", "%s declined your %s." % [player_clean, req_name], "diplomacy")
 	if req_type == "loan" and je_lidsky_stat(sender):
 		_pridej_popup_hraci(sender, "Loans", "%s rejected your loan proposal." % player_clean, true)
 	_zaloguj_globalni_zpravu("Diplomacy", "%s declined %s from %s." % [player_clean, req_name, sender], "diplomacy")
@@ -4909,11 +4917,28 @@ func hrac_odmitni_vsechny_diplomaticke_zadosti(hrac_tag: String) -> int:
 			_pridej_popup_hraci(player_clean, "Diplomacy", "As a vassal, %d offer(s) from your overlord were accepted automatically." % auto_accepted)
 		return 0
 
-	queue.clear()
+	var remaining_copy = queue.duplicate(true)
+	var declined_count := 0
+	for req_any in remaining_copy:
+		var req_dict = req_any as Dictionary
+		var sender = _normalizuj_tag(str(req_dict.get("from", "")))
+		if sender == "":
+			continue
+		if hrac_odmitni_diplomatickou_zadost(player_clean, sender):
+			declined_count += 1
+
+	count = declined_count
+	if count <= 0:
+		if auto_accepted > 0 and je_lidsky_stat(player_clean):
+			_pridej_popup_hraci(player_clean, "Diplomacy", "As a vassal, %d offer(s) from your overlord were accepted automatically." % auto_accepted)
+		return 0
+
 	if je_lidsky_stat(player_clean):
 		if auto_accepted > 0:
+			_zaloguj_zpravu_hraci(player_clean, "Diplomacy", "You declined %d request(s); %d overlord request(s) were accepted automatically." % [count, auto_accepted], "diplomacy")
 			_pridej_popup_hraci(player_clean, "Diplomacy", "You declined %d request(s); %d overlord request(s) were accepted automatically." % [count, auto_accepted])
 		else:
+			_zaloguj_zpravu_hraci(player_clean, "Diplomacy", "You declined all pending diplomatic requests (%d)." % count, "diplomacy")
 			_pridej_popup_hraci(player_clean, "Diplomacy", "You declined all pending diplomatic requests (%d)." % count)
 	return count
 
@@ -6998,6 +7023,8 @@ func _vyhodnot_mirove_nabidky_pred_ai():
 			var no_msg = "Peace offer declined: %s declined peace with %s." % [prijemce, odesilatel]
 			print(no_msg)
 			_zaloguj_globalni_zpravu("Diplomacy", no_msg, "diplomacy")
+			if je_lidsky_stat(odesilatel):
+				_zaloguj_zpravu_hraci(odesilatel, "Diplomacy", "%s declined your peace offer." % prijemce, "diplomacy")
 			if je_lidsky_stat(odesilatel) or je_lidsky_stat(prijemce):
 				_pridej_popup_zucastnenym_hracum(odesilatel, prijemce, "DIPLOMACY", no_msg)
 

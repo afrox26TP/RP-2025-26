@@ -62,6 +62,7 @@ var _coastal_province_cache: Dictionary = {}
 var _sea_step_neighbors_cache: Dictionary = {}
 var _land_step_neighbors_cache: Dictionary = {}
 var _land_plus_sea_step_neighbors_cache: Dictionary = {}
+var _land_step_distance_cap_cache: Dictionary = {}
 var _last_army_state_signature: int = -1
 var _preview_path_key: String = ""
 var _hromadny_vyber_overlay_key: String = ""
@@ -78,6 +79,10 @@ const PROVINCES_DATA_PATHS := [
 	"res://map_data/Province.txt",
 	"res://map_data/Provinces.txt"
 ]
+const LAND_STEP_HARD_CAP_MIN := 220.0
+const LAND_STEP_HARD_CAP_MAX := 900.0
+const LAND_STEP_HARD_CAP_FACTOR := 2.4
+const LAND_STEP_HARD_CAP_FALLBACK := 420.0
 const TERRAIN_DEFENDER_BONUS_PCT := {
 	"plains": -0.20,
 	"plain": -0.20,
@@ -1769,12 +1774,60 @@ func _spocitej_je_pobrezni_provincie(prov_id: int) -> bool:
 			return true
 	return false
 
+func _ziskej_delku_pozemniho_kroku(from_id: int, to_id: int) -> float:
+	var from_pos = _ziskej_lokalni_pozici_provincie(from_id)
+	var to_pos = _ziskej_lokalni_pozici_provincie(to_id)
+	if from_pos == Vector2.ZERO or to_pos == Vector2.ZERO:
+		return -1.0
+	return from_pos.distance_to(to_pos)
+
+func _spocitej_lokalni_land_cap(prov_id: int) -> float:
+	if _land_step_distance_cap_cache.has(prov_id):
+		return float(_land_step_distance_cap_cache[prov_id])
+	if not provinces.has(prov_id) or _je_more_provincie(prov_id):
+		return LAND_STEP_HARD_CAP_FALLBACK
+
+	var dists: Array = []
+	for n_id_any in provinces[prov_id].get("neighbors", []):
+		var n_id = int(n_id_any)
+		if not provinces.has(n_id) or _je_more_provincie(n_id):
+			continue
+		var step_dist = _ziskej_delku_pozemniho_kroku(prov_id, n_id)
+		if step_dist > 0.0:
+			dists.append(step_dist)
+
+	if dists.is_empty():
+		_land_step_distance_cap_cache[prov_id] = LAND_STEP_HARD_CAP_FALLBACK
+		return LAND_STEP_HARD_CAP_FALLBACK
+
+	dists.sort()
+	var samples = mini(6, dists.size())
+	var avg_short := 0.0
+	for i in range(samples):
+		avg_short += float(dists[i])
+	avg_short /= float(samples)
+
+	var cap_val = clamp(avg_short * LAND_STEP_HARD_CAP_FACTOR, LAND_STEP_HARD_CAP_MIN, LAND_STEP_HARD_CAP_MAX)
+	_land_step_distance_cap_cache[prov_id] = cap_val
+	return cap_val
+
+func _splnuje_hard_cap_pozemniho_kroku(from_id: int, to_id: int) -> bool:
+	var step_dist = _ziskej_delku_pozemniho_kroku(from_id, to_id)
+	if step_dist < 0.0:
+		# If position data is missing, do not block movement blindly.
+		return true
+	var from_cap = _spocitej_lokalni_land_cap(from_id)
+	var to_cap = _spocitej_lokalni_land_cap(to_id)
+	var allowed_cap = max(from_cap, to_cap)
+	return step_dist <= allowed_cap
+
 func _invalidate_movement_topology_cache() -> void:
 	_sea_province_cache.clear()
 	_coastal_province_cache.clear()
 	_sea_step_neighbors_cache.clear()
 	_land_step_neighbors_cache.clear()
 	_land_plus_sea_step_neighbors_cache.clear()
+	_land_step_distance_cap_cache.clear()
 	_last_army_state_signature = -1
 
 func _rebuild_movement_topology_cache() -> void:
@@ -1811,6 +1864,8 @@ func _rebuild_movement_topology_cache() -> void:
 			if _je_more_provincie(n_id):
 				land_plus_sea_steps.append(n_id)
 			else:
+				if not _splnuje_hard_cap_pozemniho_kroku(p_id, n_id):
+					continue
 				land_steps.append(n_id)
 				land_plus_sea_steps.append(n_id)
 

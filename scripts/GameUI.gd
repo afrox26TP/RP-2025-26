@@ -6534,9 +6534,6 @@ func _ziskej_aktivni_zpravy() -> Array:
 			out = GameManager.ziskej_globalni_zpravy(ZPRAVY_MAX_ITEMS)
 			out = _odfiltruj_popup_kategorie(out)
 		return out
-	if GameManager.has_method("ziskej_relevantni_zpravy_statu"):
-		out = GameManager.ziskej_relevantni_zpravy_statu(GameManager.hrac_stat, ZPRAVY_MAX_ITEMS, true)
-		return _odfiltruj_popup_kategorie(out)
 	if GameManager.has_method("ziskej_zpravy_hrace"):
 		out = GameManager.ziskej_zpravy_hrace(GameManager.hrac_stat, ZPRAVY_MAX_ITEMS)
 		var current_turn = int(GameManager.aktualni_kolo)
@@ -6544,7 +6541,10 @@ func _ziskej_aktivni_zpravy() -> Array:
 		for entry in out:
 			if int((entry as Dictionary).get("turn", -1)) == current_turn:
 				filtered.append(entry)
-		return filtered
+		return _odfiltruj_popup_kategorie(filtered)
+	if GameManager.has_method("ziskej_relevantni_zpravy_statu"):
+		out = GameManager.ziskej_relevantni_zpravy_statu(GameManager.hrac_stat, ZPRAVY_MAX_ITEMS, true)
+		return _odfiltruj_popup_kategorie(out)
 	return out
 
 func _ziskej_historicke_zpravy() -> Array:
@@ -6556,10 +6556,10 @@ func _ziskej_historicke_zpravy() -> Array:
 		if GameManager.has_method("ziskej_globalni_zpravy"):
 			out = _odfiltruj_popup_kategorie(GameManager.ziskej_globalni_zpravy(ZPRAVY_HISTORY_MAX_ITEMS))
 	else:
-		if GameManager.has_method("ziskej_relevantni_zpravy_statu"):
-			out = _odfiltruj_popup_kategorie(GameManager.ziskej_relevantni_zpravy_statu(GameManager.hrac_stat, ZPRAVY_HISTORY_MAX_ITEMS, false))
-		elif GameManager.has_method("ziskej_zpravy_hrace"):
+		if GameManager.has_method("ziskej_zpravy_hrace"):
 			out = _odfiltruj_popup_kategorie(GameManager.ziskej_zpravy_hrace(GameManager.hrac_stat, ZPRAVY_HISTORY_MAX_ITEMS))
+		elif GameManager.has_method("ziskej_relevantni_zpravy_statu"):
+			out = _odfiltruj_popup_kategorie(GameManager.ziskej_relevantni_zpravy_statu(GameManager.hrac_stat, ZPRAVY_HISTORY_MAX_ITEMS, false))
 
 	var hist: Array = []
 	for entry in out:
