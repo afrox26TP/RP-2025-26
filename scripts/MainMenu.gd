@@ -341,6 +341,8 @@ func _ready():
 	_nacti_nastaveni()
 	_nastav_texty_dialogu()
 	_nacti_data_statu_pro_browser()
+	_log_export_data_diagnostics()
+	_show_export_diagnostics_if_missing_data()
 	_naplni_browser_seznam()
 	_apply_country_browser_window_size()
 	_ensure_ai_aggression_control()
@@ -388,6 +390,57 @@ func _ready():
 	_vytvor_load_dialog()
 	_styluj_mainmenu_popup_dialogy()
 	_show_settings_tab(0)  # Start with Controls tab
+
+func _log_export_data_diagnostics() -> void:
+	# Export diagnostics for missing data/assets in standalone builds.
+	var checks: Array[String] = [
+		"res://map_data/Provinces.txt",
+		"res://map_data/Relationships.csv",
+		"res://map_data/Alliances.csv",
+		"res://map_data/Flags/ALB.svg",
+		"res://map_data/ArmyIcons/ALB.svg",
+		"res://map_data/PoliticalMap.png",
+		"res://map_data/ProvinceIDMask.png"
+	]
+	print("[ExportCheck] resolved_provinces_path=", _resolve_provinces_data_path())
+	for p in checks:
+		print("[ExportCheck] ", p, " file_exists=", FileAccess.file_exists(p), " resource_exists=", ResourceLoader.exists(p))
+	if country_stats.is_empty():
+		push_warning("[ExportCheck] country_stats is empty after data load. Export likely misses map_data raw files.")
+
+func _show_export_diagnostics_if_missing_data() -> void:
+	if not country_stats.is_empty():
+		return
+
+	var checks: Array[String] = [
+		"res://map_data/Provinces.txt",
+		"res://map_data/Relationships.csv",
+		"res://map_data/Alliances.csv",
+		"res://map_data/Flags/ALB.svg",
+		"res://map_data/ArmyIcons/ALB.svg",
+		"res://map_data/PoliticalMap.png",
+		"res://map_data/ProvinceIDMask.png"
+	]
+
+	var lines: Array[String] = []
+	lines.append("Country data could not be loaded in this build.")
+	lines.append("resolved_provinces_path: %s" % _resolve_provinces_data_path())
+	lines.append("exe: %s" % OS.get_executable_path())
+	lines.append("")
+	lines.append("File checks:")
+	for p in checks:
+		lines.append("- %s | file=%s | resource=%s" % [
+			p,
+			str(FileAccess.file_exists(p)),
+			str(ResourceLoader.exists(p))
+		])
+
+	var dlg := AcceptDialog.new()
+	dlg.title = "Export Data Diagnostics"
+	dlg.dialog_text = "\n".join(lines)
+	dlg.exclusive = false
+	add_child(dlg)
+	dlg.popup_centered_ratio(0.72)
 
 func _apply_country_browser_window_size() -> void:
 	if country_browser_panel == null:
@@ -983,9 +1036,12 @@ func _nastav_vychozi_vyber_statu():
 	vsechny_tagy.sort()
 	selected_country_tag = str(vsechny_tagy[0])
 
+func _raw_data_path_exists(path: String) -> bool:
+	return FileAccess.file_exists(path) or ResourceLoader.exists(path)
+
 func _resolve_provinces_data_path() -> String:
 	for path in PROVINCES_DATA_PATHS:
-		if ResourceLoader.exists(path):
+		if _raw_data_path_exists(path):
 			return path
 	return str(PROVINCES_DATA_PATHS[PROVINCES_DATA_PATHS.size() - 1])
 

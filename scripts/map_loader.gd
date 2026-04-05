@@ -96,9 +96,12 @@ const TERRAIN_DEFENDER_BONUS_PCT := {
 const ATTACKER_LIBERATION_BONUS_PCT := 0.10
 # --------------------------------------------------------
 
+func _raw_data_path_exists(path: String) -> bool:
+	return FileAccess.file_exists(path) or ResourceLoader.exists(path)
+
 func _resolve_provinces_data_path() -> String:
 	for path in PROVINCES_DATA_PATHS:
-		if ResourceLoader.exists(path):
+		if _raw_data_path_exists(path):
 			return path
 	return str(PROVINCES_DATA_PATHS[PROVINCES_DATA_PATHS.size() - 1])
 
