@@ -1,6 +1,12 @@
 ﻿extends CanvasLayer
 
 const TooltipUtilsScript = preload("res://scripts/TooltipUtils.gd")
+const OVERVIEW_TARGET_WIDTH := 360.0
+const OVERVIEW_MIN_WIDTH := 324.0
+const OVERVIEW_MAX_WIDTH := 420.0
+const OVERVIEW_TARGET_HEIGHT := 900.0
+const OVERVIEW_MIN_HEIGHT := 560.0
+const OVERVIEW_SCREEN_MARGIN := 10.0
 
 class ArmyOfferCard:
 	extends PanelContainer
@@ -65,6 +71,8 @@ var _military_access_btn: Button
 var army_power_label: Label
 var vassals_label: Label
 var war_reparations_label: Label
+var ai_debug_separator: HSeparator
+var ai_debug_label: RichTextLabel
 
 # --- NEW: Action nodes ---
 @onready var action_separator = $OverviewPanel/VBoxContainer/ActionSeparator
@@ -143,6 +151,7 @@ var _settings_dialog: PopupPanel
 var _settings_fullscreen_check: CheckBox
 var _settings_vsync_check: CheckBox
 var _settings_potato_mode_check: CheckBox
+var _settings_ai_debug_mode_check: CheckBox
 var _settings_volume_slider: HSlider
 var _settings_volume_value: Label
 var _settings_camera_slider: HSlider
@@ -395,6 +404,7 @@ func _ready():
 	_setup_overview_inline_deltas()
 	_zajisti_label_sily_armady()
 	_zajisti_mirove_overview_labely()
+	_zajisti_ai_debug_overview_labely()
 	_zajisti_tlacitko_vazalu()
 	_zajisti_tlacitko_daru()
 	_zajisti_tlacitko_obchodu()
@@ -491,6 +501,7 @@ func _ready():
 		system_message_popup.hide()
 	if get_viewport() and not get_viewport().size_changed.is_connected(_on_viewport_resized):
 		get_viewport().size_changed.connect(_on_viewport_resized)
+	_aktualizuj_overview_panel_layout()
 	_vytvor_pause_menu()
 	_vytvor_turn_loading_overlay()
 	_on_zpracovani_tahu_zmeneno(bool(GameManager.zpracovava_se_tah))
@@ -1259,6 +1270,106 @@ func _zajisti_mirove_overview_labely() -> void:
 	if action_separator and action_separator.get_parent() == vbox:
 		vbox.move_child(vassals_label, action_separator.get_index())
 		vbox.move_child(war_reparations_label, action_separator.get_index())
+
+func _zajisti_ai_debug_overview_labely() -> void:
+	var vbox = get_node_or_null("OverviewPanel/VBoxContainer") as VBoxContainer
+	if vbox == null:
+		return
+
+	ai_debug_separator = get_node_or_null("OverviewPanel/VBoxContainer/AIDebugSeparator") as HSeparator
+	if ai_debug_separator == null:
+		ai_debug_separator = HSeparator.new()
+		ai_debug_separator.name = "AIDebugSeparator"
+		vbox.add_child(ai_debug_separator)
+
+	ai_debug_label = get_node_or_null("OverviewPanel/VBoxContainer/AIDebugLabel") as RichTextLabel
+	if ai_debug_label == null:
+		ai_debug_label = RichTextLabel.new()
+		ai_debug_label.name = "AIDebugLabel"
+		ai_debug_label.bbcode_enabled = true
+		ai_debug_label.scroll_active = false
+		ai_debug_label.fit_content = true
+		ai_debug_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		ai_debug_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		ai_debug_label.custom_minimum_size = Vector2(0, 94)
+		vbox.add_child(ai_debug_label)
+
+	if action_separator and action_separator.get_parent() == vbox:
+		vbox.move_child(ai_debug_separator, action_separator.get_index())
+		vbox.move_child(ai_debug_label, action_separator.get_index())
+
+	ai_debug_separator.hide()
+	ai_debug_label.hide()
+
+func _aktualizuj_ai_debug_overview(owner_tag: String, je_hracuv_stat: bool) -> void:
+	if ai_debug_label == null or ai_debug_separator == null:
+		return
+	if not GameManager or not GameManager.has_method("je_ai_debug_mode_zapnuty"):
+		ai_debug_label.hide()
+		ai_debug_separator.hide()
+		return
+	if not bool(GameManager.je_ai_debug_mode_zapnuty()) or je_hracuv_stat:
+		ai_debug_label.hide()
+		ai_debug_separator.hide()
+		return
+	if not GameManager.has_method("ziskej_ai_debug_snapshot"):
+		ai_debug_label.hide()
+		ai_debug_separator.hide()
+		return
+
+	var snap = GameManager.ziskej_ai_debug_snapshot(owner_tag) as Dictionary
+	if not bool(snap.get("ok", false)):
+		ai_debug_label.hide()
+		ai_debug_separator.hide()
+		return
+
+	var enemies = snap.get("enemies", []) as Array
+	var enemy_names: Array[String] = []
+	for e_any in enemies:
+		var e_tag = str(e_any).strip_edges().to_upper()
+		if e_tag == "":
+			continue
+		enemy_names.append(_ziskej_jmeno_statu_podle_tagu(e_tag))
+	var enemies_text = "none" if enemy_names.is_empty() else ", ".join(enemy_names)
+
+	var goal_target = str(snap.get("goal_target", "")).strip_edges().to_upper()
+	var plan_target = str(snap.get("plan_target", "")).strip_edges().to_upper()
+	var goal_target_text = "-"
+	if goal_target != "":
+		goal_target_text = "%s (%s)" % [_ziskej_jmeno_statu_podle_tagu(goal_target), goal_target]
+	var plan_target_text = "-"
+	if plan_target != "":
+		plan_target_text = "%s (%s)" % [_ziskej_jmeno_statu_podle_tagu(plan_target), plan_target]
+
+	var recruit_targets = snap.get("recruit_targets", []) as Array
+	var lines: Array[String] = []
+	lines.append("[b]AI Debug[/b]")
+	lines.append("Treasury: %s | Net income: %s/turn" % [
+		_format_money_auto(float(snap.get("treasury", 0.0)), 2),
+		_format_money_auto(float(snap.get("net_income", 0.0)), 2)
+	])
+	lines.append("Pressure: %.1f | Exhaustion: %.0f%% | Provinces: %d" % [
+		float(snap.get("pressure", 0.0)),
+		float(snap.get("exhaustion", 0.0)) * 100.0,
+		int(snap.get("owned_provinces", 0))
+	])
+	lines.append("At war: %s | Enemies (%d): %s" % [
+		"yes" if bool(snap.get("at_war", false)) else "no",
+		enemies.size(),
+		enemies_text
+	])
+	lines.append("Goal: %s -> %s" % [str(snap.get("goal_type", "none")), goal_target_text])
+	lines.append("Plan: %s -> %s" % [str(snap.get("plan_phase", "staging")), plan_target_text])
+	lines.append("Profile: aggr %.2f | atk %.2f | def %.2f | recruit targets %d" % [
+		float(snap.get("aggression", 0.5)),
+		float(snap.get("attack_bias", 0.5)),
+		float(snap.get("defense_bias", 0.5)),
+		recruit_targets.size()
+	])
+
+	ai_debug_label.text = "\n".join(lines)
+	ai_debug_separator.show()
+	ai_debug_label.show()
 
 func _zajisti_ideology_controls() -> void:
 	var vbox = get_node_or_null("OverviewPanel/VBoxContainer")
@@ -2910,6 +3021,7 @@ func _on_system_message_ok_pressed():
 	_aktualizuj_pozice_popupu()
 
 func _on_viewport_resized():
+	_aktualizuj_overview_panel_layout()
 	_aktualizuj_pozice_popupu()
 	_pozicuj_pause_menu()
 	_pozicuj_save_load_popupy()
@@ -2925,6 +3037,28 @@ func _on_viewport_resized():
 		_pozicuj_a_zmen_velikost_panelu_vazalu()
 	if _research_dialog and _research_dialog.visible:
 		_pozicuj_vyzkum_dialog()
+
+func _aktualizuj_overview_panel_layout() -> void:
+	if panel == null or not is_instance_valid(panel):
+		return
+	var viewport_size = get_viewport().get_visible_rect().size
+	var fit_h = max(OVERVIEW_MIN_HEIGHT, viewport_size.y - OVERVIEW_SCREEN_MARGIN * 2.0)
+	var target_h = min(OVERVIEW_TARGET_HEIGHT, fit_h)
+	var target_w = clamp(viewport_size.x * 0.23, OVERVIEW_MIN_WIDTH, OVERVIEW_MAX_WIDTH)
+	target_w = max(target_w, OVERVIEW_TARGET_WIDTH)
+
+	panel.offset_right = target_w
+	panel.offset_bottom = target_h
+
+	var compact = target_h < 780.0
+	var vbox = panel.get_node_or_null("VBoxContainer") as VBoxContainer
+	if vbox:
+		vbox.add_theme_constant_override("separation", 7 if compact else 10)
+
+	if ideology_effects_label:
+		ideology_effects_label.custom_minimum_size = Vector2(0, 120 if compact else 180)
+	if ai_debug_label:
+		ai_debug_label.custom_minimum_size = Vector2(0, 72 if compact else 96)
 
 func _input(event):
 	if event is InputEventKey and event.pressed and not event.is_echo():
@@ -5719,6 +5853,11 @@ func _vytvor_settings_dialog() -> void:
 	_settings_potato_mode_check.tooltip_text = "Low-detail rendering and power-saving updates for weak PCs."
 	settings_content.add_child(_settings_potato_mode_check)
 
+	_settings_ai_debug_mode_check = CheckBox.new()
+	_settings_ai_debug_mode_check.text = "AI debug mode (decision logs)"
+	_settings_ai_debug_mode_check.tooltip_text = "Prints detailed AI decisions, budgets, and war evaluation in output."
+	settings_content.add_child(_settings_ai_debug_mode_check)
+
 	settings_content.add_child(HSeparator.new())
 
 	var audio_title = Label.new()
@@ -5865,6 +6004,8 @@ func _nacti_settings_do_ingame_ui() -> void:
 		_settings_fullscreen_check.button_pressed = DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
 		_settings_vsync_check.button_pressed = DisplayServer.window_get_vsync_mode() != DisplayServer.VSYNC_DISABLED
 		_settings_potato_mode_check.button_pressed = false
+		if _settings_ai_debug_mode_check:
+			_settings_ai_debug_mode_check.button_pressed = false
 		_settings_volume_slider.value = 1.0
 		_settings_camera_slider.value = 1000.0
 		_settings_zoom_slider.value = 0.1
@@ -5875,10 +6016,14 @@ func _nacti_settings_do_ingame_ui() -> void:
 		var potato_display = bool(cfg.get_value("display", "potato_mode", false))
 		var potato_other = bool(cfg.get_value("other", "potato_mode", potato_display))
 		_settings_potato_mode_check.button_pressed = potato_display or potato_other
+		if _settings_ai_debug_mode_check:
+			_settings_ai_debug_mode_check.button_pressed = bool(cfg.get_value("other", "ai_debug_mode", false))
 		_settings_volume_slider.value = clamp(float(cfg.get_value("audio", "master_volume", 1.0)), 0.0, 1.0)
 		_settings_camera_slider.value = float(cfg.get_value("controls", "camera_speed", 1000.0))
 		_settings_zoom_slider.value = clamp(float(cfg.get_value("controls", "zoom_speed", 0.1)), 0.03, 0.35)
 		_settings_invert_zoom_check.button_pressed = bool(cfg.get_value("controls", "invert_zoom", false))
+
+	_aplikuj_ai_debug_mode_runtime(_settings_ai_debug_mode_check.button_pressed if _settings_ai_debug_mode_check else false)
 
 	_on_ingame_volume_changed(_settings_volume_slider.value)
 	_on_ingame_camera_speed_changed(_settings_camera_slider.value)
@@ -5888,6 +6033,7 @@ func _uloz_a_aplikuj_ingame_settings() -> void:
 	var fullscreen = _settings_fullscreen_check.button_pressed
 	var vsync_enabled = _settings_vsync_check.button_pressed
 	var potato_mode = _settings_potato_mode_check.button_pressed if _settings_potato_mode_check else false
+	var ai_debug_mode = _settings_ai_debug_mode_check.button_pressed if _settings_ai_debug_mode_check else false
 	var master_volume = float(_settings_volume_slider.value)
 	var camera_speed = float(_settings_camera_slider.value)
 	var zoom_speed = float(_settings_zoom_slider.value)
@@ -5896,6 +6042,7 @@ func _uloz_a_aplikuj_ingame_settings() -> void:
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if fullscreen else DisplayServer.WINDOW_MODE_WINDOWED)
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if vsync_enabled else DisplayServer.VSYNC_DISABLED)
 	_aplikuj_potato_mode_runtime(potato_mode)
+	_aplikuj_ai_debug_mode_runtime(ai_debug_mode)
 
 	var master_bus_idx = AudioServer.get_bus_index("Master")
 	if master_bus_idx == -1:
@@ -5908,6 +6055,7 @@ func _uloz_a_aplikuj_ingame_settings() -> void:
 	cfg.set_value("display", "vsync", vsync_enabled)
 	cfg.set_value("display", "potato_mode", potato_mode)
 	cfg.set_value("other", "potato_mode", potato_mode)
+	cfg.set_value("other", "ai_debug_mode", ai_debug_mode)
 	cfg.set_value("audio", "master_volume", master_volume)
 	cfg.set_value("controls", "camera_speed", camera_speed)
 	cfg.set_value("controls", "zoom_speed", zoom_speed)
@@ -5934,6 +6082,11 @@ func _aplikuj_potato_mode_runtime(enabled: bool) -> void:
 	var game_manager = get_tree().root.get_node_or_null("GameManager")
 	if game_manager and game_manager.has_method("nastav_potato_mode"):
 		game_manager.nastav_potato_mode(enabled)
+
+func _aplikuj_ai_debug_mode_runtime(enabled: bool) -> void:
+	var game_manager = get_tree().root.get_node_or_null("GameManager")
+	if game_manager and game_manager.has_method("nastav_ai_debug_mode"):
+		game_manager.nastav_ai_debug_mode(enabled)
 
 func _on_ingame_volume_changed(value: float) -> void:
 	if _settings_volume_value:
@@ -7504,6 +7657,7 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 		gdp_pc_label.text = "GDP per capita: N/A"
 	_aktualizuj_mirove_overview_statistiky(owner_tag, owner_tag == player_tag)
 	_aktualizuj_tlacitko_vazalu(owner_tag == player_tag)
+	_aktualizuj_ai_debug_overview(owner_tag, owner_tag == player_tag)
 
 	# Keep action preview inline with current metrics (no extra rows).
 	if owner_tag != player_tag:

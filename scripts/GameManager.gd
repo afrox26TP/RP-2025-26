@@ -335,6 +335,7 @@ var _suppress_relation_global_logs: bool = false
 var _map_loader_cache: Node = null
 var _map_loader_cache_scene: Node = null
 var _potato_mode_enabled: bool = false
+var _ai_debug_mode_enabled: bool = false
 
 const AI_MIN_PROVINCE_SOLDIERS_FOR_PLANNING := 450
 const AI_MAX_ARMY_ORDERS_PER_STATE := 25
@@ -346,6 +347,11 @@ const AI_BUILD_MAX_PER_TURN := 1
 const AI_ARM_LAB_MIN_SURPLUS := 45.0
 const AI_RECRUIT_BASE_FRACTION := 0.32
 const AI_RECRUIT_MAX_FRACTION := 0.68
+const AI_RECRUIT_EMERGENCY_EXHAUSTION := 0.58
+const AI_RECRUIT_EMERGENCY_PRESSURE := 900.0
+const AI_RECRUIT_EMERGENCY_SPEND_BOOST := 0.24
+const AI_RECRUIT_EMERGENCY_ORDER_BONUS := 3
+const AI_RECRUIT_EMERGENCY_ORDER_CAP := 12
 const AI_GOAL_RETARGET_TURNS := 10
 const AI_GOAL_STAGNATION_RETARGET := 7
 const AI_GOAL_MIN_AGE_FOR_STAGNATION_RETARGET := 10
@@ -4435,6 +4441,12 @@ func _expeluj_jednotky_bez_pristupu(filter_tag: String = "") -> void:
 	if map_data.is_empty():
 		return
 	var ft = _normalizuj_tag(filter_tag)
+	var active_states: Dictionary = {}
+	for p_id_any in map_data:
+		var owner_now = _normalizuj_tag(str(map_data[p_id_any].get("owner", "")))
+		if owner_now == "" or owner_now == "SEA":
+			continue
+		active_states[owner_now] = true
 
 	var to_expel: Array = []
 	for prov_id in map_data:
@@ -4442,6 +4454,7 @@ func _expeluj_jednotky_bez_pristupu(filter_tag: String = "") -> void:
 		var army_tag = _normalizuj_tag(str(d.get("army_owner", "")))
 		if army_tag == "":
 			continue
+		var army_state_exists = active_states.has(army_tag)
 		var owner_tag = _normalizuj_tag(str(d.get("owner", "")))
 		if army_tag == owner_tag:
 			continue
@@ -4450,7 +4463,7 @@ func _expeluj_jednotky_bez_pristupu(filter_tag: String = "") -> void:
 		var vojaci = int(d.get("soldiers", 0))
 		if vojaci <= 0:
 			continue
-		if not muze_vstoupit_na_uzemi(army_tag, owner_tag):
+		if (not army_state_exists) or (not muze_vstoupit_na_uzemi(army_tag, owner_tag)):
 			to_expel.append({"prov_id": prov_id, "army_tag": army_tag, "soldiers": vojaci, "owner_tag": owner_tag})
 
 	if to_expel.is_empty():
@@ -4479,6 +4492,48 @@ func _expeluj_jednotky_bez_pristupu(filter_tag: String = "") -> void:
 	var ml = _get_map_loader()
 	if ml and ml.has_method("aktualizuj_ikony_armad"):
 		ml.aktualizuj_ikony_armad()
+
+func _oprav_neplatne_vlastniky_armad() -> bool:
+	if map_data.is_empty():
+		return false
+	var active_states: Dictionary = {}
+	for p_id_any in map_data:
+		var owner_now = _normalizuj_tag(str(map_data[p_id_any].get("owner", "")))
+		if owner_now == "" or owner_now == "SEA":
+			continue
+		active_states[owner_now] = true
+
+	var changed := false
+	for p_id in map_data:
+		var d = map_data[p_id]
+		var owner_tag = _normalizuj_tag(str(d.get("owner", "")))
+		var army_tag = _normalizuj_tag(str(d.get("army_owner", "")))
+		var soldiers = int(d.get("soldiers", 0))
+
+		if soldiers <= 0:
+			if army_tag != "":
+				d["army_owner"] = ""
+				changed = true
+			continue
+
+		if owner_tag == "SEA":
+			if army_tag != "" and not active_states.has(army_tag):
+				d["army_owner"] = ""
+				changed = true
+			continue
+
+		if army_tag == "" or not active_states.has(army_tag):
+			d["army_owner"] = owner_tag
+			changed = true
+			continue
+
+		# Heal corrupted land stacks: foreign army owner on land without legal access.
+		# Legit foreign presence (military access/alliance/vassal) is preserved.
+		if army_tag != owner_tag and not muze_vstoupit_na_uzemi(army_tag, owner_tag):
+			d["army_owner"] = owner_tag
+			changed = true
+
+	return changed
 
 func pozadej_vojensky_pristup(guest: String, host: String) -> bool:
 	var g = _normalizuj_tag(guest)
@@ -5064,6 +5119,14 @@ func vycisti_stat_po_kapitulaci(tag: String):
 		if from_tag_rep == target or to_tag_rep == target:
 			valecne_reparace.remove_at(i)
 
+	# Remove stale military access entries for defeated state (host or guest).
+	for key_any in vojensky_pristup.keys().duplicate():
+		var parts_va = str(key_any).split("|")
+		if parts_va.size() != 2:
+			continue
+		if _normalizuj_tag(parts_va[0]) == target or _normalizuj_tag(parts_va[1]) == target:
+			vojensky_pristup.erase(key_any)
+
 	for key_any in cekajici_mirove_konference.keys().duplicate():
 		var queue = cekajici_mirove_konference[key_any] as Array
 		for i in range(queue.size() - 1, -1, -1):
@@ -5077,6 +5140,7 @@ func vycisti_stat_po_kapitulaci(tag: String):
 
 	ai_kasy.erase(target)
 	_core_state_cache.erase(target)
+	_expeluj_jednotky_bez_pristupu(target)
 
 func _vyhlasit_valku_par(utocnik: String, obrance: String, headline: String, details: String) -> bool:
 	var a = _normalizuj_tag(utocnik)
@@ -7300,6 +7364,8 @@ func _log_ai_profile(total_ms: int, phases: Dictionary) -> void:
 func _ai_debug(msg: String) -> void:
 	if not AI_DECISION_DEBUG_ENABLED:
 		return
+	if not _ai_debug_mode_enabled:
+		return
 	if _ai_debug_turn_marker != aktualni_kolo:
 		_ai_debug_turn_marker = aktualni_kolo
 		_ai_debug_lines_this_turn = 0
@@ -7360,6 +7426,9 @@ func ukonci_kolo():
 	if map_loader:
 		# Resolve battles and remove stale moves
 		await map_loader.zpracuj_tah_armad()
+		if _oprav_neplatne_vlastniky_armad():
+			if map_loader.has_method("aktualizuj_ikony_armad"):
+				map_loader.aktualizuj_ikony_armad()
 	turn_phases["armies"] = Time.get_ticks_msec() - phase_start_ms
 	phase_start_ms = Time.get_ticks_msec()
 
@@ -7523,6 +7592,7 @@ func hrac_verbuje(provincie_id: int, pocet: int) -> bool:
 			statni_kasa -= celkova_cena
 			d["recruitable_population"] -= pocet
 			d["soldiers"] += pocet
+			d["army_owner"] = hrac_stat
 			map_loader.aktualizuj_ikony_armad()
 			kolo_zmeneno.emit() 
 			return true
@@ -8393,6 +8463,33 @@ func _ai_spocitej_tlak_statu(state_tag: String, owned: Array) -> float:
 		return 0.0
 	return float(total_threat) / float(max(1, owned.size()))
 
+func _ai_ziskej_recruit_emergency_level(state_tag: String, owned: Array, at_war_state: bool, state_pressure: float, state_exhaustion: float) -> float:
+	if not at_war_state:
+		return 0.0
+
+	var enemies = _ai_ziskej_nepratele_statu(state_tag)
+	if enemies.is_empty():
+		return 0.0
+
+	var own_power = float(max(1, _spocitej_silu_statu(state_tag)))
+	var enemy_power := 0.0
+	for e in enemies:
+		enemy_power += float(max(1, _spocitej_silu_statu(_normalizuj_tag(str(e)))))
+	var war_ratio = enemy_power / own_power if enemy_power > 0.0 else 0.0
+
+	var frontline := 0
+	for p_any in owned:
+		if _ma_nepratelskeho_souseda(state_tag, int(p_any)):
+			frontline += 1
+	var frontline_ratio = float(frontline) / float(max(1, owned.size()))
+
+	var level := 0.0
+	level += clamp((war_ratio - 1.10) / 1.25, 0.0, 1.0) * 0.46
+	level += clamp((state_pressure - AI_RECRUIT_EMERGENCY_PRESSURE) / 900.0, 0.0, 1.0) * 0.24
+	level += clamp((state_exhaustion - AI_RECRUIT_EMERGENCY_EXHAUSTION) / 0.30, 0.0, 1.0) * 0.20
+	level += clamp((frontline_ratio - 0.28) / 0.42, 0.0, 1.0) * 0.10
+	return clamp(level, 0.0, 1.0)
+
 func _ai_odhad_dostupnych_rekrutu(state_tag: String, owned: Array, recruit_targets: Array, at_war_state: bool) -> int:
 	var used: Dictionary = {}
 	var pool: Array = []
@@ -8449,7 +8546,7 @@ func _ai_odhad_dostupnych_rekrutu(state_tag: String, owned: Array, recruit_targe
 		raw_available += max(0, recruits)
 	return raw_available
 
-func _ai_odhad_max_rekrutu_na_tah(state_tag: String, recruit_targets: Array, recruit_order_cap: int, at_war_state: bool, state_pressure: float, recruit_spend_cap: float) -> int:
+func _ai_odhad_max_rekrutu_na_tah(state_tag: String, recruit_targets: Array, recruit_order_cap: int, at_war_state: bool, state_pressure: float, recruit_spend_cap: float, emergency_level: float = 0.0) -> int:
 	if recruit_targets.is_empty() or recruit_order_cap <= 0:
 		return 0
 
@@ -8461,6 +8558,8 @@ func _ai_odhad_max_rekrutu_na_tah(state_tag: String, recruit_targets: Array, rec
 		threshold = min(threshold, 30)
 	if at_war_state and recruit_spend_cap >= 220.0:
 		threshold = min(threshold, 25)
+	if emergency_level > 0.0:
+		threshold = min(threshold, int(round(lerp(12.0, 0.0, clamp(emergency_level, 0.0, 1.0)))))
 
 	var remaining: Dictionary = {}
 	var per_order_caps: Dictionary = {}
@@ -8508,7 +8607,10 @@ func _ai_odhad_max_rekrutu_na_tah(state_tag: String, recruit_targets: Array, rec
 			per_order_cap = int(float(per_order_cap) * 1.75)
 		elif recruit_targets.size() == 3 and recruit_order_cap >= 5:
 			per_order_cap = int(float(per_order_cap) * 1.35)
-		per_order_cap = min(3600, per_order_cap)
+		if emergency_level > 0.0:
+			per_order_cap = int(float(per_order_cap) * (1.0 + emergency_level * 0.90))
+		var per_order_hard_cap = int(round(3600.0 + (2200.0 * clamp(emergency_level, 0.0, 1.0))))
+		per_order_cap = min(per_order_hard_cap, per_order_cap)
 
 		remaining[p_id] = available
 		per_order_caps[p_id] = per_order_cap
@@ -8895,6 +8997,7 @@ func zpracuj_tah_ai():
 		var state_mindset = _ai_ziskej_mindset(owner_tag)
 		var state_attack_bias = float(state_mindset.get("attack_bias", 0.5))
 		var at_war_state = not _ai_ziskej_nepratele_statu(owner_tag).is_empty()
+		var recruit_emergency_level = _ai_ziskej_recruit_emergency_level(owner_tag, owned, at_war_state, state_pressure, state_exhaustion)
 		var recruit_spend_factor = 0.22
 		if at_war_state:
 			recruit_spend_factor = 0.38
@@ -8902,7 +9005,9 @@ func zpracuj_tah_ai():
 			recruit_spend_factor += 0.10
 		recruit_spend_factor += state_attack_bias * 0.08
 		recruit_spend_factor -= state_exhaustion * 0.10
-		recruit_spend_factor = clamp(recruit_spend_factor, 0.16, 0.60)
+		recruit_spend_factor += recruit_emergency_level * AI_RECRUIT_EMERGENCY_SPEND_BOOST
+		var spend_cap_max = 0.60 if recruit_emergency_level < 0.01 else 0.82
+		recruit_spend_factor = clamp(recruit_spend_factor, 0.16, spend_cap_max)
 		var recruit_spend_cap = max(0.0, (ai_kasy[owner_tag] - treasury_reserve) * recruit_spend_factor)
 		var recruit_order_cap = 2
 		if at_war_state:
@@ -8924,9 +9029,12 @@ func zpracuj_tah_ai():
 				recruit_order_cap = max(recruit_order_cap, 8)
 		if state_exhaustion >= 0.72:
 			recruit_order_cap = max(2, recruit_order_cap - 1)
-		recruit_order_cap = min(recruit_order_cap, 8)
+		if at_war_state and recruit_emergency_level > 0.01:
+			recruit_order_cap += int(round(recruit_emergency_level * float(AI_RECRUIT_EMERGENCY_ORDER_BONUS)))
+		var recruit_order_hard_cap = 8 if recruit_emergency_level < 0.01 else AI_RECRUIT_EMERGENCY_ORDER_CAP
+		recruit_order_cap = min(recruit_order_cap, recruit_order_hard_cap)
 		var manpower_estimate_units = _ai_odhad_dostupnych_rekrutu(owner_tag, owned, recruit_targets, at_war_state)
-		var throughput_estimate_units = _ai_odhad_max_rekrutu_na_tah(owner_tag, recruit_targets, recruit_order_cap, at_war_state, state_pressure, recruit_spend_cap)
+		var throughput_estimate_units = _ai_odhad_max_rekrutu_na_tah(owner_tag, recruit_targets, recruit_order_cap, at_war_state, state_pressure, recruit_spend_cap, recruit_emergency_level)
 		var est_units = min(max(0, manpower_estimate_units), max(0, throughput_estimate_units))
 		if est_units <= 0:
 			est_units = max(0, throughput_estimate_units)
@@ -8941,6 +9049,8 @@ func zpracuj_tah_ai():
 			state_pressure,
 			state_exhaustion
 		])
+		if recruit_emergency_level >= 0.01:
+			_ai_debug("recruit emergency level %s lvl=%.2f" % [owner_tag, recruit_emergency_level])
 		_ai_debug("recruit plan %s targets=%d pressure=%.1f reserve=%.2f treasury=%.2f" % [
 			owner_tag,
 			recruit_targets.size(),
@@ -9003,6 +9113,8 @@ func zpracuj_tah_ai():
 					min_recruits_threshold = min(min_recruits_threshold, 25)
 				if at_war_state and recruit_orders_done == 0 and recruit_spent_this_turn <= 0.001:
 					min_recruits_threshold = min(min_recruits_threshold, 20)
+				if recruit_emergency_level > 0.0:
+					min_recruits_threshold = min(min_recruits_threshold, int(round(lerp(18.0, 0.0, clamp(recruit_emergency_level, 0.0, 1.0)))))
 				if rekruti > min_recruits_threshold and ai_kasy[owner_tag] > treasury_reserve + 5.0:
 					var dostupny_rozpocet = max(0.0, ai_kasy[owner_tag] - treasury_reserve)
 					var zbyvajici_recruit_budget = max(0.0, recruit_spend_cap - recruit_spent_this_turn)
@@ -9023,6 +9135,8 @@ func zpracuj_tah_ai():
 					var limit_verbovani = min(4200, 900 + frontline_bonus)
 					if je_okupace:
 						limit_verbovani = int(max(120, floor(float(limit_verbovani) * 0.25)))
+					if recruit_emergency_level > 0.0:
+						limit_verbovani = int(float(limit_verbovani) * (1.0 + recruit_emergency_level * 0.60))
 					var per_order_cap = 850
 					if local_frontline:
 						per_order_cap += 550
@@ -9031,7 +9145,7 @@ func zpracuj_tah_ai():
 					per_order_cap += min(950, int(float(local_threat) * 0.22))
 					if je_okupace:
 						per_order_cap = int(max(120, floor(float(per_order_cap) * 0.30)))
-					if recruit_order_cap >= 3 and recruit_spend_cap > 0.0:
+					if recruit_order_cap >= 3 and recruit_spend_cap > 0.0 and recruit_emergency_level < 0.45:
 						var effective_slots = max(1, min(recruit_order_cap, max(2, recruit_targets.size())))
 						var fair_share_units = int((recruit_spend_cap / float(effective_slots)) / cena_za_vojaka)
 						if fair_share_units > 0:
@@ -9042,10 +9156,14 @@ func zpracuj_tah_ai():
 						per_order_cap = int(float(per_order_cap) * 1.35)
 					if pass_idx >= 1 and at_war_state:
 						per_order_cap = int(float(per_order_cap) * 1.15)
-					per_order_cap = min(3600, per_order_cap)
+					if recruit_emergency_level > 0.0:
+						per_order_cap = int(float(per_order_cap) * (1.0 + recruit_emergency_level * 0.90))
+					var per_order_hard_cap = int(round(3600.0 + (2200.0 * clamp(recruit_emergency_level, 0.0, 1.0))))
+					per_order_cap = min(per_order_hard_cap, per_order_cap)
 					pocet_k_verbovani = min(pocet_k_verbovani, limit_verbovani, per_order_cap)
 					d["recruitable_population"] -= pocet_k_verbovani
 					d["soldiers"] += pocet_k_verbovani
+					d["army_owner"] = owner_tag
 					var recruit_cost = pocet_k_verbovani * cena_za_vojaka
 					ai_kasy[owner_tag] -= recruit_cost
 					recruit_spent_this_turn += recruit_cost
@@ -9056,9 +9174,12 @@ func zpracuj_tah_ai():
 			if not pass_had_order:
 				break
 
-		# Emergency fallback: if a war state could not place any normal order,
-		# force at least limited recruitment from best owned provinces.
-		if at_war_state and recruit_orders_done == 0 and recruit_spend_cap > 0.0 and ai_kasy[owner_tag] > treasury_reserve + 5.0:
+		# Emergency fallback: in a defensive crisis, allow extra recruitment
+		# even if normal pass logic under-spent due to local hard caps.
+		var emergency_need = recruit_orders_done == 0
+		if not emergency_need and recruit_emergency_level >= 0.60 and recruit_spend_cap > 0.0:
+			emergency_need = recruit_spent_this_turn < recruit_spend_cap * 0.60
+		if at_war_state and emergency_need and recruit_spend_cap > 0.0 and ai_kasy[owner_tag] > treasury_reserve + 5.0:
 			var emergency_pool: Array = []
 			for p_id_any in owned:
 				var p_id = int(p_id_any)
@@ -9085,6 +9206,10 @@ func zpracuj_tah_ai():
 				return float((a as Dictionary).get("score", 0.0)) > float((b as Dictionary).get("score", 0.0))
 			)
 			var emergency_orders_target = min(2, recruit_order_cap)
+			if recruit_orders_done > 0:
+				emergency_orders_target = min(max(1, int(round(2.0 * recruit_emergency_level))), max(0, recruit_order_cap - recruit_orders_done))
+			if recruit_orders_done == 0:
+				emergency_orders_target = min(max(2, int(round(2.0 + recruit_emergency_level * 2.0))), recruit_order_cap)
 			var emergency_placed = 0
 			for row_any in emergency_pool:
 				if emergency_placed >= emergency_orders_target:
@@ -9107,6 +9232,7 @@ func zpracuj_tah_ai():
 				if pocet_k_verbovani <= 0:
 					continue
 				var emergency_cap = 1400 + min(1200, int(float(row.get("threat", 0)) * 0.30))
+				emergency_cap = int(float(emergency_cap) * (1.0 + recruit_emergency_level * 0.70))
 				if je_okupace:
 					emergency_cap = int(max(120, floor(float(emergency_cap) * 0.25)))
 				pocet_k_verbovani = min(pocet_k_verbovani, emergency_cap)
@@ -9114,6 +9240,7 @@ func zpracuj_tah_ai():
 					continue
 				d["recruitable_population"] -= pocet_k_verbovani
 				d["soldiers"] += pocet_k_verbovani
+				d["army_owner"] = owner_tag
 				var recruit_cost = pocet_k_verbovani * cena_za_vojaka
 				ai_kasy[owner_tag] -= recruit_cost
 				recruit_spent_this_turn += recruit_cost
@@ -10298,3 +10425,56 @@ func _navrhni_utok(state_tag: String, from_id: int, frontline_cache: Dictionary 
 
 func nastav_potato_mode(enabled: bool) -> void:
 	_potato_mode_enabled = enabled
+
+func nastav_ai_debug_mode(enabled: bool) -> void:
+	_ai_debug_mode_enabled = enabled
+
+func je_ai_debug_mode_zapnuty() -> bool:
+	return _ai_debug_mode_enabled
+
+func ziskej_ai_debug_snapshot(state_tag: String = "") -> Dictionary:
+	var clean = _normalizuj_tag(state_tag)
+	if clean == "":
+		clean = _normalizuj_tag(hrac_stat)
+	if clean == "" or clean == "SEA":
+		return {"ok": false, "reason": "Invalid state."}
+
+	var owned = _turn_state_owned_provinces.get(clean, []) as Array
+	if owned.is_empty():
+		for p_id in map_data:
+			var d = map_data[p_id]
+			if _normalizuj_tag(str(d.get("owner", ""))) == clean:
+				owned.append(int(p_id))
+
+	var enemies = _ai_ziskej_nepratele_statu(clean)
+	var at_war = not enemies.is_empty()
+	var pressure = _ai_spocitej_tlak_statu(clean, owned)
+	var exhaustion = _ai_spocitej_war_exhaustion(clean)
+	var treasury = _ziskej_kasu_statu(clean)
+	var net_income = _spocitej_cisty_prijem_statu(clean)
+	var goal = _ai_ziskej_strategicky_cil(clean)
+	var op_plan = _ai_ziskej_operacni_plan(clean)
+	var profile = _ai_ziskej_profil(clean)
+	var recruit_targets = _ai_ziskej_recruit_kandidaty(clean, owned, pressure)
+
+	return {
+		"ok": true,
+		"state": clean,
+		"is_player": je_lidsky_stat(clean),
+		"turn": aktualni_kolo,
+		"treasury": treasury,
+		"net_income": net_income,
+		"at_war": at_war,
+		"enemies": enemies,
+		"pressure": pressure,
+		"exhaustion": exhaustion,
+		"goal_type": str(goal.get("type", "none")),
+		"goal_target": _normalizuj_tag(str(goal.get("target", ""))),
+		"plan_phase": str(op_plan.get("phase", "staging")),
+		"plan_target": _normalizuj_tag(str(op_plan.get("target", ""))),
+		"attack_bias": float(profile.get("attack_bias", 0.5)),
+		"defense_bias": float(profile.get("defense_bias", 0.5)),
+		"aggression": float(profile.get("aggression", 0.5)),
+		"recruit_targets": recruit_targets,
+		"owned_provinces": owned.size()
+	}

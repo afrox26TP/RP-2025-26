@@ -63,6 +63,7 @@ const TooltipUtilsScript = preload("res://scripts/TooltipUtils.gd")
 @onready var fullscreen_check: CheckBox = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/FullscreenCheck
 @onready var vsync_check: CheckBox = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/VsyncCheck
 var potato_mode_check: CheckBox = null
+var ai_debug_mode_check: CheckBox = null
 @onready var master_volume_label: Label = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/MasterVolumeLabel
 @onready var master_volume_slider: HSlider = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/MasterVolumeRow/MasterVolumeSlider
 @onready var master_volume_value: Label = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/MasterVolumeRow/MasterVolumeValue
@@ -165,6 +166,7 @@ const UI_TEXTS := {
 		"fullscreen": "Fullscreen",
 		"vsync": "VSync",
 		"potato_mode": "Potato mode (low-end PC)",
+		"ai_debug_mode": "AI debug mode (decision logs)",
 		"master_volume": "Master volume",
 		"reset": "Reset defaults",
 		"apply": "Apply",
@@ -201,6 +203,7 @@ const UI_TEXTS := {
 		"fullscreen": "Cela obrazovka",
 		"vsync": "VSync",
 		"potato_mode": "Potato mode (slabe PC)",
+		"ai_debug_mode": "AI debug mode (AI debug vypisy)",
 		"master_volume": "Hlavni hlasitost",
 		"reset": "Obnovit vychozi",
 		"apply": "Pouzit",
@@ -235,6 +238,7 @@ var _ai_aggression_value: Label = null
 var _browser_current_settings_panel: PanelContainer = null
 var _browser_current_settings_vbox: VBoxContainer = null
 var _browser_potato_mode_check: CheckBox = null
+var _browser_ai_debug_mode_check: CheckBox = null
 var _browser_settings_country_separator: HSeparator = null
 var _selected_players_flag_list: VBoxContainer = null
 var _selected_players_scroll: ScrollContainer = null
@@ -353,6 +357,7 @@ func _ready():
 	_aktualizuj_browser_napovedu()
 	country_browser_panel.hide()
 	_ensure_potato_mode_checkbox()
+	_ensure_ai_debug_mode_checkbox()
 
 	# Connect UI signals
 	btn_new_game.pressed.connect(_on_new_game_pressed)
@@ -378,6 +383,8 @@ func _ready():
 	vsync_check.toggled.connect(_on_settings_toggle_changed)
 	if potato_mode_check:
 		potato_mode_check.toggled.connect(_on_settings_toggle_changed)
+	if ai_debug_mode_check:
+		ai_debug_mode_check.toggled.connect(_on_settings_toggle_changed)
 	exit_dialog.confirmed.connect(_on_exit_confirmed)
 
 	_napln_language_option()
@@ -544,6 +551,13 @@ func _ensure_ai_aggression_control() -> void:
 	_browser_potato_mode_check.toggled.connect(_on_browser_potato_mode_toggled)
 	_browser_current_settings_vbox.add_child(_browser_potato_mode_check)
 
+	_browser_ai_debug_mode_check = CheckBox.new()
+	_browser_ai_debug_mode_check.name = "BrowserAIDebugModeCheck"
+	_browser_ai_debug_mode_check.text = "AI debug mode"
+	_browser_ai_debug_mode_check.button_pressed = bool(nastaveni_data.get("other", {}).get("ai_debug_mode", false))
+	_browser_ai_debug_mode_check.toggled.connect(_on_browser_ai_debug_mode_toggled)
+	_browser_current_settings_vbox.add_child(_browser_ai_debug_mode_check)
+
 	var insert_index := root_vbox.get_child_count()
 	if selected_players_title and selected_players_title.get_parent() and selected_players_title.get_parent().get_parent() and selected_players_title.get_parent().get_parent().get_parent():
 		var selected_players_panel = selected_players_title.get_parent().get_parent().get_parent()
@@ -642,6 +656,14 @@ func _on_browser_potato_mode_toggled(enabled: bool) -> void:
 		potato_mode_check.button_pressed = enabled
 		potato_mode_check.set_block_signals(false)
 
+func _on_browser_ai_debug_mode_toggled(enabled: bool) -> void:
+	nastaveni_data["other"]["ai_debug_mode"] = enabled
+	_aplikuj_ai_debug_mode_globalne(enabled)
+	if ai_debug_mode_check:
+		ai_debug_mode_check.set_block_signals(true)
+		ai_debug_mode_check.button_pressed = enabled
+		ai_debug_mode_check.set_block_signals(false)
+
 func _apply_ai_aggression_overrides(_local_tags: Array) -> void:
 	if not GameManager or not GameManager.has_method("nastav_globalni_ai_agresi"):
 		return
@@ -675,10 +697,14 @@ func _nastav_tooltipy_ui() -> void:
 		_ai_aggression_value.tooltip_text = "Current aggression override value."
 	if _browser_potato_mode_check:
 		_browser_potato_mode_check.tooltip_text = "Quick toggle for potato mode in current game setup."
+	if _browser_ai_debug_mode_check:
+		_browser_ai_debug_mode_check.tooltip_text = "Shows detailed AI decision logs in output."
 	if _browser_settings_country_separator:
 		_browser_settings_country_separator.tooltip_text = "Visual separator between setup settings and country selection."
 	if potato_mode_check:
 		potato_mode_check.tooltip_text = "Turns on low-detail rendering and power-saving updates for weak PCs."
+	if ai_debug_mode_check:
+		ai_debug_mode_check.tooltip_text = "Enables detailed AI debug prints (money, plans, war/recruit decisions)."
 	TooltipUtilsScript.apply_default_tooltips(self)
 
 func _ensure_potato_mode_checkbox() -> void:
@@ -695,6 +721,21 @@ func _ensure_potato_mode_checkbox() -> void:
 
 	settings_content.add_child(potato_mode_check)
 	settings_content.move_child(potato_mode_check, insert_index)
+
+func _ensure_ai_debug_mode_checkbox() -> void:
+	if ai_debug_mode_check != null or settings_content == null:
+		return
+
+	ai_debug_mode_check = CheckBox.new()
+	ai_debug_mode_check.name = "AIDebugModeCheck"
+	ai_debug_mode_check.text = "AI debug mode (decision logs)"
+
+	var insert_index := settings_content.get_child_count()
+	if master_volume_label and master_volume_label.get_parent() == settings_content:
+		insert_index = master_volume_label.get_index()
+
+	settings_content.add_child(ai_debug_mode_check)
+	settings_content.move_child(ai_debug_mode_check, insert_index)
 
 func _nastav_texty_dialogu():
 	settings_dialog.title = SETTINGS_DIALOG_TITLE
@@ -810,6 +851,7 @@ func _vytvor_vychozi_nastaveni() -> Dictionary:
 			"fullscreen": false,
 			"vsync": true,
 			"potato_mode": false,
+			"ai_debug_mode": false,
 			"master_volume": 0.85
 		}
 	}
@@ -830,6 +872,7 @@ func _nacti_nastaveni() -> void:
 	nastaveni_data["other"]["fullscreen"] = bool(cfg.get_value("other", "fullscreen", nastaveni_data["other"]["fullscreen"]))
 	nastaveni_data["other"]["vsync"] = bool(cfg.get_value("other", "vsync", nastaveni_data["other"]["vsync"]))
 	nastaveni_data["other"]["potato_mode"] = bool(cfg.get_value("other", "potato_mode", nastaveni_data["other"]["potato_mode"]))
+	nastaveni_data["other"]["ai_debug_mode"] = bool(cfg.get_value("other", "ai_debug_mode", nastaveni_data["other"]["ai_debug_mode"]))
 	nastaveni_data["other"]["master_volume"] = float(cfg.get_value("other", "master_volume", nastaveni_data["other"]["master_volume"]))
 
 func _uloz_nastaveni() -> void:
@@ -843,6 +886,7 @@ func _uloz_nastaveni() -> void:
 	cfg.set_value("other", "fullscreen", bool(nastaveni_data["other"]["fullscreen"]))
 	cfg.set_value("other", "vsync", bool(nastaveni_data["other"]["vsync"]))
 	cfg.set_value("other", "potato_mode", bool(nastaveni_data["other"]["potato_mode"]))
+	cfg.set_value("other", "ai_debug_mode", bool(nastaveni_data["other"]["ai_debug_mode"]))
 	cfg.set_value("other", "master_volume", float(nastaveni_data["other"]["master_volume"]))
 
 	var save_err = cfg.save(SETTINGS_FILE_PATH)
@@ -893,6 +937,8 @@ func _nastav_settings_ui_z_dat() -> void:
 	vsync_check.button_pressed = bool(nastaveni_data["other"]["vsync"])
 	if potato_mode_check:
 		potato_mode_check.button_pressed = bool(nastaveni_data["other"].get("potato_mode", false))
+	if ai_debug_mode_check:
+		ai_debug_mode_check.button_pressed = bool(nastaveni_data["other"].get("ai_debug_mode", false))
 	master_volume_slider.value = clamp(float(nastaveni_data["other"]["master_volume"]), 0.0, 1.0)
 
 func _uloz_settings_ui_do_dat() -> void:
@@ -903,6 +949,7 @@ func _uloz_settings_ui_do_dat() -> void:
 	nastaveni_data["other"]["fullscreen"] = fullscreen_check.button_pressed
 	nastaveni_data["other"]["vsync"] = vsync_check.button_pressed
 	nastaveni_data["other"]["potato_mode"] = potato_mode_check.button_pressed if potato_mode_check else false
+	nastaveni_data["other"]["ai_debug_mode"] = ai_debug_mode_check.button_pressed if ai_debug_mode_check else false
 	nastaveni_data["other"]["master_volume"] = clamp(master_volume_slider.value, 0.0, 1.0)
 
 func _aktualizuj_settings_hodnoty(_v: float = 0.0) -> void:
@@ -917,6 +964,7 @@ func _aplikuj_nastaveni_globalne() -> void:
 	var vsync_mode = DisplayServer.VSYNC_ENABLED if bool(nastaveni_data["other"]["vsync"]) else DisplayServer.VSYNC_DISABLED
 	DisplayServer.window_set_vsync_mode(vsync_mode)
 	_aplikuj_potato_mode_globalne(bool(nastaveni_data["other"].get("potato_mode", false)))
+	_aplikuj_ai_debug_mode_globalne(bool(nastaveni_data["other"].get("ai_debug_mode", false)))
 
 	var master_bus = AudioServer.get_bus_index("Master")
 	if master_bus != -1:
@@ -928,6 +976,10 @@ func _aplikuj_potato_mode_globalne(enabled: bool) -> void:
 	Engine.max_fps = 45 if enabled else 0
 	OS.low_processor_usage_mode = enabled
 	OS.low_processor_usage_mode_sleep_usec = 12000 if enabled else 6900
+
+func _aplikuj_ai_debug_mode_globalne(enabled: bool) -> void:
+	if GameManager and GameManager.has_method("nastav_ai_debug_mode"):
+		GameManager.nastav_ai_debug_mode(enabled)
 
 func _aktualizuj_texty_dle_jazyka() -> void:
 	var t = _texty_ui()
@@ -956,6 +1008,8 @@ func _aktualizuj_texty_dle_jazyka() -> void:
 	vsync_check.text = str(t["vsync"])
 	if potato_mode_check:
 		potato_mode_check.text = str(t["potato_mode"])
+	if ai_debug_mode_check:
+		ai_debug_mode_check.text = str(t["ai_debug_mode"])
 	master_volume_label.text = str(t["master_volume"])
 	btn_settings_reset.text = str(t["reset"])
 	btn_settings_apply.text = str(t["apply"])
@@ -979,11 +1033,12 @@ func _read_settings_from_ui() -> Dictionary:
 		"fullscreen": fullscreen_check.button_pressed,
 		"vsync": vsync_check.button_pressed,
 		"potato_mode": potato_mode_check.button_pressed if potato_mode_check else false,
+		"ai_debug_mode": ai_debug_mode_check.button_pressed if ai_debug_mode_check else false,
 		"master_volume": snapped(master_volume_slider.value, 0.01)
 	}
 
 func _settings_state_equals(a: Dictionary, b: Dictionary) -> bool:
-	for key in ["camera_speed", "zoom_speed", "invert_zoom", "language", "fullscreen", "vsync", "potato_mode", "master_volume"]:
+	for key in ["camera_speed", "zoom_speed", "invert_zoom", "language", "fullscreen", "vsync", "potato_mode", "ai_debug_mode", "master_volume"]:
 		if not a.has(key) or not b.has(key):
 			return false
 		if a[key] != b[key]:
