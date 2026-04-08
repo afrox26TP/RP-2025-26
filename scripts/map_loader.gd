@@ -3675,24 +3675,47 @@ func _kapituluj_stat_rozdelenim(cilovy_stat: String, fallback_vitez: String = ""
 
 	for p_id in provinces.keys():
 		var p = provinces[p_id]
-		var owner_now = str(p.get("owner", "")).strip_edges().to_upper()
 		var core_owner = str(p.get("core_owner", "")).strip_edges().to_upper()
 		if core_owner != target_owner:
 			continue
-		if not profile_cache.has(core_owner):
-			profile_cache[core_owner] = _ziskej_reprezentaci_statu(core_owner)
-		var profile = profile_cache[core_owner]
-		p["country_name"] = str(profile.get("country_name", core_owner))
-		p["ideology"] = str(profile.get("ideology", ""))
-		p["core_owner"] = core_owner
-		# Army control must follow current controller (owner), not core owner.
-		if owner_now == "SEA":
-			p["army_owner"] = ""
+		ma_core = true
+
+		var current_owner = str(p.get("owner", "")).strip_edges().to_upper()
+		if current_owner == target_owner:
+			if winner == "":
+				return {"provedeno": false, "okupanti": {}}
+			current_owner = winner
+			p["owner"] = winner
+			prevedeno += 1
+
+		if current_owner == "" or current_owner == "SEA":
+			if winner != "":
+				current_owner = winner
+				p["owner"] = winner
+				prevedeno += 1
+
+		if current_owner != "" and current_owner != "SEA":
+			if not profile_cache.has(current_owner):
+				profile_cache[current_owner] = _ziskej_reprezentaci_statu(current_owner)
+			var profile = profile_cache[current_owner]
+			p["country_name"] = str(profile.get("country_name", current_owner))
+			p["ideology"] = str(profile.get("ideology", ""))
+			p["core_owner"] = current_owner
+			p["army_owner"] = current_owner if int(p.get("soldiers", 0)) > 0 else ""
+			okupanti[current_owner] = int(okupanti.get(current_owner, 0)) + 1
 		else:
-			p["army_owner"] = owner_now if int(p.get("soldiers", 0)) > 0 else ""
-		okupanti[core_owner] = int(okupanti.get(core_owner, 0)) + 1
-		prevedeno += 1
-	ma_core = true
+			p["soldiers"] = 0
+			p["army_owner"] = ""
+
+		if bool(p.get("is_capital", false)):
+			p["is_capital"] = false
+			if labels:
+				for lbl in labels.get_children():
+					if lbl.get("province_id") == p_id:
+						lbl.set("is_capital", false)
+						var f = lbl.find_child("Flag", true, false)
+						if f:
+							f.hide()
 
 	# If defeated state controls foreign cores, immediately return those provinces.
 	for p_id in provinces.keys():
