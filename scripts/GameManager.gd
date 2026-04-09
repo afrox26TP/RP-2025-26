@@ -981,6 +981,7 @@ func _aplikuj_save_state(state: Dictionary) -> bool:
 	vyzkum_statu = (state.get("vyzkum_statu", {}) as Dictionary).duplicate(true)
 	armadni_lab_statu = (state.get("armadni_lab_statu", {}) as Dictionary).duplicate(true)
 	valky = (state.get("valky", {}) as Dictionary).duplicate(true)
+	_normalizuj_valecne_klice()
 	cekajici_kapitulace = (state.get("cekajici_kapitulace", []) as Array).duplicate(true)
 	cekajici_mirove_nabidky = (state.get("cekajici_mirove_nabidky", []) as Array).duplicate(true)
 	cekajici_mirove_konference = (state.get("cekajici_mirove_konference", {}) as Dictionary).duplicate(true)
@@ -5022,9 +5023,10 @@ func hrac_prijmi_vsechny_diplomaticke_zadosti(hrac_tag: String) -> int:
 
 # Diplomacy helpers
 func jsou_ve_valce(tag1: String, tag2: String) -> bool:
-	var klic1 = tag1 + "_" + tag2
-	var klic2 = tag2 + "_" + tag1
-	return valky.has(klic1) or valky.has(klic2)
+	var klic = _klic_valky(tag1, tag2)
+	if klic == "":
+		return false
+	return valky.has(klic)
 
 func vycisti_stat_po_kapitulaci(tag: String):
 	var target = tag.strip_edges().to_upper()
@@ -5150,7 +5152,9 @@ func _vyhlasit_valku_par(utocnik: String, obrance: String, headline: String, det
 	if jsou_ve_valce(a, b):
 		return false
 
-	var klic = a + "_" + b
+	var klic = _klic_valky(a, b)
+	if klic == "":
+		return false
 	valky[klic] = true
 
 	var msg = "%s\n\n%s" % [headline, details]
@@ -5374,12 +5378,13 @@ func je_mirova_nabidka_cekajici(odesilatel: String, prijemce: String) -> bool:
 func _uzavri_mir_mezi(tag1: String, tag2: String, prepis_okupace: bool = true):
 	var cisty_tag1 = tag1.strip_edges().to_upper()
 	var cisty_tag2 = tag2.strip_edges().to_upper()
-	var klic1 = cisty_tag1 + "_" + cisty_tag2
-	var klic2 = cisty_tag2 + "_" + cisty_tag1
+	var klic = _klic_valky(cisty_tag1, cisty_tag2)
+	if klic == "":
+		return
 	_zaloguj_globalni_zpravu("War", "%s and %s made peace." % [cisty_tag1, cisty_tag2], "war")
 
-	valky.erase(klic1)
-	valky.erase(klic2)
+	valky.erase(klic)
+	_ai_war_cache.erase(_klic_pair(cisty_tag1, cisty_tag2))
 	_nastav_povalecny_cooldown(cisty_tag1, cisty_tag2)
 	if prepis_okupace:
 		_prepis_okupace_po_miru(cisty_tag1, cisty_tag2)
@@ -6465,6 +6470,37 @@ func _klic_pair(tag_a: String, tag_b: String) -> String:
 	if a < b:
 		return "%s|%s" % [a, b]
 	return "%s|%s" % [b, a]
+
+func _klic_valky(tag_a: String, tag_b: String) -> String:
+	var a = _normalizuj_tag(tag_a)
+	var b = _normalizuj_tag(tag_b)
+	if a == "" or b == "" or a == b:
+		return ""
+	if a < b:
+		return "%s_%s" % [a, b]
+	return "%s_%s" % [b, a]
+
+func _normalizuj_valecne_klice() -> void:
+	if valky.is_empty():
+		return
+	var normalized: Dictionary = {}
+	for key_any in valky.keys():
+		var raw = str(key_any).strip_edges().to_upper()
+		if raw == "":
+			continue
+		var parts: Array = []
+		if raw.contains("|"):
+			parts = raw.split("|")
+		else:
+			parts = raw.split("_")
+		if parts.size() != 2:
+			continue
+		var war_key = _klic_valky(str(parts[0]), str(parts[1]))
+		if war_key == "":
+			continue
+		normalized[war_key] = true
+	valky = normalized
+	_ai_war_cache.clear()
 
 func _begin_ai_cache_batch() -> void:
 	_ai_cache_batch_depth += 1
@@ -10127,7 +10163,7 @@ func _jsou_ve_valce_ai_cached(tag_a: String, tag_b: String) -> bool:
 		return false
 	if _ai_war_cache.has(key):
 		return bool(_ai_war_cache[key])
-	var is_war = valky.has(key)
+	var is_war = jsou_ve_valce(tag_a, tag_b)
 	_ai_war_cache[key] = is_war
 	return is_war
 
