@@ -329,6 +329,7 @@ var _ai_war_exhaustion_cache: Dictionary = {}
 var _ai_debug_turn_marker: int = -1
 var _ai_debug_lines_this_turn: int = 0
 var _ai_debug_suppressed_notice_printed: bool = false
+var _ai_debug_last_spending_by_state: Dictionary = {}
 var _global_ai_aggression_level: float = 0.5
 var _ai_randomized_ideologies_applied: bool = false
 var _suppress_relation_global_logs: bool = false
@@ -8281,6 +8282,17 @@ func _ai_provincie_hranicni_k_targetu(state_tag: String, province_id: int, targe
 			return true
 	return false
 
+func _ai_provincie_hranicni_k_neprateli(state_tag: String, province_id: int, enemies_set: Dictionary) -> bool:
+	if enemies_set.is_empty() or not map_data.has(province_id):
+		return false
+	for enemy_any in enemies_set.keys():
+		var enemy_tag = _normalizuj_tag(str(enemy_any))
+		if enemy_tag == "":
+			continue
+		if _ai_provincie_hranicni_k_targetu(state_tag, province_id, enemy_tag):
+			return true
+	return false
+
 func _ai_ziskej_primarni_front(state_tag: String) -> Dictionary:
 	var clean = _normalizuj_tag(state_tag)
 	if clean == "" or clean == "SEA":
@@ -8345,9 +8357,16 @@ func _ai_ziskej_recruit_kandidaty(state_tag: String, owned: Array, pressure: flo
 	var exhaustion = _ai_spocitej_war_exhaustion(state_tag)
 	var goal_target = _normalizuj_tag(str(goal.get("target", "")))
 	var front_target = _normalizuj_tag(str(primary_front.get("target", "")))
-	var at_war = not _ai_ziskej_nepratele_statu(state_tag).is_empty()
+	var enemies = _ai_ziskej_nepratele_statu(state_tag)
+	var at_war = not enemies.is_empty()
+	var enemy_set: Dictionary = {}
+	for e_any in enemies:
+		var e_tag = _normalizuj_tag(str(e_any))
+		if e_tag != "":
+			enemy_set[e_tag] = true
 	var base_threat_gate = 170 if at_war else 420
 	var min_local_recruits = 30 if at_war else 120
+	var front_anchor_candidates := 0
 
 	for p_id_any in owned:
 		var p_id = int(p_id_any)
@@ -8361,6 +8380,7 @@ func _ai_ziskej_recruit_kandidaty(state_tag: String, owned: Array, pressure: flo
 		var is_frontline = _ma_nepratelskeho_souseda(state_tag, p_id)
 		var threat = _spocitej_hrozbu_nepratel_u_provincie(p_id, state_tag)
 		var focused_front = false
+		var enemy_front_contact = false
 		if goal_target != "" or front_target != "":
 			for n_raw in (_turn_neighbors_by_province.get(p_id, d.get("neighbors", [])) as Array):
 				var n_id = int(n_raw)
@@ -8369,26 +8389,50 @@ func _ai_ziskej_recruit_kandidaty(state_tag: String, owned: Array, pressure: flo
 				var n_owner = _normalizuj_tag(str(_turn_owner_by_province.get(n_id, str(map_data[n_id].get("owner", "")))))
 				if n_owner == "" or n_owner == "SEA" or n_owner == state_tag:
 					continue
+				if enemy_set.has(n_owner):
+					enemy_front_contact = true
 				if n_owner == goal_target or n_owner == front_target:
 					focused_front = true
 					break
+		else:
+			for n_raw in (_turn_neighbors_by_province.get(p_id, d.get("neighbors", [])) as Array):
+				var n_id = int(n_raw)
+				if not map_data.has(n_id):
+					continue
+				var n_owner = _normalizuj_tag(str(_turn_owner_by_province.get(n_id, str(map_data[n_id].get("owner", "")))))
+				if enemy_set.has(n_owner):
+					enemy_front_contact = true
+					break
 
-		# Avoid recruiting everywhere: in low-threat areas recruit only if strategic anchor exists.
-		if not is_capital and not is_frontline and not focused_front and threat < base_threat_gate:
+		# Strict wartime mode: recruit only on provinces that directly border current enemies.
+		if at_war and not enemy_front_contact:
+			continue
+		# Avoid recruiting everywhere: in peacetime low-threat areas recruit only if strategic anchor exists.
+		if (not at_war) and not is_capital and not is_frontline and not focused_front and not enemy_front_contact and threat < base_threat_gate:
 			continue
 		var score = 0.0
-		if is_capital:
+		if is_capital and not at_war:
 			score += 3000.0
 		if is_frontline:
 			score += 1800.0
 		if focused_front:
 			score += 1300.0
+		if enemy_front_contact:
+			score += 1600.0
+		if focused_front and enemy_front_contact:
+			score += 700.0
 		score += min(2100.0, float(threat) * (0.24 + attack_bias * 0.10))
 		score += float(recruits) * 0.12
 		score += float(d.get("gdp", 0.0)) * 14.0 * aggression
 		score += (320.0 * defense) if is_capital else 0.0
 		score -= exhaustion * 220.0
-		scored.append({"id": p_id, "score": score})
+		if is_frontline or focused_front or enemy_front_contact:
+			front_anchor_candidates += 1
+		scored.append({
+			"id": p_id,
+			"score": score,
+			"anchor": (is_capital or is_frontline or focused_front or enemy_front_contact)
+		})
 
 	if scored.is_empty():
 		if at_war:
@@ -8401,9 +8445,9 @@ func _ai_ziskej_recruit_kandidaty(state_tag: String, owned: Array, pressure: flo
 				var recruits = int(d.get("recruitable_population", 0))
 				if recruits <= 20:
 					continue
-				var is_capital_fallback = bool(d.get("is_capital", false)) or p_id == cap_id
 				var is_frontline_fallback = _ma_nepratelskeho_souseda(state_tag, p_id)
-				if is_capital_fallback or is_frontline_fallback:
+				var enemy_front_fallback = _ai_provincie_hranicni_k_neprateli(state_tag, p_id, enemy_set)
+				if enemy_front_fallback or is_frontline_fallback:
 					return [p_id]
 		return []
 
@@ -8442,6 +8486,8 @@ func _ai_ziskej_recruit_kandidaty(state_tag: String, owned: Array, pressure: flo
 		var s = float(row.get("score", 0.0))
 		if i > 0 and s < max(top_score * 0.10, top_score - 5200.0):
 			continue
+		if at_war and front_anchor_candidates > 0 and not bool(row.get("anchor", false)):
+			continue
 		out.append(int(row.get("id", -1)))
 
 	# Fallback: keep at least a few strategic anchors so recruitment can spread across orders.
@@ -8464,7 +8510,7 @@ func _ai_ziskej_recruit_kandidaty(state_tag: String, owned: Array, pressure: flo
 
 	# Rear fallback: when war has low local frontier pressure, allow high-recruit interior provinces
 	# so large states do not stall at targets=1 and end up with 0 spend despite large budgets.
-	if at_war and out.size() < min(max_targets, max(3, keep_n)):
+	if at_war and front_anchor_candidates <= 0 and out.size() < min(max_targets, max(3, keep_n)):
 		var rear_pool: Array = []
 		for p_id_any in owned:
 			var p_id = int(p_id_any)
@@ -8488,6 +8534,31 @@ func _ai_ziskej_recruit_kandidaty(state_tag: String, owned: Array, pressure: flo
 			if out.size() >= min(max_targets, max(3, keep_n) + 2):
 				break
 			out.append(int((row_any as Dictionary).get("id", -1)))
+	if at_war and front_anchor_candidates > 0:
+		var filtered: Array = []
+		var filtered_front: Array = []
+		var filtered_other: Array = []
+		for pid_any in out:
+			var pid = int(pid_any)
+			if not map_data.has(pid):
+				continue
+			if _ai_provincie_hranicni_k_neprateli(state_tag, pid, enemy_set):
+				filtered_front.append(pid)
+			else:
+				filtered_other.append(pid)
+		filtered.append_array(filtered_front)
+		# In wartime strict mode, do not pull interior provinces unless no frontline exists.
+		if filtered.is_empty():
+			filtered.append_array(filtered_other)
+		if filtered.size() >= 2:
+			var front_pressure_factor = clamp(pressure / 1800.0, 0.0, 1.0)
+			var max_front_targets = 4
+			if front_pressure_factor >= 0.35:
+				max_front_targets += 1
+			if front_pressure_factor >= 0.65:
+				max_front_targets += 1
+			max_front_targets = min(max_front_targets, filtered.size())
+			return filtered.slice(0, max_front_targets)
 	return out
 
 func _ai_spocitej_tlak_statu(state_tag: String, owned: Array) -> float:
@@ -8498,6 +8569,65 @@ func _ai_spocitej_tlak_statu(state_tag: String, owned: Array) -> float:
 	if owned.is_empty():
 		return 0.0
 	return float(total_threat) / float(max(1, owned.size()))
+
+func _ai_spocitej_recruit_pass_skore(state_tag: String, p_id: int, cap_id: int, war_focus_target: String, enemies_set: Dictionary, recruit_orders_in_province: int, at_war_state: bool) -> float:
+	if not map_data.has(p_id):
+		return -INF
+	var d = map_data[p_id]
+	var recruits = int(d.get("recruitable_population", 0))
+	var local_soldiers = int(d.get("soldiers", 0))
+	var core_owner = str(d.get("core_owner", state_tag)).strip_edges().to_upper()
+	var occupied = core_owner != "" and core_owner != state_tag
+	if occupied:
+		recruits = int(floor(float(recruits) * 0.2))
+	if recruits <= 0:
+		return -INF
+
+	var threat = _spocitej_hrozbu_nepratel_u_provincie(p_id, state_tag)
+	var is_frontline = _ma_nepratelskeho_souseda(state_tag, p_id)
+	var is_capital = bool(d.get("is_capital", false)) or p_id == cap_id
+	var enemy_front_contact = false
+	var focused_front_contact = false
+	for n_raw in (_turn_neighbors_by_province.get(p_id, d.get("neighbors", [])) as Array):
+		var n_id = int(n_raw)
+		if not map_data.has(n_id):
+			continue
+		var n_owner = _normalizuj_tag(str(_turn_owner_by_province.get(n_id, str(map_data[n_id].get("owner", "")))))
+		if n_owner == "" or n_owner == "SEA" or n_owner == state_tag:
+			continue
+		if enemies_set.has(n_owner):
+			enemy_front_contact = true
+		if war_focus_target != "" and n_owner == war_focus_target:
+			focused_front_contact = true
+	if war_focus_target == "" and enemy_front_contact:
+		focused_front_contact = true
+	if at_war_state and not enemy_front_contact:
+		return -INF
+
+	var desired_garrison = 950
+	if is_frontline:
+		desired_garrison = 1300
+	if is_capital:
+		desired_garrison = 2200
+	desired_garrison += min(1400, int(float(threat) * 0.40))
+	var deficit = max(0, desired_garrison - local_soldiers)
+
+	var score = float(recruits) * 0.20
+	score += float(threat) * 1.70
+	score += float(deficit) * 2.60
+	if focused_front_contact:
+		score += 3200.0
+	elif enemy_front_contact:
+		score += 2300.0
+	elif is_frontline:
+		score += 1200.0
+	if is_capital:
+		score += 700.0 + min(800.0, float(threat) * 0.50)
+	if at_war_state and (not is_frontline) and (not enemy_front_contact):
+		score -= 1400.0
+	if recruit_orders_in_province > 0:
+		score -= float(recruit_orders_in_province) * 1800.0
+	return score
 
 func _ai_ziskej_recruit_emergency_level(state_tag: String, owned: Array, at_war_state: bool, state_pressure: float, state_exhaustion: float) -> float:
 	if not at_war_state:
@@ -8690,6 +8820,31 @@ func _ai_vypocitej_hotovostni_rezervu(state_tag: String, owned: Array) -> float:
 	reserve += min(120.0, pressure * 0.008)
 	return reserve
 
+func _ai_uprav_hotovostni_rezervu_pro_spending(state_tag: String, reserve: float, treasury: float, at_war_state: bool, pressure: float) -> float:
+	if treasury <= 0.0:
+		return 0.0
+
+	var adjusted = max(0.0, reserve)
+	var pressure_factor = clamp(pressure / 1800.0, 0.0, 1.0)
+	var reserve_ratio_cap = 0.82
+	if at_war_state:
+		reserve_ratio_cap = 0.72 + (pressure_factor * 0.16)
+	else:
+		reserve_ratio_cap = 0.82 + (pressure_factor * 0.08)
+	reserve_ratio_cap = clamp(reserve_ratio_cap, 0.60, 0.92)
+
+	# Prevent reserve from scaling above a reasonable share of treasury.
+	adjusted = min(adjusted, treasury * reserve_ratio_cap)
+
+	# Wealthy states should always keep deployable cash so they do not stall.
+	if treasury >= 800.0:
+		var spend_floor = max(180.0, treasury * (0.22 if at_war_state else 0.15))
+		adjusted = min(adjusted, max(0.0, treasury - spend_floor))
+
+	var min_guard = AI_MIN_TREASURY_RESERVE * (1.20 if at_war_state else 1.00)
+	adjusted = max(min_guard, adjusted)
+	return clamp(adjusted, 0.0, treasury)
+
 func _ai_skore_vyzkumu(state_tag: String, project: Dictionary, pressure: float, treasury: float) -> float:
 	var mods = project.get("modifiers", {}) as Dictionary
 	var cost = max(1.0, float(project.get("cost", 1.0)))
@@ -8767,9 +8922,50 @@ func _ai_stat_ma_pristav(owned: Array) -> bool:
 			return true
 	return false
 
+func _ai_spocitej_core_defense_ohrozeni(state_tag: String, owned: Array) -> Dictionary:
+	var capital_id = _ziskej_hlavni_mesto_statu(state_tag)
+	var threatened_core_count := 0
+	var max_core_threat := 0
+	var capital_threat := 0
+	for p_id_any in owned:
+		var p_id = int(p_id_any)
+		if not map_data.has(p_id):
+			continue
+		var d = map_data[p_id]
+		if _normalizuj_tag(str(d.get("core_owner", state_tag))) != state_tag:
+			continue
+		var local_threat = _spocitej_hrozbu_nepratel_u_provincie(p_id, state_tag)
+		var frontline = _ma_nepratelskeho_souseda(state_tag, p_id)
+		var is_capital = bool(d.get("is_capital", false)) or p_id == capital_id
+		var local_threshold = 220 if is_capital else 340
+		if frontline or local_threat >= local_threshold:
+			threatened_core_count += 1
+		if local_threat > max_core_threat:
+			max_core_threat = local_threat
+		if is_capital:
+			capital_threat = local_threat
+	return {
+		"threatened_core_count": threatened_core_count,
+		"max_core_threat": max_core_threat,
+		"capital_threat": capital_threat
+	}
+
 func _ai_zvaz_stavby(state_tag: String, owned: Array, reserve: float, pressure: float) -> int:
 	var built := 0
 	if owned.is_empty():
+		return built
+	var at_war = not _ai_ziskej_nepratele_statu(state_tag).is_empty()
+	var core_threat = _ai_spocitej_core_defense_ohrozeni(state_tag, owned)
+	var threatened_core_count = int(core_threat.get("threatened_core_count", 0))
+	var max_core_threat = int(core_threat.get("max_core_threat", 0))
+	var capital_threat = int(core_threat.get("capital_threat", 0))
+	if at_war and (threatened_core_count > 0 or pressure >= 900.0 or capital_threat >= 260):
+		_ai_debug("build hold %s reason=core_defense threatened=%d max_threat=%d pressure=%.1f" % [
+			state_tag,
+			threatened_core_count,
+			max_core_threat,
+			pressure
+		])
 		return built
 
 	var has_port = _ai_stat_ma_pristav(owned)
@@ -8780,6 +8976,8 @@ func _ai_zvaz_stavby(state_tag: String, owned: Array, reserve: float, pressure: 
 	for _i in range(AI_BUILD_MAX_PER_TURN):
 		var treasury = _ziskej_kasu_statu(state_tag)
 		var budget = treasury - reserve
+		if at_war:
+			budget = min(budget, max(0.0, (treasury - reserve) * 0.25))
 		if budget < AI_BUILDING_COST_ECON:
 			break
 
@@ -8803,6 +9001,8 @@ func _ai_zvaz_stavby(state_tag: String, owned: Array, reserve: float, pressure: 
 			var is_frontline = _ma_nepratelskeho_souseda(state_tag, p_id)
 
 			if budget >= AI_BUILDING_COST_ECON:
+				if at_war and is_frontline:
+					continue
 				var score_econ = gdp * 14.0 * (1.05 - defense * 0.2)
 				if not is_frontline:
 					score_econ += 120.0
@@ -8812,7 +9012,7 @@ func _ai_zvaz_stavby(state_tag: String, owned: Array, reserve: float, pressure: 
 					best_building = 0
 					best_cost = AI_BUILDING_COST_ECON
 
-			if budget >= AI_BUILDING_COST_RECRUIT:
+			if (not at_war) and budget >= AI_BUILDING_COST_RECRUIT:
 				var score_recruit = float(recruits) * 0.09 + pressure * (0.014 + defense * 0.010)
 				if is_frontline:
 					score_recruit += 180.0
@@ -8822,7 +9022,7 @@ func _ai_zvaz_stavby(state_tag: String, owned: Array, reserve: float, pressure: 
 					best_building = 1
 					best_cost = AI_BUILDING_COST_RECRUIT
 
-			if not has_port and budget >= AI_BUILDING_COST_PORT and muze_postavit_pristav(p_id):
+			if (not at_war) and not has_port and budget >= AI_BUILDING_COST_PORT and muze_postavit_pristav(p_id):
 				var score_port = 260.0 + (gdp * (6.0 + aggression * 4.0))
 				if score_port > best_score:
 					best_score = score_port
@@ -8999,13 +9199,17 @@ func zpracuj_tah_ai():
 			var ai_hdp = _spocitej_hdp_statu(owner_tag)
 			ai_kasy[owner_tag] = ai_hdp * 0.05
 		var treasury_before = _ziskej_kasu_statu(owner_tag)
+		var enemies_state = _ai_ziskej_nepratele_statu(owner_tag)
+		var at_war_state = not enemies_state.is_empty()
 
 		_ai_zvaz_presun_hlavniho_mesta(owner_tag)
-		var treasury_reserve = _ai_vypocitej_hotovostni_rezervu(owner_tag, owned)
+		var treasury_reserve_raw = _ai_vypocitej_hotovostni_rezervu(owner_tag, owned)
+		var treasury_reserve = treasury_reserve_raw
 
 		var ai_income_slice_counter := 0
 		var prijmova_sazba = ziskej_prijmovou_sazbu_hdp(owner_tag)
 		var upkeep_za_vojaka = ziskej_udrzbu_za_vojaka(owner_tag)
+		var income_gained_this_turn := 0.0
 		for p_id in owned:
 			if not map_data.has(p_id):
 				continue
@@ -9014,17 +9218,33 @@ func zpracuj_tah_ai():
 			var vojaci = int(d_income.get("soldiers", 0))
 			var prijem = (gdp * prijmova_sazba) - (vojaci * upkeep_za_vojaka)
 			ai_kasy[owner_tag] += prijem
+			income_gained_this_turn += prijem
 			ai_income_slice_counter = await _turn_slice_wait(ai_income_slice_counter, TURN_FRAME_SLICE_AI)
 
 		if ai_kasy[owner_tag] < -100.0:
 			_vyres_bankrot(owner_tag)
 
 		var state_pressure = _ai_spocitej_tlak_statu(owner_tag, owned)
+		treasury_reserve = _ai_uprav_hotovostni_rezervu_pro_spending(owner_tag, treasury_reserve_raw, _ziskej_kasu_statu(owner_tag), at_war_state, state_pressure)
+		_ai_debug("reserve tune %s raw=%.2f adjusted=%.2f treasury=%.2f war=%s pressure=%.1f" % [
+			owner_tag,
+			treasury_reserve_raw,
+			treasury_reserve,
+			_ziskej_kasu_statu(owner_tag),
+			str(at_war_state),
+			state_pressure
+		])
+		var spend_build_this_turn := 0.0
+		var spend_lab_this_turn := 0.0
 		# Temporary balance change: disable AI generic research projects (VYZKUM_PROJEKTY)
 		# so AI does not gain an advantage over the player through this system.
 		# _ai_zvaz_vyzkum(owner_tag, treasury_reserve, state_pressure)
+		var treasury_before_build = _ziskej_kasu_statu(owner_tag)
 		_ai_zvaz_stavby(owner_tag, owned, treasury_reserve, state_pressure)
+		spend_build_this_turn = max(0.0, treasury_before_build - _ziskej_kasu_statu(owner_tag))
+		var treasury_before_lab = _ziskej_kasu_statu(owner_tag)
 		_ai_zvaz_armadni_lab(owner_tag, treasury_reserve)
+		spend_lab_this_turn = max(0.0, treasury_before_lab - _ziskej_kasu_statu(owner_tag))
 
 		var cena_za_vojaka = max(0.001, ziskej_cenu_za_vojaka(owner_tag))
 
@@ -9032,8 +9252,25 @@ func zpracuj_tah_ai():
 		var state_exhaustion = _ai_spocitej_war_exhaustion(owner_tag)
 		var state_mindset = _ai_ziskej_mindset(owner_tag)
 		var state_attack_bias = float(state_mindset.get("attack_bias", 0.5))
-		var at_war_state = not _ai_ziskej_nepratele_statu(owner_tag).is_empty()
+		var strategic_goal = _ai_ziskej_strategicky_cil(owner_tag)
+		var primary_front = _ai_ziskej_primarni_front(owner_tag)
+		var goal_target = _normalizuj_tag(str(strategic_goal.get("target", "")))
+		var front_target = _normalizuj_tag(str(primary_front.get("target", "")))
+		var war_focus_target = front_target if front_target != "" else goal_target
+		var enemies_set: Dictionary = {}
+		for e_any in enemies_state:
+			var e_tag = _normalizuj_tag(str(e_any))
+			if e_tag != "":
+				enemies_set[e_tag] = true
+		var core_defense_threat = _ai_spocitej_core_defense_ohrozeni(owner_tag, owned)
+		var threatened_core_count = int(core_defense_threat.get("threatened_core_count", 0))
+		var max_core_threat = int(core_defense_threat.get("max_core_threat", 0))
 		var recruit_emergency_level = _ai_ziskej_recruit_emergency_level(owner_tag, owned, at_war_state, state_pressure, state_exhaustion)
+		var frontline_crisis = at_war_state and (
+			recruit_emergency_level >= 0.45
+			or threatened_core_count > 0
+			or state_pressure >= 850.0
+		)
 		var recruit_spend_factor = 0.22
 		if at_war_state:
 			recruit_spend_factor = 0.38
@@ -9042,7 +9279,17 @@ func zpracuj_tah_ai():
 		recruit_spend_factor += state_attack_bias * 0.08
 		recruit_spend_factor -= state_exhaustion * 0.10
 		recruit_spend_factor += recruit_emergency_level * AI_RECRUIT_EMERGENCY_SPEND_BOOST
+		if at_war_state and threatened_core_count > 0:
+			recruit_spend_factor += 0.16
+		if at_war_state and max_core_threat >= 450:
+			recruit_spend_factor += 0.06
+		if frontline_crisis:
+			recruit_spend_factor += 0.18
 		var spend_cap_max = 0.60 if recruit_emergency_level < 0.01 else 0.82
+		if at_war_state and threatened_core_count > 0:
+			spend_cap_max = max(spend_cap_max, 0.90)
+		if frontline_crisis:
+			spend_cap_max = max(spend_cap_max, 0.96)
 		recruit_spend_factor = clamp(recruit_spend_factor, 0.16, spend_cap_max)
 		var recruit_spend_cap = max(0.0, (ai_kasy[owner_tag] - treasury_reserve) * recruit_spend_factor)
 		var recruit_order_cap = 2
@@ -9052,6 +9299,10 @@ func zpracuj_tah_ai():
 			recruit_order_cap += 1
 		if state_attack_bias >= 0.70:
 			recruit_order_cap += 1
+		if at_war_state and threatened_core_count > 0:
+			recruit_order_cap += 2
+		if frontline_crisis:
+			recruit_order_cap += 3
 		# Large war economies can still under-spend with low order caps even at full order usage.
 		# Scale the cap by budget and target breadth so majors can distribute recruitment better.
 		if at_war_state:
@@ -9068,6 +9319,8 @@ func zpracuj_tah_ai():
 		if at_war_state and recruit_emergency_level > 0.01:
 			recruit_order_cap += int(round(recruit_emergency_level * float(AI_RECRUIT_EMERGENCY_ORDER_BONUS)))
 		var recruit_order_hard_cap = 8 if recruit_emergency_level < 0.01 else AI_RECRUIT_EMERGENCY_ORDER_CAP
+		if frontline_crisis:
+			recruit_order_hard_cap = max(recruit_order_hard_cap, 14)
 		recruit_order_cap = min(recruit_order_cap, recruit_order_hard_cap)
 		var manpower_estimate_units = _ai_odhad_dostupnych_rekrutu(owner_tag, owned, recruit_targets, at_war_state)
 		var throughput_estimate_units = _ai_odhad_max_rekrutu_na_tah(owner_tag, recruit_targets, recruit_order_cap, at_war_state, state_pressure, recruit_spend_cap, recruit_emergency_level)
@@ -9075,7 +9328,19 @@ func zpracuj_tah_ai():
 		if est_units <= 0:
 			est_units = max(0, throughput_estimate_units)
 		var realistic_spend_cap = float(max(0, est_units)) * cena_za_vojaka
+		if frontline_crisis:
+			realistic_spend_cap *= 1.75
 		recruit_spend_cap = min(recruit_spend_cap, realistic_spend_cap)
+		if frontline_crisis:
+			var crisis_available = max(0.0, ai_kasy[owner_tag] - treasury_reserve)
+			var crisis_floor = crisis_available * 0.62
+			recruit_spend_cap = max(recruit_spend_cap, min(crisis_floor, realistic_spend_cap))
+			_ai_debug("recruit crisis %s lvl=%.2f cap=%.2f orders=%d" % [
+				owner_tag,
+				recruit_emergency_level,
+				recruit_spend_cap,
+				recruit_order_cap
+			])
 		_ai_debug("recruit budget %s spend_factor=%.0f%% spend_cap=%.2f order_cap=%d war=%s pressure=%.1f exhaustion=%.2f" % [
 			owner_tag,
 			recruit_spend_factor * 100.0,
@@ -9094,18 +9359,76 @@ func zpracuj_tah_ai():
 			treasury_reserve,
 			_ziskej_kasu_statu(owner_tag)
 		])
+		if at_war_state:
+			_ai_debug("recruit focus %s target=%s enemies=%d" % [
+				owner_tag,
+				war_focus_target if war_focus_target != "" else "any_enemy_front",
+				enemies_state.size()
+			])
 		var ai_recruit_slice_counter := 0
 		var recruited_total := 0
 		var recruit_orders_done := 0
 		var recruit_spent_this_turn := 0.0
+		var recruit_orders_by_province: Dictionary = {}
+		var recruit_capital_id = _ziskej_hlavni_mesto_statu(owner_tag)
+		var enemy_front_threat: Dictionary = {}
+		var enemy_front_orders: Dictionary = {}
+		if at_war_state:
+			for e_key_any in enemies_set.keys():
+				var e_key = _normalizuj_tag(str(e_key_any))
+				if e_key == "":
+					continue
+				enemy_front_threat[e_key] = 0.0
+				enemy_front_orders[e_key] = 0
+			for p_any in owned:
+				var p_id_scan = int(p_any)
+				if p_id_scan < 0 or not map_data.has(p_id_scan):
+					continue
+				var local_scan_threat = float(_spocitej_hrozbu_nepratel_u_provincie(p_id_scan, owner_tag))
+				for e_key_any in enemy_front_threat.keys():
+					var e_key = str(e_key_any)
+					if _ai_provincie_hranicni_k_targetu(owner_tag, p_id_scan, e_key):
+						enemy_front_threat[e_key] = float(enemy_front_threat.get(e_key, 0.0)) + max(1.0, local_scan_threat)
 		var max_recruit_passes = max(1, recruit_order_cap)
 		for pass_idx in range(max_recruit_passes):
 			if recruit_orders_done >= recruit_order_cap:
 				break
 			if recruit_spent_this_turn >= recruit_spend_cap:
 				break
+			var war_phase = 0
+			if at_war_state:
+				if pass_idx >= 2:
+					war_phase = 1
+				if pass_idx >= 4:
+					war_phase = 2
+			var preferred_enemy_front = ""
+			if at_war_state and war_phase <= 1 and not enemy_front_threat.is_empty():
+				var total_front_threat := 0.0
+				for t_any in enemy_front_threat.values():
+					total_front_threat += float(t_any)
+				var best_deficit := -INF
+				for e_key_any in enemy_front_threat.keys():
+					var e_key = str(e_key_any)
+					var e_threat = float(enemy_front_threat.get(e_key, 0.0))
+					if e_threat <= 0.0:
+						continue
+					var threat_share = e_threat / max(1.0, total_front_threat)
+					var desired_orders = threat_share * float(max(1, recruit_orders_done + 1))
+					var current_orders = float(int(enemy_front_orders.get(e_key, 0)))
+					var deficit = desired_orders - current_orders
+					if deficit > best_deficit:
+						best_deficit = deficit
+						preferred_enemy_front = e_key
+			var ordered_targets = recruit_targets.duplicate()
+			ordered_targets.sort_custom(func(a, b):
+				var p_a = int(a)
+				var p_b = int(b)
+				var s_a = _ai_spocitej_recruit_pass_skore(owner_tag, p_a, recruit_capital_id, war_focus_target, enemies_set, int(recruit_orders_by_province.get(p_a, 0)), at_war_state)
+				var s_b = _ai_spocitej_recruit_pass_skore(owner_tag, p_b, recruit_capital_id, war_focus_target, enemies_set, int(recruit_orders_by_province.get(p_b, 0)), at_war_state)
+				return s_a > s_b
+			)
 			var pass_had_order = false
-			for p_id in recruit_targets:
+			for p_id in ordered_targets:
 				if recruit_orders_done >= recruit_order_cap:
 					break
 				if recruit_spent_this_turn >= recruit_spend_cap:
@@ -9118,6 +9441,45 @@ func zpracuj_tah_ai():
 				var local_threat = _spocitej_hrozbu_nepratel_u_provincie(p_id, owner_tag)
 				var local_frontline = _ma_nepratelskeho_souseda(owner_tag, p_id)
 				var is_capital = bool(d.get("is_capital", false)) or p_id == _ziskej_hlavni_mesto_statu(owner_tag)
+				var existing_orders_here = int(recruit_orders_by_province.get(p_id, 0))
+				if at_war_state and preferred_enemy_front != "" and war_phase <= 1:
+					if not _ai_provincie_hranicni_k_targetu(owner_tag, p_id, preferred_enemy_front):
+						ai_recruit_slice_counter = await _turn_slice_wait(ai_recruit_slice_counter, TURN_FRAME_SLICE_AI)
+						continue
+				if at_war_state and ordered_targets.size() >= 3 and pass_idx <= 2 and existing_orders_here >= 1:
+					ai_recruit_slice_counter = await _turn_slice_wait(ai_recruit_slice_counter, TURN_FRAME_SLICE_AI)
+					continue
+				if at_war_state and existing_orders_here >= 2:
+					ai_recruit_slice_counter = await _turn_slice_wait(ai_recruit_slice_counter, TURN_FRAME_SLICE_AI)
+					continue
+				var enemy_front_contact = false
+				var focused_front_contact = false
+				if at_war_state:
+					for n_raw in (_turn_neighbors_by_province.get(p_id, d.get("neighbors", [])) as Array):
+						var n_id = int(n_raw)
+						if not map_data.has(n_id):
+							continue
+						var n_owner = _normalizuj_tag(str(_turn_owner_by_province.get(n_id, str(map_data[n_id].get("owner", "")))))
+						if n_owner == "" or n_owner == "SEA" or n_owner == owner_tag:
+							continue
+						if enemies_set.has(n_owner):
+							enemy_front_contact = true
+						if war_focus_target != "" and n_owner == war_focus_target:
+							focused_front_contact = true
+					if war_focus_target == "" and enemy_front_contact:
+						focused_front_contact = true
+					if not enemy_front_contact:
+						ai_recruit_slice_counter = await _turn_slice_wait(ai_recruit_slice_counter, TURN_FRAME_SLICE_AI)
+						continue
+					if war_phase == 0 and not enemy_front_contact:
+						ai_recruit_slice_counter = await _turn_slice_wait(ai_recruit_slice_counter, TURN_FRAME_SLICE_AI)
+						continue
+					if war_phase == 1 and not focused_front_contact and not enemy_front_contact and not local_frontline and not is_capital:
+						ai_recruit_slice_counter = await _turn_slice_wait(ai_recruit_slice_counter, TURN_FRAME_SLICE_AI)
+						continue
+				if at_war_state and (not local_frontline) and (not is_capital) and local_threat < 260 and pass_idx <= 2 and recruit_targets.size() >= 3:
+					ai_recruit_slice_counter = await _turn_slice_wait(ai_recruit_slice_counter, TURN_FRAME_SLICE_AI)
+					continue
 				var desired_garrison = 950
 				if local_frontline:
 					desired_garrison = 1300
@@ -9205,6 +9567,16 @@ func zpracuj_tah_ai():
 					recruit_spent_this_turn += recruit_cost
 					recruited_total += pocet_k_verbovani
 					recruit_orders_done += 1
+					recruit_orders_by_province[p_id] = existing_orders_here + 1
+					if at_war_state and not enemy_front_orders.is_empty():
+						var touched_front = false
+						for e_key_any in enemy_front_orders.keys():
+							var e_key = str(e_key_any)
+							if _ai_provincie_hranicni_k_targetu(owner_tag, p_id, e_key):
+								enemy_front_orders[e_key] = int(enemy_front_orders.get(e_key, 0)) + 1
+								touched_front = true
+						if (not touched_front) and preferred_enemy_front != "":
+							enemy_front_orders[preferred_enemy_front] = int(enemy_front_orders.get(preferred_enemy_front, 0)) + 1
 					pass_had_order = true
 				ai_recruit_slice_counter = await _turn_slice_wait(ai_recruit_slice_counter, TURN_FRAME_SLICE_AI)
 			if not pass_had_order:
@@ -9220,6 +9592,8 @@ func zpracuj_tah_ai():
 			for p_id_any in owned:
 				var p_id = int(p_id_any)
 				if not map_data.has(p_id):
+					continue
+				if not _ai_provincie_hranicni_k_neprateli(owner_tag, p_id, enemies_set):
 					continue
 				var d_em = map_data[p_id]
 				var em_recruits = int(d_em.get("recruitable_population", 0))
@@ -9313,6 +9687,36 @@ func zpracuj_tah_ai():
 			recruit_orders_done,
 			recruit_order_cap
 		])
+		if at_war_state and not recruit_orders_by_province.is_empty():
+			var peak_orders = 0
+			for v_any in recruit_orders_by_province.values():
+				peak_orders = max(peak_orders, int(v_any))
+			_ai_debug("recruit distribution %s provinces_used=%d peak_orders_in_one=%d" % [
+				owner_tag,
+				recruit_orders_by_province.size(),
+				peak_orders
+			])
+			if not enemy_front_orders.is_empty():
+				var front_parts: Array[String] = []
+				for e_key_any in enemy_front_orders.keys():
+					var e_key = str(e_key_any)
+					front_parts.append("%s:%d" % [e_key, int(enemy_front_orders.get(e_key, 0))])
+				_ai_debug("recruit front split %s %s" % [owner_tag, ", ".join(front_parts)])
+
+		var treasury_after = _ziskej_kasu_statu(owner_tag)
+		var treasury_after_income = treasury_before + income_gained_this_turn
+		var total_spent_this_turn = max(0.0, treasury_after_income - treasury_after)
+		var spend_other_this_turn = max(0.0, total_spent_this_turn - (spend_build_this_turn + spend_lab_this_turn + recruit_spent_this_turn))
+		_ai_debug_last_spending_by_state[owner_tag] = {
+			"recruit": recruit_spent_this_turn,
+			"lab": spend_lab_this_turn,
+			"build": spend_build_this_turn,
+			"other": spend_other_this_turn,
+			"total": total_spent_this_turn,
+			"income": income_gained_this_turn,
+			"treasury_before": treasury_before,
+			"treasury_after": treasury_after
+		}
 
 		ai_state_slice_counter = await _turn_slice_wait(ai_state_slice_counter, TURN_FRAME_SLICE_AI_STATES)
 	ai_phases["economy_recruit"] = Time.get_ticks_msec() - ai_phase_ms
@@ -10492,6 +10896,7 @@ func ziskej_ai_debug_snapshot(state_tag: String = "") -> Dictionary:
 	var op_plan = _ai_ziskej_operacni_plan(clean)
 	var profile = _ai_ziskej_profil(clean)
 	var recruit_targets = _ai_ziskej_recruit_kandidaty(clean, owned, pressure)
+	var spend = _ai_debug_last_spending_by_state.get(clean, {}) as Dictionary
 
 	return {
 		"ok": true,
@@ -10511,6 +10916,11 @@ func ziskej_ai_debug_snapshot(state_tag: String = "") -> Dictionary:
 		"attack_bias": float(profile.get("attack_bias", 0.5)),
 		"defense_bias": float(profile.get("defense_bias", 0.5)),
 		"aggression": float(profile.get("aggression", 0.5)),
+		"spend_recruit": float(spend.get("recruit", 0.0)),
+		"spend_lab": float(spend.get("lab", 0.0)),
+		"spend_build": float(spend.get("build", 0.0)),
+		"spend_other": float(spend.get("other", 0.0)),
+		"spend_total": float(spend.get("total", 0.0)),
 		"recruit_targets": recruit_targets,
 		"owned_provinces": owned.size()
 	}

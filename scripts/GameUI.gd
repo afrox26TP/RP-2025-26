@@ -1366,6 +1366,13 @@ func _aktualizuj_ai_debug_overview(owner_tag: String, je_hracuv_stat: bool) -> v
 		float(snap.get("defense_bias", 0.5)),
 		recruit_targets.size()
 	])
+	lines.append("Spend: recruit %s | lab %s | build %s | other %s | total %s" % [
+		_format_money_auto(float(snap.get("spend_recruit", 0.0)), 2),
+		_format_money_auto(float(snap.get("spend_lab", 0.0)), 2),
+		_format_money_auto(float(snap.get("spend_build", 0.0)), 2),
+		_format_money_auto(float(snap.get("spend_other", 0.0)), 2),
+		_format_money_auto(float(snap.get("spend_total", 0.0)), 2)
+	])
 
 	ai_debug_label.text = "\n".join(lines)
 	ai_debug_separator.show()
