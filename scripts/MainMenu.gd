@@ -166,7 +166,7 @@ const UI_TEXTS := {
 		"fullscreen": "Fullscreen",
 		"vsync": "VSync",
 		"potato_mode": "Potato mode (low-end PC)",
-		"ai_debug_mode": "AI debug mode (decision logs)",
+		"ai_debug_mode": "Debug mode",
 		"master_volume": "Master volume",
 		"reset": "Reset defaults",
 		"apply": "Apply",
@@ -203,7 +203,7 @@ const UI_TEXTS := {
 		"fullscreen": "Cela obrazovka",
 		"vsync": "VSync",
 		"potato_mode": "Potato mode (slabe PC)",
-		"ai_debug_mode": "AI debug mode (AI debug vypisy)",
+		"ai_debug_mode": "Debug mode",
 		"master_volume": "Hlavni hlasitost",
 		"reset": "Obnovit vychozi",
 		"apply": "Pouzit",
@@ -553,7 +553,7 @@ func _ensure_ai_aggression_control() -> void:
 
 	_browser_ai_debug_mode_check = CheckBox.new()
 	_browser_ai_debug_mode_check.name = "BrowserAIDebugModeCheck"
-	_browser_ai_debug_mode_check.text = "AI debug mode"
+	_browser_ai_debug_mode_check.text = "Debug mode"
 	_browser_ai_debug_mode_check.button_pressed = bool(nastaveni_data.get("other", {}).get("ai_debug_mode", false))
 	_browser_ai_debug_mode_check.toggled.connect(_on_browser_ai_debug_mode_toggled)
 	_browser_current_settings_vbox.add_child(_browser_ai_debug_mode_check)
@@ -698,13 +698,13 @@ func _nastav_tooltipy_ui() -> void:
 	if _browser_potato_mode_check:
 		_browser_potato_mode_check.tooltip_text = "Quick toggle for potato mode in current game setup."
 	if _browser_ai_debug_mode_check:
-		_browser_ai_debug_mode_check.tooltip_text = "Shows detailed AI decision logs in output."
+		_browser_ai_debug_mode_check.tooltip_text = "Shows debug panel and detailed diagnostics in output."
 	if _browser_settings_country_separator:
 		_browser_settings_country_separator.tooltip_text = "Visual separator between setup settings and country selection."
 	if potato_mode_check:
 		potato_mode_check.tooltip_text = "Turns on low-detail rendering and power-saving updates for weak PCs."
 	if ai_debug_mode_check:
-		ai_debug_mode_check.tooltip_text = "Enables detailed AI debug prints (money, plans, war/recruit decisions)."
+		ai_debug_mode_check.tooltip_text = "Shows debug panel and detailed diagnostics in output."
 	TooltipUtilsScript.apply_default_tooltips(self)
 
 func _ensure_potato_mode_checkbox() -> void:
@@ -728,7 +728,7 @@ func _ensure_ai_debug_mode_checkbox() -> void:
 
 	ai_debug_mode_check = CheckBox.new()
 	ai_debug_mode_check.name = "AIDebugModeCheck"
-	ai_debug_mode_check.text = "AI debug mode (decision logs)"
+	ai_debug_mode_check.text = "Debug mode"
 
 	var insert_index := settings_content.get_child_count()
 	if master_volume_label and master_volume_label.get_parent() == settings_content:
@@ -872,7 +872,8 @@ func _nacti_nastaveni() -> void:
 	nastaveni_data["other"]["fullscreen"] = bool(cfg.get_value("other", "fullscreen", nastaveni_data["other"]["fullscreen"]))
 	nastaveni_data["other"]["vsync"] = bool(cfg.get_value("other", "vsync", nastaveni_data["other"]["vsync"]))
 	nastaveni_data["other"]["potato_mode"] = bool(cfg.get_value("other", "potato_mode", nastaveni_data["other"]["potato_mode"]))
-	nastaveni_data["other"]["ai_debug_mode"] = bool(cfg.get_value("other", "ai_debug_mode", nastaveni_data["other"]["ai_debug_mode"]))
+	# Always start with AI debug disabled, regardless of previously saved value.
+	nastaveni_data["other"]["ai_debug_mode"] = false
 	nastaveni_data["other"]["master_volume"] = float(cfg.get_value("other", "master_volume", nastaveni_data["other"]["master_volume"]))
 
 func _uloz_nastaveni() -> void:

@@ -1,9 +1,9 @@
 ﻿extends CanvasLayer
 
 const TooltipUtilsScript = preload("res://scripts/TooltipUtils.gd")
-const OVERVIEW_TARGET_WIDTH := 360.0
+const OVERVIEW_TARGET_WIDTH := 324.0
 const OVERVIEW_MIN_WIDTH := 324.0
-const OVERVIEW_MAX_WIDTH := 420.0
+const OVERVIEW_MAX_WIDTH := 324.0
 const OVERVIEW_TARGET_HEIGHT := 900.0
 const OVERVIEW_MIN_HEIGHT := 560.0
 const OVERVIEW_SCREEN_MARGIN := 10.0
@@ -71,7 +71,7 @@ var _military_access_btn: Button
 var army_power_label: Label
 var vassals_label: Label
 var war_reparations_label: Label
-var ai_debug_separator: HSeparator
+var ai_debug_panel: PanelContainer
 var ai_debug_label: RichTextLabel
 
 # --- NEW: Action nodes ---
@@ -288,6 +288,10 @@ var _turn_loading_anim_time: float = 0.0
 var _turn_loading_anim_step: int = 0
 var _turn_loading_active: bool = false
 var _turn_loading_suppressed: bool = false
+var _debug_turn_start_ms: int = -1
+var _debug_last_turn_ms: int = -1
+var _debug_turn_total_ms: int = 0
+var _debug_turn_samples: int = 0
 var _country_overview_stats_cache: Dictionary = {}
 
 const POPUP_TOP_MARGIN := 6
@@ -570,6 +574,15 @@ func _vytvor_turn_loading_overlay() -> void:
 	_turn_loading_overlay.add_child(_turn_loading_label)
 
 func _on_zpracovani_tahu_zmeneno(aktivni: bool) -> void:
+	var now_ms := Time.get_ticks_msec()
+	if aktivni:
+		_debug_turn_start_ms = now_ms
+	elif _debug_turn_start_ms >= 0:
+		_debug_last_turn_ms = max(0, now_ms - _debug_turn_start_ms)
+		_debug_turn_total_ms += _debug_last_turn_ms
+		_debug_turn_samples += 1
+		_debug_turn_start_ms = -1
+
 	_turn_loading_active = aktivni
 	_turn_loading_anim_time = 0.0
 	_turn_loading_anim_step = 0
@@ -1272,55 +1285,80 @@ func _zajisti_mirove_overview_labely() -> void:
 		vbox.move_child(war_reparations_label, action_separator.get_index())
 
 func _zajisti_ai_debug_overview_labely() -> void:
-	var vbox = get_node_or_null("OverviewPanel/VBoxContainer") as VBoxContainer
-	if vbox == null:
-		return
+	ai_debug_panel = get_node_or_null("AIDebugPanel") as PanelContainer
+	if ai_debug_panel == null:
+		ai_debug_panel = PanelContainer.new()
+		ai_debug_panel.name = "AIDebugPanel"
+		ai_debug_panel.anchor_left = 1.0
+		ai_debug_panel.anchor_top = 0.0
+		ai_debug_panel.anchor_right = 1.0
+		ai_debug_panel.anchor_bottom = 0.0
+		ai_debug_panel.custom_minimum_size = Vector2(420.0, 420.0)
 
-	ai_debug_separator = get_node_or_null("OverviewPanel/VBoxContainer/AIDebugSeparator") as HSeparator
-	if ai_debug_separator == null:
-		ai_debug_separator = HSeparator.new()
-		ai_debug_separator.name = "AIDebugSeparator"
-		vbox.add_child(ai_debug_separator)
+		if panel:
+			var source_style = panel.get_theme_stylebox("panel")
+			if source_style:
+				ai_debug_panel.add_theme_stylebox_override("panel", source_style.duplicate())
 
-	ai_debug_label = get_node_or_null("OverviewPanel/VBoxContainer/AIDebugLabel") as RichTextLabel
-	if ai_debug_label == null:
+		var margin := MarginContainer.new()
+		margin.add_theme_constant_override("margin_left", 12)
+		margin.add_theme_constant_override("margin_top", 10)
+		margin.add_theme_constant_override("margin_right", 12)
+		margin.add_theme_constant_override("margin_bottom", 10)
+		ai_debug_panel.add_child(margin)
+
 		ai_debug_label = RichTextLabel.new()
 		ai_debug_label.name = "AIDebugLabel"
 		ai_debug_label.bbcode_enabled = true
 		ai_debug_label.scroll_active = false
-		ai_debug_label.fit_content = true
+		ai_debug_label.fit_content = false
 		ai_debug_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		ai_debug_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		ai_debug_label.custom_minimum_size = Vector2(0, 94)
-		vbox.add_child(ai_debug_label)
+		ai_debug_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		ai_debug_label.custom_minimum_size = Vector2(0, 392)
+		margin.add_child(ai_debug_label)
 
-	if action_separator and action_separator.get_parent() == vbox:
-		vbox.move_child(ai_debug_separator, action_separator.get_index())
-		vbox.move_child(ai_debug_label, action_separator.get_index())
+		add_child(ai_debug_panel)
+	else:
+		ai_debug_label = ai_debug_panel.get_node_or_null("MarginContainer/AIDebugLabel") as RichTextLabel
 
-	ai_debug_separator.hide()
-	ai_debug_label.hide()
+	_pozicuj_ai_debug_panel()
+	ai_debug_panel.hide()
+
+func _pozicuj_ai_debug_panel() -> void:
+	if ai_debug_panel == null or not is_instance_valid(ai_debug_panel):
+		return
+	var side_margin := 8.0
+	var top_margin := 8.0
+	var y_pos := top_margin
+
+	var topbar_panel = get_tree().current_scene.get_node_or_null("TopBar/Panel") as Control
+	if topbar_panel:
+		y_pos = topbar_panel.global_position.y + topbar_panel.size.y + top_margin
+
+	var width = ai_debug_panel.custom_minimum_size.x
+	var height = ai_debug_panel.custom_minimum_size.y
+	ai_debug_panel.offset_left = -width - side_margin
+	ai_debug_panel.offset_top = y_pos
+	ai_debug_panel.offset_right = -side_margin
+	ai_debug_panel.offset_bottom = y_pos + height
 
 func _aktualizuj_ai_debug_overview(owner_tag: String, je_hracuv_stat: bool) -> void:
-	if ai_debug_label == null or ai_debug_separator == null:
+	if ai_debug_label == null or ai_debug_panel == null:
 		return
 	if not GameManager or not GameManager.has_method("je_ai_debug_mode_zapnuty"):
-		ai_debug_label.hide()
-		ai_debug_separator.hide()
+		ai_debug_panel.hide()
 		return
 	if not bool(GameManager.je_ai_debug_mode_zapnuty()) or je_hracuv_stat:
-		ai_debug_label.hide()
-		ai_debug_separator.hide()
+		ai_debug_panel.hide()
 		return
 	if not GameManager.has_method("ziskej_ai_debug_snapshot"):
-		ai_debug_label.hide()
-		ai_debug_separator.hide()
+		ai_debug_panel.hide()
 		return
 
 	var snap = GameManager.ziskej_ai_debug_snapshot(owner_tag) as Dictionary
 	if not bool(snap.get("ok", false)):
-		ai_debug_label.hide()
-		ai_debug_separator.hide()
+		ai_debug_panel.hide()
 		return
 
 	var enemies = snap.get("enemies", []) as Array
@@ -1343,7 +1381,22 @@ func _aktualizuj_ai_debug_overview(owner_tag: String, je_hracuv_stat: bool) -> v
 
 	var recruit_targets = snap.get("recruit_targets", []) as Array
 	var lines: Array[String] = []
-	lines.append("[b]AI Debug[/b]")
+	var fps_now = Engine.get_frames_per_second()
+	var turn_state = "processing" if _turn_loading_active else "idle"
+	var turn_last_text = "n/a" if _debug_last_turn_ms < 0 else "%d ms" % _debug_last_turn_ms
+	var turn_avg_text = "n/a"
+	if _debug_turn_samples > 0:
+		turn_avg_text = "%d ms" % int(round(float(_debug_turn_total_ms) / float(_debug_turn_samples)))
+
+	lines.append("[b]Debug mode[/b]")
+	lines.append("FPS: %d | Turn state: %s" % [fps_now, turn_state])
+	lines.append("Turn response: last %s | avg %s | samples %d" % [
+		turn_last_text,
+		turn_avg_text,
+		_debug_turn_samples
+	])
+	lines.append("------------------------------")
+	lines.append("[b]AI diagnostics[/b]")
 	lines.append("Treasury: %s | Net income: %s/turn" % [
 		_format_money_auto(float(snap.get("treasury", 0.0)), 2),
 		_format_money_auto(float(snap.get("net_income", 0.0)), 2)
@@ -1375,8 +1428,8 @@ func _aktualizuj_ai_debug_overview(owner_tag: String, je_hracuv_stat: bool) -> v
 	])
 
 	ai_debug_label.text = "\n".join(lines)
-	ai_debug_separator.show()
-	ai_debug_label.show()
+	_pozicuj_ai_debug_panel()
+	ai_debug_panel.show()
 
 func _zajisti_ideology_controls() -> void:
 	var vbox = get_node_or_null("OverviewPanel/VBoxContainer")
@@ -3029,6 +3082,7 @@ func _on_system_message_ok_pressed():
 
 func _on_viewport_resized():
 	_aktualizuj_overview_panel_layout()
+	_pozicuj_ai_debug_panel()
 	_aktualizuj_pozice_popupu()
 	_pozicuj_pause_menu()
 	_pozicuj_save_load_popupy()
@@ -3051,8 +3105,7 @@ func _aktualizuj_overview_panel_layout() -> void:
 	var viewport_size = get_viewport().get_visible_rect().size
 	var fit_h = max(OVERVIEW_MIN_HEIGHT, viewport_size.y - OVERVIEW_SCREEN_MARGIN * 2.0)
 	var target_h = min(OVERVIEW_TARGET_HEIGHT, fit_h)
-	var target_w = clamp(viewport_size.x * 0.23, OVERVIEW_MIN_WIDTH, OVERVIEW_MAX_WIDTH)
-	target_w = max(target_w, OVERVIEW_TARGET_WIDTH)
+	var target_w = OVERVIEW_TARGET_WIDTH
 
 	panel.offset_right = target_w
 	panel.offset_bottom = target_h
@@ -3064,8 +3117,6 @@ func _aktualizuj_overview_panel_layout() -> void:
 
 	if ideology_effects_label:
 		ideology_effects_label.custom_minimum_size = Vector2(0, 120 if compact else 180)
-	if ai_debug_label:
-		ai_debug_label.custom_minimum_size = Vector2(0, 72 if compact else 96)
 
 func _input(event):
 	if event is InputEventKey and event.pressed and not event.is_echo():
@@ -5861,8 +5912,8 @@ func _vytvor_settings_dialog() -> void:
 	settings_content.add_child(_settings_potato_mode_check)
 
 	_settings_ai_debug_mode_check = CheckBox.new()
-	_settings_ai_debug_mode_check.text = "AI debug mode (decision logs)"
-	_settings_ai_debug_mode_check.tooltip_text = "Prints detailed AI decisions, budgets, and war evaluation in output."
+	_settings_ai_debug_mode_check.text = "Debug mode"
+	_settings_ai_debug_mode_check.tooltip_text = "Shows debug panel and detailed diagnostics in output."
 	settings_content.add_child(_settings_ai_debug_mode_check)
 
 	settings_content.add_child(HSeparator.new())
@@ -6024,7 +6075,8 @@ func _nacti_settings_do_ingame_ui() -> void:
 		var potato_other = bool(cfg.get_value("other", "potato_mode", potato_display))
 		_settings_potato_mode_check.button_pressed = potato_display or potato_other
 		if _settings_ai_debug_mode_check:
-			_settings_ai_debug_mode_check.button_pressed = bool(cfg.get_value("other", "ai_debug_mode", false))
+			# Always initialize debug mode as disabled at startup.
+			_settings_ai_debug_mode_check.button_pressed = false
 		_settings_volume_slider.value = clamp(float(cfg.get_value("audio", "master_volume", 1.0)), 0.0, 1.0)
 		_settings_camera_slider.value = float(cfg.get_value("controls", "camera_speed", 1000.0))
 		_settings_zoom_slider.value = clamp(float(cfg.get_value("controls", "zoom_speed", 0.1)), 0.03, 0.35)

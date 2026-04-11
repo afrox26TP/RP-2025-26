@@ -2,10 +2,10 @@
 
 [ext_resource type="Script" uid="uid://de0rwo7p0eqcp" path="res://scripts/map_loader.gd" id="1_4xfga"]
 [ext_resource type="Shader" uid="uid://173chww7nkdg" path="res://shaders/province_highlight.gdshader" id="2_0cso3"]
-[ext_resource type="Texture2D" uid="uid://76qf3w57atlm" path="res://map_data/PoliticalMap.png" id="2_2klcf"]
-[ext_resource type="Texture2D" uid="uid://bq0m8m4v7cg1d" path="res://map_data/ProvinceMap.png" id="3_2klcf"]
+[ext_resource type="Texture2D" uid="uid://da3my4o0nrs8h" path="res://map_data/PoliticalMap.png" id="2_2klcf"]
+[ext_resource type="Texture2D" uid="uid://bj7f6dvvtfwxq" path="res://map_data/ProvinceMap.png" id="3_2klcf"]
 [ext_resource type="Script" uid="uid://btl7b33ji8c5a" path="res://scripts/map_interaction.gd" id="3_gldc4"]
-[ext_resource type="Texture2D" uid="uid://cvr8ni3tavgod" path="res://map_data/ProvinceIDMask.png" id="3_jh32y"]
+[ext_resource type="Texture2D" uid="uid://twjwv582wea2" path="res://map_data/ProvinceIDMask.png" id="3_jh32y"]
 [ext_resource type="Script" uid="uid://b07wygxmoms6q" path="res://scripts/map_camera.gd" id="6_2lpho"]
 [ext_resource type="Script" uid="uid://c6m733k5b7qxd" path="res://scripts/InfoUI.gd" id="7_nakos"]
 [ext_resource type="Script" uid="uid://bcuk57in5kv32" path="res://scripts/GameUI.gd" id="9_be0no"]
@@ -20,6 +20,7 @@ shader_parameter/selected_multi_color = Color(0.95, 0.85, 0.25, 1)
 shader_parameter/peace_selection_player_color_mode = false
 shader_parameter/peace_target_visual_mode = false
 shader_parameter/peace_target_owner_color = Color(0.8, 0.2, 0.2, 1)
+shader_parameter/low_detail_mode = false
 shader_parameter/hovered_id = -1.0
 shader_parameter/selected_id = -1.0
 shader_parameter/has_hover = false
