@@ -3680,7 +3680,7 @@ func muze_postavit_pristav(prov_id: int) -> bool:
 	if not map_data.has(prov_id):
 		return false
 	var owner_tag = str(map_data[prov_id].get("owner", "")).strip_edges().to_upper()
-	if owner_tag != hrac_stat:
+	if owner_tag == "" or owner_tag == "SEA":
 		return false
 	if provincie_cooldowny.has(prov_id):
 		return false
@@ -7325,10 +7325,11 @@ func spocitej_prijem(all_provinces: Dictionary, emit_ui_signal: bool = true):
 	_synchronizuj_jmeno_a_ideologii_hrace()
 	var celkove_hdp = 0.0
 	var celkem_vojaku = 0
+	var hrac_clean = _normalizuj_tag(hrac_stat)
 	
 	for p_id in map_data:
 		var d = map_data[p_id]
-		if str(d.get("owner", "")).strip_edges().to_upper() == hrac_stat:
+		if _normalizuj_tag(str(d.get("owner", ""))) == hrac_clean:
 			if hrac_jmeno == "":
 				hrac_jmeno = str(d.get("country_name", ""))
 				hrac_ideologie = str(d.get("ideology", ""))
@@ -7362,7 +7363,7 @@ func spocitej_prijem(all_provinces: Dictionary, emit_ui_signal: bool = true):
 		kolo_zmeneno.emit()
 
 func _spocitej_hdp_statu(tag: String) -> float:
-	var hledany = tag.strip_edges().to_upper()
+	var hledany = _normalizuj_tag(tag)
 	if hledany == "":
 		return 0.0
 	if _turn_cache_valid and _turn_state_hdp.has(hledany):
@@ -7370,7 +7371,7 @@ func _spocitej_hdp_statu(tag: String) -> float:
 	var hdp := 0.0
 	for p_id in map_data:
 		var d = map_data[p_id]
-		if str(d.get("owner", "")).strip_edges().to_upper() == hledany:
+		if _normalizuj_tag(str(d.get("owner", ""))) == hledany:
 			hdp += float(d.get("gdp", 0.0))
 	return hdp
 
@@ -7598,8 +7599,8 @@ func ukonci_kolo():
 			if base_recruits < 0:
 				base_recruits = 0
 			var cap = base_recruits
-			var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
-			var core_owner_tag = str(d.get("core_owner", owner_tag)).strip_edges().to_upper()
+			var owner_tag = _normalizuj_tag(str(d.get("owner", "")))
+			var core_owner_tag = _normalizuj_tag(str(d.get("core_owner", owner_tag)))
 			var je_okupace = owner_tag != "" and owner_tag != "SEA" and core_owner_tag != "" and core_owner_tag != owner_tag
 			if not econ_mods_by_owner.has(owner_tag):
 				econ_mods_by_owner[owner_tag] = ziskej_ekonomicke_modifikatory_statu(owner_tag)
@@ -8325,7 +8326,11 @@ func _ai_urci_roli_jednotky(state_tag: String, province_id: int, own_capital_id:
 
 	var soldiers = int(_turn_soldiers_by_province.get(province_id, int(map_data[province_id].get("soldiers", 0))))
 	var frontline = _je_frontline_cached(state_tag, province_id, frontline_cache)
+	var is_sea = _je_more_provincie(province_id)
 	if frontline:
+		# Naval stacks must not idle in staging forever; allow earlier breakout.
+		if is_sea and soldiers >= 900:
+			return "breaker"
 		if soldiers >= 1700:
 			return "breaker"
 		return "holder"
@@ -10049,6 +10054,9 @@ func _naplanuj_ai_presuny(map_loader):
 				break  # Hard limit reached for this state
 			if moved_from.has(p_id):
 				continue
+			# Keep coastal assault stacks in place when any sea invasion route is viable.
+			if _ai_ma_namorni_prilezitost(owner_tag, int(p_id), ""):
+				continue
 			var unit_role = _ai_urci_roli_jednotky(owner_tag, int(p_id), own_capital_id, frontline_cache)
 			if unit_role == "anchor":
 				continue
@@ -10100,6 +10108,34 @@ func _naplanuj_ai_presuny(map_loader):
 		if movement_profile:
 			movement_core_defense_ms += Time.get_ticks_msec() - phase_start_ms
 
+		# 2.5) Naval staging: embark from coastal ports toward overseas enemy coasts.
+		if movement_profile:
+			phase_start_ms = Time.get_ticks_msec()
+		for p_id in serazene:
+			if ai_limit_enabled and orders_for_state >= AI_MAX_ARMY_ORDERS_PER_STATE:
+				break
+			if moved_from.has(p_id):
+				continue
+			var naval_move = _navrhni_namorni_presun(owner_tag, int(p_id), "")
+			if naval_move.is_empty():
+				continue
+			var naval_amount = int(naval_move.get("amount", 0))
+			if naval_amount <= 0:
+				continue
+			map_loader.zaregistruj_presun_armady(
+				int(naval_move["from"]),
+				int(naval_move["to"]),
+				naval_amount,
+				false,
+				[int(naval_move["from"]), int(naval_move["to"])]
+			)
+			movement_registered += 1
+			moved_from[naval_move["from"]] = true
+			orders_for_state += 1
+			plan_slice_counter = await _turn_slice_wait(plan_slice_counter, TURN_FRAME_SLICE_AI)
+		if movement_profile:
+			movement_non_attack_ms += Time.get_ticks_msec() - phase_start_ms
+
 		# 3) Offensive attacks.
 		if movement_profile:
 			phase_start_ms = Time.get_ticks_msec()
@@ -10117,7 +10153,8 @@ func _naplanuj_ai_presuny(map_loader):
 			if moved_from.has(p_id):
 				continue
 			var unit_role = _ai_urci_roli_jednotky(owner_tag, int(p_id), own_capital_id, frontline_cache)
-			if unit_role != "breaker" and not (unit_role == "holder" and operation_phase == "strike"):
+			var sea_frontline_attack = _je_more_provincie(int(p_id)) and _je_frontline_cached(owner_tag, int(p_id), frontline_cache)
+			if unit_role != "breaker" and not (unit_role == "holder" and (operation_phase == "strike" or sea_frontline_attack)):
 				continue
 			var move = _navrhni_utok(owner_tag, p_id, frontline_cache, preferred_front_owner, coordinated_commitment, operation_phase == "strike")
 			if move.is_empty():
@@ -10137,14 +10174,17 @@ func _naplanuj_ai_presuny(map_loader):
 				plan_slice_counter = await _turn_slice_wait(plan_slice_counter, TURN_FRAME_SLICE_AI)
 				continue
 			if jsou_ve_valce(owner_tag, target_owner):
+				var from_is_sea_attack = _je_more_provincie(int(move["from"]))
+				var target_is_capital_attack = bool(map_data[target_id].get("is_capital", false))
+				var island_capital_override = from_is_sea_attack and target_is_capital_attack
 				if operation_phase == "staging":
 					var local_enemy_staging = int(_turn_soldiers_by_province.get(target_id, int(map_data[target_id].get("soldiers", 0))))
-					if float(amount) / float(max(1, local_enemy_staging)) < 1.55:
+					if (not island_capital_override) and float(amount) / float(max(1, local_enemy_staging)) < 1.55:
 						plan_slice_counter = await _turn_slice_wait(plan_slice_counter, TURN_FRAME_SLICE_AI)
 						continue
 				if is_consolidating:
 					var local_enemy = int(_turn_soldiers_by_province.get(target_id, int(map_data[target_id].get("soldiers", 0))))
-					if float(amount) / float(max(1, local_enemy)) < 1.20:
+					if (not island_capital_override) and float(amount) / float(max(1, local_enemy)) < 1.20:
 						plan_slice_counter = await _turn_slice_wait(plan_slice_counter, TURN_FRAME_SLICE_AI)
 						continue
 				map_loader.zaregistruj_presun_armady(
@@ -10238,6 +10278,19 @@ func _seradene_ai_provincie(state_tag: String) -> Array:
 				continue
 			if int(_turn_soldiers_by_province.get(int(p_id), int(map_data[p_id].get("soldiers", 0)))) >= AI_MIN_PROVINCE_SOLDIERS_FOR_PLANNING:
 				ids.append(p_id)
+		# Include navies stationed on sea tiles (owner is SEA, controller is army_owner).
+		for p_id_any in map_data:
+			var p_id = int(p_id_any)
+			if ids.has(p_id):
+				continue
+			if not _je_more_provincie(p_id):
+				continue
+			var d_sea = map_data[p_id]
+			var army_owner_sea = _normalizuj_tag(str(d_sea.get("army_owner", "")))
+			if army_owner_sea != state_tag:
+				continue
+			if int(_turn_soldiers_by_province.get(p_id, int(d_sea.get("soldiers", 0)))) >= AI_MIN_PROVINCE_SOLDIERS_FOR_PLANNING:
+				ids.append(p_id)
 	else:
 		for p_id in map_data:
 			var d = map_data[p_id]
@@ -10248,11 +10301,55 @@ func _seradene_ai_provincie(state_tag: String) -> Array:
 					continue
 				if int(d.get("soldiers", 0)) >= AI_MIN_PROVINCE_SOLDIERS_FOR_PLANNING:
 					ids.append(p_id)
+		# Fallback branch: sea tiles controlled by this state's navy.
+		for p_id_any in map_data:
+			var p_id = int(p_id_any)
+			if ids.has(p_id):
+				continue
+			if not _je_more_provincie(p_id):
+				continue
+			var d_sea_fb = map_data[p_id]
+			if _normalizuj_tag(str(d_sea_fb.get("army_owner", ""))) != state_tag:
+				continue
+			if int(d_sea_fb.get("soldiers", 0)) >= AI_MIN_PROVINCE_SOLDIERS_FOR_PLANNING:
+				ids.append(p_id)
 
 	ids.sort_custom(func(a, b):
 		return int(_turn_soldiers_by_province.get(int(a), int(map_data[a].get("soldiers", 0)))) > int(_turn_soldiers_by_province.get(int(b), int(map_data[b].get("soldiers", 0))))
 	)
 	return ids
+
+func _ai_ma_namorni_prilezitost(state_tag: String, from_id: int, preferred_front_owner: String = "") -> bool:
+	if state_tag == "" or state_tag == "SEA":
+		return false
+	if not map_data.has(from_id):
+		return false
+
+	var from_is_sea = _je_more_provincie(from_id)
+	if not from_is_sea:
+		if not je_pobrezni_provincie(from_id):
+			return false
+		if not provincie_ma_pristav(from_id):
+			return false
+
+	for n_raw in (map_data[from_id].get("neighbors", []) as Array):
+		var n_id = int(n_raw)
+		if not map_data.has(n_id):
+			continue
+		if not _je_more_provincie(n_id):
+			continue
+		for coast_raw in (map_data[n_id].get("neighbors", []) as Array):
+			var coast_id = int(coast_raw)
+			if not map_data.has(coast_id) or _je_more_provincie(coast_id):
+				continue
+			var coast_owner = _normalizuj_tag(str(_turn_owner_by_province.get(coast_id, str(map_data[coast_id].get("owner", "")))))
+			if coast_owner == "" or coast_owner == "SEA" or coast_owner == state_tag:
+				continue
+			if _jsou_ve_valce_ai_cached(state_tag, coast_owner):
+				return true
+			if not _je_pratelsky_vztah_ai_cached(state_tag, coast_owner):
+				return true
+	return false
 
 func _ma_nepratelskeho_souseda(state_tag: String, province_id: int) -> bool:
 	if _ai_phase_cache_active:
@@ -10918,7 +11015,7 @@ func _navrhni_utok(state_tag: String, from_id: int, frontline_cache: Dictionary 
 	var vojaci = int(from_data.get("soldiers", 0))
 	if vojaci <= 700:
 		return {}
-	if not _je_frontline_cached(state_tag, from_id, frontline_cache):
+	if not _je_frontline_cached(state_tag, from_id, frontline_cache) and not _ai_ma_namorni_prilezitost(state_tag, from_id, ""):
 		return {}
 
 	var best_target = -1
@@ -10934,10 +11031,48 @@ func _navrhni_utok(state_tag: String, from_id: int, frontline_cache: Dictionary 
 	var defense_bias = float(mindset.get("defense_bias", 0.5))
 	var goal_target = _normalizuj_tag(str(goal.get("target", "")))
 	var goal_type = str(goal.get("type", "none"))
+	var from_is_sea = _je_more_provincie(from_id)
 	var reserve = max(360, int(float(vojaci) * (0.40 - aggression * 0.15 + defense_bias * 0.10 - attack_bias * 0.08)))
+	if from_is_sea:
+		reserve = max(220, int(float(reserve) * 0.65))
 	var max_attack = vojaci - reserve
 	if max_attack < 280:
 		return {}
+
+	# Hard override: fleets adjacent to enemy capitals should not idle.
+	if from_is_sea:
+		var forced_capital_target := -1
+		var forced_capital_defenders := 0
+		for n_raw_forced in (_turn_neighbors_by_province.get(from_id, from_data.get("neighbors", [])) as Array):
+			var n_id_forced = int(n_raw_forced)
+			if not map_data.has(n_id_forced):
+				continue
+			if _je_more_provincie(n_id_forced):
+				continue
+			var n_prov_forced = map_data[n_id_forced]
+			var n_owner_forced = _normalizuj_tag(str(_turn_owner_by_province.get(n_id_forced, str(n_prov_forced.get("owner", "")))))
+			if n_owner_forced == "" or n_owner_forced == "SEA" or n_owner_forced == state_tag:
+				continue
+			if not bool(n_prov_forced.get("is_capital", false)):
+				continue
+			if not _jsou_ve_valce_ai_cached(state_tag, n_owner_forced):
+				continue
+			var defenders = int(_turn_soldiers_by_province.get(n_id_forced, int(n_prov_forced.get("soldiers", 0))))
+			if forced_capital_target == -1 or defenders < forced_capital_defenders:
+				forced_capital_target = n_id_forced
+				forced_capital_defenders = defenders
+
+		if forced_capital_target != -1:
+			var forced_amount = min(max_attack, int(float(vojaci) * 0.94))
+			forced_amount = max(420, forced_amount)
+			forced_amount = min(forced_amount, vojaci - 120)
+			if forced_amount > 0:
+				# Keep only a tiny sea garrison; capital strike has absolute priority.
+				return {
+					"from": from_id,
+					"to": forced_capital_target,
+					"amount": forced_amount
+				}
 
 	for n_raw in (_turn_neighbors_by_province.get(from_id, from_data.get("neighbors", [])) as Array):
 		var n_id = int(n_raw)
@@ -10945,21 +11080,69 @@ func _navrhni_utok(state_tag: String, from_id: int, frontline_cache: Dictionary 
 			continue
 		var n_prov = map_data[n_id]
 		var n_owner = _normalizuj_tag(str(_turn_owner_by_province.get(n_id, str(n_prov.get("owner", "")))))
+		if n_owner == "SEA":
+			# Consider embarking when sea tile offers access to valuable enemy coast.
+			if not _je_more_provincie(n_id):
+				continue
+			if not _je_more_provincie(from_id):
+				if not je_pobrezni_provincie(from_id) or not provincie_ma_pristav(from_id):
+					continue
+			var landing_best := -INF
+			for coast_raw in (n_prov.get("neighbors", []) as Array):
+				var coast_id = int(coast_raw)
+				if not map_data.has(coast_id) or _je_more_provincie(coast_id):
+					continue
+				var coast_owner = _normalizuj_tag(str(_turn_owner_by_province.get(coast_id, str(map_data[coast_id].get("owner", "")))))
+				if coast_owner == "" or coast_owner == "SEA" or coast_owner == state_tag:
+					continue
+				var preferred_match = preferred_front_owner != "" and coast_owner == _normalizuj_tag(preferred_front_owner)
+				if not _jsou_ve_valce_ai_cached(state_tag, coast_owner) and _je_pratelsky_vztah_ai_cached(state_tag, coast_owner) and attack_bias < 0.72:
+					continue
+				var coast_data = map_data[coast_id]
+				var coast_score = float(coast_data.get("gdp", 0.0)) * 18.0 + float(int(coast_data.get("recruitable_population", 0))) * 0.03
+				if bool(coast_data.get("is_capital", false)):
+					coast_score += 3200.0
+				if _normalizuj_tag(str(coast_data.get("core_owner", ""))) == state_tag:
+					coast_score += 1800.0
+				if preferred_match:
+					coast_score += 900.0
+				var rel_sea = _ziskej_ai_vztah_cached(state_tag, coast_owner)
+				coast_score += clamp(-rel_sea, 0.0, 100.0) * 8.0
+				landing_best = max(landing_best, coast_score)
+
+			if landing_best == -INF:
+				continue
+
+			var embark_amount = min(max_attack, int(float(vojaci) * (0.70 if strike_mode else 0.56)))
+			if embark_amount < 260:
+				continue
+			var sea_score = 420.0 + (landing_best * 0.60) + (220.0 * attack_bias) - (110.0 * defense_bias)
+			if sea_score > best_score:
+				best_score = sea_score
+				best_target = n_id
+				best_amount = embark_amount
+			continue
 		if n_owner == state_tag or n_owner == "SEA":
 			continue
 		if not _jsou_ve_valce_ai_cached(state_tag, n_owner) and _je_pratelsky_vztah_ai_cached(state_tag, n_owner) and attack_bias < 0.72:
 			continue
 
 		var n_vojaci = int(_turn_soldiers_by_province.get(n_id, int(n_prov.get("soldiers", 0))))
+		var target_is_capital = bool(n_prov.get("is_capital", false))
+		var island_capital_assault = from_is_sea and target_is_capital
 		var threat_after_capture = _spocitej_hrozbu_nepratel_u_provincie(n_id, state_tag)
 		var needed_for_push = int(float(n_vojaci) * lerpf(1.14, 0.78, attack_bias)) + int(float(threat_after_capture) * lerpf(0.14, 0.04, attack_bias))
+		if island_capital_assault:
+			needed_for_push = int(float(n_vojaci) * 0.92)
 		var attack_amount = min(max_attack, int(float(vojaci) * 0.78))
 		if not strike_mode:
 			attack_amount = min(attack_amount, int(float(vojaci) * 0.62))
+		if island_capital_assault:
+			attack_amount = min(max_attack, int(float(vojaci) * 0.90))
 		var source_threat = _spocitej_hrozbu_nepratel_u_provincie(from_id, state_tag)
 		var remaining_after = vojaci - attack_amount
 		# Do not overextend from threatened source provinces.
-		if source_threat > int(float(max(1, remaining_after)) * 1.45):
+		if (not island_capital_assault) and source_threat > int(float(max(1, remaining_after)) * 1.45):
 			if not (goal_type == "reclaim_core" and goal_target != "" and n_owner == goal_target):
 				continue
 		# Protect capital garrison unless this is a direct reclaim objective.
@@ -10968,6 +11151,9 @@ func _navrhni_utok(state_tag: String, from_id: int, frontline_cache: Dictionary 
 				continue
 		var overwhelming = float(vojaci) / float(max(1, n_vojaci)) >= lerpf(4.8, 1.7, attack_bias)
 		if attack_amount < max(320, needed_for_push) and not overwhelming:
+			if not island_capital_assault:
+				continue
+		if island_capital_assault and attack_amount < max(380, int(float(n_vojaci) * 0.95)):
 			continue
 
 		# Attrition awareness: avoid captures that cannot be held after combat.
@@ -10976,8 +11162,11 @@ func _navrhni_utok(state_tag: String, from_id: int, frontline_cache: Dictionary 
 		if bool(n_prov.get("is_capital", false)):
 			hold_need += 550.0
 		if hold_after_capture < hold_need and not overwhelming:
-			if not (goal_type == "reclaim_core" and goal_target != "" and n_owner == goal_target):
-				continue
+			if island_capital_assault:
+				pass
+			else:
+				if not (goal_type == "reclaim_core" and goal_target != "" and n_owner == goal_target):
+					continue
 
 		var score = 0.0
 		score += float(attack_amount - n_vojaci) * 1.2
@@ -10986,8 +11175,11 @@ func _navrhni_utok(state_tag: String, from_id: int, frontline_cache: Dictionary 
 		score += clamp(-rel, 0.0, 100.0) * 12.0
 		score += float(n_prov.get("gdp", 0.0)) * 16.0
 		score += float(int(n_prov.get("recruitable_population", 0))) * 0.02
-		if bool(n_prov.get("is_capital", false)):
+		if target_is_capital:
 			score += 3600.0
+		if island_capital_assault:
+			score += 5200.0
+			score += clamp(float(attack_amount - n_vojaci), -4000.0, 4000.0) * 0.35
 		if n_id == own_capital_id and n_owner != state_tag:
 			score += 16000.0
 		if _normalizuj_tag(str(n_prov.get("core_owner", ""))) == state_tag:
@@ -11023,6 +11215,83 @@ func _navrhni_utok(state_tag: String, from_id: int, frontline_cache: Dictionary 
 		"from": from_id,
 		"to": best_target,
 		"amount": best_amount
+	}
+
+func _navrhni_namorni_presun(state_tag: String, from_id: int, preferred_front_owner: String = "") -> Dictionary:
+	if not map_data.has(from_id):
+		return {}
+	if _je_more_provincie(from_id):
+		return {}
+	if not je_pobrezni_provincie(from_id):
+		return {}
+	if not provincie_ma_pristav(from_id):
+		return {}
+
+	var from_data = map_data[from_id]
+	var army_owner = _normalizuj_tag(str(from_data.get("army_owner", "")))
+	if army_owner != "" and army_owner != state_tag:
+		return {}
+
+	var vojaci = int(from_data.get("soldiers", 0))
+	if vojaci < 700:
+		return {}
+
+	var best_sea = -1
+	var best_score = -INF
+	for n_raw in (from_data.get("neighbors", []) as Array):
+		var sea_id = int(n_raw)
+		if not map_data.has(sea_id):
+			continue
+		if not _je_more_provincie(sea_id):
+			continue
+
+		var sea_army_owner = _normalizuj_tag(str(map_data[sea_id].get("army_owner", "")))
+		if sea_army_owner != "" and sea_army_owner != state_tag and not _jsou_ve_valce_ai_cached(state_tag, sea_army_owner):
+			continue
+
+		var landing_best := -INF
+		for coast_raw in (map_data[sea_id].get("neighbors", []) as Array):
+			var coast_id = int(coast_raw)
+			if not map_data.has(coast_id) or _je_more_provincie(coast_id):
+				continue
+			var coast_owner = _normalizuj_tag(str(_turn_owner_by_province.get(coast_id, str(map_data[coast_id].get("owner", "")))))
+			if coast_owner == "" or coast_owner == "SEA" or coast_owner == state_tag:
+				continue
+			var preferred_match = preferred_front_owner != "" and coast_owner == _normalizuj_tag(preferred_front_owner)
+			if not _jsou_ve_valce_ai_cached(state_tag, coast_owner) and _je_pratelsky_vztah_ai_cached(state_tag, coast_owner):
+				continue
+
+			var coast_data = map_data[coast_id]
+			var local_score = float(coast_data.get("gdp", 0.0)) * 14.0 + float(int(coast_data.get("recruitable_population", 0))) * 0.02
+			if bool(coast_data.get("is_capital", false)):
+				local_score += 2600.0
+			if _normalizuj_tag(str(coast_data.get("core_owner", ""))) == state_tag:
+				local_score += 1400.0
+			if preferred_match:
+				local_score += 850.0
+			landing_best = max(landing_best, local_score)
+
+		if landing_best == -INF:
+			continue
+
+		var sea_score = 320.0 + landing_best
+		if sea_army_owner == state_tag:
+			sea_score += 180.0
+		if sea_score > best_score:
+			best_score = sea_score
+			best_sea = sea_id
+
+	if best_sea == -1:
+		return {}
+
+	var amount = min(int(float(vojaci) * 0.64), vojaci - 380)
+	if amount < 240:
+		return {}
+
+	return {
+		"from": from_id,
+		"to": best_sea,
+		"amount": amount
 	}
 
 func nastav_potato_mode(enabled: bool) -> void:
@@ -11065,6 +11334,21 @@ func ziskej_ai_debug_snapshot(state_tag: String = "") -> Dictionary:
 	var profile = _ai_ziskej_profil(clean)
 	var recruit_targets = _ai_ziskej_recruit_kandidaty(clean, owned, pressure)
 	var spend = _ai_debug_last_spending_by_state.get(clean, {}) as Dictionary
+	var naval_ready := 0
+	var naval_ports := 0
+	for p_any in owned:
+		var p_id = int(p_any)
+		if not map_data.has(p_id):
+			continue
+		if _je_more_provincie(p_id):
+			continue
+		if not je_pobrezni_provincie(p_id):
+			continue
+		if not provincie_ma_pristav(p_id):
+			continue
+		naval_ports += 1
+		if _ai_ma_namorni_prilezitost(clean, p_id, _normalizuj_tag(str(op_plan.get("target", "")))):
+			naval_ready += 1
 
 	return {
 		"ok": true,
@@ -11089,6 +11373,8 @@ func ziskej_ai_debug_snapshot(state_tag: String = "") -> Dictionary:
 		"spend_build": float(spend.get("build", 0.0)),
 		"spend_other": float(spend.get("other", 0.0)),
 		"spend_total": float(spend.get("total", 0.0)),
+		"naval_ports": naval_ports,
+		"naval_ready": naval_ready,
 		"recruit_targets": recruit_targets,
 		"owned_provinces": owned.size()
 	}
