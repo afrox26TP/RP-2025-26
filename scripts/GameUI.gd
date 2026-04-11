@@ -1380,6 +1380,12 @@ func _aktualizuj_ai_debug_overview(owner_tag: String, je_hracuv_stat: bool) -> v
 		plan_target_text = "%s (%s)" % [_ziskej_jmeno_statu_podle_tagu(plan_target), plan_target]
 
 	var recruit_targets = snap.get("recruit_targets", []) as Array
+	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
+	var viewed_tag = str(owner_tag).strip_edges().to_upper()
+	var pair_war_text = "n/a"
+	if player_tag != "" and viewed_tag != "" and player_tag != viewed_tag and GameManager.has_method("jsou_ve_valce"):
+		pair_war_text = "yes" if bool(GameManager.jsou_ve_valce(player_tag, viewed_tag)) else "no"
+
 	var lines: Array[String] = []
 	var fps_now = Engine.get_frames_per_second()
 	var turn_state = "processing" if _turn_loading_active else "idle"
@@ -1390,6 +1396,7 @@ func _aktualizuj_ai_debug_overview(owner_tag: String, je_hracuv_stat: bool) -> v
 
 	lines.append("[b]Debug mode[/b]")
 	lines.append("FPS: %d | Turn state: %s" % [fps_now, turn_state])
+	lines.append("Player vs viewed country at war: %s" % pair_war_text)
 	lines.append("Turn response: last %s | avg %s | samples %d" % [
 		turn_last_text,
 		turn_avg_text,

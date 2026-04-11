@@ -13,6 +13,8 @@ var celkovy_prijem: float = 0.0
 var aktualni_kolo: int = 1
 
 var map_data: Dictionary = {}
+var _tag_alias_to_owner: Dictionary = {}
+var _tag_alias_cache_dirty: bool = true
 var provincie_cooldowny: Dictionary = {}
 var ai_kasy: Dictionary = {} 
 var _hrac_kasa_inicializovana: bool = false
@@ -1225,7 +1227,74 @@ func _get_map_loader():
 	return null
 
 func _normalizuj_tag(tag: String) -> String:
-	return tag.strip_edges().to_upper()
+	var clean = tag.strip_edges().to_upper()
+	if clean == "" or clean == "SEA":
+		return clean
+
+	if _tag_alias_cache_dirty:
+		_rebuild_tag_alias_cache()
+	if _tag_alias_to_owner.has(clean):
+		return str(_tag_alias_to_owner[clean])
+	return clean
+
+func _je_pravdepodobny_stat_tag(value: String) -> bool:
+	var s = value.strip_edges().to_upper()
+	if s.length() != 3:
+		return false
+	for i in s.length():
+		var code = s.unicode_at(i)
+		if code < 65 or code > 90:
+			return false
+	return true
+
+func _rebuild_tag_alias_cache() -> void:
+	_tag_alias_to_owner.clear()
+	var country_name_to_owner: Dictionary = {}
+	var conflicted_country_names: Dictionary = {}
+
+	for p_id in map_data:
+		var d = map_data[p_id]
+		var owner = str(d.get("owner", "")).strip_edges().to_upper()
+		if owner == "":
+			continue
+		# Always keep direct owner identity mapping untouched.
+		_tag_alias_to_owner[owner] = owner
+
+		# Only create alias mappings for display country names when they map
+		# unambiguously to a valid 3-letter owner tag.
+		if not _je_pravdepodobny_stat_tag(owner):
+			continue
+		var country_name = str(d.get("country_name", "")).strip_edges().to_upper()
+		if country_name == "":
+			continue
+		if conflicted_country_names.has(country_name):
+			continue
+		if not country_name_to_owner.has(country_name):
+			country_name_to_owner[country_name] = owner
+			continue
+		if str(country_name_to_owner[country_name]) != owner:
+			country_name_to_owner.erase(country_name)
+			conflicted_country_names[country_name] = true
+
+	for alias_name in country_name_to_owner.keys():
+		_tag_alias_to_owner[str(alias_name)] = str(country_name_to_owner[alias_name])
+	_tag_alias_cache_dirty = false
+
+func _normalizuj_nazev_statu(raw_name: String) -> String:
+	return raw_name.strip_edges().to_upper()
+
+func _ziskej_nazev_statu_podle_owner(owner_tag: String) -> String:
+	var wanted = _normalizuj_tag(owner_tag)
+	if wanted == "":
+		return ""
+	for p_id in map_data:
+		var d = map_data[p_id]
+		if _normalizuj_tag(str(d.get("owner", ""))) != wanted:
+			continue
+		var nm = _normalizuj_nazev_statu(str(d.get("country_name", "")))
+		if nm != "":
+			return nm
+	return ""
 
 func _clamp_arm_lab_quality(level: int) -> int:
 	return clampi(level, 0, 8)
@@ -6537,6 +6606,8 @@ func _flush_ai_war_pair_eval_dirty_states() -> void:
 
 func _invalidate_turn_cache() -> void:
 	_turn_cache_valid = false
+	_tag_alias_to_owner.clear()
+	_tag_alias_cache_dirty = true
 	_turn_state_soldier_power.clear()
 	_turn_state_hdp.clear()
 	_turn_border_pairs.clear()
@@ -6556,13 +6627,13 @@ func _rebuild_turn_cache() -> void:
 		for n_raw in d0.get("neighbors", []):
 			n_arr.append(int(n_raw))
 		_turn_neighbors_by_province[pid0] = n_arr
-		_turn_owner_by_province[pid0] = str(d0.get("owner", "")).strip_edges().to_upper()
+		_turn_owner_by_province[pid0] = _normalizuj_tag(str(d0.get("owner", "")))
 		_turn_soldiers_by_province[pid0] = int(d0.get("soldiers", 0))
 
 	var active: Dictionary = {}
 	for p_id in map_data:
 		var d = map_data[p_id]
-		var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
+		var owner_tag = _normalizuj_tag(str(d.get("owner", "")))
 		if owner_tag == "" or owner_tag == "SEA":
 			continue
 
@@ -6592,7 +6663,7 @@ func _refresh_turn_runtime_owner_soldier_cache() -> void:
 	for p_id in map_data:
 		var pid = int(p_id)
 		var d = map_data[p_id]
-		_turn_owner_by_province[pid] = str(d.get("owner", "")).strip_edges().to_upper()
+		_turn_owner_by_province[pid] = _normalizuj_tag(str(d.get("owner", "")))
 		_turn_soldiers_by_province[pid] = int(d.get("soldiers", 0))
 
 func _ziskej_aktivni_staty() -> Array:
@@ -6601,7 +6672,7 @@ func _ziskej_aktivni_staty() -> Array:
 
 	var ai_staty: Dictionary = {}
 	for p_id in map_data:
-		var owner_tag = str(map_data[p_id].get("owner", "")).strip_edges().to_upper()
+		var owner_tag = _normalizuj_tag(str(map_data[p_id].get("owner", "")))
 		if owner_tag == "" or owner_tag == "SEA":
 			continue
 		ai_staty[owner_tag] = true
@@ -6616,12 +6687,12 @@ func _ma_spolecnou_hranici(tag_a: String, tag_b: String) -> bool:
 
 	for p_id in map_data:
 		var d = map_data[p_id]
-		if str(d.get("owner", "")).strip_edges().to_upper() != tag_a:
+		if _normalizuj_tag(str(d.get("owner", ""))) != tag_a:
 			continue
 		for n_id in d.get("neighbors", []):
 			if not map_data.has(n_id):
 				continue
-			var n_owner = str(map_data[n_id].get("owner", "")).strip_edges().to_upper()
+			var n_owner = _normalizuj_tag(str(map_data[n_id].get("owner", "")))
 			if n_owner == tag_b:
 				return true
 	return false
@@ -9934,7 +10005,7 @@ func _naplanuj_ai_presuny(map_loader):
 			_je_frontline_cached(owner_tag, p_id_int, frontline_cache)
 			for n_raw in (_turn_neighbors_by_province.get(p_id_int, []) as Array):
 				var n_id = int(n_raw)
-				if str(_turn_owner_by_province.get(n_id, "")) != owner_tag:
+				if _normalizuj_tag(str(_turn_owner_by_province.get(n_id, ""))) != owner_tag:
 					continue
 				_je_frontline_cached(owner_tag, n_id, frontline_cache)
 				plan_slice_counter = await _turn_slice_wait(plan_slice_counter, TURN_FRAME_SLICE_AI)
@@ -10056,7 +10127,15 @@ func _naplanuj_ai_presuny(map_loader):
 				continue
 
 			var target_id = int(move["to"])
-			var target_owner = str(_turn_owner_by_province.get(target_id, str(map_data[target_id].get("owner", "")).strip_edges().to_upper()))
+			var target_owner = _normalizuj_tag(str(_turn_owner_by_province.get(target_id, str(map_data[target_id].get("owner", "")))))
+			if target_owner == "" or target_owner == owner_tag or target_owner == "SEA":
+				plan_slice_counter = await _turn_slice_wait(plan_slice_counter, TURN_FRAME_SLICE_AI)
+				continue
+			var from_country_name = _normalizuj_nazev_statu(str(map_data[int(move["from"])].get("country_name", "")))
+			var target_country_name = _normalizuj_nazev_statu(str(map_data[target_id].get("country_name", "")))
+			if from_country_name != "" and from_country_name == target_country_name:
+				plan_slice_counter = await _turn_slice_wait(plan_slice_counter, TURN_FRAME_SLICE_AI)
+				continue
 			if jsou_ve_valce(owner_tag, target_owner):
 				if operation_phase == "staging":
 					var local_enemy_staging = int(_turn_soldiers_by_province.get(target_id, int(map_data[target_id].get("soldiers", 0))))
@@ -10191,7 +10270,7 @@ func _ma_nepratelskeho_souseda(state_tag: String, province_id: int) -> bool:
 		var n_id = int(n_raw)
 		if not map_data.has(n_id):
 			continue
-		var n_owner = str(_turn_owner_by_province.get(n_id, str(map_data[n_id].get("owner", "")).strip_edges().to_upper()))
+		var n_owner = _normalizuj_tag(str(_turn_owner_by_province.get(n_id, str(map_data[n_id].get("owner", "")))))
 		if n_owner == state_tag or n_owner == "SEA":
 			continue
 		if _jsou_ve_valce_ai_cached(state_tag, n_owner):
@@ -10220,7 +10299,7 @@ func _spocitej_hrozbu_nepratel_u_provincie(province_id: int, state_tag: String) 
 		var n_id = int(n_raw)
 		if not map_data.has(n_id):
 			continue
-		var n_owner = str(_turn_owner_by_province.get(n_id, str(map_data[n_id].get("owner", "")).strip_edges().to_upper()))
+		var n_owner = _normalizuj_tag(str(_turn_owner_by_province.get(n_id, str(map_data[n_id].get("owner", "")))))
 		if n_owner == state_tag or n_owner == "SEA":
 			continue
 		if not _jsou_ve_valce_ai_cached(state_tag, n_owner) and _je_pratelsky_vztah_ai_cached(state_tag, n_owner):
@@ -10243,7 +10322,7 @@ func _spocitej_silu_na_hranici(state_tag: String, enemy: String) -> Dictionary:
 				var n_id = int(n_raw)
 				if not map_data.has(n_id):
 					continue
-				var n_owner_our = str(_turn_owner_by_province.get(n_id, str(map_data[n_id].get("owner", "")).strip_edges().to_upper()))
+				var n_owner_our = _normalizuj_tag(str(_turn_owner_by_province.get(n_id, str(map_data[n_id].get("owner", "")))))
 				if n_owner_our == enemy:
 					our_border += soldiers_our
 					break
@@ -10256,7 +10335,7 @@ func _spocitej_silu_na_hranici(state_tag: String, enemy: String) -> Dictionary:
 				var n_id = int(n_raw)
 				if not map_data.has(n_id):
 					continue
-				var n_owner_enemy = str(_turn_owner_by_province.get(n_id, str(map_data[n_id].get("owner", "")).strip_edges().to_upper()))
+				var n_owner_enemy = _normalizuj_tag(str(_turn_owner_by_province.get(n_id, str(map_data[n_id].get("owner", "")))))
 				if n_owner_enemy == state_tag:
 					enemy_border += soldiers_enemy
 					break
@@ -10264,14 +10343,14 @@ func _spocitej_silu_na_hranici(state_tag: String, enemy: String) -> Dictionary:
 
 	for p_id in map_data:
 		var d = map_data[p_id]
-		var p_owner = str(d.get("owner", "")).strip_edges().to_upper()
+		var p_owner = _normalizuj_tag(str(d.get("owner", "")))
 		if p_owner != state_tag and p_owner != enemy:
 			continue
 		var soldiers = int(d.get("soldiers", 0))
 		for n_id in d.get("neighbors", []):
 			if not map_data.has(n_id):
 				continue
-			var n_owner = str(map_data[n_id].get("owner", "")).strip_edges().to_upper()
+			var n_owner = _normalizuj_tag(str(map_data[n_id].get("owner", "")))
 			if p_owner == state_tag and n_owner == enemy:
 				our_border += soldiers
 				break
@@ -10291,6 +10370,15 @@ func _ziskej_ai_border_strength_cached(state_tag: String, target_owner: String) 
 	return computed
 
 func _ziskej_ai_war_pair_eval_cached(state_tag: String, target_owner: String) -> Dictionary:
+	state_tag = _normalizuj_tag(state_tag)
+	target_owner = _normalizuj_tag(target_owner)
+	if state_tag == "" or target_owner == "" or state_tag == target_owner:
+		return {
+			"blocked": true,
+			"required_local_ratio": 999.0,
+			"border_ratio": 0.0,
+			"strategic_ratio": 0.0
+		}
 	if not _ai_phase_cache_active:
 		return {}
 	var key = "%s>%s" % [state_tag, target_owner]
@@ -10349,7 +10437,16 @@ func _ziskej_ai_war_pair_eval_cached(state_tag: String, target_owner: String) ->
 	return out
 
 func _ma_smyls_vyhlasit_valku(state_tag: String, target_owner: String, from_id: int, to_id: int, amount: int) -> bool:
+	state_tag = _normalizuj_tag(state_tag)
+	target_owner = _normalizuj_tag(target_owner)
+	if state_tag == target_owner:
+		return false
 	if state_tag == "" or target_owner == "" or target_owner == "SEA":
+		return false
+	var own_name = _ziskej_nazev_statu_podle_owner(state_tag)
+	var target_name = _ziskej_nazev_statu_podle_owner(target_owner)
+	if own_name != "" and own_name == target_name:
+		_ai_debug("war block %s->%s reason=same_country_name name=%s" % [state_tag, target_owner, own_name])
 		return false
 	if not map_data.has(from_id) or not map_data.has(to_id):
 		return false
@@ -10710,7 +10807,7 @@ func _navrhni_neutocny_presun(state_tag: String, from_id: int, frontline_cache: 
 		var n_id = int(n_raw)
 		if not map_data.has(n_id):
 			continue
-		var n_owner = str(_turn_owner_by_province.get(n_id, str(map_data[n_id].get("owner", "")).strip_edges().to_upper()))
+		var n_owner = _normalizuj_tag(str(_turn_owner_by_province.get(n_id, str(map_data[n_id].get("owner", "")))))
 		if n_owner != state_tag:
 			continue
 
@@ -10746,7 +10843,7 @@ func _navrhni_neutocny_presun(state_tag: String, from_id: int, frontline_cache: 
 func _ziskej_core_state(state_tag: String) -> String:
 	for p_id in map_data:
 		var d = map_data[p_id]
-		if str(d.get("owner", "")).strip_edges().to_upper() != state_tag:
+		if _normalizuj_tag(str(d.get("owner", ""))) != state_tag:
 			continue
 		if bool(d.get("is_capital", false)):
 			return str(d.get("state", ""))
@@ -10765,7 +10862,7 @@ func _je_core_provincie(state_tag: String, province_id: int, core_state: String)
 	if not map_data.has(province_id):
 		return false
 	var d = map_data[province_id]
-	if str(_turn_owner_by_province.get(province_id, str(d.get("owner", "")).strip_edges().to_upper())) != state_tag:
+	if _normalizuj_tag(str(_turn_owner_by_province.get(province_id, str(d.get("owner", ""))))) != state_tag:
 		return false
 	if bool(d.get("is_capital", false)):
 		return true
@@ -10847,7 +10944,7 @@ func _navrhni_utok(state_tag: String, from_id: int, frontline_cache: Dictionary 
 		if not map_data.has(n_id):
 			continue
 		var n_prov = map_data[n_id]
-		var n_owner = str(_turn_owner_by_province.get(n_id, str(n_prov.get("owner", "")).strip_edges().to_upper()))
+		var n_owner = _normalizuj_tag(str(_turn_owner_by_province.get(n_id, str(n_prov.get("owner", "")))))
 		if n_owner == state_tag or n_owner == "SEA":
 			continue
 		if not _jsou_ve_valce_ai_cached(state_tag, n_owner) and _je_pratelsky_vztah_ai_cached(state_tag, n_owner) and attack_bias < 0.72:
@@ -10951,7 +11048,13 @@ func ziskej_ai_debug_snapshot(state_tag: String = "") -> Dictionary:
 			if _normalizuj_tag(str(d.get("owner", ""))) == clean:
 				owned.append(int(p_id))
 
-	var enemies = _ai_ziskej_nepratele_statu(clean)
+	var enemies: Array = []
+	for other_any in _ziskej_aktivni_staty():
+		var other = _normalizuj_tag(str(other_any))
+		if other == "" or other == clean or other == "SEA":
+			continue
+		if jsou_ve_valce(clean, other):
+			enemies.append(other)
 	var at_war = not enemies.is_empty()
 	var pressure = _ai_spocitej_tlak_statu(clean, owned)
 	var exhaustion = _ai_spocitej_war_exhaustion(clean)
