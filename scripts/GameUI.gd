@@ -1784,6 +1784,10 @@ func _display_army_item_name(item_name: String) -> String:
 		_:
 			return item_name
 
+func _format_army_item_title(item_name: String, level: int) -> String:
+	var safe_level = max(1, level)
+	return "%s L%d" % [_display_army_item_name(item_name), safe_level]
+
 func _aktualizuj_vyzkum_dialog(state_tag: String) -> void:
 	if _research_dialog == null or _research_list == null:
 		return
@@ -1833,6 +1837,7 @@ func _aktualizuj_vyzkum_dialog(state_tag: String) -> void:
 		var w = int(item.get("w", 1))
 		var h = int(item.get("h", 1))
 		var short = _item_short_name(_display_army_item_name(str(item.get("name", "?"))))
+		var lvl = max(1, int(item.get("level", 1)))
 		var uid = str(item.get("offer_uid", ""))
 		for yy in range(y, y + h):
 			for xx in range(x, x + w):
@@ -1843,7 +1848,7 @@ func _aktualizuj_vyzkum_dialog(state_tag: String) -> void:
 				var cell_key = "%d" % (yy * _army_research_view_w + xx)
 				if uid != "":
 					_army_cell_drag_uid[cell_key] = uid
-				cell_texts[yy * _army_research_view_w + xx] = short
+				cell_texts[yy * _army_research_view_w + xx] = "%s%d" % [short, lvl]
 
 	if _army_research_grid:
 		for child in _army_research_grid.get_children():
@@ -1942,11 +1947,12 @@ func _aktualizuj_vyzkum_dialog(state_tag: String) -> void:
 		var w = int(offer.get("w", 1))
 		var h = int(offer.get("h", 1))
 		var cost = float(offer.get("cost", 0.0))
+		var level = max(1, int(offer.get("level", 1)))
 		var power_item_flat = int(offer.get("power_flat", 0))
 		var power_item_pct = float(offer.get("power_pct", 0.0)) * 100.0
 
 		var title = Label.new()
-		title.text = "%d) %s | %dx%d | $%.2f" % [i + 1, _display_army_item_name(str(offer.get("name", "Item"))), w, h, cost]
+		title.text = "%d) %s | %dx%d | $%.2f" % [i + 1, _format_army_item_title(str(offer.get("name", "Item")), level), w, h, cost]
 		left.add_child(title)
 
 		var desc = Label.new()
