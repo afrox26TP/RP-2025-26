@@ -11,6 +11,8 @@ extends CanvasLayer
 @onready var soldiers_label = $PanelContainer/VBoxContainer/SoldiersLabel 
 
 @onready var action_menu = $ActionMenu
+@onready var info_panel = $PanelContainer
+@onready var action_row = $ActionMenu/HBoxContainer
 @onready var btn_stavet = $ActionMenu/HBoxContainer/StavetMenuButton 
 @onready var btn_presunout = $ActionMenu/HBoxContainer/PresunoutButton
 @onready var btn_verbovat = $ActionMenu/HBoxContainer/VerbovatButton
@@ -54,6 +56,13 @@ var _metric_deltas: Dictionary = {}
 var _ideology_preview_active: bool = false
 var _stavba_popup: PopupMenu
 var _stavba_last_focus_idx: int = -2
+
+const INFO_UI_MARGIN := 0.0
+const INFO_UI_GAP := 0.0
+const INFO_PANEL_MIN_W := 210.0
+const INFO_PANEL_MAX_W := 360.0
+const ACTION_MENU_MIN_W := 300.0
+const ACTION_MENU_MAX_W := 560.0
 
 func _ziskej_provincie_data() -> Dictionary:
 	var map_loader = get_tree().current_scene.find_child("Map", true, false)
@@ -155,6 +164,106 @@ func _ready():
 	if btn_likvidace_potvrdit: btn_likvidace_potvrdit.pressed.connect(_on_potvrdit_likvidaci)
 	if btn_likvidace_zrusit: btn_likvidace_zrusit.pressed.connect(func(): likvidace_popup.hide())
 	_nastav_tooltipy_ui()
+	var viewport = get_viewport()
+	if viewport and viewport.has_signal("size_changed") and not viewport.size_changed.is_connected(_on_viewport_resized):
+		viewport.size_changed.connect(_on_viewport_resized)
+	call_deferred("_on_viewport_resized")
+
+func _on_viewport_resized() -> void:
+	_aktualizuj_responzivni_layout()
+
+func _aktualizuj_responzivni_layout() -> void:
+	if info_panel == null or action_menu == null:
+		return
+	var viewport = get_viewport()
+	if viewport == null:
+		return
+	var vp_size = viewport.get_visible_rect().size
+	var vp_w = maxf(320.0, vp_size.x)
+	var vp_h = maxf(240.0, vp_size.y)
+
+	var panel_w = clampf(vp_w * 0.24, INFO_PANEL_MIN_W, INFO_PANEL_MAX_W)
+	panel_w = minf(panel_w, vp_w - (INFO_UI_MARGIN * 2.0))
+
+	info_panel.anchor_left = 0.0
+	info_panel.anchor_right = 0.0
+	info_panel.anchor_top = 1.0
+	info_panel.anchor_bottom = 1.0
+	info_panel.offset_left = INFO_UI_MARGIN
+	info_panel.offset_right = INFO_UI_MARGIN + panel_w
+
+	# Province info must stay glued to bottom edge.
+	var panel_h = maxf(140.0, info_panel.size.y)
+	info_panel.offset_top = -panel_h - INFO_UI_MARGIN
+	info_panel.offset_bottom = -INFO_UI_MARGIN
+
+	var side_space = vp_w - (panel_w + INFO_UI_GAP + INFO_UI_MARGIN)
+	var action_w = clampf(side_space, ACTION_MENU_MIN_W, ACTION_MENU_MAX_W)
+
+	action_menu.anchor_left = 0.0
+	action_menu.anchor_right = 0.0
+	action_menu.anchor_top = 1.0
+	action_menu.anchor_bottom = 1.0
+	# Action panel must stay glued to bottom edge too.
+	action_menu.offset_left = panel_w + INFO_UI_GAP
+	action_menu.offset_right = action_menu.offset_left + action_w
+	action_menu.offset_top = -INFO_UI_MARGIN - action_menu.size.y
+	action_menu.offset_bottom = -INFO_UI_MARGIN
+
+	# If there is not enough side space, keep panel glued to the right+bottom edge.
+	if action_menu.offset_right > vp_w:
+		action_w = clampf(vp_w * 0.48, 220.0, ACTION_MENU_MAX_W)
+		action_menu.anchor_left = 1.0
+		action_menu.anchor_right = 1.0
+		action_menu.offset_right = -INFO_UI_MARGIN
+		action_menu.offset_left = -INFO_UI_MARGIN - action_w
+		action_menu.offset_top = -INFO_UI_MARGIN - action_menu.size.y
+		action_menu.offset_bottom = -INFO_UI_MARGIN
+
+	# Clamp action menu vertically only; horizontal edge anchoring is intentional.
+	var min_bottom = -INFO_UI_MARGIN
+	var max_top = -vp_h + 72.0
+	if action_menu.offset_top < max_top:
+		var delta_y = max_top - action_menu.offset_top
+		action_menu.offset_top += delta_y
+		action_menu.offset_bottom += delta_y
+	if action_menu.offset_bottom > min_bottom:
+		var delta_y2 = action_menu.offset_bottom - min_bottom
+		action_menu.offset_top -= delta_y2
+		action_menu.offset_bottom -= delta_y2
+
+	# Compact button sizing on narrow layouts to avoid internal overlap.
+	var compact = action_w < 430.0
+	var tiny = action_w < 360.0
+	var btn_w = 100.0
+	var btn_h = 38.0
+	var font_size = 15
+	if compact:
+		btn_w = 88.0
+		btn_h = 36.0
+		font_size = 14
+	if tiny:
+		btn_w = 74.0
+		btn_h = 34.0
+		font_size = 12
+	for b in [btn_presunout, btn_verbovat, btn_stavet, btn_likvidovat]:
+		if b == null:
+			continue
+		b.custom_minimum_size = Vector2(btn_w, btn_h)
+		b.add_theme_font_size_override("font_size", font_size)
+
+	if action_row:
+		action_row.add_theme_constant_override("separation", 3 if tiny else 4)
+
+func _clamp_popup_rect_to_viewport(rect: Rect2i) -> Rect2i:
+	var viewport = get_viewport()
+	if viewport == null:
+		return rect
+	var vp = viewport.get_visible_rect().size
+	var out = rect
+	out.position.x = int(clampi(out.position.x, 4, int(maxf(4.0, vp.x - out.size.x - 4.0))))
+	out.position.y = int(clampi(out.position.y, 4, int(maxf(4.0, vp.y - out.size.y - 4.0))))
+	return out
 
 func _nastav_tooltipy_ui() -> void:
 	id_label.tooltip_text = "Name of the selected province."
@@ -404,7 +513,13 @@ func _nahled_verbovani_text(pocet: int) -> String:
 
 func _posun_stavba_menu():
 	var p = btn_stavet.get_popup()
-	p.position.y = btn_stavet.global_position.y - p.size.y - 5
+	var viewport = get_viewport()
+	if viewport:
+		var vp = viewport.get_visible_rect().size
+		p.position.x = int(clampi(int(btn_stavet.global_position.x), 4, int(maxf(4.0, vp.x - p.size.x - 4.0))))
+		p.position.y = int(clampi(int(btn_stavet.global_position.y - p.size.y - 5), 4, int(maxf(4.0, vp.y - p.size.y - 4.0))))
+	else:
+		p.position.y = btn_stavet.global_position.y - p.size.y - 5
 	_stavba_last_focus_idx = -2
 	set_process(true)
 
@@ -605,6 +720,7 @@ func _on_likvidovat_pressed():
 	var rect = Rect2i()
 	rect.position = Vector2i(btn_likvidovat.global_position.x, btn_likvidovat.global_position.y - likvidace_popup.size.y - 5)
 	rect.size = likvidace_popup.size
+	rect = _clamp_popup_rect_to_viewport(rect)
 	likvidace_popup.popup(rect)
 
 func _on_likvidace_slider_zmenen(hodnota: float):
@@ -784,6 +900,7 @@ func _on_verbovat_pressed():
 	var rect = Rect2i()
 	rect.position = Vector2i(btn_verbovat.global_position.x, btn_verbovat.global_position.y - recruit_popup.size.y - 5)
 	rect.size = recruit_popup.size
+	rect = _clamp_popup_rect_to_viewport(rect)
 	recruit_popup.popup(rect)
 
 func _on_slider_zmenen(hodnota: float):
@@ -992,6 +1109,7 @@ func _otevri_hromadne_verbovani():
 	var rect = Rect2i()
 	rect.position = Vector2i(btn_verbovat.global_position.x, btn_verbovat.global_position.y - recruit_popup.size.y - 5)
 	rect.size = recruit_popup.size
+	rect = _clamp_popup_rect_to_viewport(rect)
 	recruit_popup.popup(rect)
 
 func _potvrd_hromadne_verbovani():

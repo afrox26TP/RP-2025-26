@@ -73,6 +73,17 @@ var vassals_label: Label
 var war_reparations_label: Label
 var ai_debug_panel: PanelContainer
 var ai_debug_label: RichTextLabel
+var _ai_debug_header: HBoxContainer
+var _ai_debug_title_label: Label
+var _ai_debug_min_btn: Button
+var _ai_debug_max_btn: Button
+var _ai_debug_filter_row: HBoxContainer
+var _ai_debug_filter_all_btn: Button
+var _ai_debug_filter_mine_btn: Button
+var _ai_debug_filter_other_btn: Button
+var _ai_debug_collapsed: bool = false
+var _ai_debug_expanded: bool = false
+var _ai_debug_filter_mode: int = 0
 
 # --- NEW: Action nodes ---
 @onready var action_separator = $OverviewPanel/VBoxContainer/ActionSeparator
@@ -165,6 +176,9 @@ var _settings_controls_panel: PanelContainer
 var _settings_options_panel: PanelContainer
 var _gift_dialog: PopupPanel
 var _gift_amount_input: LineEdit
+var _rename_country_dialog: PopupPanel
+var _rename_country_input: LineEdit
+var _rename_country_confirm_btn: Button
 var gift_money_btn: Button
 var trade_btn: Button
 var _trade_dialog: PopupPanel
@@ -409,6 +423,7 @@ func _ready():
 	_zajisti_label_sily_armady()
 	_zajisti_mirove_overview_labely()
 	_zajisti_ai_debug_overview_labely()
+	_nastav_overview_text_properties()
 	_zajisti_tlacitko_vazalu()
 	_zajisti_tlacitko_daru()
 	_zajisti_tlacitko_obchodu()
@@ -416,6 +431,7 @@ func _ready():
 	_zajisti_ideology_controls()
 	_zajisti_vyzkum_controls()
 	_setup_popup_country_link()
+	_setup_country_name_rename_link()
 	_vytvor_alliance_dialog()
 	_vytvor_alliance_create_popup()
 	_vytvor_trade_dialog()
@@ -503,6 +519,7 @@ func _ready():
 	_aktualizuj_panel_zprav()
 	if system_message_popup:
 		system_message_popup.hide()
+	_nastav_tooltipy_ui()
 	if get_viewport() and not get_viewport().size_changed.is_connected(_on_viewport_resized):
 		get_viewport().size_changed.connect(_on_viewport_resized)
 	_aktualizuj_overview_panel_layout()
@@ -512,6 +529,7 @@ func _ready():
 	_aktualizuj_pozice_popupu()
 	_aktualizuj_popup_diplomatickych_zadosti()
 	_vytvor_darovaci_dialog()
+	_vytvor_prejmenovani_statu_dialog()
 	_vytvor_mirovou_konferenci_dialog()
 	_vytvor_hlaseni_mirove_konference()
 	_vytvor_panel_vazalu()
@@ -629,8 +647,48 @@ func _setup_popup_country_link() -> void:
 		popup_request_flag.mouse_filter = Control.MOUSE_FILTER_STOP
 		popup_request_flag.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 
+func _setup_country_name_rename_link() -> void:
+	if name_label and not name_label.gui_input.is_connected(_on_country_name_gui_input):
+		name_label.gui_input.connect(_on_country_name_gui_input)
+		name_label.mouse_filter = Control.MOUSE_FILTER_STOP
+		name_label.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+
+func _nastav_overview_text_properties() -> void:
+	if ideo_label:
+		ideo_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		ideo_label.custom_minimum_size = Vector2(300, 0)
+		ideo_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if pop_label:
+		pop_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		pop_label.custom_minimum_size = Vector2(300, 0)
+		pop_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if recruit_label:
+		recruit_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		recruit_label.custom_minimum_size = Vector2(300, 0)
+		recruit_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if army_power_label:
+		army_power_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		army_power_label.custom_minimum_size = Vector2(300, 0)
+		army_power_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if gdp_label:
+		gdp_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		gdp_label.custom_minimum_size = Vector2(300, 0)
+		gdp_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if gdp_pc_label:
+		gdp_pc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		gdp_pc_label.custom_minimum_size = Vector2(300, 0)
+		gdp_pc_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if vassals_label:
+		vassals_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		vassals_label.custom_minimum_size = Vector2(300, 0)
+		vassals_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if war_reparations_label:
+		war_reparations_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		war_reparations_label.custom_minimum_size = Vector2(300, 0)
+		war_reparations_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
 func _nastav_tooltipy_ui() -> void:
-	name_label.tooltip_text = "Name of the selected country."
+	name_label.tooltip_text = "Name of the selected country. Double-click your own country name to rename it."
 	country_flag.tooltip_text = "Flag of the selected country."
 	ideo_label.tooltip_text = "Current political system of the country."
 	pop_label.tooltip_text = "Total population of the country."
@@ -687,8 +745,109 @@ func _on_popup_flag_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		_on_popup_country_reference_pressed()
 
+func _on_country_name_gui_input(event: InputEvent) -> void:
+	if not (event is InputEventMouseButton):
+		return
+	var mouse_event = event as InputEventMouseButton
+	if mouse_event.button_index != MOUSE_BUTTON_LEFT or not mouse_event.pressed or not mouse_event.double_click:
+		return
+	if current_viewed_tag == "":
+		return
+	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
+	if current_viewed_tag != player_tag:
+		return
+	_otevri_prejmenovani_statu_dialog(player_tag)
+
 func _on_popup_country_reference_pressed() -> void:
 	_otevri_prehled_statu_podle_tagu(_popup_request_from_tag)
+
+func _vytvor_prejmenovani_statu_dialog() -> void:
+	if _rename_country_dialog:
+		return
+	_rename_country_dialog = PopupPanel.new()
+	_rename_country_dialog.name = "RenameCountryDialog"
+	_rename_country_dialog.size = Vector2i(420, 165)
+	add_child(_rename_country_dialog)
+
+	var root = VBoxContainer.new()
+	root.add_theme_constant_override("separation", 10)
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.offset_left = 16
+	root.offset_top = 16
+	root.offset_right = -16
+	root.offset_bottom = -16
+	_rename_country_dialog.add_child(root)
+
+	var title = Label.new()
+	title.text = "Rename Country"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	root.add_child(title)
+
+	_rename_country_input = LineEdit.new()
+	_rename_country_input.placeholder_text = "Enter new country name"
+	_rename_country_input.max_length = 40
+	_rename_country_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root.add_child(_rename_country_input)
+	if not _rename_country_input.text_submitted.is_connected(_on_confirm_rename_country):
+		_rename_country_input.text_submitted.connect(_on_confirm_rename_country)
+
+	var hint = Label.new()
+	hint.text = "Only your currently selected country can be renamed."
+	hint.modulate = Color(0.8, 0.85, 0.92, 0.95)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	root.add_child(hint)
+
+	var row = HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_END
+	row.add_theme_constant_override("separation", 8)
+	root.add_child(row)
+
+	var cancel_btn = Button.new()
+	cancel_btn.text = "Cancel"
+	row.add_child(cancel_btn)
+	cancel_btn.pressed.connect(func():
+		if _rename_country_dialog:
+			_rename_country_dialog.hide()
+	)
+
+	_rename_country_confirm_btn = Button.new()
+	_rename_country_confirm_btn.text = "Save"
+	row.add_child(_rename_country_confirm_btn)
+	if not _rename_country_confirm_btn.pressed.is_connected(_on_confirm_rename_country):
+		_rename_country_confirm_btn.pressed.connect(_on_confirm_rename_country)
+
+func _otevri_prejmenovani_statu_dialog(state_tag: String) -> void:
+	if _rename_country_dialog == null:
+		_vytvor_prejmenovani_statu_dialog()
+	if _rename_country_dialog == null or _rename_country_input == null:
+		return
+	var current_name = _ziskej_jmeno_statu_podle_tagu(state_tag)
+	_rename_country_input.text = current_name
+	_rename_country_dialog.popup_centered()
+	_rename_country_input.grab_focus()
+	_rename_country_input.select_all()
+
+func _on_confirm_rename_country(_submitted_text: String = "") -> void:
+	if _rename_country_input == null:
+		return
+	var state_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
+	if state_tag == "":
+		return
+	var new_name = _rename_country_input.text.strip_edges()
+	if new_name == "":
+		await zobraz_systemove_hlaseni("Rename", "Country name cannot be empty.")
+		return
+	if not GameManager.has_method("prejmenuj_stat"):
+		await zobraz_systemove_hlaseni("Rename", "Rename action is unavailable.")
+		return
+	var result = GameManager.prejmenuj_stat(state_tag, new_name) as Dictionary
+	if not bool(result.get("ok", false)):
+		await zobraz_systemove_hlaseni("Rename", str(result.get("reason", "Rename failed.")))
+		return
+	if _rename_country_dialog:
+		_rename_country_dialog.hide()
+	_obnov_otevreny_prehled_statu()
+	await zobraz_systemove_hlaseni("Rename", "Country renamed to %s." % str(result.get("new_name", new_name)))
 
 func _ziskej_map_loader_node() -> Node:
 	var scene_root = get_tree().current_scene
@@ -1190,15 +1349,32 @@ func _obnov_panel_vazalu() -> void:
 			card_v.add_child(lock_lbl)
 
 		if GameManager.has_method("ziskej_cisty_prijem_statu"):
-			var inc = float(GameManager.ziskej_cisty_prijem_statu(subject))
-			var est = max(0.0, inc) * (float(slider.value) / 100.0)
+			var est = 0.0
+			if GameManager.has_method("ziskej_projektovany_vazalsky_odvod"):
+				var tribute_info = GameManager.ziskej_projektovany_vazalsky_odvod(GameManager.hrac_stat, subject) as Dictionary
+				est = float(tribute_info.get("paid", 0.0))
+			else:
+				var inc = float(GameManager.ziskej_cisty_prijem_statu(subject))
+				est = max(0.0, inc) * (float(slider.value) / 100.0)
 			var est_lbl = Label.new()
-			est_lbl.text = "Estimated tribute/turn: $%.2f" % est
+			est_lbl.text = "Projected tribute/turn: $%.2f" % est
 			est_lbl.add_theme_font_size_override("font_size", 12)
 			est_lbl.add_theme_color_override("font_color", Color(0.73, 0.96, 0.82, 0.95))
 			slider.value_changed.connect(func(v):
-				var est_now = max(0.0, float(GameManager.ziskej_cisty_prijem_statu(subject))) * (float(v) / 100.0)
-				est_lbl.text = "Estimated tribute/turn: $%.2f" % est_now
+				var est_now = 0.0
+				if GameManager.has_method("ziskej_projektovany_vazalsky_odvod"):
+					var preview_ok = false
+					var preview_rate = 0.0
+					if GameManager.has_method("ziskej_vazalsky_odvod"):
+						preview_rate = float(GameManager.ziskej_vazalsky_odvod(GameManager.hrac_stat, subject)) * 100.0
+					preview_ok = absf(float(v) - preview_rate) < 0.001
+					if preview_ok:
+						var tribute_info_now = GameManager.ziskej_projektovany_vazalsky_odvod(GameManager.hrac_stat, subject) as Dictionary
+						est_now = float(tribute_info_now.get("paid", 0.0))
+				if est_now <= 0.0:
+					var inc_now = max(0.0, float(GameManager.ziskej_cisty_prijem_statu(subject)))
+					est_now = inc_now * (float(v) / 100.0)
+				est_lbl.text = "Projected tribute/turn: $%.2f" % est_now
 			)
 			card_v.add_child(est_lbl)
 
@@ -1300,17 +1476,77 @@ func _zajisti_ai_debug_overview_labely() -> void:
 			if source_style:
 				ai_debug_panel.add_theme_stylebox_override("panel", source_style.duplicate())
 
+		var root := VBoxContainer.new()
+		root.name = "RootVBox"
+		root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		root.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		ai_debug_panel.add_child(root)
+
+		_ai_debug_header = HBoxContainer.new()
+		_ai_debug_header.name = "Header"
+		root.add_child(_ai_debug_header)
+
+		_ai_debug_title_label = Label.new()
+		_ai_debug_title_label.name = "Title"
+		_ai_debug_title_label.text = "Debug"
+		_ai_debug_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_ai_debug_header.add_child(_ai_debug_title_label)
+
+		_ai_debug_min_btn = Button.new()
+		_ai_debug_min_btn.name = "MinButton"
+		_ai_debug_min_btn.text = "-"
+		_ai_debug_min_btn.custom_minimum_size = Vector2(32, 28)
+		if not _ai_debug_min_btn.pressed.is_connected(_on_ai_debug_min_pressed):
+			_ai_debug_min_btn.pressed.connect(_on_ai_debug_min_pressed)
+		_ai_debug_header.add_child(_ai_debug_min_btn)
+
+		_ai_debug_max_btn = Button.new()
+		_ai_debug_max_btn.name = "MaxButton"
+		_ai_debug_max_btn.text = "+"
+		_ai_debug_max_btn.custom_minimum_size = Vector2(32, 28)
+		if not _ai_debug_max_btn.pressed.is_connected(_on_ai_debug_max_pressed):
+			_ai_debug_max_btn.pressed.connect(_on_ai_debug_max_pressed)
+		_ai_debug_header.add_child(_ai_debug_max_btn)
+
+		_ai_debug_filter_row = HBoxContainer.new()
+		_ai_debug_filter_row.name = "FilterRow"
+		root.add_child(_ai_debug_filter_row)
+
+		_ai_debug_filter_all_btn = Button.new()
+		_ai_debug_filter_all_btn.name = "FilterAllButton"
+		_ai_debug_filter_all_btn.text = "Vse"
+		if not _ai_debug_filter_all_btn.pressed.is_connected(_on_ai_debug_filter_all_pressed):
+			_ai_debug_filter_all_btn.pressed.connect(_on_ai_debug_filter_all_pressed)
+		_ai_debug_filter_row.add_child(_ai_debug_filter_all_btn)
+
+		_ai_debug_filter_mine_btn = Button.new()
+		_ai_debug_filter_mine_btn.name = "FilterMineButton"
+		_ai_debug_filter_mine_btn.text = "Moje"
+		if not _ai_debug_filter_mine_btn.pressed.is_connected(_on_ai_debug_filter_mine_pressed):
+			_ai_debug_filter_mine_btn.pressed.connect(_on_ai_debug_filter_mine_pressed)
+		_ai_debug_filter_row.add_child(_ai_debug_filter_mine_btn)
+
+		_ai_debug_filter_other_btn = Button.new()
+		_ai_debug_filter_other_btn.name = "FilterOtherButton"
+		_ai_debug_filter_other_btn.text = "Ostatni"
+		if not _ai_debug_filter_other_btn.pressed.is_connected(_on_ai_debug_filter_other_pressed):
+			_ai_debug_filter_other_btn.pressed.connect(_on_ai_debug_filter_other_pressed)
+		_ai_debug_filter_row.add_child(_ai_debug_filter_other_btn)
+
 		var margin := MarginContainer.new()
+		margin.name = "BodyMargin"
 		margin.add_theme_constant_override("margin_left", 12)
 		margin.add_theme_constant_override("margin_top", 10)
 		margin.add_theme_constant_override("margin_right", 12)
 		margin.add_theme_constant_override("margin_bottom", 10)
-		ai_debug_panel.add_child(margin)
+		margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		root.add_child(margin)
 
 		ai_debug_label = RichTextLabel.new()
 		ai_debug_label.name = "AIDebugLabel"
 		ai_debug_label.bbcode_enabled = true
-		ai_debug_label.scroll_active = false
+		ai_debug_label.scroll_active = true
 		ai_debug_label.fit_content = false
 		ai_debug_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		ai_debug_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1320,14 +1556,24 @@ func _zajisti_ai_debug_overview_labely() -> void:
 
 		add_child(ai_debug_panel)
 	else:
-		ai_debug_label = ai_debug_panel.get_node_or_null("MarginContainer/AIDebugLabel") as RichTextLabel
+		ai_debug_label = ai_debug_panel.get_node_or_null("RootVBox/BodyMargin/AIDebugLabel") as RichTextLabel
+		_ai_debug_header = ai_debug_panel.get_node_or_null("RootVBox/Header") as HBoxContainer
+		_ai_debug_title_label = ai_debug_panel.get_node_or_null("RootVBox/Header/Title") as Label
+		_ai_debug_min_btn = ai_debug_panel.get_node_or_null("RootVBox/Header/MinButton") as Button
+		_ai_debug_max_btn = ai_debug_panel.get_node_or_null("RootVBox/Header/MaxButton") as Button
+		_ai_debug_filter_row = ai_debug_panel.get_node_or_null("RootVBox/FilterRow") as HBoxContainer
+		_ai_debug_filter_all_btn = ai_debug_panel.get_node_or_null("RootVBox/FilterRow/FilterAllButton") as Button
+		_ai_debug_filter_mine_btn = ai_debug_panel.get_node_or_null("RootVBox/FilterRow/FilterMineButton") as Button
+		_ai_debug_filter_other_btn = ai_debug_panel.get_node_or_null("RootVBox/FilterRow/FilterOtherButton") as Button
 
 	_pozicuj_ai_debug_panel()
+	_aktualizuj_ai_debug_filter_tlacitka()
 	ai_debug_panel.hide()
 
 func _pozicuj_ai_debug_panel() -> void:
 	if ai_debug_panel == null or not is_instance_valid(ai_debug_panel):
 		return
+	var viewport_size = get_viewport().get_visible_rect().size
 	var side_margin := 8.0
 	var top_margin := 8.0
 	var y_pos := top_margin
@@ -1336,12 +1582,115 @@ func _pozicuj_ai_debug_panel() -> void:
 	if topbar_panel:
 		y_pos = topbar_panel.global_position.y + topbar_panel.size.y + top_margin
 
-	var width = ai_debug_panel.custom_minimum_size.x
-	var height = ai_debug_panel.custom_minimum_size.y
+	var available_height = max(260.0, viewport_size.y - y_pos - top_margin)
+	var max_width = max(300.0, min(900.0, viewport_size.x - side_margin * 2.0))
+	var width_ratio = 0.50 if _ai_debug_expanded else 0.34
+	var height_ratio = 0.88 if _ai_debug_expanded else 0.72
+	var width = clamp(viewport_size.x * width_ratio, 300.0, max_width)
+	var height = 46.0 if _ai_debug_collapsed else clamp(viewport_size.y * height_ratio, 260.0, available_height)
+	ai_debug_panel.custom_minimum_size = Vector2(width, height)
+	if _ai_debug_title_label:
+		_ai_debug_title_label.text = "Debug Panel"
+	if _ai_debug_min_btn:
+		_ai_debug_min_btn.text = "+" if _ai_debug_collapsed else "-"
+	if _ai_debug_max_btn:
+		_ai_debug_max_btn.text = "[]" if not _ai_debug_expanded else "<>"
+	if ai_debug_label:
+		ai_debug_label.visible = not _ai_debug_collapsed
+		ai_debug_label.custom_minimum_size = Vector2(0, max(240.0, height - 56.0))
 	ai_debug_panel.offset_left = -width - side_margin
 	ai_debug_panel.offset_top = y_pos
 	ai_debug_panel.offset_right = -side_margin
 	ai_debug_panel.offset_bottom = y_pos + height
+
+func _on_ai_debug_min_pressed() -> void:
+	_ai_debug_collapsed = not _ai_debug_collapsed
+	_pozicuj_ai_debug_panel()
+
+func _on_ai_debug_max_pressed() -> void:
+	_ai_debug_expanded = not _ai_debug_expanded
+	if _ai_debug_expanded:
+		_ai_debug_collapsed = false
+	_pozicuj_ai_debug_panel()
+
+func _nastav_ai_debug_filter_mode(mode: int) -> void:
+	_ai_debug_filter_mode = clampi(mode, 0, 2)
+	_aktualizuj_ai_debug_filter_tlacitka()
+	var target_tag = _vyres_debug_panel_tag(current_viewed_tag)
+	if target_tag != "":
+		_aktualizuj_ai_debug_overview(target_tag, _je_hracuv_tag(target_tag))
+	else:
+		ai_debug_panel.hide()
+
+func _aktualizuj_ai_debug_filter_tlacitka() -> void:
+	if _ai_debug_filter_all_btn:
+		_ai_debug_filter_all_btn.disabled = _ai_debug_filter_mode == 0
+	if _ai_debug_filter_mine_btn:
+		_ai_debug_filter_mine_btn.disabled = _ai_debug_filter_mode == 1
+	if _ai_debug_filter_other_btn:
+		_ai_debug_filter_other_btn.disabled = _ai_debug_filter_mode == 2
+
+func _je_hracuv_tag(owner_tag: String) -> bool:
+	var clean = owner_tag.strip_edges().to_upper()
+	if clean == "":
+		return false
+	if GameManager == null:
+		return false
+	var local_states = GameManager.lokalni_hraci_staty if "lokalni_hraci_staty" in GameManager else []
+	for raw_tag in local_states:
+		if str(raw_tag).strip_edges().to_upper() == clean:
+			return true
+	return clean == str(GameManager.hrac_stat).strip_edges().to_upper()
+
+func _je_debug_panel_povoleny_pro_stat(owner_tag: String) -> bool:
+	match _ai_debug_filter_mode:
+		1:
+			return _je_hracuv_tag(owner_tag)
+		2:
+			return not _je_hracuv_tag(owner_tag)
+		_:
+			return true
+
+func _najdi_debug_panel_fallback_tag() -> String:
+	if GameManager == null:
+		return ""
+
+	if _ai_debug_filter_mode == 1:
+		var local_states = GameManager.lokalni_hraci_staty if "lokalni_hraci_staty" in GameManager else []
+		for raw_tag in local_states:
+			var t = str(raw_tag).strip_edges().to_upper()
+			if t != "":
+				return t
+		return str(GameManager.hrac_stat).strip_edges().to_upper()
+
+	if _ai_debug_filter_mode == 2:
+		var seen: Dictionary = {}
+		var map_data = GameManager.map_data if "map_data" in GameManager else {}
+		for p_id in map_data:
+			var d = map_data[p_id] as Dictionary
+			var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
+			if owner_tag == "" or owner_tag == "SEA" or seen.has(owner_tag):
+				continue
+			seen[owner_tag] = true
+			if not _je_hracuv_tag(owner_tag):
+				return owner_tag
+
+	return ""
+
+func _vyres_debug_panel_tag(owner_tag: String) -> String:
+	var clean = owner_tag.strip_edges().to_upper()
+	if clean != "" and _je_debug_panel_povoleny_pro_stat(clean):
+		return clean
+	return _najdi_debug_panel_fallback_tag()
+
+func _on_ai_debug_filter_all_pressed() -> void:
+	_nastav_ai_debug_filter_mode(0)
+
+func _on_ai_debug_filter_mine_pressed() -> void:
+	_nastav_ai_debug_filter_mode(1)
+
+func _on_ai_debug_filter_other_pressed() -> void:
+	_nastav_ai_debug_filter_mode(2)
 
 func _aktualizuj_ai_debug_overview(owner_tag: String, je_hracuv_stat: bool) -> void:
 	if ai_debug_label == null or ai_debug_panel == null:
@@ -1349,14 +1698,18 @@ func _aktualizuj_ai_debug_overview(owner_tag: String, je_hracuv_stat: bool) -> v
 	if not GameManager or not GameManager.has_method("je_ai_debug_mode_zapnuty"):
 		ai_debug_panel.hide()
 		return
-	if not bool(GameManager.je_ai_debug_mode_zapnuty()) or je_hracuv_stat:
+	if not bool(GameManager.je_ai_debug_mode_zapnuty()):
+		ai_debug_panel.hide()
+		return
+	var resolved_tag = _vyres_debug_panel_tag(owner_tag)
+	if resolved_tag == "":
 		ai_debug_panel.hide()
 		return
 	if not GameManager.has_method("ziskej_ai_debug_snapshot"):
 		ai_debug_panel.hide()
 		return
 
-	var snap = GameManager.ziskej_ai_debug_snapshot(owner_tag) as Dictionary
+	var snap = GameManager.ziskej_ai_debug_snapshot(resolved_tag) as Dictionary
 	if not bool(snap.get("ok", false)):
 		ai_debug_panel.hide()
 		return
@@ -1381,7 +1734,7 @@ func _aktualizuj_ai_debug_overview(owner_tag: String, je_hracuv_stat: bool) -> v
 
 	var recruit_targets = snap.get("recruit_targets", []) as Array
 	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
-	var viewed_tag = str(owner_tag).strip_edges().to_upper()
+	var viewed_tag = resolved_tag
 	var pair_war_text = "n/a"
 	if player_tag != "" and viewed_tag != "" and player_tag != viewed_tag and GameManager.has_method("jsou_ve_valce"):
 		pair_war_text = "yes" if bool(GameManager.jsou_ve_valce(player_tag, viewed_tag)) else "no"
@@ -1391,10 +1744,13 @@ func _aktualizuj_ai_debug_overview(owner_tag: String, je_hracuv_stat: bool) -> v
 	var turn_state = "processing" if _turn_loading_active else "idle"
 	var turn_last_text = "n/a" if _debug_last_turn_ms < 0 else "%d ms" % _debug_last_turn_ms
 	var turn_avg_text = "n/a"
+	var viewed_name = _ziskej_jmeno_statu_podle_tagu(str(snap.get("state", owner_tag)))
+	if _ai_debug_title_label:
+		_ai_debug_title_label.text = "Debug: %s" % viewed_name
 	if _debug_turn_samples > 0:
 		turn_avg_text = "%d ms" % int(round(float(_debug_turn_total_ms) / float(_debug_turn_samples)))
 
-	lines.append("[b]Debug mode[/b]")
+	lines.append("[b]Debug mode[/b]  %s (%s)" % [viewed_name, str(snap.get("state", owner_tag))])
 	lines.append("FPS: %d | Turn state: %s" % [fps_now, turn_state])
 	lines.append("Player vs viewed country at war: %s" % pair_war_text)
 	lines.append("Turn response: last %s | avg %s | samples %d" % [
@@ -1434,7 +1790,36 @@ func _aktualizuj_ai_debug_overview(owner_tag: String, je_hracuv_stat: bool) -> v
 		_format_money_auto(float(snap.get("spend_total", 0.0)), 2)
 	])
 
+	var turn_history = snap.get("turn_history", []) as Array
+	if not turn_history.is_empty():
+		lines.append("------------------------------")
+		lines.append("[b]Turn history[/b]")
+		for entry_any in turn_history:
+			var entry = entry_any as Dictionary
+			var phases = entry.get("phases", {}) as Dictionary
+			lines.append("Turn %d | total %d ms | switch %d | armies %d | finance %d | growth %d | ai %d | popups %d | ui %d" % [
+				int(entry.get("turn", -1)),
+				int(entry.get("total_ms", 0)),
+				int(phases.get("switch_player", 0)),
+				int(phases.get("armies", 0)),
+				int(phases.get("finance", 0)),
+				int(phases.get("growth", 0)),
+				int(phases.get("ai", 0)),
+				int(phases.get("popups", 0)),
+				int(phases.get("ui", 0))
+			])
+			var events = entry.get("events", []) as Array
+			if events.is_empty():
+				lines.append("  no debug events")
+				continue
+			for event_any in events:
+				var event_text = str(event_any).strip_edges()
+				if event_text == "":
+					continue
+				lines.append("  - %s" % event_text)
+
 	ai_debug_label.text = "\n".join(lines)
+	ai_debug_label.scroll_to_line(0)
 	_pozicuj_ai_debug_panel()
 	ai_debug_panel.show()
 
@@ -2723,8 +3108,6 @@ func _ziskej_souhrn_statu(owner_tag: String, all_provinces: Dictionary) -> Dicti
 	var clean_tag = owner_tag.strip_edges().to_upper()
 	if clean_tag == "":
 		return {}
-	if _country_overview_stats_cache.has(clean_tag):
-		return _country_overview_stats_cache[clean_tag]
 
 	var stats := {
 		"population": 0,
@@ -2733,18 +3116,26 @@ func _ziskej_souhrn_statu(owner_tag: String, all_provinces: Dictionary) -> Dicti
 		"soldiers": 0,
 		"representative_province_id": -1
 	}
-	for p_id in all_provinces:
-		var province = all_provinces[p_id] as Dictionary
-		if str(province.get("owner", "")).strip_edges().to_upper() != clean_tag:
-			continue
-		stats["population"] = int(stats.get("population", 0)) + int(province.get("population", 0))
-		stats["gdp"] = float(stats.get("gdp", 0.0)) + float(province.get("gdp", 0.0))
-		stats["recruits"] = int(stats.get("recruits", 0)) + int(province.get("recruitable_population", 0))
-		stats["soldiers"] = int(stats.get("soldiers", 0)) + int(province.get("soldiers", 0))
-		if int(stats.get("representative_province_id", -1)) == -1:
-			stats["representative_province_id"] = int(p_id)
-
-	_country_overview_stats_cache[clean_tag] = stats
+	
+	# If we have fresh provinces data, always recalculate instead of trusting stale cache
+	if all_provinces.size() > 0:
+		for p_id in all_provinces:
+			var province = all_provinces[p_id] as Dictionary
+			if str(province.get("owner", "")).strip_edges().to_upper() != clean_tag:
+				continue
+			stats["population"] = int(stats.get("population", 0)) + int(province.get("population", 0))
+			stats["gdp"] = float(stats.get("gdp", 0.0)) + float(province.get("gdp", 0.0))
+			stats["recruits"] = int(stats.get("recruits", 0)) + int(province.get("recruitable_population", 0))
+			stats["soldiers"] = int(stats.get("soldiers", 0)) + int(province.get("soldiers", 0))
+			if int(stats.get("representative_province_id", -1)) == -1:
+				stats["representative_province_id"] = int(p_id)
+		_country_overview_stats_cache[clean_tag] = stats
+		return stats
+	
+	# Only use cache if no fresh data is available
+	if _country_overview_stats_cache.has(clean_tag):
+		return _country_overview_stats_cache[clean_tag]
+	
 	return stats
 
 func _ziskej_dostupne_ideologie_pro_stat(tag: String) -> Array:
@@ -7693,6 +8084,17 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 	var total_gdp = float(stats.get("gdp", 0.0))
 	var total_recruits = int(stats.get("recruits", 0))
 	var total_soldiers = int(stats.get("soldiers", 0))
+	
+	# Fallback: if soldiers are 0 and all_provinces is empty or corrupted, try GameManager.map_data
+	if total_soldiers <= 0 and (all_provinces.is_empty() or total_pop <= 0):
+		if GameManager and not GameManager.map_data.is_empty():
+			var fallback_stats = _ziskej_souhrn_statu(owner_tag, GameManager.map_data)
+			if int(fallback_stats.get("soldiers", 0)) > 0 or int(fallback_stats.get("population", 0)) > 0:
+				stats = fallback_stats
+				total_pop = int(stats.get("population", 0))
+				total_gdp = float(stats.get("gdp", 0.0))
+				total_recruits = int(stats.get("recruits", 0))
+				total_soldiers = int(stats.get("soldiers", 0))
 			
 	name_label.text = plne_jmeno
 	ideo_label.text = "Regime: " + ideologie.capitalize()
@@ -7708,17 +8110,14 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 		var army_total = total_soldiers
 		var bonus_flat = 0
 		var bonus_pct = 0.0
+		var stable_multiplier = 1.0
 		if GameManager.has_method("ziskej_silu_armady_statu"):
 			var power_info = GameManager.ziskej_silu_armady_statu(owner_tag, total_soldiers) as Dictionary
 			army_total = int(power_info.get("total", total_soldiers))
 			bonus_flat = int(power_info.get("bonus_flat", 0))
 			bonus_pct = float(power_info.get("bonus_pct", 0.0)) * 100.0
-		var mult = 1.0
-		if total_soldiers > 0:
-			mult = float(army_total) / float(total_soldiers)
-		else:
-			mult = 1.0 + (bonus_pct / 100.0)
-		army_power_label.text = "Army strength: %.3fx (+%d | +%.2f%%)" % [mult, bonus_flat, bonus_pct]
+		stable_multiplier = 1.0 + (bonus_pct / 100.0)
+		army_power_label.text = "Army strength: %s total | lab mult %.3fx | +%d flat" % [_formatuj_cislo(army_total), stable_multiplier, bonus_flat]
 	gdp_label.text = "Total GDP: %.2f bn USD" % total_gdp
 	
 	# Calculate GDP per capita

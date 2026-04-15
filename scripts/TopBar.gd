@@ -268,7 +268,7 @@ var _calendar_start_day: int = 1
 var _calendar_start_month: int = 1
 var _calendar_start_year: int = 2026
 
-const TURN_BUSY_FRAMES := ["[zpracovavam  ]", "[zpracovavam .]", "[zpracovavam ..]", "[zpracovavam ...]"]
+const TURN_BUSY_FRAMES := ["[turn... ]", "[turn.. .]", "[turn. ..]", "[turn ...]"]
 const STATS_HISTORY_LIMIT := 84
 const STATS_COLOR_GDP := Color(0.95, 0.77, 0.25, 1.0)
 const STATS_COLOR_POP := Color(0.38, 0.82, 0.92, 1.0)
@@ -434,6 +434,7 @@ func _ready():
 	var viewport = get_viewport()
 	if viewport and viewport.has_signal("size_changed") and not viewport.size_changed.is_connected(_aktualizuj_sirku_panelu_hrace):
 		viewport.size_changed.connect(_aktualizuj_sirku_panelu_hrace)
+	_aktualizuj_sirku_panelu_hrace()
 	aktualizuj_ui()
 	call_deferred("_registruj_anchor_zprav")
 
@@ -566,6 +567,7 @@ func _aktualizuj_sirku_panelu_hrace() -> void:
 	if viewport == null:
 		return
 	var vp_width = viewport.get_visible_rect().size.x
+	_aktualizuj_responzivni_topbar(vp_width)
 
 	var row_separation = 8.0
 	if turn_row:
@@ -576,6 +578,10 @@ func _aktualizuj_sirku_panelu_hrace() -> void:
 	var button_width = 180.0
 	if next_btn:
 		button_width = maxf(button_width, next_btn.custom_minimum_size.x)
+	var busy_width = 0.0
+	if _turn_busy_indicator and _turn_busy_indicator.visible and not _turn_busy_suppressed:
+		busy_width = _ziskej_sirku_turn_busy_indicatoru()
+		_turn_busy_indicator.custom_minimum_size.x = busy_width
 	var name_width = 90.0
 	if player_name:
 		var font = player_name.get_theme_font("font")
@@ -594,7 +600,7 @@ func _aktualizuj_sirku_panelu_hrace() -> void:
 		queue_estimated = 120.0
 
 	# First row: flag + next button.
-	var turn_row_estimated = flag_width + button_width + row_separation + 18.0
+	var turn_row_estimated = flag_width + button_width + (busy_width if busy_width > 0.0 else 0.0) + row_separation * (2.0 if busy_width > 0.0 else 1.0) + 18.0
 	# Second row is full-width state name; third row is queue.
 	var second_row_estimated = name_width + 18.0
 
@@ -604,6 +610,28 @@ func _aktualizuj_sirku_panelu_hrace() -> void:
 
 	player_turn_panel.custom_minimum_size.x = desired_width
 	player_turn_panel.offset_left = player_turn_panel.offset_right - desired_width
+
+func _aktualizuj_responzivni_topbar(vp_width: float) -> void:
+	var compact = vp_width < 1360.0
+	var narrow = vp_width < 1180.0
+	var tiny = vp_width < 980.0
+
+	if map_modes_box:
+		map_modes_box.visible = not narrow
+
+	if money_label:
+		money_label.custom_minimum_size.x = 300.0 if compact else 425.0
+		money_label.add_theme_font_size_override("font_size", 24 if compact else 31)
+
+	if date_label:
+		date_label.visible = not tiny
+		date_label.custom_minimum_size.x = 240.0 if compact else 350.0
+		date_label.add_theme_font_size_override("font_size", 20 if compact else 24)
+
+	if zpravy_btn:
+		zpravy_btn.visible = vp_width >= 860.0
+		zpravy_btn.custom_minimum_size.x = 130.0 if compact else 175.0
+		zpravy_btn.add_theme_font_size_override("font_size", 20 if compact else 26)
 
 func _aktualizuj_zarovnani_nazvu_statu() -> void:
 	if player_name == null:
@@ -874,7 +902,7 @@ func aktualizuj_ui():
 	if GameManager.has_method("ziskej_financni_rozpad_statu"):
 		var finance = GameManager.ziskej_financni_rozpad_statu(str(GameManager.hrac_stat)) as Dictionary
 		if bool(finance.get("ok", false)):
-			topbar_balance = float(finance.get("profit", topbar_balance))
+			topbar_balance = float(finance.get("cashflow", finance.get("profit", topbar_balance)))
 	money_label.text = "Funds: %.2f M USD (+%.2f)" % [GameManager.statni_kasa, topbar_balance]
 	if date_label:
 		date_label.text = _ziskej_text_data_pro_kolo(int(GameManager.aktualni_kolo))
@@ -2085,8 +2113,24 @@ func _vytvor_turn_busy_indicator() -> void:
 	_turn_busy_indicator.visible = false
 	_turn_busy_indicator.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_turn_busy_indicator.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_turn_busy_indicator.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_turn_busy_indicator.clip_text = true
+	_turn_busy_indicator.custom_minimum_size = Vector2(92, 0)
 	parent.add_child(_turn_busy_indicator)
 	parent.move_child(_turn_busy_indicator, next_btn.get_index() + 1)
+
+func _ziskej_sirku_turn_busy_indicatoru() -> float:
+	if _turn_busy_indicator == null:
+		return 92.0
+	var font = _turn_busy_indicator.get_theme_font("font")
+	var font_size = _turn_busy_indicator.get_theme_font_size("font_size")
+	var longest = TURN_BUSY_FRAMES[0]
+	for frame in TURN_BUSY_FRAMES:
+		if str(frame).length() > longest.length():
+			longest = str(frame)
+	if font:
+		return clampf(font.get_string_size(longest, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x + 10.0, 70.0, 180.0)
+	return 92.0
 
 func _on_zpracovani_tahu_zmeneno(aktivni: bool) -> void:
 	_is_turn_processing = aktivni
@@ -2097,12 +2141,14 @@ func _on_zpracovani_tahu_zmeneno(aktivni: bool) -> void:
 		_turn_busy_anim_step = 0
 		_turn_busy_indicator.text = TURN_BUSY_FRAMES[0]
 	_turn_busy_anim_time = 0.0
+	_aktualizuj_sirku_panelu_hrace()
 	set_process(aktivni)
 
 func nastav_pozastaveni_turn_busy_indicator(pozastavit: bool) -> void:
 	_turn_busy_suppressed = pozastavit
 	if _turn_busy_indicator:
 		_turn_busy_indicator.visible = _is_turn_processing and not _turn_busy_suppressed
+	_aktualizuj_sirku_panelu_hrace()
 
 func _process(delta: float) -> void:
 	if _finance_tooltip_visible:
@@ -2194,6 +2240,7 @@ func _aktualizuj_financni_tooltip_text() -> void:
 	var income = finance.get("income", {}) as Dictionary
 	var expenses = finance.get("expenses", {}) as Dictionary
 	var profit = float(finance.get("profit", 0.0))
+	var cashflow = float(finance.get("cashflow", profit))
 
 	var t := ""
 	t += "[b][color=#FFFFFF]INCOME[/color][/b]\n"
@@ -2201,15 +2248,18 @@ func _aktualizuj_financni_tooltip_text() -> void:
 	t += "[color=#65D96E]Vassals: %s[/color]\n" % _format_finance_value(float(income.get("vassals", 0.0)))
 	t += "[color=#65D96E]Reparations: %s[/color]\n" % _format_finance_value(float(income.get("reparations", 0.0)))
 	t += "[color=#65D96E]Loan interest: %s[/color]\n" % _format_finance_value(float(income.get("loan_interest", 0.0)))
+	t += "[color=#65D96E]Loan principal: %s[/color]\n" % _format_finance_value(float(income.get("loan_principal", 0.0)))
 	t += "[color=#65D96E]Other: %s[/color]\n\n" % _format_finance_value(float(income.get("other", 0.0)))
 
 	t += "[b][color=#FFFFFF]EXPENSES[/color][/b]\n"
 	t += "[color=#FF6666]Army upkeep: %s[/color]\n" % _format_finance_value(float(expenses.get("army_upkeep", 0.0)))
 	t += "[color=#FF6666]Investments: %s[/color]\n" % _format_finance_value(float(expenses.get("investments", 0.0)))
 	t += "[color=#FF6666]Loan interest: %s[/color]\n" % _format_finance_value(float(expenses.get("loan_interest", 0.0)))
+	t += "[color=#FF6666]Loan principal: %s[/color]\n" % _format_finance_value(float(expenses.get("loan_principal", 0.0)))
 	t += "[color=#FF6666]Other: %s[/color]\n\n" % _format_finance_value(float(expenses.get("other", 0.0)))
 
-	t += "[b][color=#FFFFFF]BALANCE (PROFIT): %s[/color][/b]" % _format_finance_signed(profit)
+	t += "[b][color=#FFFFFF]BALANCE (PROFIT): %s[/color][/b]\n" % _format_finance_signed(profit)
+	t += "[b][color=#FFFFFF]TREASURY CHANGE (CASHFLOW): %s[/color][/b]" % _format_finance_signed(cashflow)
 	_finance_tooltip_text.text = t
 
 func _aktualizuj_financni_tooltip_pozici() -> void:

@@ -160,9 +160,10 @@ const AI_PROFILE_WARN_MS := 500
 const AI_MOVEMENT_PROFILE_ENABLED := false
 const AI_DECISION_DEBUG_ENABLED := false
 const AI_DEBUG_MAX_LINES_PER_TURN := 150
+const DEBUG_TURN_HISTORY_MAX := 16
 const TURN_STUCK_WATCHDOG_MS := 15000
 const TURN_LOG_ENABLED := false
-const TURN_FRAME_SLICE_ENABLED := false
+const TURN_FRAME_SLICE_ENABLED := true
 const TURN_FRAME_SLICE_PROVINCES := 140
 const TURN_FRAME_SLICE_AI := 90
 const TURN_FRAME_SLICE_AI_STATES := 1
@@ -332,6 +333,12 @@ var _ai_debug_turn_marker: int = -1
 var _ai_debug_lines_this_turn: int = 0
 var _ai_debug_suppressed_notice_printed: bool = false
 var _ai_debug_last_spending_by_state: Dictionary = {}
+var _debug_turn_history: Array = []
+var _debug_turn_live_events: Array = []
+var _debug_last_turn_profile: Dictionary = {}
+var _finance_projection_cash_overrides: Dictionary = {}
+var _sim_cache: Dictionary = {}
+var _sim_cache_validni: bool = false
 var _global_ai_aggression_level: float = 0.5
 var _ai_randomized_ideologies_applied: bool = false
 var _suppress_relation_global_logs: bool = false
@@ -381,6 +388,7 @@ func nastav_lokalni_hrace(staty: Array) -> void:
 	lokalni_hraci_staty = normalizovane
 	aktivni_hrac_index = 0
 	hrac_stat = str(lokalni_hraci_staty[0])
+	var aktivni_tag = _normalizuj_tag(hrac_stat)
 	hrac_jmeno = ""
 	hrac_ideologie = ""
 	_hrac_kasa_inicializovana = false
@@ -395,10 +403,10 @@ func nastav_lokalni_hrace(staty: Array) -> void:
 	armadni_lab_statu.clear()
 	ai_kasy.clear()
 
-	if not hrac_kasy.has(hrac_stat):
-		hrac_kasy[hrac_stat] = statni_kasa
-	if not hrac_prijmy.has(hrac_stat):
-		hrac_prijmy[hrac_stat] = celkovy_prijem
+	if not hrac_kasy.has(aktivni_tag):
+		hrac_kasy[aktivni_tag] = statni_kasa
+	if not hrac_prijmy.has(aktivni_tag):
+		hrac_prijmy[aktivni_tag] = celkovy_prijem
 
 	_synchronizuj_jmeno_a_ideologii_hrace()
 
@@ -798,6 +806,116 @@ func _nacti_finance_aktivniho_hrace() -> void:
 	statni_kasa = float(hrac_kasy.get(aktivni, statni_kasa))
 	celkovy_prijem = float(hrac_prijmy.get(aktivni, celkovy_prijem))
 
+func _sjednot_multiplayer_finance_cache() -> void:
+	if lokalni_hraci_staty.size() <= 1:
+		return
+
+	var normalizovani_hraci = _normalizuj_lidske_staty(lokalni_hraci_staty)
+	var aktivni_tag = _normalizuj_tag(hrac_stat)
+	if aktivni_tag != "" and not normalizovani_hraci.has(aktivni_tag):
+		normalizovani_hraci.append(aktivni_tag)
+	if normalizovani_hraci.is_empty():
+		return
+
+	lokalni_hraci_staty = normalizovani_hraci
+
+	var sjednocene_kasy: Dictionary = {}
+	for key_any in hrac_kasy.keys():
+		var t = _normalizuj_tag(str(key_any))
+		if t == "" or not lokalni_hraci_staty.has(t):
+			continue
+		if not sjednocene_kasy.has(t):
+			sjednocene_kasy[t] = float(hrac_kasy[key_any])
+
+	var sjednocene_prijmy: Dictionary = {}
+	for key_any in hrac_prijmy.keys():
+		var t = _normalizuj_tag(str(key_any))
+		if t == "" or not lokalni_hraci_staty.has(t):
+			continue
+		if not sjednocene_prijmy.has(t):
+			sjednocene_prijmy[t] = float(hrac_prijmy[key_any])
+
+	var sjednocene_inicializace: Dictionary = {}
+	for key_any in hrac_kasa_inicializovana.keys():
+		if not bool(hrac_kasa_inicializovana[key_any]):
+			continue
+		var t = _normalizuj_tag(str(key_any))
+		if t == "" or not lokalni_hraci_staty.has(t):
+			continue
+		sjednocene_inicializace[t] = true
+
+	for t_any in lokalni_hraci_staty:
+		var t = _normalizuj_tag(str(t_any))
+		if t == "":
+			continue
+		if not sjednocene_kasy.has(t):
+			if t == aktivni_tag:
+				sjednocene_kasy[t] = statni_kasa
+			else:
+				sjednocene_kasy[t] = float(hrac_kasy.get(t, 0.0))
+		if not sjednocene_prijmy.has(t):
+			if t == aktivni_tag:
+				sjednocene_prijmy[t] = celkovy_prijem
+			else:
+				sjednocene_prijmy[t] = float(hrac_prijmy.get(t, 0.0))
+		if not sjednocene_inicializace.has(t):
+			if t == aktivni_tag and _hrac_kasa_inicializovana:
+				sjednocene_inicializace[t] = true
+			elif bool(hrac_kasa_inicializovana.get(t, false)):
+				sjednocene_inicializace[t] = true
+
+	if aktivni_tag != "":
+		sjednocene_kasy[aktivni_tag] = statni_kasa
+		sjednocene_prijmy[aktivni_tag] = celkovy_prijem
+	hrac_kasy = sjednocene_kasy
+	hrac_prijmy = sjednocene_prijmy
+	hrac_kasa_inicializovana = sjednocene_inicializace
+
+	if not lokalni_hraci_staty.has(aktivni_tag):
+		aktivni_tag = str(lokalni_hraci_staty[0])
+		hrac_stat = aktivni_tag
+	aktivni_hrac_index = clampi(lokalni_hraci_staty.find(aktivni_tag), 0, lokalni_hraci_staty.size() - 1)
+	_nacti_finance_aktivniho_hrace()
+
+func _sjednot_financni_toky_cache() -> void:
+	_sim_cache_validni = false
+	var sjednocene_vztahy: Dictionary = {}
+	var sjednocene_odvody: Dictionary = {}
+	var sjednocene_cooldowny: Dictionary = {}
+	for subject_any in vazalske_vztahy.keys():
+		var subject = _normalizuj_tag(str(subject_any))
+		var overlord = _normalizuj_tag(str(vazalske_vztahy[subject_any]))
+		if subject == "" or subject == "SEA" or overlord == "" or overlord == "SEA" or subject == overlord:
+			continue
+		sjednocene_vztahy[subject] = overlord
+		var rate_value = float(vazalske_odvody.get(subject_any, vazalske_odvody.get(subject, VASSAL_TRIBUTE_DEFAULT_RATE)))
+		sjednocene_odvody[subject] = clamp(rate_value, VASSAL_TRIBUTE_MIN_RATE, VASSAL_TRIBUTE_MAX_RATE)
+		var cooldown_value = int(vazalske_odvody_posledni_zmena_kolo.get(subject_any, vazalske_odvody_posledni_zmena_kolo.get(subject, -1000000)))
+		if sjednocene_cooldowny.has(subject):
+			sjednocene_cooldowny[subject] = max(int(sjednocene_cooldowny[subject]), cooldown_value)
+		else:
+			sjednocene_cooldowny[subject] = cooldown_value
+	vazalske_vztahy = sjednocene_vztahy
+	vazalske_odvody = sjednocene_odvody
+	vazalske_odvody_posledni_zmena_kolo = sjednocene_cooldowny
+
+	var sjednocene_reparace: Array = []
+	for rep_any in valecne_reparace:
+		var rep = rep_any as Dictionary
+		var from_tag = _normalizuj_tag(str(rep.get("from", "")))
+		var to_tag = _normalizuj_tag(str(rep.get("to", "")))
+		var remaining = int(rep.get("remaining_turns", 0))
+		if from_tag == "" or from_tag == "SEA" or to_tag == "" or to_tag == "SEA" or from_tag == to_tag or remaining <= 0:
+			continue
+		var rate = clamp(float(rep.get("rate", WAR_REPARATIONS_RATE)), 0.01, 0.50)
+		sjednocene_reparace.append({
+			"from": from_tag,
+			"to": to_tag,
+			"remaining_turns": remaining,
+			"rate": rate
+		})
+	valecne_reparace = sjednocene_reparace
+
 func _synchronizuj_jmeno_a_ideologii_hrace() -> void:
 	hrac_jmeno = ""
 	hrac_ideologie = ""
@@ -880,6 +998,8 @@ func _zajisti_slozku_save() -> void:
 		root_dir.make_dir_recursive("saves")
 
 func _vytvor_save_state() -> Dictionary:
+	if lokalni_hraci_staty.size() > 1:
+		_uloz_finance_aktivniho_hrace()
 	var map_snapshot = _ziskej_data_mapy_pro_ulozeni().duplicate(true)
 	if map_snapshot.is_empty():
 		return {}
@@ -1008,11 +1128,13 @@ func _aplikuj_save_state(state: Dictionary) -> bool:
 	_vztahy_statu = (state.get("vztahy_statu", {}) as Dictionary).duplicate(true)
 	_vztahy_nactene = bool(state.get("vztahy_nactene", true))
 	_hrac_kasa_inicializovana = bool(state.get("hrac_kasa_inicializovana_single", _hrac_kasa_inicializovana))
+	_sjednot_financni_toky_cache()
 
 	if not lokalni_hraci_staty.is_empty():
 		if not lokalni_hraci_staty.has(hrac_stat):
 			hrac_stat = str(lokalni_hraci_staty[0])
 		aktivni_hrac_index = clampi(aktivni_hrac_index, 0, lokalni_hraci_staty.size() - 1)
+		_sjednot_multiplayer_finance_cache()
 
 	var map_loader = _get_map_loader()
 	if map_loader:
@@ -1150,8 +1272,6 @@ func ziskej_aktivni_pujcky() -> Array:
 
 func uloz_hru_do_slotu(slot_name: String) -> bool:
 	_zajisti_slozku_save()
-	if ma_save_pro_kolo(aktualni_kolo):
-		return false
 	var state = _vytvor_save_state()
 	if state.is_empty():
 		return false
@@ -1733,8 +1853,7 @@ func kup_armadni_nabidku_na_pozici(state_tag: String, offer_index: int, target_x
 	armadni_lab_statu[cisty] = lab
 
 	_nastav_kasu_statu(cisty, treasury - cost)
-	if not map_data.is_empty():
-		spocitej_prijem(map_data, false)
+	_money_debug_expense(cisty, "army_lab_buy", cost, treasury, _ziskej_kasu_statu(cisty), "offer=%d item=%s" % [offer_index, str(item.get("id", ""))])
 	kolo_zmeneno.emit()
 
 	return {
@@ -1801,8 +1920,7 @@ func kup_a_slouc_armadni_nabidku(state_tag: String, offer_index: int, target_uid
 	armadni_lab_statu[cisty] = lab
 
 	_nastav_kasu_statu(cisty, treasury - cost)
-	if not map_data.is_empty():
-		spocitej_prijem(map_data, false)
+	_money_debug_expense(cisty, "army_lab_merge_buy", cost, treasury, _ziskej_kasu_statu(cisty), "offer=%d target=%s" % [offer_index, target_uid])
 	kolo_zmeneno.emit()
 	return {
 		"ok": true,
@@ -1897,8 +2015,7 @@ func koupit_armadni_bunku(state_tag: String, x: int, y: int) -> Dictionary:
 	lab["grid_h"] = int(dims.get("h", ARM_LAB_GRID_H))
 	armadni_lab_statu[cisty] = lab
 	_nastav_kasu_statu(cisty, treasury - cost)
-	if not map_data.is_empty():
-		spocitej_prijem(map_data, false)
+	_money_debug_expense(cisty, "army_lab_expand", cost, treasury, _ziskej_kasu_statu(cisty), "cell=%d,%d" % [x, y])
 	kolo_zmeneno.emit()
 	return {
 		"ok": true,
@@ -1940,8 +2057,7 @@ func prodej_armadni_item(state_tag: String, item_uid: String) -> Dictionary:
 
 	var treasury = _ziskej_kasu_statu(cisty)
 	_nastav_kasu_statu(cisty, treasury + sell_value)
-	if not map_data.is_empty():
-		spocitej_prijem(map_data, false)
+	_money_debug_income_event(cisty, "army_lab_sell", sell_value, treasury, _ziskej_kasu_statu(cisty), "item=%s" % item_uid)
 	kolo_zmeneno.emit()
 
 	return {
@@ -2030,8 +2146,7 @@ func reroll_armadni_nabidky(state_tag: String) -> Dictionary:
 	armadni_lab_statu[cisty] = lab
 
 	_nastav_kasu_statu(cisty, treasury - cost)
-	if not map_data.is_empty():
-		spocitej_prijem(map_data, false)
+	_money_debug_expense(cisty, "army_lab_reroll", cost, treasury, _ziskej_kasu_statu(cisty), "rerolls=%d" % (rerolls + 1))
 	kolo_zmeneno.emit()
 
 	return {"ok": true, "cost": cost, "treasury_after": _ziskej_kasu_statu(cisty)}
@@ -2059,12 +2174,10 @@ func vylepsi_kvalitu_dropu_armady(state_tag: String) -> Dictionary:
 	lab["rerolls_this_turn"] = 0
 	armadni_lab_statu[cisty] = lab
 	_nastav_kasu_statu(cisty, treasury - cost)
+	_money_debug_expense(cisty, "army_lab_quality", cost, treasury, _ziskej_kasu_statu(cisty), "new_level=%d" % int(lab.get("quality_level", 0)))
 
 	# New quality applies immediately with a free offer refresh.
 	_arm_lab_zajisti_nabidky(cisty)
-
-	if not map_data.is_empty():
-		spocitej_prijem(map_data, false)
 	kolo_zmeneno.emit()
 
 	return {
@@ -2191,6 +2304,7 @@ func proved_vyzkum_projektu(state_tag: String, project_id: String) -> Dictionary
 
 	var current_treasury = _ziskej_kasu_statu(cisty)
 	_nastav_kasu_statu(cisty, current_treasury - cost)
+	_money_debug_expense(cisty, "research", cost, current_treasury, _ziskej_kasu_statu(cisty), "project=%s" % pid)
 
 	var completed = _zajisti_vyzkum_statu(cisty)
 	completed.append(pid)
@@ -2858,6 +2972,7 @@ func presun_hlavni_mesto(state_tag: String, target_province_id: int, pay_cost: b
 		if cash_now + 0.0001 < cost:
 			return {"ok": false, "reason": "Insufficient funds.", "required": cost, "cash": cash_now}
 		_nastav_kasu_statu(state, cash_now - cost)
+		_money_debug_expense(state, "capital_move", cost, cash_now, _ziskej_kasu_statu(state), "target_province=%d" % target_province_id)
 
 	var old_capital_id = int(check.get("current_capital_id", -1))
 	if map_data.has(old_capital_id):
@@ -2912,6 +3027,8 @@ func daruj_penize_statu(odesilatel: String, prijemce: String, amount: float) -> 
 	var kasa_prijemce = _ziskej_kasu_statu(to_tag)
 	_nastav_kasu_statu(from_tag, kasa_odesilatel - castka)
 	_nastav_kasu_statu(to_tag, kasa_prijemce + castka)
+	_money_debug_expense(from_tag, "gift_sent", castka, kasa_odesilatel, _ziskej_kasu_statu(from_tag), "to=%s" % to_tag)
+	_money_debug_income_event(to_tag, "gift_received", castka, kasa_prijemce, _ziskej_kasu_statu(to_tag), "from=%s" % from_tag)
 
 	var rel_delta = clamp(castka / 20.0, 1.0, 15.0)
 	var new_rel = _uprav_vztah_statu_bez_cooldown(from_tag, to_tag, rel_delta)
@@ -2936,6 +3053,60 @@ func daruj_penize_statu(odesilatel: String, prijemce: String, amount: float) -> 
 		"new_relation": new_rel,
 		"from_cash": _ziskej_kasu_statu(from_tag),
 		"to_cash": _ziskej_kasu_statu(to_tag)
+	}
+
+func prejmenuj_stat(state_tag: String, new_name: String) -> Dictionary:
+	var state = _normalizuj_tag(state_tag)
+	if state == "" or state == "SEA":
+		return {"ok": false, "reason": "Invalid state."}
+	if not _stat_existuje(state):
+		return {"ok": false, "reason": "State does not exist on the current map."}
+
+	var clean_name = new_name.strip_edges()
+	clean_name = clean_name.replace("\n", " ").replace("\r", " ").replace("\t", " ")
+	while clean_name.find("  ") != -1:
+		clean_name = clean_name.replace("  ", " ")
+	if clean_name == "":
+		return {"ok": false, "reason": "Country name cannot be empty."}
+	if clean_name.length() > 40:
+		return {"ok": false, "reason": "Country name is too long (max 40 characters)."}
+
+	var changed := 0
+	for p_id in map_data:
+		var d = map_data[p_id] as Dictionary
+		if _normalizuj_tag(str(d.get("owner", ""))) != state:
+			continue
+		d["country_name"] = clean_name
+		changed += 1
+
+	if changed <= 0:
+		return {"ok": false, "reason": "No provinces found for this state."}
+
+	_tag_alias_cache_dirty = true
+	_synchronizuj_jmeno_a_ideologii_hrace()
+	_invalidate_turn_cache()
+
+	var map_loader = _get_map_loader()
+	if map_loader:
+		if "provinces" in map_loader:
+			map_loader.provinces = map_data
+		if map_loader.has_method("_invalidate_naval_reachability_cache"):
+			map_loader._invalidate_naval_reachability_cache()
+		if map_loader.has_method("_aktualizuj_aktivni_mapovy_mod"):
+			map_loader._aktualizuj_aktivni_mapovy_mod()
+		if map_loader.has_method("aktualizuj_ikony_armad"):
+			map_loader.aktualizuj_ikony_armad()
+		var labels_manager = map_loader.get_node_or_null("CountryLabelsManager")
+		var province_labels = map_loader.get_node_or_null("ProvinceLabels")
+		if labels_manager and labels_manager.has_method("aktualizuj_labely_statu"):
+			labels_manager.aktualizuj_labely_statu(map_data, province_labels)
+
+	kolo_zmeneno.emit()
+	return {
+		"ok": true,
+		"state": state,
+		"new_name": clean_name,
+		"changed_provinces": changed
 	}
 
 func odeslat_obchodni_nabidku(odesilatel: String, prijemce: String, terms_from_sender_raw: Dictionary, terms_from_receiver_raw: Dictionary) -> Dictionary:
@@ -3128,7 +3299,10 @@ func _vytvor_statni_pujcku(lender_tag: String, borrower_tag: String, principal: 
 	var total_due = principal * (1.0 + (interest_pct / 100.0) * float(turns))
 	var installment = total_due / max(1.0, float(turns))
 	_nastav_kasu_statu(lender, lender_cash - principal)
-	_nastav_kasu_statu(borrower, _ziskej_kasu_statu(borrower) + principal)
+	var borrower_cash_before = _ziskej_kasu_statu(borrower)
+	_nastav_kasu_statu(borrower, borrower_cash_before + principal)
+	_money_debug_expense(lender, "loan_funded", principal, lender_cash, _ziskej_kasu_statu(lender), "to=%s interest=%.2f%% turns=%d" % [borrower, interest_pct, turns])
+	_money_debug_income_event(borrower, "loan_received", principal, borrower_cash_before, _ziskej_kasu_statu(borrower), "from=%s interest=%.2f%% turns=%d" % [lender, interest_pct, turns])
 
 	var loan = {
 		"lender": lender,
@@ -5231,6 +5405,10 @@ func _vyhlasit_valku_par(utocnik: String, obrance: String, headline: String, det
 	if TURN_LOG_ENABLED:
 		print(msg.replace("\n\n", " "))
 	_zaloguj_globalni_zpravu("War", "%s declared war on %s." % [a, b], "war")
+	if je_lidsky_stat(a):
+		_zaloguj_zpravu_hraci(a, "War", "You declared war on %s." % b, "war")
+	if je_lidsky_stat(b):
+		_zaloguj_zpravu_hraci(b, "War", "%s declared war on you." % a, "war")
 	if je_lidsky_stat(a) or je_lidsky_stat(b):
 		_pridej_popup_zucastnenym_hracum(a, b, "DIPLOMACY", msg)
 	var old_suppress_logs = _suppress_relation_global_logs
@@ -5850,6 +6028,209 @@ func _spocitej_cisty_prijem_statu(tag: String) -> float:
 	var upkeep = ziskej_udrzbu_za_vojaka(state)
 	return (hdp * income_rate) - (float(soldiers) * upkeep)
 
+func _ziskej_staty_pro_financni_projekci() -> Array:
+	var states: Dictionary = {}
+	for raw_tag in _ziskej_aktivni_staty():
+		var clean = _normalizuj_tag(str(raw_tag))
+		if clean != "" and clean != "SEA":
+			states[clean] = true
+	for raw_tag in lokalni_hraci_staty:
+		var local_clean = _normalizuj_tag(str(raw_tag))
+		if local_clean != "" and local_clean != "SEA":
+			states[local_clean] = true
+	var active_player = _normalizuj_tag(hrac_stat)
+	if active_player != "" and active_player != "SEA":
+		states[active_player] = true
+	for subject_any in vazalske_vztahy.keys():
+		var subject = _normalizuj_tag(str(subject_any))
+		var overlord = _normalizuj_tag(str(vazalske_vztahy[subject_any]))
+		if subject != "" and subject != "SEA":
+			states[subject] = true
+		if overlord != "" and overlord != "SEA":
+			states[overlord] = true
+	for rep_any in valecne_reparace:
+		var rep = rep_any as Dictionary
+		var from_tag = _normalizuj_tag(str(rep.get("from", "")))
+		var to_tag = _normalizuj_tag(str(rep.get("to", "")))
+		if from_tag != "" and from_tag != "SEA":
+			states[from_tag] = true
+		if to_tag != "" and to_tag != "SEA":
+			states[to_tag] = true
+	for loan_any in aktivni_pujcky:
+		var loan = loan_any as Dictionary
+		var lender = _normalizuj_tag(str(loan.get("lender", "")))
+		var borrower = _normalizuj_tag(str(loan.get("borrower", "")))
+		if lender != "" and lender != "SEA":
+			states[lender] = true
+		if borrower != "" and borrower != "SEA":
+			states[borrower] = true
+	return states.keys()
+
+func _ma_prijem_pred_toky_v_aktualnim_tahu(state_tag: String) -> bool:
+	var state = _normalizuj_tag(state_tag)
+	if state == "" or state == "SEA":
+		return false
+	if lokalni_hraci_staty.size() > 1:
+		for raw_tag in lokalni_hraci_staty:
+			if _normalizuj_tag(str(raw_tag)) == state:
+				return true
+		return false
+	return state == _normalizuj_tag(hrac_stat)
+
+func _ziskej_urokovou_cast_splatky_pujcky(loan: Dictionary, paid_this_turn: float) -> float:
+	var due_paid = max(0.0, paid_this_turn)
+	if due_paid <= 0.0:
+		return 0.0
+	var remaining_turns = max(1, int(loan.get("remaining_turns", 1)))
+	var turns_total = max(1, int(loan.get("turns_total", remaining_turns)))
+	var principal = max(0.0, float(loan.get("principal", 0.0)))
+	var interest_pct = max(0.0, float(loan.get("interest_pct", 0.0)))
+	var total_interest = principal * (interest_pct / 100.0) * float(turns_total)
+	var scheduled_interest = max(0.0, total_interest / float(turns_total))
+	return min(due_paid, scheduled_interest)
+
+func _ziskej_vychozi_kasu_pro_financni_projekci(state_tag: String) -> float:
+	var state = _normalizuj_tag(state_tag)
+	if state == "":
+		return 0.0
+	if _finance_projection_cash_overrides.has(state):
+		return float(_finance_projection_cash_overrides[state])
+	return _ziskej_kasu_statu(state)
+
+func _simuluj_financni_toky_aktualniho_tahu() -> Dictionary:
+	if _finance_projection_cash_overrides.is_empty() and _sim_cache_validni:
+		return _sim_cache
+	var state_rows: Dictionary = {}
+	for state_any in _ziskej_staty_pro_financni_projekci():
+		var state = _normalizuj_tag(str(state_any))
+		if state == "" or state == "SEA":
+			continue
+		var cash_before = _ziskej_vychozi_kasu_pro_financni_projekci(state)
+		var base_income = _spocitej_cisty_prijem_statu(state)
+		var applied_base_income = base_income if _ma_prijem_pred_toky_v_aktualnim_tahu(state) else 0.0
+		state_rows[state] = {
+			"cash_before": cash_before,
+			"base_income": base_income,
+			"base_income_applied": applied_base_income,
+			"cash_work": cash_before + applied_base_income,
+			"cash_after_base": cash_before + applied_base_income,
+			"vassal_in": 0.0,
+			"vassal_out": 0.0,
+			"reparations_in": 0.0,
+			"reparations_out": 0.0,
+			"loan_interest_in": 0.0,
+			"loan_interest_out": 0.0,
+			"loan_principal_in": 0.0,
+			"loan_principal_out": 0.0,
+			"loan_payment_in": 0.0,
+			"loan_payment_out": 0.0,
+			"vassal_in_details": {},
+			"vassal_out_details": {}
+		}
+
+	for rep_any in valecne_reparace:
+		var rep = rep_any as Dictionary
+		var from_tag = _normalizuj_tag(str(rep.get("from", "")))
+		var to_tag = _normalizuj_tag(str(rep.get("to", "")))
+		var remaining = int(rep.get("remaining_turns", 0))
+		if remaining <= 0 or from_tag == "" or to_tag == "" or from_tag == to_tag:
+			continue
+		if not state_rows.has(from_tag) or not state_rows.has(to_tag):
+			continue
+		var rate = clamp(float(rep.get("rate", WAR_REPARATIONS_RATE)), 0.01, 0.50)
+		var base_income = max(0.0, _spocitej_cisty_prijem_statu(from_tag))
+		var planned = max(WAR_REPARATIONS_MIN_PAYMENT, base_income * rate)
+		var from_row = state_rows[from_tag] as Dictionary
+		var to_row = state_rows[to_tag] as Dictionary
+		var from_cash = float(from_row.get("cash_work", 0.0))
+		var paid = clamp(planned, 0.0, max(0.0, from_cash + 100.0))
+		if paid <= 0.0:
+			continue
+		from_row["cash_work"] = from_cash - paid
+		to_row["cash_work"] = float(to_row.get("cash_work", 0.0)) + paid
+		from_row["reparations_out"] = float(from_row.get("reparations_out", 0.0)) + paid
+		to_row["reparations_in"] = float(to_row.get("reparations_in", 0.0)) + paid
+		state_rows[from_tag] = from_row
+		state_rows[to_tag] = to_row
+
+	for subject_any in vazalske_vztahy.keys().duplicate():
+		var subject = _normalizuj_tag(str(subject_any))
+		var overlord = _normalizuj_tag(str(vazalske_vztahy[subject_any]))
+		if subject == "" or overlord == "" or subject == overlord:
+			continue
+		if not state_rows.has(subject) or not state_rows.has(overlord):
+			continue
+		var rate = clamp(float(vazalske_odvody.get(subject, VASSAL_TRIBUTE_DEFAULT_RATE)), VASSAL_TRIBUTE_MIN_RATE, VASSAL_TRIBUTE_MAX_RATE)
+		var subject_income = max(0.0, _spocitej_cisty_prijem_statu(subject))
+		var planned = subject_income * rate
+		if planned <= 0.0:
+			continue
+		var subject_row = state_rows[subject] as Dictionary
+		var overlord_row = state_rows[overlord] as Dictionary
+		var subject_cash = float(subject_row.get("cash_work", 0.0))
+		var paid = clamp(planned, 0.0, max(0.0, subject_cash))
+		if paid <= 0.0:
+			continue
+		subject_row["cash_work"] = subject_cash - paid
+		overlord_row["cash_work"] = float(overlord_row.get("cash_work", 0.0)) + paid
+		subject_row["vassal_out"] = float(subject_row.get("vassal_out", 0.0)) + paid
+		overlord_row["vassal_in"] = float(overlord_row.get("vassal_in", 0.0)) + paid
+		var subject_out_details = (subject_row.get("vassal_out_details", {}) as Dictionary).duplicate(true)
+		subject_out_details[overlord] = paid
+		subject_row["vassal_out_details"] = subject_out_details
+		var overlord_in_details = (overlord_row.get("vassal_in_details", {}) as Dictionary).duplicate(true)
+		overlord_in_details[subject] = paid
+		overlord_row["vassal_in_details"] = overlord_in_details
+		state_rows[subject] = subject_row
+		state_rows[overlord] = overlord_row
+
+	for loan_any in aktivni_pujcky:
+		var loan = loan_any as Dictionary
+		var lender = _normalizuj_tag(str(loan.get("lender", "")))
+		var borrower = _normalizuj_tag(str(loan.get("borrower", "")))
+		var remaining_turns = int(loan.get("remaining_turns", 0))
+		var remaining_due = max(0.0, float(loan.get("remaining_due", 0.0)))
+		var installment = max(0.0, float(loan.get("installment", 0.0)))
+		if lender == "" or borrower == "" or lender == borrower:
+			continue
+		if remaining_turns <= 0 or remaining_due <= 0.0001:
+			continue
+		if not state_rows.has(lender) or not state_rows.has(borrower):
+			continue
+		var due_this_turn = min(remaining_due, installment)
+		var borrower_row = state_rows[borrower] as Dictionary
+		var lender_row = state_rows[lender] as Dictionary
+		var borrower_cash = float(borrower_row.get("cash_work", 0.0))
+		var paid = clamp(due_this_turn, 0.0, max(0.0, borrower_cash + 100.0))
+		if paid <= 0.0:
+			continue
+		var interest_paid = _ziskej_urokovou_cast_splatky_pujcky(loan, paid)
+		var principal_paid = max(0.0, paid - interest_paid)
+		borrower_row["cash_work"] = borrower_cash - paid
+		lender_row["cash_work"] = float(lender_row.get("cash_work", 0.0)) + paid
+		borrower_row["loan_payment_out"] = float(borrower_row.get("loan_payment_out", 0.0)) + paid
+		lender_row["loan_payment_in"] = float(lender_row.get("loan_payment_in", 0.0)) + paid
+		borrower_row["loan_interest_out"] = float(borrower_row.get("loan_interest_out", 0.0)) + interest_paid
+		lender_row["loan_interest_in"] = float(lender_row.get("loan_interest_in", 0.0)) + interest_paid
+		borrower_row["loan_principal_out"] = float(borrower_row.get("loan_principal_out", 0.0)) + principal_paid
+		lender_row["loan_principal_in"] = float(lender_row.get("loan_principal_in", 0.0)) + principal_paid
+		state_rows[borrower] = borrower_row
+		state_rows[lender] = lender_row
+
+	for state in state_rows.keys():
+		var row = state_rows[state] as Dictionary
+		var cash_before = float(row.get("cash_before", 0.0))
+		var cash_after = float(row.get("cash_work", cash_before))
+		row["cash_after"] = cash_after
+		row["cashflow"] = cash_after - cash_before
+		state_rows[state] = row
+
+	var vysledek = {"states": state_rows}
+	if _finance_projection_cash_overrides.is_empty():
+		_sim_cache = vysledek
+		_sim_cache_validni = true
+	return vysledek
+
 func ziskej_cisty_prijem_statu(tag: String) -> float:
 	return _spocitej_cisty_prijem_statu(tag)
 
@@ -5862,6 +6243,9 @@ func ziskej_financni_rozpad_statu(state_tag: String = "") -> Dictionary:
 			"ok": false,
 			"reason": "Invalid state."
 		}
+	var projection = _simuluj_financni_toky_aktualniho_tahu()
+	var projected_states = projection.get("states", {}) as Dictionary
+	var projected = projected_states.get(state, {}) as Dictionary
 
 	var celkove_hdp := 0.0
 	var celkem_vojaku := 0
@@ -5877,90 +6261,23 @@ func ziskej_financni_rozpad_statu(state_tag: String = "") -> Dictionary:
 	var prijem_hdp = celkove_hdp * prijmova_sazba
 	var vydaj_armada = float(celkem_vojaku) * upkeep_za_vojaka
 
-	var prijem_vazalove := 0.0
-	var vydaj_vazalsky_odvod := 0.0
-	for subject_any in vazalske_vztahy.keys():
-		var subject = _normalizuj_tag(str(subject_any))
-		var overlord = _normalizuj_tag(str(vazalske_vztahy[subject_any]))
-		if subject == "" or overlord == "":
-			continue
-
-		if overlord == state:
-			var rate_in = clamp(float(vazalske_odvody.get(subject, VASSAL_TRIBUTE_DEFAULT_RATE)), VASSAL_TRIBUTE_MIN_RATE, VASSAL_TRIBUTE_MAX_RATE)
-			var subject_income = max(0.0, _spocitej_cisty_prijem_statu(subject))
-			var planned_in = subject_income * rate_in
-			if planned_in > 0.0:
-				var subject_cash = _ziskej_kasu_statu(subject)
-				prijem_vazalove += clamp(planned_in, 0.0, max(0.0, subject_cash))
-
-		if subject == state:
-			var rate_out = clamp(float(vazalske_odvody.get(subject, VASSAL_TRIBUTE_DEFAULT_RATE)), VASSAL_TRIBUTE_MIN_RATE, VASSAL_TRIBUTE_MAX_RATE)
-			var own_income = max(0.0, _spocitej_cisty_prijem_statu(subject))
-			var planned_out = own_income * rate_out
-			if planned_out > 0.0:
-				var own_cash = _ziskej_kasu_statu(subject)
-				vydaj_vazalsky_odvod += clamp(planned_out, 0.0, max(0.0, own_cash))
-
-	var prijem_reparace := 0.0
-	var vydaj_reparace := 0.0
-	for rep_any in valecne_reparace:
-		var rep = rep_any as Dictionary
-		var from_tag = _normalizuj_tag(str(rep.get("from", "")))
-		var to_tag = _normalizuj_tag(str(rep.get("to", "")))
-		var remaining = int(rep.get("remaining_turns", 0))
-		if remaining <= 0 or from_tag == "" or to_tag == "":
-			continue
-
-		if from_tag != state and to_tag != state:
-			continue
-
-		var rate = clamp(float(rep.get("rate", WAR_REPARATIONS_RATE)), 0.01, 0.50)
-		var base_income = max(0.0, _spocitej_cisty_prijem_statu(from_tag))
-		var planned = max(WAR_REPARATIONS_MIN_PAYMENT, base_income * rate)
-		var from_cash = _ziskej_kasu_statu(from_tag)
-		var paid = clamp(planned, 0.0, max(0.0, from_cash + 100.0))
-		if to_tag == state:
-			prijem_reparace += paid
-		if from_tag == state:
-			vydaj_reparace += paid
-
+	var prijem_vazalove := float(projected.get("vassal_in", 0.0))
+	var vydaj_vazalsky_odvod := float(projected.get("vassal_out", 0.0))
+	var prijem_reparace := float(projected.get("reparations_in", 0.0))
+	var vydaj_reparace := float(projected.get("reparations_out", 0.0))
 	var prijem_ostatni := 0.0
 	var vydaj_investice := 0.0
-	var prijem_uroky_pujcky := 0.0
-	var vydaj_uroky_pujcky := 0.0
-	for loan_any in aktivni_pujcky:
-		var loan = loan_any as Dictionary
-		var lender = _normalizuj_tag(str(loan.get("lender", "")))
-		var borrower = _normalizuj_tag(str(loan.get("borrower", "")))
-		var remaining_turns = int(loan.get("remaining_turns", 0))
-		var remaining_due = max(0.0, float(loan.get("remaining_due", 0.0)))
-		if remaining_turns <= 0 or remaining_due <= 0.0001:
-			continue
-		if lender != state and borrower != state:
-			continue
-
-		var installment = max(0.0, float(loan.get("installment", 0.0)))
-		var due_this_turn = min(remaining_due, installment)
-		if due_this_turn <= 0.0:
-			continue
-
-		# Estimate the interest portion of this turn's installment.
-		var turns_total = max(1, int(loan.get("turns_total", remaining_turns)))
-		var principal = max(0.0, float(loan.get("principal", 0.0)))
-		var interest_pct = max(0.0, float(loan.get("interest_pct", 0.0)))
-		var total_interest = principal * (interest_pct / 100.0) * float(turns_total)
-		var interest_this_turn = min(due_this_turn, max(0.0, total_interest / float(turns_total)))
-
-		if lender == state:
-			prijem_uroky_pujcky += interest_this_turn
-		if borrower == state:
-			vydaj_uroky_pujcky += interest_this_turn
+	var prijem_uroky_pujcky := float(projected.get("loan_interest_in", 0.0))
+	var vydaj_uroky_pujcky := float(projected.get("loan_interest_out", 0.0))
+	var prijem_jistina_pujcky := float(projected.get("loan_principal_in", 0.0))
+	var vydaj_jistina_pujcky := float(projected.get("loan_principal_out", 0.0))
 
 	var vydaj_ostatni := vydaj_vazalsky_odvod + vydaj_reparace
 
 	var celkove_prijmy = prijem_hdp + prijem_vazalove + prijem_reparace + prijem_ostatni + prijem_uroky_pujcky
 	var celkove_vydaje = vydaj_armada + vydaj_investice + vydaj_ostatni + vydaj_uroky_pujcky
 	var profit = celkove_prijmy - celkove_vydaje
+	var cashflow = float(projected.get("cashflow", profit))
 
 	return {
 		"ok": true,
@@ -5970,6 +6287,7 @@ func ziskej_financni_rozpad_statu(state_tag: String = "") -> Dictionary:
 			"vassals": prijem_vazalove,
 			"reparations": prijem_reparace,
 			"loan_interest": prijem_uroky_pujcky,
+			"loan_principal": prijem_jistina_pujcky,
 			"other": prijem_ostatni,
 			"total": celkove_prijmy
 		},
@@ -5977,13 +6295,35 @@ func ziskej_financni_rozpad_statu(state_tag: String = "") -> Dictionary:
 			"army_upkeep": vydaj_armada,
 			"investments": vydaj_investice,
 			"loan_interest": vydaj_uroky_pujcky,
+			"loan_principal": vydaj_jistina_pujcky,
 			"other": vydaj_ostatni,
 			"total": celkove_vydaje
 		},
 		"profit": profit,
+		"cashflow": cashflow,
 		"cash": _ziskej_kasu_statu(state),
 		"base_net_income": (prijem_hdp - vydaj_armada),
-		"projected_net_income": profit
+		"projected_net_income": cashflow
+	}
+
+func ziskej_projektovany_vazalsky_odvod(overlord_tag: String, subject_tag: String) -> Dictionary:
+	var overlord = _normalizuj_tag(overlord_tag)
+	var subject = _normalizuj_tag(subject_tag)
+	if overlord == "" or subject == "":
+		return {"ok": false, "reason": "Invalid state."}
+	if ziskej_overlorda_statu(subject) != overlord:
+		return {"ok": false, "reason": "Not a valid vassal relation."}
+	var rate = clamp(float(vazalske_odvody.get(subject, VASSAL_TRIBUTE_DEFAULT_RATE)), VASSAL_TRIBUTE_MIN_RATE, VASSAL_TRIBUTE_MAX_RATE)
+	var planned = max(0.0, _spocitej_cisty_prijem_statu(subject)) * rate
+	var projection = _simuluj_financni_toky_aktualniho_tahu()
+	var states = projection.get("states", {}) as Dictionary
+	var subject_row = states.get(subject, {}) as Dictionary
+	var paid = float((subject_row.get("vassal_out_details", {}) as Dictionary).get(overlord, 0.0))
+	return {
+		"ok": true,
+		"rate": rate,
+		"planned": planned,
+		"paid": paid
 	}
 
 func ziskej_vazalsky_odvod(overlord_tag: String, subject_tag: String) -> float:
@@ -7321,7 +7661,7 @@ func pridej_startovni_pristavy(all_provinces: Dictionary):
 			all_provinces[vybrany]["has_port"] = true
 
 func spocitej_prijem(all_provinces: Dictionary, emit_ui_signal: bool = true):
-	map_data = all_provinces 
+	map_data = all_provinces
 	_synchronizuj_jmeno_a_ideologii_hrace()
 	var celkove_hdp = 0.0
 	var celkem_vojaku = 0
@@ -7338,27 +7678,33 @@ func spocitej_prijem(all_provinces: Dictionary, emit_ui_signal: bool = true):
 			celkem_vojaku += int(d.get("soldiers", 0))
 
 	if lokalni_hraci_staty.size() > 1:
-		if not hrac_kasa_inicializovana.has(hrac_stat) and celkove_hdp > 0.0:
-			hrac_kasy[hrac_stat] = celkove_hdp * 0.05
-			hrac_kasa_inicializovana[hrac_stat] = true
-		statni_kasa = float(hrac_kasy.get(hrac_stat, statni_kasa))
+		if not hrac_kasa_inicializovana.has(hrac_clean) and celkove_hdp > 0.0:
+			hrac_kasy[hrac_clean] = celkove_hdp * 0.05
+			hrac_kasa_inicializovana[hrac_clean] = true
+		hrac_kasy[hrac_clean] = statni_kasa
+		statni_kasa = float(hrac_kasy.get(hrac_clean, statni_kasa))
 	else:
 		if not _hrac_kasa_inicializovana and celkove_hdp > 0.0:
 			statni_kasa = celkove_hdp * 0.05
+			hrac_kasy[hrac_clean] = statni_kasa
 			_hrac_kasa_inicializovana = true
+			hrac_kasa_inicializovana[hrac_clean] = true
 			
 	# Balanced income: 10% GDP minus army upkeep
-	var prijmova_sazba = ziskej_prijmovou_sazbu_hdp(hrac_stat)
-	var upkeep_za_vojaka = ziskej_udrzbu_za_vojaka(hrac_stat)
+	var prijmova_sazba = ziskej_prijmovou_sazbu_hdp(hrac_clean)
+	var upkeep_za_vojaka = ziskej_udrzbu_za_vojaka(hrac_clean)
 	var prijem_z_hdp = celkove_hdp * prijmova_sazba
 	var naklady_na_vojaky = celkem_vojaku * upkeep_za_vojaka
 	celkovy_prijem = prijem_z_hdp - naklady_na_vojaky
+	var finance_breakdown = ziskej_financni_rozpad_statu(hrac_clean)
+	if bool(finance_breakdown.get("ok", false)):
+		celkovy_prijem = float(finance_breakdown.get("cashflow", finance_breakdown.get("profit", celkovy_prijem)))
 	if lokalni_hraci_staty.size() > 1:
-		hrac_prijmy[hrac_stat] = celkovy_prijem
-		hrac_kasy[hrac_stat] = statni_kasa
+		hrac_prijmy[hrac_clean] = celkovy_prijem
+		hrac_kasy[hrac_clean] = statni_kasa
 	
 	if TURN_LOG_ENABLED:
-		print("HDP Prijem: %.2f | Vydaje Armada: %.2f | Cisty zisk: %.2f" % [prijem_z_hdp, naklady_na_vojaky, celkovy_prijem])
+		print("HDP Prijem: %.2f | Vydaje Armada: %.2f | Cashflow: %.2f" % [prijem_z_hdp, naklady_na_vojaky, celkovy_prijem])
 	if emit_ui_signal:
 		kolo_zmeneno.emit()
 
@@ -7420,11 +7766,35 @@ func _spust_dalsi_pozadovane_kolo() -> void:
 	ukonci_kolo()
 
 func _dokoncit_ukonceni_kola(turn_start_ms: int, turn_phases: Dictionary) -> void:
+	_uloz_debug_turn_profile(Time.get_ticks_msec() - turn_start_ms, turn_phases)
 	_zrus_turn_watchdog()
 	_nastav_stav_zpracovani_tahu(false)
 	_log_turn_profile(Time.get_ticks_msec() - turn_start_ms, turn_phases)
 	if _queued_end_turn_requests > 0:
 		call_deferred("_spust_dalsi_pozadovane_kolo")
+
+func _append_debug_turn_event(message: String) -> void:
+	if not _ai_debug_mode_enabled:
+		return
+	var trimmed = message.strip_edges()
+	if trimmed == "":
+		return
+	_debug_turn_live_events.append(trimmed)
+
+func _uloz_debug_turn_profile(total_ms: int, phases: Dictionary) -> void:
+	if not _ai_debug_mode_enabled:
+		return
+	var entry = {
+		"turn": aktualni_kolo,
+		"total_ms": total_ms,
+		"phases": phases.duplicate(true),
+		"events": _debug_turn_live_events.duplicate(true)
+	}
+	_debug_last_turn_profile = entry
+	_debug_turn_history.append(entry)
+	while _debug_turn_history.size() > DEBUG_TURN_HISTORY_MAX:
+		_debug_turn_history.remove_at(0)
+	_debug_turn_live_events.clear()
 
 func _log_turn_profile(total_ms: int, phases: Dictionary) -> void:
 	if not TURN_PROFILE_ENABLED:
@@ -7487,6 +7857,62 @@ func _ai_debug(msg: String) -> void:
 	_ai_debug_lines_this_turn += 1
 	print("[AI_DEBUG][turn=%d] %s" % [aktualni_kolo, msg])
 
+func _money_debug(msg: String) -> void:
+	if not _ai_debug_mode_enabled:
+		return
+	_append_debug_turn_event(msg)
+	print("[MONEY_DEBUG][turn=%d] %s" % [aktualni_kolo, msg])
+
+func _money_debug_expense(state_tag: String, category: String, amount: float, treasury_before: float, treasury_after: float, detail: String = "") -> void:
+	if not _ai_debug_mode_enabled:
+		return
+	var state = _normalizuj_tag(state_tag)
+	var suffix = ""
+	var clean_detail = detail.strip_edges()
+	if clean_detail != "":
+		suffix = " | %s" % clean_detail
+	_money_debug("expense %s %s amount=%.2f cash_before=%.2f cash_after=%.2f%s" % [state, category, amount, treasury_before, treasury_after, suffix])
+
+func _money_debug_income_event(state_tag: String, category: String, amount: float, treasury_before: float, treasury_after: float, detail: String = "") -> void:
+	if not _ai_debug_mode_enabled:
+		return
+	var state = _normalizuj_tag(state_tag)
+	var suffix = ""
+	var clean_detail = detail.strip_edges()
+	if clean_detail != "":
+		suffix = " | %s" % clean_detail
+	_money_debug("income_event %s %s amount=%.2f cash_before=%.2f cash_after=%.2f%s" % [state, category, amount, treasury_before, treasury_after, suffix])
+
+func _snapshot_lidske_kasy() -> Dictionary:
+	var snapshot: Dictionary = {}
+	for raw_tag in lokalni_hraci_staty:
+		var t = _normalizuj_tag(str(raw_tag))
+		if t == "":
+			continue
+		snapshot[t] = _ziskej_kasu_statu(t)
+	return snapshot
+
+func _with_finance_projection_cash_overrides(overrides: Dictionary, callback: Callable):
+	var previous = _finance_projection_cash_overrides.duplicate(true)
+	_finance_projection_cash_overrides = overrides.duplicate(true)
+	var result = callback.call()
+	_finance_projection_cash_overrides = previous
+	return result
+
+func _money_debug_log_delta(stage: String, before: Dictionary) -> void:
+	if not _ai_debug_mode_enabled:
+		return
+	for raw_tag in lokalni_hraci_staty:
+		var t = _normalizuj_tag(str(raw_tag))
+		if t == "":
+			continue
+		var old_cash = float(before.get(t, _ziskej_kasu_statu(t)))
+		var new_cash = _ziskej_kasu_statu(t)
+		var delta = new_cash - old_cash
+		if absf(delta) < 0.0001:
+			continue
+		_money_debug("%s %s delta=%.2f cash_before=%.2f cash_after=%.2f" % [stage, t, delta, old_cash, new_cash])
+
 func _turn_slice_wait(counter: int, chunk: int) -> int:
 	if not TURN_FRAME_SLICE_ENABLED:
 		return counter
@@ -7499,6 +7925,13 @@ func _turn_slice_wait(counter: int, chunk: int) -> int:
 func ukonci_kolo():
 	if zpracovava_se_tah:
 		return
+	_nastav_stav_zpracovani_tahu(true)
+	await get_tree().process_frame
+	_sim_cache_validni = false
+	_sjednot_financni_toky_cache()
+	if _ai_debug_mode_enabled:
+		_debug_turn_live_events.clear()
+		_append_debug_turn_event("turn start active=%s local_index=%d players=%d" % [_normalizuj_tag(hrac_stat), aktivni_hrac_index, lokalni_hraci_staty.size()])
 	var turn_start_ms = Time.get_ticks_msec()
 	var phase_start_ms = turn_start_ms
 	var turn_phases := {
@@ -7511,9 +7944,10 @@ func ukonci_kolo():
 		"ui": 0
 	}
 	_last_end_turn_request_ms = Time.get_ticks_msec()
-	_nastav_stav_zpracovani_tahu(true)
 	_turn_watchdog_token += 1
 	_spust_turn_watchdog(_turn_watchdog_token)
+	if lokalni_hraci_staty.size() > 1:
+		_sjednot_multiplayer_finance_cache()
 
 	if lokalni_hraci_staty.size() > 1 and not _je_posledni_hrac_v_poradi():
 		_uloz_finance_aktivniho_hrace()
@@ -7543,14 +7977,44 @@ func ukonci_kolo():
 
 	if lokalni_hraci_staty.size() > 1:
 		_uloz_finance_aktivniho_hrace()
+		var treasury_before_income = _snapshot_lidske_kasy()
 		for tag in lokalni_hraci_staty:
 			var cisty_tag = _normalizuj_tag(str(tag))
-			var kasa = float(hrac_kasy.get(cisty_tag, 0.0)) + float(hrac_prijmy.get(cisty_tag, 0.0))
+			if cisty_tag == "" or cisty_tag == "SEA":
+				continue
+			var cash_before_income = float(treasury_before_income.get(cisty_tag, hrac_kasy.get(cisty_tag, _ziskej_kasu_statu(cisty_tag))))
+			if not hrac_kasa_inicializovana.has(cisty_tag):
+				if not hrac_kasy.has(cisty_tag):
+					var start_hdp = max(0.0, _spocitej_hdp_statu(cisty_tag))
+					if start_hdp > 0.0:
+						hrac_kasy[cisty_tag] = start_hdp * 0.05
+						treasury_before_income[cisty_tag] = float(hrac_kasy[cisty_tag])
+						cash_before_income = float(hrac_kasy[cisty_tag])
+				hrac_kasa_inicializovana[cisty_tag] = true
+			var base_income = _spocitej_cisty_prijem_statu(cisty_tag)
+			var finance_breakdown = _with_finance_projection_cash_overrides(treasury_before_income, func():
+				return ziskej_financni_rozpad_statu(cisty_tag)
+			)
+			var projected_cashflow = float(finance_breakdown.get("cashflow", finance_breakdown.get("profit", base_income)))
+			hrac_prijmy[cisty_tag] = projected_cashflow
+			var kasa = float(hrac_kasy.get(cisty_tag, 0.0)) + base_income
 			hrac_kasy[cisty_tag] = kasa
+			_money_debug("income %s base_income=%.2f projected_cashflow=%.2f cash_before=%.2f cash_after=%.2f" % [cisty_tag, base_income, projected_cashflow, cash_before_income, kasa])
+			if cisty_tag == _normalizuj_tag(hrac_stat):
+				statni_kasa = kasa
+				celkovy_prijem = projected_cashflow
 			if kasa < -100.0:
 				await _vyres_bankrot(cisty_tag)
 	else:
-		statni_kasa += celkovy_prijem
+		var single_before_income = statni_kasa
+		var current_tag = _normalizuj_tag(hrac_stat)
+		var base_income = _spocitej_cisty_prijem_statu(current_tag)
+		var finance_breakdown = _with_finance_projection_cash_overrides({current_tag: single_before_income}, func():
+			return ziskej_financni_rozpad_statu(current_tag)
+		)
+		celkovy_prijem = float(finance_breakdown.get("cashflow", finance_breakdown.get("profit", base_income)))
+		statni_kasa += base_income
+		_money_debug("income %s base_income=%.2f projected_cashflow=%.2f cash_before=%.2f cash_after=%.2f" % [current_tag, base_income, celkovy_prijem, single_before_income, statni_kasa])
 		
 		# Bankruptcy at debt below -100
 		if statni_kasa < -100.0:
@@ -7559,10 +8023,18 @@ func ukonci_kolo():
 	phase_start_ms = Time.get_ticks_msec()
 
 	aktualni_kolo += 1
+	var _money_before_flow_effects: Dictionary = _snapshot_lidske_kasy() if lokalni_hraci_staty.size() > 1 else {}
+	var _single_before_flow_effects = statni_kasa
 	_zpracuj_valecne_reparace_za_kolo()
 	_zpracuj_vazalske_odvody_za_kolo()
 	_zpracuj_cekajici_pujcky_za_kolo()
 	_zpracuj_aktivni_pujcky_za_kolo()
+	if lokalni_hraci_staty.size() > 1:
+		_money_debug_log_delta("flows", _money_before_flow_effects)
+	else:
+		var flow_delta = statni_kasa - _single_before_flow_effects
+		if absf(flow_delta) >= 0.0001:
+			_money_debug("flows %s delta=%.2f cash_before=%.2f cash_after=%.2f" % [_normalizuj_tag(hrac_stat), flow_delta, _single_before_flow_effects, statni_kasa])
 	
 	var hotove_stavby = []
 	var hlaseni_dokoncene_stavby: Dictionary = {}
@@ -7698,10 +8170,12 @@ func hrac_verbuje(provincie_id: int, pocet: int) -> bool:
 	if statni_kasa >= celkova_cena:
 		var dostupni_rekruti = int(d.get("recruitable_population", 0))
 		if dostupni_rekruti >= pocet:
-			statni_kasa -= celkova_cena
+			var cash_before_recruit = statni_kasa
+			_nastav_kasu_statu(hrac_stat, statni_kasa - celkova_cena)
 			d["recruitable_population"] -= pocet
 			d["soldiers"] += pocet
 			d["army_owner"] = hrac_stat
+			_money_debug_expense(hrac_stat, "recruit", celkova_cena, cash_before_recruit, statni_kasa, "province=%d soldiers=%d" % [provincie_id, pocet])
 			map_loader.aktualizuj_ikony_armad()
 			kolo_zmeneno.emit() 
 			return true
@@ -9278,6 +9752,17 @@ func zpracuj_tah_ai():
 	_rebuild_turn_cache()
 	var ai_staty = _ziskej_ai_staty()
 	_ai_randomizuj_ideologie_a_profily(ai_staty)
+	var occupied_core_by_state: Dictionary = {}
+	for p_id_any in map_data:
+		var d_core = map_data[p_id_any]
+		var owner_core = _normalizuj_tag(str(d_core.get("owner", "")))
+		var core_owner = _normalizuj_tag(str(d_core.get("core_owner", owner_core)))
+		if core_owner == "" or core_owner == "SEA":
+			continue
+		if owner_core == "" or owner_core == "SEA" or owner_core == core_owner:
+			continue
+		occupied_core_by_state[core_owner] = int(occupied_core_by_state.get(core_owner, 0)) + 1
+	await get_tree().process_frame
 	ai_phases["setup"] = Time.get_ticks_msec() - ai_phase_ms
 	ai_phase_ms = Time.get_ticks_msec()
 	_ai_phase_cache_active = true
@@ -9286,17 +9771,22 @@ func zpracuj_tah_ai():
 	# Evaluate pending peace offers before AI plans any attacks.
 	_vyhodnot_mirove_nabidky_pred_ai()
 	_vyhodnot_aliancni_zadosti_pred_ai()
+	await get_tree().process_frame
 	
 	# Skip diplomacy in potato mode for performance
 	if not _potato_mode_enabled:
 		var zmeny_neagrese_k_hraci = _zpracuj_ai_neagresivni_smlouvy(ai_staty)
 		_zobraz_hlaseni_neagresivnich_smluv_hrace(zmeny_neagrese_k_hraci)
+		await get_tree().process_frame
 		var zmeny_vztahu_k_hraci = _zpracuj_ai_diplomacii(ai_staty)
 		_zobraz_hlaseni_vztahu_hrace(zmeny_vztahu_k_hraci)
+		await get_tree().process_frame
 		var zmeny_opusteni_alianci = _zpracuj_ai_opusteni_alianci(ai_staty)
 		_zobraz_hlaseni_opusteni_alianci_hrace(zmeny_opusteni_alianci)
+		await get_tree().process_frame
 		var zmeny_alianci_k_hraci = _zpracuj_ai_aliance(ai_staty)
 		_zobraz_hlaseni_alianci_hrace(zmeny_alianci_k_hraci)
+		await get_tree().process_frame
 	
 	_set_defer_log_maintenance(false)
 	ai_phases["diplomacy"] = Time.get_ticks_msec() - ai_phase_ms
@@ -9356,7 +9846,14 @@ func zpracuj_tah_ai():
 			_vyres_bankrot(owner_tag)
 
 		var state_pressure = _ai_spocitej_tlak_statu(owner_tag, owned)
+		var core_defense_threat = _ai_spocitej_core_defense_ohrozeni(owner_tag, owned)
+		var threatened_core_count = int(core_defense_threat.get("threatened_core_count", 0))
+		var max_core_threat = int(core_defense_threat.get("max_core_threat", 0))
+		var occupied_core_count = int(occupied_core_by_state.get(owner_tag, 0))
+		var core_defense_lockdown = at_war_state and occupied_core_count > 0
 		treasury_reserve = _ai_uprav_hotovostni_rezervu_pro_spending(owner_tag, treasury_reserve_raw, _ziskej_kasu_statu(owner_tag), at_war_state, state_pressure)
+		if core_defense_lockdown:
+			treasury_reserve = 0.0
 		_ai_debug("reserve tune %s raw=%.2f adjusted=%.2f treasury=%.2f war=%s pressure=%.1f" % [
 			owner_tag,
 			treasury_reserve_raw,
@@ -9367,20 +9864,28 @@ func zpracuj_tah_ai():
 		])
 		var spend_build_this_turn := 0.0
 		var spend_lab_this_turn := 0.0
-		var research_actions = 1 + int(floor(max(0.0, _ziskej_kasu_statu(owner_tag) - treasury_reserve) / 260.0))
-		if at_war_state:
-			research_actions = min(research_actions, 1)
+		if core_defense_lockdown:
+			_ai_debug("core defense lockdown %s occupied_core=%d threatened_core=%d max_threat=%d" % [
+				owner_tag,
+				occupied_core_count,
+				threatened_core_count,
+				max_core_threat
+			])
 		else:
-			research_actions = min(research_actions, 3)
-		for _r in range(max(1, research_actions)):
-			if not _ai_zvaz_vyzkum(owner_tag, treasury_reserve, state_pressure):
-				break
-		var treasury_before_build = _ziskej_kasu_statu(owner_tag)
-		_ai_zvaz_stavby(owner_tag, owned, treasury_reserve, state_pressure)
-		spend_build_this_turn = max(0.0, treasury_before_build - _ziskej_kasu_statu(owner_tag))
-		var treasury_before_lab = _ziskej_kasu_statu(owner_tag)
-		_ai_zvaz_armadni_lab(owner_tag, treasury_reserve)
-		spend_lab_this_turn = max(0.0, treasury_before_lab - _ziskej_kasu_statu(owner_tag))
+			var research_actions = 1 + int(floor(max(0.0, _ziskej_kasu_statu(owner_tag) - treasury_reserve) / 260.0))
+			if at_war_state:
+				research_actions = min(research_actions, 1)
+			else:
+				research_actions = min(research_actions, 3)
+			for _r in range(max(1, research_actions)):
+				if not _ai_zvaz_vyzkum(owner_tag, treasury_reserve, state_pressure):
+					break
+			var treasury_before_build = _ziskej_kasu_statu(owner_tag)
+			_ai_zvaz_stavby(owner_tag, owned, treasury_reserve, state_pressure)
+			spend_build_this_turn = max(0.0, treasury_before_build - _ziskej_kasu_statu(owner_tag))
+			var treasury_before_lab = _ziskej_kasu_statu(owner_tag)
+			_ai_zvaz_armadni_lab(owner_tag, treasury_reserve)
+			spend_lab_this_turn = max(0.0, treasury_before_lab - _ziskej_kasu_statu(owner_tag))
 
 		var cena_za_vojaka = max(0.001, ziskej_cenu_za_vojaka(owner_tag))
 
@@ -9398,13 +9903,11 @@ func zpracuj_tah_ai():
 			var e_tag = _normalizuj_tag(str(e_any))
 			if e_tag != "":
 				enemies_set[e_tag] = true
-		var core_defense_threat = _ai_spocitej_core_defense_ohrozeni(owner_tag, owned)
-		var threatened_core_count = int(core_defense_threat.get("threatened_core_count", 0))
-		var max_core_threat = int(core_defense_threat.get("max_core_threat", 0))
 		var recruit_emergency_level = _ai_ziskej_recruit_emergency_level(owner_tag, owned, at_war_state, state_pressure, state_exhaustion)
 		var frontline_crisis = at_war_state and (
 			recruit_emergency_level >= 0.45
 			or threatened_core_count > 0
+			or occupied_core_count > 0
 			or state_pressure >= 850.0
 		)
 		var recruit_spend_factor = 1.0
@@ -11299,9 +11802,18 @@ func nastav_potato_mode(enabled: bool) -> void:
 
 func nastav_ai_debug_mode(enabled: bool) -> void:
 	_ai_debug_mode_enabled = enabled
+	if not enabled:
+		_debug_turn_live_events.clear()
 
 func je_ai_debug_mode_zapnuty() -> bool:
 	return _ai_debug_mode_enabled
+
+func ziskej_debug_historii_tahu(limit: int = 6) -> Array:
+	var capped = clampi(limit, 1, DEBUG_TURN_HISTORY_MAX)
+	if _debug_turn_history.is_empty():
+		return []
+	var from_idx = max(0, _debug_turn_history.size() - capped)
+	return _debug_turn_history.slice(from_idx, _debug_turn_history.size())
 
 func ziskej_ai_debug_snapshot(state_tag: String = "") -> Dictionary:
 	var clean = _normalizuj_tag(state_tag)
@@ -11328,7 +11840,9 @@ func ziskej_ai_debug_snapshot(state_tag: String = "") -> Dictionary:
 	var pressure = _ai_spocitej_tlak_statu(clean, owned)
 	var exhaustion = _ai_spocitej_war_exhaustion(clean)
 	var treasury = _ziskej_kasu_statu(clean)
-	var net_income = _spocitej_cisty_prijem_statu(clean)
+	var finance_breakdown = ziskej_financni_rozpad_statu(clean)
+	var net_income = float(finance_breakdown.get("cashflow", finance_breakdown.get("profit", _spocitej_cisty_prijem_statu(clean))))
+	var profit_income = float(finance_breakdown.get("profit", net_income))
 	var goal = _ai_ziskej_strategicky_cil(clean)
 	var op_plan = _ai_ziskej_operacni_plan(clean)
 	var profile = _ai_ziskej_profil(clean)
@@ -11357,6 +11871,7 @@ func ziskej_ai_debug_snapshot(state_tag: String = "") -> Dictionary:
 		"turn": aktualni_kolo,
 		"treasury": treasury,
 		"net_income": net_income,
+		"profit_income": profit_income,
 		"at_war": at_war,
 		"enemies": enemies,
 		"pressure": pressure,
@@ -11376,5 +11891,7 @@ func ziskej_ai_debug_snapshot(state_tag: String = "") -> Dictionary:
 		"naval_ports": naval_ports,
 		"naval_ready": naval_ready,
 		"recruit_targets": recruit_targets,
-		"owned_provinces": owned.size()
+		"owned_provinces": owned.size(),
+		"turn_profile": _debug_last_turn_profile.duplicate(true),
+		"turn_history": ziskej_debug_historii_tahu(6)
 	}
