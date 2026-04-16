@@ -1,4 +1,15 @@
+﻿# ==================================================================================================
+# ███╗   ███╗ █████╗ ██████╗ ███████╗    ██████╗ ██╗   ██╗    █████╗ ███████╗██████╗  ██████╗ ██╗  ██╗
+# ████╗ ████║██╔══██╗██╔══██╗██╔════╝    ██╔══██╗╚██╗ ██╔╝   ██╔══██╗██╔════╝██╔══██╗██╔═══██╗╚██╗██╔╝
+# ██╔████╔██║███████║██║  ██║█████╗      ██████╔╝ ╚████╔╝    ███████║█████╗  ██████╔╝██║   ██║ ╚███╔╝
+# ██║╚██╔╝██║██╔══██║██║  ██║██╔══╝      ██╔══██╗  ╚██╔╝     ██╔══██║██╔══╝  ██╔══██╗██║   ██║ ██╔██╗
+# ██║ ╚═╝ ██║██║  ██║██████╔╝███████╗    ██████╔╝   ██║      ██║  ██║██║     ██║  ██║╚██████╔╝██╔╝ ██╗
+# ╚═╝     ╚═╝╚═╝  ╚═╝╚═════╝ ╚══════╝    ╚═════╝    ╚═╝      ╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝
+#
+#                                         Made By: Afrox26TP
+# ==================================================================================================
 extends Node2D
+# Brief: this script drives a specific gameplay/UI area and keeps related logic together.
 
 # Loads province data, switches map modes and resolves army movement on the actual map.
 signal mapovy_mod_zmenen(mod: String)
@@ -98,15 +109,18 @@ const ATTACKER_LIBERATION_BONUS_PCT := 0.10
 # --------------------------------------------------------
 
 # Tries a few filename variants because raw data names changed during dev a bit.
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _raw_data_path_exists(path: String) -> bool:
 	return FileAccess.file_exists(path) or ResourceLoader.exists(path)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _resolve_provinces_data_path() -> String:
 	for path in PROVINCES_DATA_PATHS:
 		if _raw_data_path_exists(path):
 			return path
 	return str(PROVINCES_DATA_PATHS[PROVINCES_DATA_PATHS.size() - 1])
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _build_column_index(header_line: String) -> Dictionary:
 	var out: Dictionary = {}
 	var cols = header_line.split(";")
@@ -114,6 +128,7 @@ func _build_column_index(header_line: String) -> Dictionary:
 		out[str(cols[i]).strip_edges().to_lower()] = i
 	return out
 
+# Brief: Searches available data and returns the best matching result.
 func _find_column_idx(col_index: Dictionary, names: Array, fallback_idx: int = -1) -> int:
 	for raw_name in names:
 		var key = str(raw_name).strip_edges().to_lower()
@@ -121,6 +136,7 @@ func _find_column_idx(col_index: Dictionary, names: Array, fallback_idx: int = -
 			return int(col_index[key])
 	return fallback_idx
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _read_int(parts: Array, idx: int, default_val: int = 0) -> int:
 	if idx < 0 or idx >= parts.size():
 		return default_val
@@ -129,6 +145,7 @@ func _read_int(parts: Array, idx: int, default_val: int = 0) -> int:
 		return default_val
 	return int(raw)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _read_float(parts: Array, idx: int, default_val: float = 0.0) -> float:
 	if idx < 0 or idx >= parts.size():
 		return default_val
@@ -137,11 +154,13 @@ func _read_float(parts: Array, idx: int, default_val: float = 0.0) -> float:
 		return default_val
 	return float(raw)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _read_text(parts: Array, idx: int, default_val: String = "") -> String:
 	if idx < 0 or idx >= parts.size():
 		return default_val
 	return str(parts[idx]).strip_edges()
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _army_turn_slice_wait(counter: int, chunk: int = TURN_ARMY_SLICE_BATCH) -> int:
 	if not TURN_ARMY_SLICE_ENABLED:
 		return counter
@@ -151,6 +170,7 @@ func _army_turn_slice_wait(counter: int, chunk: int = TURN_ARMY_SLICE_BATCH) -> 
 		return 0
 	return next_counter
 
+# Brief: Returns whether required conditions are currently satisfied.
 func _je_potato_mode_ze_settings() -> bool:
 	var cfg = ConfigFile.new()
 	if cfg.load(SETTINGS_FILE_PATH) != OK:
@@ -161,6 +181,7 @@ func _je_potato_mode_ze_settings() -> bool:
 	return display_mode or other_mode
 
 # Potato mode turns off some heavier visuals for weaker notebooks/PCs.
+# Brief: Applies incoming values and synchronizes dependent state.
 func nastav_potato_mode(enabled: bool) -> void:
 	_potato_mode_enabled = enabled
 	Engine.max_fps = 45 if enabled else 0
@@ -181,6 +202,7 @@ func nastav_potato_mode(enabled: bool) -> void:
 	elif labels_manager:
 		labels_manager.visible = not enabled
 
+# Brief: Builds required objects/UI nodes and wires essential defaults/signals.
 func _vytvor_loading_overlay() -> void:
 	if _loading_layer != null:
 		return
@@ -229,12 +251,14 @@ func _vytvor_loading_overlay() -> void:
 	_loading_bar.show_percentage = true
 	vbox.add_child(_loading_bar)
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func _nastav_loading_stav(text: String, progress_0_1: float) -> void:
 	if _loading_label:
 		_loading_label.text = text
 	if _loading_bar:
 		_loading_bar.value = clamp(progress_0_1 * 100.0, 0.0, 100.0)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _skryj_loading_overlay() -> void:
 	if _loading_layer:
 		_loading_layer.queue_free()
@@ -243,20 +267,24 @@ func _skryj_loading_overlay() -> void:
 	_loading_bar = null
 
 # Map mode switch updates shader colors and visibility of army/port markers.
+# Brief: Applies incoming values and synchronizes dependent state.
 func nastav_mapovy_mod(mod: String):
 	aktualni_mapovy_mod = mod
 	_aktualizuj_aktivni_mapovy_mod()
 	_aplikuj_viditelnost_ukazatelu_jednotek()
 	emit_signal("mapovy_mod_zmenen", aktualni_mapovy_mod)
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func _aktualizuj_aktivni_mapovy_mod() -> void:
 	var sprite = $Sprite2D
 	if sprite and sprite.has_method("aktualizuj_mapovy_mod"):
 		sprite.aktualizuj_mapovy_mod(aktualni_mapovy_mod, provinces)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _jsou_ukazatele_jednotek_povolene() -> bool:
 	return aktualni_mapovy_mod == "political"
 
+# Brief: Applies prepared settings/effects to runtime systems.
 func _aplikuj_viditelnost_ukazatelu_jednotek():
 	var ukazovat = _jsou_ukazatele_jednotek_povolene()
 	var army_container = get_node_or_null("ArmyContainer")
@@ -272,6 +300,7 @@ func _aplikuj_viditelnost_ukazatelu_jednotek():
 			if army_node:
 				army_node.hide()
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_map_offset() -> Vector2:
 	var sprite = $Sprite2D
 	if sprite and sprite.centered:
@@ -280,6 +309,7 @@ func _ziskej_map_offset() -> Vector2:
 		return sprite.position
 	return Vector2.ZERO
 
+# Brief: Returns whether required conditions are currently satisfied.
 func _je_validni_lokalni_pozice(pos: Vector2) -> bool:
 	if pos == Vector2.ZERO:
 		return false
@@ -291,6 +321,7 @@ func _je_validni_lokalni_pozice(pos: Vector2) -> bool:
 		return true
 	return pos.x >= 0.0 and pos.y >= 0.0 and pos.x <= size.x and pos.y <= size.y
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_lokalni_pozici_provincie(prov_id: int) -> Vector2:
 	if not provinces.has(prov_id):
 		return Vector2.ZERO
@@ -363,6 +394,7 @@ func _ziskej_lokalni_pozici_provincie(prov_id: int) -> Vector2:
 	_sea_position_cache[prov_id] = avg
 	return avg
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_lokalni_pozici_z_masky_provincie(prov_id: int) -> Vector2:
 	if _province_pixel_center_cache.has(prov_id):
 		return _province_pixel_center_cache[prov_id]
@@ -410,9 +442,11 @@ func _ziskej_lokalni_pozici_z_masky_provincie(prov_id: int) -> Vector2:
 	_province_pixel_center_cache[prov_id] = center
 	return center
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_map_pozici_provincie(prov_id: int, offset: Vector2) -> Vector2:
 	return _ziskej_lokalni_pozici_provincie(prov_id) + offset
 
+# Brief: Reads current runtime data and returns it to callers.
 func ziskej_prov_id_podle_ikony_armady(global_mouse_pos: Vector2, tolerance: float = 16.0) -> int:
 	if aktivni_armady.is_empty():
 		return -1
@@ -445,6 +479,7 @@ func ziskej_prov_id_podle_ikony_armady(global_mouse_pos: Vector2, tolerance: flo
 
 	return best_prov_id
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func nastav_vybranou_armadu_provincie(selected_prov_id: int):
 	var vybrane_armady: Dictionary = {}
 	if selected_prov_id >= 0:
@@ -465,6 +500,7 @@ func nastav_vybranou_armadu_provincie(selected_prov_id: int):
 			var je_moje_armada = owner_tag == GameManager.hrac_stat
 			ring.visible = vybrane_armady.has(prov_id) and je_moje_armada
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func _aktualizuj_selection_ring_geometrii(army_node: Node2D):
 	if not army_node:
 		return
@@ -495,6 +531,7 @@ func _aktualizuj_selection_ring_geometrii(army_node: Node2D):
 	ring.add_point(Vector2(-ring_half_w, ring_half_h))
 	ring.add_point(Vector2(-ring_half_w, -ring_half_h))
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_pozici_armady_v_provincii(prov_id: int, offset: Vector2) -> Vector2:
 	var base_pos = _ziskej_map_pozici_provincie(prov_id, offset)
 	# Keep sea fleets centered on sea tile, but move land armies below province names.
@@ -507,6 +544,7 @@ func _ziskej_pozici_armady_v_provincii(prov_id: int, offset: Vector2) -> Vector2
 		y_offset = 17.0
 	return base_pos + Vector2(0, y_offset)
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_lane_index(slot: int) -> int:
 	if slot <= 0:
 		return 0
@@ -515,6 +553,7 @@ func _ziskej_lane_index(slot: int) -> int:
 		return magnitude
 	return -magnitude
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _vypocitej_ofset_trasy(from_id: int, to_id: int, start_pos: Vector2, end_pos: Vector2) -> Vector2:
 	var a = min(from_id, to_id)
 	var b = max(from_id, to_id)
@@ -532,6 +571,7 @@ func _vypocitej_ofset_trasy(from_id: int, to_id: int, start_pos: Vector2, end_po
 	var lane_index = _ziskej_lane_index(slot)
 	return dir.normalized().orthogonal() * (12.0 * float(lane_index))
 
+# Brief: Searches available data and returns the best matching result.
 func _najdi_volnou_pozici(base_pos: Vector2, occupied_positions: Array, min_distance: float) -> Vector2:
 	if occupied_positions.is_empty():
 		return base_pos
@@ -561,6 +601,7 @@ func _najdi_volnou_pozici(base_pos: Vector2, occupied_positions: Array, min_dist
 
 	return base_pos + Vector2(42, 0)
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_obsazene_pozice_armad() -> Array:
 	var occupied: Array = []
 	for prov_id in aktivni_armady.keys():
@@ -569,6 +610,7 @@ func _ziskej_obsazene_pozice_armad() -> Array:
 			occupied.append(army_node.position)
 	return occupied
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _rozmisti_armady_bez_overlapu():
 	if aktivni_armady.is_empty():
 		return
@@ -593,6 +635,7 @@ func _rozmisti_armady_bez_overlapu():
 		army_node.position = final_pos
 		occupied.append(final_pos)
 
+# Brief: Reads current runtime data and returns it to callers.
 func _get_cached_texture(path: String, cache: Dictionary):
 	if path == "":
 		return null
@@ -604,6 +647,7 @@ func _get_cached_texture(path: String, cache: Dictionary):
 	cache[path] = tex
 	return tex
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _normalizuj_ideologii(ideology: String) -> String:
 	var raw = ideology.strip_edges().to_lower()
 	match raw:
@@ -622,6 +666,7 @@ func _normalizuj_ideologii(ideology: String) -> String:
 		_:
 			return raw
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _ensure_ideology_flag_index() -> void:
 	if ideology_flag_index_ready:
 		return
@@ -676,6 +721,7 @@ func _ensure_ideology_flag_index() -> void:
 			ideology_flag_path_index[key] = path
 	dir.list_dir_end()
 
+# Brief: Reads current runtime data and returns it to callers.
 func _get_flag_texture(tag: String, ideology: String):
 	var ideologie = _normalizuj_ideologii(ideology)
 	var cisty_tag = tag.strip_edges().to_upper()
@@ -699,6 +745,7 @@ func _get_flag_texture(tag: String, ideology: String):
 			return tex
 	return null
 
+# Brief: Reads current runtime data and returns it to callers.
 func _get_army_icon_texture(owner_tag: String):
 	var icon_path = "res://map_data/ArmyIcons/%s.svg" % owner_tag
 	var fallback_path = "res://map_data/ArmyIcons/ArmyIconTemplate.svg"
@@ -707,12 +754,14 @@ func _get_army_icon_texture(owner_tag: String):
 		return icon_tex
 	return _get_cached_texture(fallback_path, army_icon_texture_cache)
 
+# Brief: Reads current runtime data and returns it to callers.
 func _get_port_icon_texture():
 	var icon_tex = _get_cached_texture(PORT_ICON_PATH, army_icon_texture_cache)
 	if icon_tex:
 		return icon_tex
 	return _get_cached_texture(PORT_ICON_FALLBACK_PATH, army_icon_texture_cache)
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_zakladni_barvu_statu(tag: String) -> Color:
 	if tag == "":
 		return Color(0.62, 0.62, 0.66, 1.0)
@@ -727,6 +776,7 @@ func _ziskej_zakladni_barvu_statu(tag: String) -> Color:
 	var hue = float(abs(tag.hash()) % 360) / 360.0
 	return Color.from_hsv(hue, 0.62, 0.86, 1.0)
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_barvu_overlay_statu(tag: String, is_attack: bool) -> Color:
 	var base = _ziskej_zakladni_barvu_statu(tag)
 	var out_col: Color
@@ -740,6 +790,7 @@ func _ziskej_barvu_overlay_statu(tag: String, is_attack: bool) -> Color:
 		out_col.a = 0.86
 	return out_col
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_nasobic_sily_statu(state_tag: String) -> float:
 	var cisty = state_tag.strip_edges().to_upper()
 	if cisty == "" or cisty == "SEA":
@@ -760,6 +811,7 @@ func _ziskej_nasobic_sily_statu(state_tag: String) -> float:
 	var bonus_pct = max(0.0, float(info.get("bonus_pct", 0.0)))
 	return max(1.0, 1.0 + bonus_pct)
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_terenni_obranny_bonus_pct(prov_id: int) -> float:
 	if not provinces.has(prov_id):
 		return 0.0
@@ -772,6 +824,7 @@ func _ziskej_terenni_obranny_bonus_pct(prov_id: int) -> float:
 		return float(TERRAIN_DEFENDER_BONUS_PCT[terrain_raw])
 	return 0.0
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_bonus_utocnika_pri_osvobozovani(prov_id: int, attacker_tag: String) -> float:
 	if not provinces.has(prov_id):
 		return 0.0
@@ -790,12 +843,15 @@ func _ziskej_bonus_utocnika_pri_osvobozovani(prov_id: int, attacker_tag: String)
 		return ATTACKER_LIBERATION_BONUS_PCT
 	return 0.0
 
+# Brief: Reads current runtime data and returns it to callers.
 func ziskej_terenni_obranny_bonus_pct(prov_id: int) -> float:
 	return _ziskej_terenni_obranny_bonus_pct(prov_id)
 
+# Brief: Reads current runtime data and returns it to callers.
 func ziskej_bonus_utocnika_pri_osvobozovani(prov_id: int, attacker_tag: String) -> float:
 	return _ziskej_bonus_utocnika_pri_osvobozovani(prov_id, attacker_tag)
 
+# Brief: Reads current runtime data and returns it to callers.
 func ziskej_nahled_bojovych_modifikatoru(from_id: int, to_id: int) -> Dictionary:
 	if not provinces.has(from_id) or not provinces.has(to_id):
 		return {"ok": false, "reason": "invalid_province"}
@@ -830,6 +886,7 @@ func ziskej_nahled_bojovych_modifikatoru(from_id: int, to_id: int) -> Dictionary
 		"defender_total_mult": defender_state_mult * max(0.05, 1.0 + terrain_bonus)
 	}
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _vyres_souboj_podle_sily(attacker_tag: String, attacker_soldiers: int, defender_tag: String, defender_soldiers: int, defender_bonus_pct: float = 0.0, attacker_bonus_pct: float = 0.0) -> Dictionary:
 	var att_count = max(0, attacker_soldiers)
 	var def_count = max(0, defender_soldiers)
@@ -883,6 +940,7 @@ func _vyres_souboj_podle_sily(attacker_tag: String, attacker_soldiers: int, defe
 		"defender_power": def_power
 	}
 
+# Brief: Initializes references, connects signals, and prepares default runtime state.
 func _ready():
 	_vytvor_loading_overlay()
 	_nastav_loading_stav("Nacitani mapy...", 0.03)
@@ -942,6 +1000,7 @@ func _ready():
 	_skryj_loading_overlay()
 	print("[MapInit] done")
 
+# Brief: Runs frame-by-frame updates while this node is active.
 func _process(delta: float):
 	if _ai_anim_markery.is_empty() and _cekajici_anim_markery.is_empty() and _preview_anim_markery.is_empty():
 		set_process(false)
@@ -954,6 +1013,7 @@ func _process(delta: float):
 	if _ai_anim_markery.is_empty() and _cekajici_anim_markery.is_empty() and _preview_anim_markery.is_empty():
 		set_process(false)
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func _aktualizuj_anim_markery(markery: Array, delta: float) -> Array:
 	var out = markery
 	for i in range(out.size() - 1, -1, -1):
@@ -991,6 +1051,7 @@ func _aktualizuj_anim_markery(markery: Array, delta: float) -> Array:
 
 	return out
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _sample_polyline_position(points: PackedVector2Array, cumulative_lengths: PackedFloat32Array, distance: float) -> Dictionary:
 	if points.size() < 2 or cumulative_lengths.size() < 2:
 		return {"position": Vector2.ZERO, "angle": 0.0}
@@ -1022,6 +1083,7 @@ func _sample_polyline_position(points: PackedVector2Array, cumulative_lengths: P
 		"angle": seg_dir.angle()
 	}
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _pridej_animovany_marker(container: Node2D, marker_store: Array, start_pos: Vector2, end_pos: Vector2, color: Color, speed: float, phase: float, width: float):
 	var dir = end_pos - start_pos
 	var length = dir.length()
@@ -1056,6 +1118,7 @@ func _pridej_animovany_marker(container: Node2D, marker_store: Array, start_pos:
 		"progress": fposmod(phase, 1.0)
 	})
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _pridej_animovany_marker_po_linii(container: Node2D, marker_store: Array, poly_points: PackedVector2Array, color: Color, speed: float, phase: float, width: float):
 	if poly_points.size() < 2:
 		return
@@ -1099,6 +1162,7 @@ func _pridej_animovany_marker_po_linii(container: Node2D, marker_store: Array, p
 		"progress": fposmod(phase, 1.0)
 	})
 
+# Brief: Loads data/resources and validates parsed results.
 func load_provinces():
 	var data_path = _resolve_provinces_data_path()
 	var file = FileAccess.open(data_path, FileAccess.READ)
@@ -1212,6 +1276,7 @@ func load_provinces():
 	_rebuild_movement_topology_cache()
 	_invalidate_naval_reachability_cache()
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func generuj_nazvy_provincii():
 	var label_container = Node2D.new()
 	label_container.name = "ProvinceLabels"
@@ -1282,6 +1347,7 @@ func generuj_nazvy_provincii():
 		if not moc_blizko:
 			umistene_pozice.append(pozice)
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func aktualizuj_vlajky_hlavnich_mest() -> void:
 	var labels = get_node_or_null("ProvinceLabels")
 	if labels == null:
@@ -1310,6 +1376,7 @@ func aktualizuj_vlajky_hlavnich_mest() -> void:
 		f.texture = _get_flag_texture(tag, ideologie)
 		f.show()
 
+# Brief: Reads current runtime data and returns it to callers.
 func get_province_data_by_color(clicked_color: Color):
 	var hex = clicked_color.to_html(false)
 	
@@ -1328,9 +1395,11 @@ func get_province_data_by_color(clicked_color: Color):
 			
 	return null
 
+# Brief: Reads current runtime data and returns it to callers.
 func ziskej_hromadne_vybrane_provincie() -> Array:
 	return hromadne_vybrane_provincie.duplicate()
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func pridej_hromadny_vyber_provincie(prov_id: int) -> bool:
 	if not je_platna_provincie_pro_hromadny_vyber(prov_id):
 		return false
@@ -1339,10 +1408,12 @@ func pridej_hromadny_vyber_provincie(prov_id: int) -> bool:
 	hromadne_vybrane_provincie.append(prov_id)
 	return true
 
+# Brief: Clears temporary data and resets transient runtime/UI state.
 func vycisti_hromadny_vyber_provincii():
 	hromadne_vybrane_provincie.clear()
 	vycisti_hromadny_vyber_overlay()
 
+# Brief: Clears temporary data and resets transient runtime/UI state.
 func vycisti_hromadny_vyber_overlay():
 	_hromadny_vyber_overlay_key = ""
 	var overlay = get_node_or_null("MultiSelectOverlay")
@@ -1351,6 +1422,7 @@ func vycisti_hromadny_vyber_overlay():
 	for child in overlay.get_children():
 		child.queue_free()
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func vykresli_hromadny_vyber_overlay(ids: Array):
 	if ids.is_empty():
 		vycisti_hromadny_vyber_overlay()
@@ -1405,6 +1477,7 @@ func vykresli_hromadny_vyber_overlay(ids: Array):
 			ring.add_point(center + Vector2(cos(a), sin(a)) * radius)
 		overlay.add_child(ring)
 
+# Brief: Switches mode/state and updates related behavior and visuals.
 func prepni_hromadny_vyber_provincie(prov_id: int) -> bool:
 	if not je_platna_provincie_pro_hromadny_vyber(prov_id):
 		return false
@@ -1416,6 +1489,7 @@ func prepni_hromadny_vyber_provincie(prov_id: int) -> bool:
 	hromadne_vybrane_provincie.append(prov_id)
 	return true
 
+# Brief: Returns whether required conditions are currently satisfied.
 func je_platna_provincie_pro_hromadny_vyber(prov_id: int) -> bool:
 	if not provinces.has(prov_id):
 		return false
@@ -1426,6 +1500,7 @@ func je_platna_provincie_pro_hromadny_vyber(prov_id: int) -> bool:
 		return false
 	return int(d.get("soldiers", 0)) > 0
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func aktivuj_rezim_hromadneho_presunu(from_ids: Array) -> bool:
 	hromadny_presun_zdroje.clear()
 	for raw_id in from_ids:
@@ -1449,6 +1524,7 @@ func aktivuj_rezim_hromadneho_presunu(from_ids: Array) -> bool:
 	vycisti_nahled_presunu()
 	return true
 
+# Brief: Returns whether required conditions are currently satisfied.
 func ma_hromadny_platny_cil_presunu(to_id: int) -> bool:
 	if hromadny_presun_zdroje.is_empty():
 		return false
@@ -1461,6 +1537,7 @@ func ma_hromadny_platny_cil_presunu(to_id: int) -> bool:
 			return true
 	return false
 
+# Brief: Searches available data and returns the best matching result.
 func najdi_hromadny_nahled_presunu_k_cili(to_id: int) -> Array:
 	if hromadny_presun_zdroje.is_empty():
 		return []
@@ -1480,6 +1557,7 @@ func najdi_hromadny_nahled_presunu_k_cili(to_id: int) -> Array:
 
 	return best_path
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func zaregistruj_hromadny_presun_armad(to_id: int) -> int:
 	if hromadny_presun_zdroje.is_empty():
 		ceka_na_hromadny_cil_presunu = false
@@ -1506,6 +1584,7 @@ func zaregistruj_hromadny_presun_armad(to_id: int) -> int:
 	vycisti_nahled_presunu()
 	return planned
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _na_zmenu_zoomu(aktualni_zoom):
 	if _potato_mode_enabled:
 		var low_labels = get_node_or_null("ProvinceLabels")
@@ -1542,6 +1621,7 @@ func _na_zmenu_zoomu(aktualni_zoom):
 	_aktualizuj_zoom_pristavu(aktualni_zoom)
 	_aktualizuj_indikatory_kapitulace()
 
+# Brief: Formats raw values into user-facing display text.
 func _formatuj_cislo(cislo: int) -> String:
 	if cislo >= 1000000:
 		return str(snapped(cislo / 1000000.0, 0.1)) + "M"
@@ -1549,6 +1629,7 @@ func _formatuj_cislo(cislo: int) -> String:
 		return str(snapped(cislo / 1000.0, 0.1)) + "k"
 	return str(cislo)
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func _aktualizuj_zoom_armad(aktualni_zoom: float):
 	if aktivni_armady.is_empty(): return
 	if not _jsou_ukazatele_jednotek_povolene():
@@ -1630,6 +1711,7 @@ func _aktualizuj_zoom_armad(aktualni_zoom: float):
 				else:
 					army_node.hide()
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func _aktualizuj_zoom_pristavu(aktualni_zoom: float):
 	if aktivni_porty.is_empty():
 		return
@@ -1641,6 +1723,7 @@ func _aktualizuj_zoom_pristavu(aktualni_zoom: float):
 			continue
 		port_node.scale = Vector2(zvetseni, zvetseni)
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func aktualizuj_ikony_armad():
 	var arm_signature = _spocitej_army_state_signature()
 	if arm_signature == _last_army_state_signature:
@@ -1752,6 +1835,7 @@ func aktualizuj_ikony_armad():
 
 # --- CORE MOVEMENT LOGIC ---
 
+# Brief: Returns whether required conditions are currently satisfied.
 func _je_more_provincie(prov_id: int) -> bool:
 	if _sea_province_cache.has(prov_id):
 		return bool(_sea_province_cache[prov_id])
@@ -1764,6 +1848,7 @@ func _je_more_provincie(prov_id: int) -> bool:
 	_sea_province_cache[prov_id] = is_sea
 	return is_sea
 
+# Brief: Returns whether required conditions are currently satisfied.
 func _je_pobrezni_provincie(prov_id: int) -> bool:
 	if _coastal_province_cache.has(prov_id):
 		return bool(_coastal_province_cache[prov_id])
@@ -1771,6 +1856,7 @@ func _je_pobrezni_provincie(prov_id: int) -> bool:
 	_coastal_province_cache[prov_id] = result
 	return result
 
+# Brief: Computes derived values from current inputs and game state.
 func _spocitej_je_pobrezni_provincie(prov_id: int) -> bool:
 	if not provinces.has(prov_id):
 		return false
@@ -1781,6 +1867,7 @@ func _spocitej_je_pobrezni_provincie(prov_id: int) -> bool:
 			return true
 	return false
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_delku_pozemniho_kroku(from_id: int, to_id: int) -> float:
 	var from_pos = _ziskej_lokalni_pozici_provincie(from_id)
 	var to_pos = _ziskej_lokalni_pozici_provincie(to_id)
@@ -1788,6 +1875,7 @@ func _ziskej_delku_pozemniho_kroku(from_id: int, to_id: int) -> float:
 		return -1.0
 	return from_pos.distance_to(to_pos)
 
+# Brief: Computes derived values from current inputs and game state.
 func _spocitej_lokalni_land_cap(prov_id: int) -> float:
 	if _land_step_distance_cap_cache.has(prov_id):
 		return float(_land_step_distance_cap_cache[prov_id])
@@ -1818,6 +1906,7 @@ func _spocitej_lokalni_land_cap(prov_id: int) -> float:
 	_land_step_distance_cap_cache[prov_id] = cap_val
 	return cap_val
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _splnuje_hard_cap_pozemniho_kroku(from_id: int, to_id: int) -> bool:
 	var step_dist = _ziskej_delku_pozemniho_kroku(from_id, to_id)
 	if step_dist < 0.0:
@@ -1828,6 +1917,7 @@ func _splnuje_hard_cap_pozemniho_kroku(from_id: int, to_id: int) -> bool:
 	var allowed_cap = max(from_cap, to_cap)
 	return step_dist <= allowed_cap
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _invalidate_movement_topology_cache() -> void:
 	_sea_province_cache.clear()
 	_coastal_province_cache.clear()
@@ -1837,6 +1927,7 @@ func _invalidate_movement_topology_cache() -> void:
 	_land_step_distance_cap_cache.clear()
 	_last_army_state_signature = -1
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _rebuild_movement_topology_cache() -> void:
 	_invalidate_movement_topology_cache()
 
@@ -1879,10 +1970,12 @@ func _rebuild_movement_topology_cache() -> void:
 		_land_step_neighbors_cache[p_id] = land_steps
 		_land_plus_sea_step_neighbors_cache[p_id] = land_plus_sea_steps
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _invalidate_naval_reachability_cache() -> void:
 	_naval_reachable_cache_from = -1
 	_naval_reachable_cache.clear()
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_dostupna_moreni_pole(from_id: int) -> Dictionary:
 	if _naval_reachable_cache_from == from_id and not _naval_reachable_cache.is_empty():
 		return _naval_reachable_cache
@@ -1928,6 +2021,7 @@ func _ziskej_dostupna_moreni_pole(from_id: int) -> Dictionary:
 	_naval_reachable_cache = reachable
 	return _naval_reachable_cache
 
+# Brief: Returns whether required conditions are currently satisfied.
 func _ma_pobrezni_pristup_k_dostupnemu_mori(land_id: int, reachable_sea: Dictionary) -> bool:
 	if not provinces.has(land_id):
 		return false
@@ -1939,6 +2033,7 @@ func _ma_pobrezni_pristup_k_dostupnemu_mori(land_id: int, reachable_sea: Diction
 			return true
 	return false
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_vlastnika_armady_v_provincii(prov_id: int) -> String:
 	if not provinces.has(prov_id):
 		return ""
@@ -1949,6 +2044,7 @@ func _ziskej_vlastnika_armady_v_provincii(prov_id: int) -> String:
 		return ""
 	return str(provinces[prov_id].get("owner", "")).strip_edges().to_upper()
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_braniciho_vlastnika_v_provincii(prov_id: int) -> String:
 	if not provinces.has(prov_id):
 		return ""
@@ -1962,6 +2058,7 @@ func _ziskej_braniciho_vlastnika_v_provincii(prov_id: int) -> String:
 		return army_owner
 	return owner_tag
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _zvol_vlastnika_pri_pratelskem_slouceni(existing_owner_tag: String, incoming_owner_tag: String) -> String:
 	var existing_owner = str(existing_owner_tag).strip_edges().to_upper()
 	var incoming_owner = str(incoming_owner_tag).strip_edges().to_upper()
@@ -1987,6 +2084,7 @@ func _zvol_vlastnika_pri_pratelskem_slouceni(existing_owner_tag: String, incomin
 	# Keep current controller for allied merges to avoid last-move ownership flips.
 	return existing_owner
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_pozici_pristavu_v_provincii(prov_id: int) -> Vector2:
 	var center = _ziskej_lokalni_pozici_provincie(prov_id)
 	if not provinces.has(prov_id):
@@ -2021,12 +2119,14 @@ func _ziskej_pozici_pristavu_v_provincii(prov_id: int) -> Vector2:
 
 	return center + dir.normalized() * 16.0
 
+# Brief: Returns whether required conditions are currently satisfied.
 func _ma_nepratelskou_posadku_na_mori(prov_id: int, owner_tag: String) -> bool:
 	if not _je_more_provincie(prov_id):
 		return false
 	var sea_army_owner = str(provinces[prov_id].get("army_owner", "")).strip_edges().to_upper()
 	return sea_army_owner != "" and sea_army_owner != owner_tag
 
+# Brief: Returns whether required conditions are currently satisfied.
 func _je_pruchozi_mezikrok_presunu(prov_id: int, owner_tag: String) -> bool:
 	if not provinces.has(prov_id):
 		return false
@@ -2047,6 +2147,7 @@ func _je_pruchozi_mezikrok_presunu(prov_id: int, owner_tag: String) -> bool:
 		return true
 	return land_owner == owner_tag
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_krokove_sousedy_presunu(from_id: int) -> Array:
 	if not provinces.has(from_id):
 		return []
@@ -2060,6 +2161,7 @@ func _ziskej_krokove_sousedy_presunu(from_id: int) -> Array:
 		return _land_plus_sea_step_neighbors_cache.get(from_id, [])
 	return _land_step_neighbors_cache.get(from_id, [])
 
+# Brief: Computes derived values from current inputs and game state.
 func _spocitej_army_state_signature() -> int:
 	var signature := 216613626
 	for p_id_any in provinces:
@@ -2076,6 +2178,7 @@ func _spocitej_army_state_signature() -> int:
 		signature = int((signature ^ 0x1A2B3C4D) & 0x7fffffff)
 	return signature
 
+# Brief: Searches available data and returns the best matching result.
 func najdi_nejrychlejsi_cestu_presunu(from_id: int, to_id: int) -> Array:
 	if from_id == to_id:
 		return []
@@ -2121,6 +2224,7 @@ func najdi_nejrychlejsi_cestu_presunu(from_id: int, to_id: int) -> Array:
 
 	return []
 
+# Brief: Clears temporary data and resets transient runtime/UI state.
 func vycisti_nahled_presunu():
 	_preview_path_key = ""
 	_preview_anim_markery.clear()
@@ -2132,6 +2236,7 @@ func vycisti_nahled_presunu():
 	for child in overlay.get_children():
 		child.queue_free()
 
+# Brief: Displays UI/output and updates visible presentation data.
 func zobraz_nahled_presunu(path: Array):
 	if path.size() < 2:
 		vycisti_nahled_presunu()
@@ -2201,6 +2306,7 @@ func zobraz_nahled_presunu(path: Array):
 	if not _preview_anim_markery.is_empty():
 		set_process(true)
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_profil_statu(owner_tag: String) -> Dictionary:
 	for p_id in provinces.keys():
 		if _je_more_provincie(p_id):
@@ -2226,9 +2332,11 @@ func _ziskej_profil_statu(owner_tag: String) -> Dictionary:
 		"ideology": ""
 	}
 
+# Brief: Returns whether required conditions are currently satisfied.
 func je_platny_cil_presunu(from_id: int, to_id: int) -> bool:
 	return najdi_nejrychlejsi_cestu_presunu(from_id, to_id).size() >= 2
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func aktualizuj_ikony_pristavu():
 	var container = get_node_or_null("PortContainer")
 	if not container:
@@ -2271,10 +2379,12 @@ func aktualizuj_ikony_pristavu():
 	if kamera:
 		_aktualizuj_zoom_pristavu(kamera.zoom.x)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func oznac_pristavy_k_aktualizaci():
 	_port_icons_dirty = true
 
 # Activates target selection mode
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func aktivuj_rezim_vyberu_cile(from_id: int, max_troops: int):
 	vybrana_armada_od = from_id
 	vybrana_armada_max = max_troops
@@ -2283,6 +2393,7 @@ func aktivuj_rezim_vyberu_cile(from_id: int, max_troops: int):
 	vycisti_nahled_presunu()
 	print("Click on the map to select a move target.")
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_provincie_statu_v_mape(state_tag: String) -> Array:
 	var out: Array = []
 	var wanted = state_tag.strip_edges().to_upper()
@@ -2300,6 +2411,7 @@ func _ziskej_provincie_statu_v_mape(state_tag: String) -> Array:
 		out.append(p_id)
 	return out
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_dostupne_cile_miru(vitez: String, porazeny: String) -> Array:
 	var win = vitez.strip_edges().to_upper()
 	var lose = porazeny.strip_edges().to_upper()
@@ -2324,6 +2436,7 @@ func _ziskej_dostupne_cile_miru(vitez: String, porazeny: String) -> Array:
 
 	return out
 
+# Brief: Cancels the active flow and restores a safe default state.
 func zrus_rezim_vyberu_miru() -> void:
 	ceka_na_cil_miru = false
 	stat_mirove_konference_vitez = ""
@@ -2338,6 +2451,7 @@ func zrus_rezim_vyberu_miru() -> void:
 	if sprite and sprite.has_method("_aktualizuj_hromadny_selection_texture"):
 		sprite._aktualizuj_hromadny_selection_texture([])
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func aktivuj_rezim_vyberu_miru(vitez_tag: String, porazeny_tag: String, preselected_ids: Array = []) -> Dictionary:
 	var vitez = vitez_tag.strip_edges().to_upper()
 	var porazeny = porazeny_tag.strip_edges().to_upper()
@@ -2380,14 +2494,17 @@ func aktivuj_rezim_vyberu_miru(vitez_tag: String, porazeny_tag: String, preselec
 		"selected": vybrane_cile_miru.duplicate()
 	}
 
+# Brief: Returns whether required conditions are currently satisfied.
 func je_platna_provincie_pro_mir(prov_id: int) -> bool:
 	if not ceka_na_cil_miru:
 		return false
 	return dostupne_cile_miru.has(int(prov_id))
 
+# Brief: Returns whether required conditions are currently satisfied.
 func je_provincie_vybrana_v_miru(prov_id: int) -> bool:
 	return vybrane_cile_miru.has(int(prov_id))
 
+# Brief: Switches mode/state and updates related behavior and visuals.
 func prepni_vyber_mirove_provincie(prov_id: int) -> Dictionary:
 	var pid = int(prov_id)
 	if not je_platna_provincie_pro_mir(pid):
@@ -2408,9 +2525,11 @@ func prepni_vyber_mirove_provincie(prov_id: int) -> Dictionary:
 		"selected_count": vybrane_cile_miru.size()
 	}
 
+# Brief: Reads current runtime data and returns it to callers.
 func ziskej_vybrane_mirove_provincie() -> Array:
 	return vybrane_cile_miru.duplicate()
 
+# Brief: Cancels the active flow and restores a safe default state.
 func zrus_rezim_vyberu_trade_provincie() -> void:
 	ceka_na_cil_trade_provincie = false
 	stat_trade_province_source = ""
@@ -2424,6 +2543,7 @@ func zrus_rezim_vyberu_trade_provincie() -> void:
 	if sprite and sprite.has_method("_aktualizuj_hromadny_selection_texture"):
 		sprite._aktualizuj_hromadny_selection_texture([])
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func aktivuj_rezim_vyberu_trade_provincie(source_tag: String, preselected_ids: Array = []) -> Dictionary:
 	var source = source_tag.strip_edges().to_upper()
 	zrus_rezim_vyberu_trade_provincie()
@@ -2472,11 +2592,13 @@ func aktivuj_rezim_vyberu_trade_provincie(source_tag: String, preselected_ids: A
 		"source": stat_trade_province_source
 	}
 
+# Brief: Returns whether required conditions are currently satisfied.
 func je_platna_provincie_pro_trade(prov_id: int) -> bool:
 	if not ceka_na_cil_trade_provincie:
 		return false
 	return dostupne_cile_trade_provincie.has(int(prov_id))
 
+# Brief: Switches mode/state and updates related behavior and visuals.
 func prepni_vyber_trade_provincie(prov_id: int) -> Dictionary:
 	var pid = int(prov_id)
 	if not je_platna_provincie_pro_trade(pid):
@@ -2498,9 +2620,11 @@ func prepni_vyber_trade_provincie(prov_id: int) -> Dictionary:
 		"source": stat_trade_province_source
 	}
 
+# Brief: Reads current runtime data and returns it to callers.
 func ziskej_vybrane_trade_provincie() -> Array:
 	return vybrane_cile_trade_provincie.duplicate()
 
+# Brief: Validates and confirms an action, then commits the result.
 func potvrd_vyber_trade_provincii() -> Dictionary:
 	if not ceka_na_cil_trade_provincie:
 		return {"ok": false, "reason": "Trade province selection mode is not active."}
@@ -2527,6 +2651,7 @@ func potvrd_vyber_trade_provincii() -> Dictionary:
 		"source": source
 	}
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_dostupne_cile_hlavniho_mesta(state_tag: String) -> Array:
 	var state = state_tag.strip_edges().to_upper()
 	if state == "" or state == "SEA":
@@ -2554,6 +2679,7 @@ func _ziskej_dostupne_cile_hlavniho_mesta(state_tag: String) -> Array:
 
 	return out
 
+# Brief: Cancels the active flow and restores a safe default state.
 func zrus_rezim_vyberu_hlavniho_mesta() -> void:
 	ceka_na_cil_hlavniho_mesta = false
 	dostupne_cile_hlavniho_mesta.clear()
@@ -2562,6 +2688,7 @@ func zrus_rezim_vyberu_hlavniho_mesta() -> void:
 	if sprite and sprite.has_method("vycisti_nahled_hlavniho_mesta"):
 		sprite.vycisti_nahled_hlavniho_mesta()
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func aktivuj_rezim_vyberu_hlavniho_mesta(state_tag: String) -> Dictionary:
 	var state = state_tag.strip_edges().to_upper()
 	zrus_rezim_vyberu_hlavniho_mesta()
@@ -2595,11 +2722,13 @@ func aktivuj_rezim_vyberu_hlavniho_mesta(state_tag: String) -> Dictionary:
 	print("Click on the map to choose a new capital. The cost is shown dynamically when hovering a target.")
 	return {"ok": true, "count": targets.size()}
 
+# Brief: Returns whether required conditions are currently satisfied.
 func je_platny_cil_hlavniho_mesta(prov_id: int) -> bool:
 	if not ceka_na_cil_hlavniho_mesta:
 		return false
 	return dostupne_cile_hlavniho_mesta.has(int(prov_id))
 
+# Brief: Validates and confirms an action, then commits the result.
 func potvrd_cil_hlavniho_mesta(prov_id: int) -> Dictionary:
 	var pid = int(prov_id)
 	if not je_platny_cil_hlavniho_mesta(pid):
@@ -2612,15 +2741,18 @@ func potvrd_cil_hlavniho_mesta(prov_id: int) -> Dictionary:
 	zrus_rezim_vyberu_hlavniho_mesta()
 	return result
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func zacni_davkovy_presun():
 	_pozastavit_aktualizaci_ikon = true
 	_minimalni_ai_tahy.clear()
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func ukonci_davkovy_presun():
 	_pozastavit_aktualizaci_ikon = false
 	_vykresli_minimalni_ai_presuny()
 	aktualizuj_ikony_armad()
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _vymaz_minimalni_ai_presuny():
 	_ai_anim_markery.clear()
 	if _cekajici_anim_markery.is_empty():
@@ -2631,6 +2763,7 @@ func _vymaz_minimalni_ai_presuny():
 	for child in container.get_children():
 		child.queue_free()
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _vymaz_indikaci_cekajicich_presunu():
 	_cekajici_anim_markery.clear()
 	if _ai_anim_markery.is_empty():
@@ -2641,6 +2774,7 @@ func _vymaz_indikaci_cekajicich_presunu():
 	for child in container.get_children():
 		child.queue_free()
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _zaregistruj_minimalni_ai_tah_s_mnozstvim(from_id: int, to_id: int, owner_tag: String, is_attack: bool, amount: int):
 	var key = "%d_%d_%s_%d" % [from_id, to_id, owner_tag, 1 if is_attack else 0]
 	if not _minimalni_ai_tahy.has(key):
@@ -2655,6 +2789,7 @@ func _zaregistruj_minimalni_ai_tah_s_mnozstvim(from_id: int, to_id: int, owner_t
 	_minimalni_ai_tahy[key]["count"] = int(_minimalni_ai_tahy[key].get("count", 0)) + 1
 	_minimalni_ai_tahy[key]["total_amount"] = int(_minimalni_ai_tahy[key].get("total_amount", 0)) + max(0, amount)
 
+# Brief: Displays UI/output and updates visible presentation data.
 func _zobraz_minimalni_presun(from_id: int, to_id: int, owner_tag: String, is_attack: bool, total_amount: int, count: int = 1):
 	if not provinces.has(from_id) or not provinces.has(to_id):
 		return
@@ -2718,6 +2853,7 @@ func _zobraz_minimalni_presun(from_id: int, to_id: int, owner_tag: String, is_at
 	if not _ai_anim_markery.is_empty():
 		set_process(true)
 
+# Brief: Displays UI/output and updates visible presentation data.
 func _zobraz_minimalni_presun_po_ceste(path: Array, owner_tag: String, is_attack: bool, total_amount: int, count: int = 1):
 	if path.size() < 2:
 		return
@@ -2787,6 +2923,7 @@ func _zobraz_minimalni_presun_po_ceste(path: Array, owner_tag: String, is_attack
 	if not _ai_anim_markery.is_empty():
 		set_process(true)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _vykresli_minimalni_ai_presuny():
 	_vymaz_minimalni_ai_presuny()
 	if _minimalni_ai_tahy.is_empty():
@@ -2825,6 +2962,7 @@ func _vykresli_minimalni_ai_presuny():
 	if not _ai_anim_markery.is_empty():
 		set_process(true)
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_zbyvajici_cestu_presunu(move: Dictionary) -> Array:
 	var path: Array = move.get("path", [])
 	var path_index = int(move.get("path_index", 0))
@@ -2840,6 +2978,7 @@ func _ziskej_zbyvajici_cestu_presunu(move: Dictionary) -> Array:
 		out.append(int(path[i]))
 	return out
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _vykresli_indikaci_cekajicich_presunu():
 	_vymaz_indikaci_cekajicich_presunu()
 	if cekajici_presuny.is_empty():
@@ -2878,6 +3017,7 @@ func _vykresli_indikaci_cekajicich_presunu():
 	if not _cekajici_anim_markery.is_empty():
 		set_process(true)
 
+# Brief: Displays UI/output and updates visible presentation data.
 func _zobraz_cekajici_presun(container: Node2D, from_id: int, to_id: int, owner_tag: String, is_attack: bool, amount: int):
 	if not provinces.has(from_id) or not provinces.has(to_id):
 		return
@@ -2913,6 +3053,7 @@ func _zobraz_cekajici_presun(container: Node2D, from_id: int, to_id: int, owner_
 		amount_lbl.add_theme_constant_override("outline_size", 3)
 		container.add_child(amount_lbl)
 
+# Brief: Displays UI/output and updates visible presentation data.
 func _zobraz_cekajici_presun_po_ceste(container: Node2D, path: Array, owner_tag: String, is_attack: bool, amount: int):
 	if path.size() < 2:
 		return
@@ -2956,6 +3097,7 @@ func _zobraz_cekajici_presun_po_ceste(container: Node2D, path: Array, owner_tag:
 		container.add_child(amount_lbl)
 
 # Registers the move, deducts troops from source, and shows visual midway "ghost"
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int, vykreslit_trajektorii: bool = true, planned_path: Array = []):
 	if amount <= 0: return
 	var move_path: Array = planned_path.duplicate()
@@ -3075,6 +3217,7 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int, vykreslit_
 		root.ceka_na_cil_presunu = false
 
 # Process all movements and await player confirmation for their battles
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func zpracuj_tah_armad():
 	if cekajici_presuny.is_empty():
 		_vymaz_indikaci_cekajicich_presunu()
@@ -3474,6 +3617,7 @@ func zpracuj_tah_armad():
 	obsazene_pozice_presunu.clear()
 	trasy_lane_counter.clear()
 
+# Brief: Returns whether required conditions are currently satisfied.
 func _ma_rychle_zpracovani_tahu() -> bool:
 	if not FAST_TURN_RESOLUTION:
 		return false
@@ -3481,6 +3625,7 @@ func _ma_rychle_zpracovani_tahu() -> bool:
 		return false
 	return bool(GameManager.zpracovava_se_tah)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _ukaz_souhrn_bitevnich_udalosti(udalosti: Array) -> void:
 	if udalosti.is_empty():
 		return
@@ -3501,6 +3646,7 @@ func _ukaz_souhrn_bitevnich_udalosti(udalosti: Array) -> void:
 
 	await _ukaz_bitevni_popup("Frontline Report", "\n".join(lines))
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _ukaz_bitevni_popup(titulek: String, text: String):
 	_ziskej_turn_indicator_suppression_lock()
 	var game_ui = get_tree().current_scene.find_child("GameUI", true, false)
@@ -3542,16 +3688,19 @@ func _ukaz_bitevni_popup(titulek: String, text: String):
 		dialog.queue_free()
 	_uvolni_turn_indicator_suppression_lock()
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_turn_indicator_suppression_lock() -> void:
 	_turn_indicator_suppress_locks += 1
 	if _turn_indicator_suppress_locks == 1:
 		_nastav_pozastaveni_turn_indikatoru(true)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _uvolni_turn_indicator_suppression_lock() -> void:
 	_turn_indicator_suppress_locks = max(0, _turn_indicator_suppress_locks - 1)
 	if _turn_indicator_suppress_locks == 0:
 		_nastav_pozastaveni_turn_indikatoru(false)
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func _nastav_pozastaveni_turn_indikatoru(pozastavit: bool) -> void:
 	var scene = get_tree().current_scene
 	if scene == null:
@@ -3563,6 +3712,7 @@ func _nastav_pozastaveni_turn_indikatoru(pozastavit: bool) -> void:
 	if top_bar and top_bar.has_method("nastav_pozastaveni_turn_busy_indicator"):
 		top_bar.nastav_pozastaveni_turn_busy_indicator(pozastavit)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _zacni_bitevni_kameru():
 	var kamera = $Camera2D
 	if not kamera:
@@ -3572,6 +3722,7 @@ func _zacni_bitevni_kameru():
 	_bitevni_puvodni_pozice = kamera.position
 	_bitevni_kamera_aktivni = true
 
+# Brief: Refreshes existing content to reflect current runtime values.
 func _obnov_bitevni_kameru():
 	if not _bitevni_kamera_aktivni:
 		return
@@ -3585,6 +3736,7 @@ func _obnov_bitevni_kameru():
 	await t.finished
 	_bitevni_kamera_aktivni = false
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _ukaz_bitevni_popup_na_provincii(titulek: String, text: String, province_id: int):
 	var kamera = $Camera2D
 	if not kamera or not provinces.has(province_id):
@@ -3601,6 +3753,7 @@ func _ukaz_bitevni_popup_na_provincii(titulek: String, text: String, province_id
 
 	await _ukaz_bitevni_popup(titulek, text)
 
+# Brief: Cancels the active flow and restores a safe default state.
 func zrus_cekajici_utoky_na_stat(target_tag: String) -> int:
 	var target = str(target_tag).strip_edges().to_upper()
 	if target == "":
@@ -3641,6 +3794,7 @@ func zrus_cekajici_utoky_na_stat(target_tag: String) -> int:
 		_vykresli_indikaci_cekajicich_presunu()
 	return removed
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_reprezentaci_statu(tag: String) -> Dictionary:
 	var hledany = tag.strip_edges().to_upper()
 	for p_id in provinces.keys():
@@ -3661,6 +3815,7 @@ func _ziskej_reprezentaci_statu(tag: String) -> Dictionary:
 		"ideology": ""
 	}
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _kapituluj_stat_rozdelenim(cilovy_stat: String, fallback_vitez: String = "") -> Dictionary:
 	var target_owner = cilovy_stat.strip_edges().to_upper()
 	var winner = fallback_vitez.strip_edges().to_upper()
@@ -3781,6 +3936,7 @@ func _kapituluj_stat_rozdelenim(cilovy_stat: String, fallback_vitez: String = ""
 		"okupanti": okupanti
 	}
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _zpracuj_automaticke_kapitulace(celkovy_report: String) -> String:
 	var state_flags: Dictionary = {}
 	for p_id in provinces.keys():
@@ -3859,6 +4015,7 @@ func _zpracuj_automaticke_kapitulace(celkovy_report: String) -> String:
 
 	return celkovy_report
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _zpracuj_odlozene_kapitulace(celkovy_report: String) -> String:
 	var hotove_kapitulace = GameManager.vyhodnot_odlozene_kapitulace()
 	if hotove_kapitulace.is_empty():
@@ -3903,6 +4060,7 @@ func _zpracuj_odlozene_kapitulace(celkovy_report: String) -> String:
 
 	return celkovy_report
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func hrac_se_vzdal(state_tag: String) -> bool:
 	var target_owner = state_tag.strip_edges().to_upper()
 	if target_owner == "" or target_owner == "SEA":
@@ -3921,6 +4079,7 @@ func hrac_se_vzdal(state_tag: String) -> bool:
 	GameManager.kolo_zmeneno.emit()
 	return true
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func _aktualizuj_indikatory_kapitulace():
 	var container = get_node_or_null("CapitulationIndicators")
 	if not container:
@@ -3976,3 +4135,4 @@ func _aktualizuj_indikatory_kapitulace():
 		node.add_child(lbl)
 
 		container.add_child(node)
+

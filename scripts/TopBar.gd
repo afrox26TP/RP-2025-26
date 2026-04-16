@@ -1,4 +1,15 @@
+﻿# ==================================================================================================
+# ███╗   ███╗ █████╗ ██████╗ ███████╗    ██████╗ ██╗   ██╗    █████╗ ███████╗██████╗  ██████╗ ██╗  ██╗
+# ████╗ ████║██╔══██╗██╔══██╗██╔════╝    ██╔══██╗╚██╗ ██╔╝   ██╔══██╗██╔════╝██╔══██╗██╔═══██╗╚██╗██╔╝
+# ██╔████╔██║███████║██║  ██║█████╗      ██████╔╝ ╚████╔╝    ███████║█████╗  ██████╔╝██║   ██║ ╚███╔╝
+# ██║╚██╔╝██║██╔══██║██║  ██║██╔══╝      ██╔══██╗  ╚██╔╝     ██╔══██║██╔══╝  ██╔══██╗██║   ██║ ██╔██╗
+# ██║ ╚═╝ ██║██║  ██║██████╔╝███████╗    ██████╔╝   ██║      ██║  ██║██║     ██║  ██║╚██████╔╝██╔╝ ██╗
+# ╚═╝     ╚═╝╚═╝  ╚═╝╚═════╝ ╚══════╝    ╚═════╝    ╚═╝      ╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝
+#
+#                                         Made By: Afrox26TP
+# ==================================================================================================
 extends CanvasLayer
+# Brief: this script drives a specific gameplay/UI area and keeps related logic together.
 
 class StatsLineChart:
 	extends Control
@@ -12,12 +23,14 @@ class StatsLineChart:
 	var title: String = ""
 	var _hover_info: Dictionary = {}
 
+	# Brief: Initializes references, connects signals, and prepares default runtime state.
 	func _ready() -> void:
 		# Keep explicit chart sizes set by the stats popup; only apply defaults when unset.
 		if custom_minimum_size.x <= 0.0 or custom_minimum_size.y <= 0.0:
 			custom_minimum_size = Vector2(780, 170)
 		mouse_filter = Control.MOUSE_FILTER_STOP
 
+	# Brief: Renders custom visuals for this control.
 	func _draw() -> void:
 		var r = Rect2(Vector2.ZERO, size)
 		draw_rect(r, Color(0.05, 0.08, 0.12, 0.75), true)
@@ -66,6 +79,7 @@ class StatsLineChart:
 						draw_rect(box, Color(0.58, 0.70, 0.86, 0.95), false, 1.0)
 						draw_string(f, box.position + Vector2(pad.x, pad.y + text_size.y - 2.0), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.96, 0.98, 1.0, 1.0))
 
+	# Brief: Executes module-specific gameplay/UI logic for the current context.
 	func _gui_input(event: InputEvent) -> void:
 		if series.is_empty():
 			return
@@ -78,9 +92,11 @@ class StatsLineChart:
 				if not _hover_info.is_empty():
 					chart_point_selected.emit(_hover_info.duplicate(true))
 
+	# Brief: Executes module-specific gameplay/UI logic for the current context.
 	func _exit_tree() -> void:
 		_hover_info.clear()
 
+	# Brief: Executes module-specific gameplay/UI logic for the current context.
 	func _build_plot_data() -> Dictionary:
 		var valid_series: Array = []
 		for s_any in series:
@@ -143,9 +159,11 @@ class StatsLineChart:
 			"max": max_v
 		}
 
+	# Brief: Formats raw values into user-facing display text.
 	func _format_value(v: float) -> String:
 		return "%.*f%s" % [max(0, value_decimals), v, value_suffix]
 
+	# Brief: Recomputes and refreshes state from the latest game/UI data.
 	func _aktualizuj_hover(local_pos: Vector2) -> void:
 		var plot_data = _build_plot_data()
 		var valid_series = plot_data.get("valid_series", []) as Array
@@ -342,6 +360,7 @@ const MAP_MODE_ORDER := [
 ]
 const MAP_MODE_DROPDOWN_BREAKPOINT := 1817.0
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _cached_texture(path: String):
 	if path == "" or not ResourceLoader.exists(path):
 		return null
@@ -349,6 +368,7 @@ func _cached_texture(path: String):
 		flag_texture_cache[path] = load(path)
 	return flag_texture_cache[path]
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _normalizuj_ideologii(ideologie: String) -> String:
 	var raw = ideologie.strip_edges().to_lower()
 	match raw:
@@ -367,6 +387,7 @@ func _normalizuj_ideologii(ideologie: String) -> String:
 		_:
 			return raw
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _ensure_ideology_flag_index() -> void:
 	if ideology_flag_index_ready:
 		return
@@ -421,6 +442,7 @@ func _ensure_ideology_flag_index() -> void:
 			ideology_flag_path_index[key] = path
 	dir.list_dir_end()
 
+# Brief: Initializes references, connects signals, and prepares default runtime state.
 func _ready():
 	# Connect button clicks and GameManager signals
 	_inicializuj_startovni_datum_hry()
@@ -453,6 +475,7 @@ func _ready():
 	call_deferred("_registruj_anchor_zprav")
 	call_deferred("_aktualizuj_stav_tlacitek_modu")
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func _nastav_tooltipy_ui() -> void:
 	if money_label:
 		money_label.tooltip_text = ""
@@ -476,12 +499,14 @@ func _nastav_tooltipy_ui() -> void:
 	if money_label:
 		money_label.tooltip_text = ""
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _inicializuj_startovni_datum_hry() -> void:
 	var datum: Dictionary = Time.get_datetime_dict_from_system()
 	_calendar_start_day = clampi(int(datum.get("day", 1)), 1, 31)
 	_calendar_start_month = clampi(int(datum.get("month", 1)), 1, 12)
 	_calendar_start_year = int(datum.get("year", 2026))
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_text_data_pro_kolo(kolo: int) -> String:
 	var offset_mesicu = maxi(0, kolo - 1)
 	var month_index = (_calendar_start_month - 1) + offset_mesicu
@@ -489,6 +514,7 @@ func _ziskej_text_data_pro_kolo(kolo: int) -> String:
 	var year = _calendar_start_year + int(floor(float(month_index) / 12.0))
 	return "Date: %02d.%02d.%04d (Turn %d)" % [_calendar_start_day, month, year, maxi(1, kolo)]
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_jmeno_statu_pro_frontu(tag: String) -> String:
 	var wanted = tag.strip_edges().to_upper()
 	if wanted == "":
@@ -507,6 +533,7 @@ func _ziskej_jmeno_statu_pro_frontu(tag: String) -> String:
 				return state_name
 	return wanted
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _sestav_text_fronty_tahu() -> String:
 	var hraci = GameManager.lokalni_hraci_staty
 	if not (hraci is Array) or hraci.size() <= 1:
@@ -524,6 +551,7 @@ func _sestav_text_fronty_tahu() -> String:
 			casti.append(state_name)
 	return "Queue: %s" % " -> ".join(casti)
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_texturu_vlajky_fronty(tag: String):
 	var cisty_tag = tag.strip_edges().to_upper()
 	for path in ["res://map_data/Flags/%s.svg" % cisty_tag, "res://map_data/Flags/%s.png" % cisty_tag]:
@@ -532,12 +560,14 @@ func _ziskej_texturu_vlajky_fronty(tag: String):
 			return tex
 	return null
 
+# Brief: Clears temporary data and resets transient runtime/UI state.
 func _vycisti_frontu_tahu_vlajek() -> void:
 	if turn_queue_flags == null:
 		return
 	for child in turn_queue_flags.get_children():
 		child.queue_free()
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _pridej_vlajku_do_fronty(tag: String, aktivni: bool) -> void:
 	if turn_queue_flags == null:
 		return
@@ -557,6 +587,7 @@ func _pridej_vlajku_do_fronty(tag: String, aktivni: bool) -> void:
 		rect.modulate = Color(0.62, 0.62, 0.62, 0.52)
 	turn_queue_flags.add_child(rect)
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func _aktualizuj_frontu_tahu_vlajky() -> void:
 	if turn_queue_flags == null:
 		return
@@ -575,6 +606,7 @@ func _aktualizuj_frontu_tahu_vlajky() -> void:
 		var tag = str(hraci[idx]).strip_edges().to_upper()
 		_pridej_vlajku_do_fronty(tag, false)
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func _aktualizuj_sirku_panelu_hrace() -> void:
 	if player_turn_panel == null:
 		return
@@ -626,6 +658,7 @@ func _aktualizuj_sirku_panelu_hrace() -> void:
 	player_turn_panel.custom_minimum_size.x = desired_width
 	player_turn_panel.offset_left = player_turn_panel.offset_right - desired_width
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func _aktualizuj_responzivni_topbar(vp_width: float) -> void:
 	var compact = vp_width < 1360.0
 	var narrow = vp_width < MAP_MODE_DROPDOWN_BREAKPOINT
@@ -652,6 +685,7 @@ func _aktualizuj_responzivni_topbar(vp_width: float) -> void:
 		zpravy_btn.custom_minimum_size.x = 130.0 if compact else 175.0
 		zpravy_btn.add_theme_font_size_override("font_size", 20 if compact else 26)
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func _aktualizuj_zarovnani_nazvu_statu() -> void:
 	if player_name == null:
 		return
@@ -678,22 +712,26 @@ func _aktualizuj_zarovnani_nazvu_statu() -> void:
 		player_name.custom_minimum_size.x = 0.0
 		player_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_game_ui_node() -> Node:
 	var scene_root = get_tree().current_scene
 	if scene_root == null:
 		return null
 	return scene_root.find_child("GameUI", true, false)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _registruj_anchor_zprav() -> void:
 	var game_ui = _ziskej_game_ui_node()
 	if game_ui and game_ui.has_method("nastav_zpravy_anchor_control"):
 		game_ui.nastav_zpravy_anchor_control(zpravy_btn)
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_zpravy_pressed() -> void:
 	var game_ui = _ziskej_game_ui_node()
 	if game_ui and game_ui.has_method("prepni_zpravy_panel"):
 		game_ui.prepni_zpravy_panel()
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func _nastav_tooltipy_mapovych_modu() -> void:
 	if map_modes_box == null:
 		return
@@ -708,6 +746,7 @@ func _nastav_tooltipy_mapovych_modu() -> void:
 	if _map_modes_dropdown:
 		_map_modes_dropdown.tooltip_text = "Map mode menu (auto-shown on small screens)."
 
+# Brief: Builds required objects/UI nodes and wires essential defaults/signals.
 func _vytvor_dropdown_mapovych_modu() -> void:
 	if _map_modes_dropdown != null:
 		return
@@ -736,6 +775,7 @@ func _vytvor_dropdown_mapovych_modu() -> void:
 	if map_modes_box and map_modes_box.get_parent() == box:
 		box.move_child(_map_modes_dropdown, map_modes_box.get_index() + 1)
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_map_mode_dropdown_selected(index: int) -> void:
 	if _map_modes_dropdown == null:
 		return
@@ -746,6 +786,7 @@ func _on_map_mode_dropdown_selected(index: int) -> void:
 		return
 	_prepni_mapovy_mod(mod)
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_cesty_ikony_map_modu(mod: String) -> Array:
 	# Relationships icon can be replaced later by adding one of these files.
 	if mod == "relationships":
@@ -760,6 +801,7 @@ func _ziskej_cesty_ikony_map_modu(mod: String) -> Array:
 		return [str(MAP_MODE_ICON_PATHS[mod])]
 	return []
 
+# Brief: Loads data/resources and validates parsed results.
 func _nacti_bilou_ikonu(path: String):
 	if path == "":
 		return null
@@ -787,6 +829,7 @@ func _nacti_bilou_ikonu(path: String):
 	_map_mode_white_icon_cache[path] = out_tex
 	return out_tex
 
+# Brief: Loads data/resources and validates parsed results.
 func _nacti_ikonu_map_modu(mod: String):
 	for path in _ziskej_cesty_ikony_map_modu(mod):
 		var tex = _nacti_bilou_ikonu(str(path))
@@ -794,6 +837,7 @@ func _nacti_ikonu_map_modu(mod: String):
 			return tex
 	return null
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func _nastav_hotkey_badge(btn: Button, hotkey: String) -> void:
 	if btn == null:
 		return
@@ -824,6 +868,7 @@ func _nastav_hotkey_badge(btn: Button, hotkey: String) -> void:
 	badge.offset_top = -13.0
 	badge.offset_bottom = -1.0
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func _nastav_ikony_mapovych_modu() -> void:
 	if map_modes_box == null:
 		return
@@ -843,6 +888,7 @@ func _nastav_ikony_mapovych_modu() -> void:
 			b.custom_minimum_size = Vector2(MAP_MODE_BUTTON_WIDTH, MAP_MODE_BUTTON_HEIGHT)
 			_nastav_hotkey_badge(b, str(MAP_MODE_HOTKEYS.get(mod, "")))
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _napoj_signal_mapoveho_modu() -> void:
 	var map_loader = _ziskej_map_loader()
 	if map_loader == null:
@@ -850,9 +896,11 @@ func _napoj_signal_mapoveho_modu() -> void:
 	if map_loader.has_signal("mapovy_mod_zmenen") and not map_loader.mapovy_mod_zmenen.is_connected(_on_mapovy_mod_zmenen):
 		map_loader.mapovy_mod_zmenen.connect(_on_mapovy_mod_zmenen)
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_mapovy_mod_zmenen(mod: String) -> void:
 	_aktualizuj_stav_tlacitek_modu(mod)
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_map_loader() -> Node:
 	var scene_root = get_tree().current_scene
 	if scene_root and scene_root.has_method("nastav_mapovy_mod"):
@@ -863,6 +911,7 @@ func _ziskej_map_loader() -> Node:
 			return map_node
 	return null
 
+# Brief: Switches mode/state and updates related behavior and visuals.
 func _prepni_mapovy_mod(mod: String) -> void:
 	var map_loader = _ziskej_map_loader()
 	if map_loader == null:
@@ -871,12 +920,14 @@ func _prepni_mapovy_mod(mod: String) -> void:
 		map_loader.nastav_mapovy_mod(mod)
 	_aktualizuj_stav_tlacitek_modu(mod)
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_aktualni_mapovy_mod() -> String:
 	var map_loader = _ziskej_map_loader()
 	if map_loader == null:
 		return "political"
 	return str(map_loader.get("aktualni_mapovy_mod"))
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func _aktualizuj_stav_tlacitek_modu(active_mode: String = "") -> void:
 	var mode = active_mode if active_mode != "" else _ziskej_aktualni_mapovy_mod()
 	if map_modes_box:
@@ -902,6 +953,7 @@ func _aktualizuj_stav_tlacitek_modu(active_mode: String = "") -> void:
 				_map_modes_dropdown.select(i)
 				break
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _zapoj_tlacitka_mapovych_modu() -> void:
 	if map_modes_box == null:
 		return
@@ -933,33 +985,43 @@ func _zapoj_tlacitka_mapovych_modu() -> void:
 
 	_aktualizuj_stav_tlacitek_modu()
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_mode_political_pressed() -> void:
 	_prepni_mapovy_mod("political")
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_mode_population_pressed() -> void:
 	_prepni_mapovy_mod("population")
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_mode_gdp_pressed() -> void:
 	_prepni_mapovy_mod("gdp")
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_mode_ideology_pressed() -> void:
 	_prepni_mapovy_mod("ideology")
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_mode_recruits_pressed() -> void:
 	_prepni_mapovy_mod("recruitable_population")
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_mode_relations_pressed() -> void:
 	_prepni_mapovy_mod("relationships")
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_mode_terrain_pressed() -> void:
 	_prepni_mapovy_mod("terrain")
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_mode_resources_pressed() -> void:
 	_prepni_mapovy_mod("resources")
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_mode_alliances_pressed() -> void:
 	_prepni_mapovy_mod("alliances")
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func aktualizuj_ui():
 	# Update money and date counters
 	var topbar_balance = float(GameManager.celkovy_prijem)
@@ -990,12 +1052,14 @@ func aktualizuj_ui():
 	if _stats_popup and _stats_popup.visible:
 		_aktualizuj_statistics_report()
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_next_turn_pressed():
 	if GameManager.has_method("pozaduj_ukonceni_kola"):
 		GameManager.pozaduj_ukonceni_kola()
 	else:
 		GameManager.ukonci_kolo()
 
+# Brief: Builds required objects/UI nodes and wires essential defaults/signals.
 func _vytvor_statistics_tlacitko() -> void:
 	if _stats_button != null:
 		return
@@ -1020,6 +1084,7 @@ func _vytvor_statistics_tlacitko() -> void:
 		var msg_idx = zpravy_btn.get_index()
 		box.move_child(_stats_button, msg_idx + 1)
 
+# Brief: Builds required objects/UI nodes and wires essential defaults/signals.
 func _vytvor_statistics_popup() -> void:
 	if _stats_popup != null:
 		return
@@ -1309,6 +1374,7 @@ func _vytvor_statistics_popup() -> void:
 
 	add_child(_stats_popup)
 
+# Brief: Builds required objects/UI nodes and wires essential defaults/signals.
 func _vytvor_statistics_chart_blok(parent: Node, title: String) -> StatsLineChart:
 	var wrap := PanelContainer.new()
 	wrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1330,6 +1396,7 @@ func _vytvor_statistics_chart_blok(parent: Node, title: String) -> StatsLineChar
 	box.add_child(chart)
 	return chart
 
+# Brief: Builds required objects/UI nodes and wires essential defaults/signals.
 func _vytvor_stats_kpi_card(key: String, title: String, accent: Color) -> void:
 	if _stats_kpi_grid == null:
 		return
@@ -1370,6 +1437,7 @@ func _vytvor_stats_kpi_card(key: String, title: String, accent: Color) -> void:
 	box.add_child(v)
 	_stats_kpi_labels[key] = v
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _stats_set_kpi(key: String, value_text: String) -> void:
 	if not _stats_kpi_labels.has(key):
 		return
@@ -1377,6 +1445,7 @@ func _stats_set_kpi(key: String, value_text: String) -> void:
 	if lbl:
 		lbl.text = value_text
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_statistics_pressed() -> void:
 	_aktualizuj_statistiky_kola(true)
 	_obnov_statistics_state_options()
@@ -1384,27 +1453,34 @@ func _on_statistics_pressed() -> void:
 	if _stats_popup:
 		_stats_popup.popup_centered(Vector2i(1620, 1140))
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_statistics_close_pressed() -> void:
 	if _stats_popup:
 		_stats_popup.hide()
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_statistics_refresh_pressed() -> void:
 	_aktualizuj_statistiky_kola(true)
 	_obnov_statistics_state_options()
 	_aktualizuj_statistics_report()
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_statistics_state_selected(_index: int) -> void:
 	_aktualizuj_statistics_report()
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_statistics_time_window_selected(_index: int) -> void:
 	_aktualizuj_statistics_report()
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_statistics_compare_controls_changed(_index: int) -> void:
 	_aktualizuj_statistics_report()
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_statistics_compare_multi_selected(_index: int, _selected: bool) -> void:
 	_aktualizuj_statistics_report()
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_stats_compare_select_all_pressed() -> void:
 	if _stats_compare_state_list == null:
 		return
@@ -1412,6 +1488,7 @@ func _on_stats_compare_select_all_pressed() -> void:
 		_stats_compare_state_list.select(i, false)
 	_aktualizuj_statistics_report()
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_stats_compare_clear_pressed() -> void:
 	if _stats_compare_state_list == null:
 		return
@@ -1419,6 +1496,7 @@ func _on_stats_compare_clear_pressed() -> void:
 		_stats_compare_state_list.deselect(i)
 	_aktualizuj_statistics_report()
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_statistics_chart_point_hovered(info: Dictionary) -> void:
 	if _stats_compare_hint == null:
 		return
@@ -1427,6 +1505,7 @@ func _on_statistics_chart_point_hovered(info: Dictionary) -> void:
 		return
 	_stats_compare_hint.text = str(info.get("text", ""))
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_stats_window_size() -> int:
 	if _stats_time_window_option == null:
 		return 24
@@ -1440,6 +1519,7 @@ func _ziskej_stats_window_size() -> int:
 		_:
 			return 0
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _orez_series_na_okno(values: Array, turns: Array, window_size: int) -> Dictionary:
 	if values.is_empty() or turns.is_empty():
 		return {"values": [], "turns": []}
@@ -1451,6 +1531,7 @@ func _orez_series_na_okno(values: Array, turns: Array, window_size: int) -> Dict
 		"turns": turns.slice(from_idx, turns.size())
 	}
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _stats_metric_def() -> Dictionary:
 	var idx = 0
 	if _stats_compare_metric_option:
@@ -1479,6 +1560,7 @@ func _stats_metric_def() -> Dictionary:
 		_:
 			return {"key": "gdp", "name": "GDP total", "suffix": " M", "decimals": 2, "growth": false}
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _vybrane_staty_pro_compare() -> Array:
 	var out: Array = []
 	if _stats_compare_state_list == null:
@@ -1492,11 +1574,13 @@ func _vybrane_staty_pro_compare() -> Array:
 		out.append(tag)
 	return out
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _barva_pro_stat_index(i: int, total: int) -> Color:
 	var count = max(1, total)
 	var h = fposmod(float(i) / float(count), 1.0)
 	return Color.from_hsv(h, 0.68, 0.98, 1.0)
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func _aktualizuj_compare_chart(window_size: int) -> void:
 	if _stats_compare_chart == null:
 		return
@@ -1553,6 +1637,7 @@ func _aktualizuj_compare_chart(window_size: int) -> void:
 			selected_states.size()
 		]
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_vsechny_staty_z_mapy() -> Array:
 	var out: Array = []
 	var seen: Dictionary = {}
@@ -1571,6 +1656,7 @@ func _ziskej_vsechny_staty_z_mapy() -> Array:
 	out.sort()
 	return out
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_jmeno_statu_z_mapy(tag: String) -> String:
 	var wanted = str(tag).strip_edges().to_upper()
 	if wanted == "":
@@ -1586,6 +1672,7 @@ func _ziskej_jmeno_statu_z_mapy(tag: String) -> String:
 				return n
 	return wanted
 
+# Brief: Computes derived values from current inputs and game state.
 func _spocitej_snapshot_statu(tag: String) -> Dictionary:
 	var state = str(tag).strip_edges().to_upper()
 	if state == "" or state == "SEA":
@@ -1690,6 +1777,7 @@ func _spocitej_snapshot_statu(tag: String) -> Dictionary:
 		"expense_other": expense_other
 	}
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _sanitize_stats_metric_value(key: String, value: Variant, previous_value: Variant) -> Variant:
 	match key:
 		"population", "recruits", "army", "provinces", "ports":
@@ -1705,6 +1793,7 @@ func _sanitize_stats_metric_value(key: String, value: Variant, previous_value: V
 				limit = 1000000.0
 			return clampf(f, -limit, limit)
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func _set_or_append_metric_for_turn(history: Dictionary, key: String, value, max_items: int) -> void:
 	var turns = history.get("turns", []) as Array
 	var values = history.get(key, []) as Array
@@ -1731,6 +1820,7 @@ func _set_or_append_metric_for_turn(history: Dictionary, key: String, value, max
 
 	history[key] = values
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _zapis_snapshot_statu_do_historie(snapshot: Dictionary, turn: int) -> void:
 	if snapshot.is_empty():
 		return
@@ -1800,6 +1890,7 @@ func _zapis_snapshot_statu_do_historie(snapshot: Dictionary, turn: int) -> void:
 
 	_stats_last_recorded_turn_by_state[state] = turn
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func _aktualizuj_statistiky_kola(force_refresh: bool = false) -> void:
 	var turn = max(1, int(GameManager.aktualni_kolo))
 	for state_any in _ziskej_vsechny_staty_z_mapy():
@@ -1809,6 +1900,7 @@ func _aktualizuj_statistiky_kola(force_refresh: bool = false) -> void:
 		var snapshot = _spocitej_snapshot_statu(state)
 		_zapis_snapshot_statu_do_historie(snapshot, turn)
 
+# Brief: Refreshes existing content to reflect current runtime values.
 func _obnov_statistics_state_options() -> void:
 	if _stats_state_option == null:
 		return
@@ -1845,6 +1937,7 @@ func _obnov_statistics_state_options() -> void:
 	if selected_idx >= 0:
 		_stats_state_option.select(selected_idx)
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_selected_statistics_state() -> String:
 	if _stats_state_option == null:
 		return ""
@@ -1853,9 +1946,11 @@ func _ziskej_selected_statistics_state() -> String:
 		return ""
 	return str(_stats_country_options[idx])
 
+# Brief: Formats raw values into user-facing display text.
 func _format_signed_percent(value: float) -> String:
 	return "%+.2f%%" % value
 
+# Brief: Computes derived values from current inputs and game state.
 func _calc_growth_series(values: Array) -> Array:
 	var out: Array = []
 	if values.size() <= 1:
@@ -1870,11 +1965,13 @@ func _calc_growth_series(values: Array) -> Array:
 			out.append(clampf(growth, -500.0, 500.0))
 	return out
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _value_last(values: Array, default_value) -> Variant:
 	if values.is_empty():
 		return default_value
 	return values[values.size() - 1]
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _as_float_series(values: Array) -> Array:
 	var out: Array = []
 	var previous := 0.0
@@ -1887,18 +1984,21 @@ func _as_float_series(values: Array) -> Array:
 		previous = f
 	return out
 
+# Brief: Clears temporary data and resets transient runtime/UI state.
 func _vycisti_children(node: Node) -> void:
 	if node == null:
 		return
 	for child in node.get_children():
 		child.queue_free()
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func _nastav_chart_data(chart: StatsLineChart, chart_series: Array) -> void:
 	if chart == null:
 		return
 	chart.series = chart_series
 	chart.queue_redraw()
 
+# Brief: Builds required objects/UI nodes and wires essential defaults/signals.
 func _vytvor_breakdown_sloupce(container: VBoxContainer, title: String, rows: Array, total: float) -> void:
 	if container == null:
 		return
@@ -1940,6 +2040,7 @@ func _vytvor_breakdown_sloupce(container: VBoxContainer, title: String, rows: Ar
 		val_lbl.text = "%.2f M (%.0f%%)" % [value, pct]
 		h.add_child(val_lbl)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _top_states_by_metric(metric_key: String, limit: int = 8) -> Array:
 	var rows: Array = []
 	for state_any in _stats_history_by_state.keys():
@@ -1958,6 +2059,7 @@ func _top_states_by_metric(metric_key: String, limit: int = 8) -> Array:
 		rows.resize(limit)
 	return rows
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func _aktualizuj_statistics_report() -> void:
 	if _stats_report == null:
 		return
@@ -2164,6 +2266,7 @@ func _aktualizuj_statistics_report() -> void:
 			latest_turn
 		]
 
+# Brief: Builds required objects/UI nodes and wires essential defaults/signals.
 func _vytvor_turn_busy_indicator() -> void:
 	if _turn_busy_indicator != null:
 		return
@@ -2183,6 +2286,7 @@ func _vytvor_turn_busy_indicator() -> void:
 	parent.add_child(_turn_busy_indicator)
 	parent.move_child(_turn_busy_indicator, next_btn.get_index() + 1)
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_sirku_turn_busy_indicatoru() -> float:
 	if _turn_busy_indicator == null:
 		return 92.0
@@ -2196,6 +2300,7 @@ func _ziskej_sirku_turn_busy_indicatoru() -> float:
 		return clampf(font.get_string_size(longest, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x + 10.0, 70.0, 180.0)
 	return 92.0
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_zpracovani_tahu_zmeneno(aktivni: bool) -> void:
 	_is_turn_processing = aktivni
 	if next_btn:
@@ -2208,12 +2313,14 @@ func _on_zpracovani_tahu_zmeneno(aktivni: bool) -> void:
 	_aktualizuj_sirku_panelu_hrace()
 	set_process(aktivni)
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func nastav_pozastaveni_turn_busy_indicator(pozastavit: bool) -> void:
 	_turn_busy_suppressed = pozastavit
 	if _turn_busy_indicator:
 		_turn_busy_indicator.visible = _is_turn_processing and not _turn_busy_suppressed
 	_aktualizuj_sirku_panelu_hrace()
 
+# Brief: Runs frame-by-frame updates while this node is active.
 func _process(delta: float) -> void:
 	if _finance_tooltip_visible:
 		_aktualizuj_financni_tooltip_pozici()
@@ -2227,6 +2334,7 @@ func _process(delta: float) -> void:
 	_turn_busy_anim_step = (_turn_busy_anim_step + 1) % TURN_BUSY_FRAMES.size()
 	_turn_busy_indicator.text = TURN_BUSY_FRAMES[_turn_busy_anim_step]
 
+# Brief: Builds required objects/UI nodes and wires essential defaults/signals.
 func _vytvor_financni_tooltip_panel() -> void:
 	if _finance_tooltip_panel != null:
 		return
@@ -2262,6 +2370,7 @@ func _vytvor_financni_tooltip_panel() -> void:
 	_finance_tooltip_panel.add_child(_finance_tooltip_text)
 	add_child(_finance_tooltip_panel)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _napoj_financni_hover() -> void:
 	if money_label == null:
 		return
@@ -2271,6 +2380,7 @@ func _napoj_financni_hover() -> void:
 	if not money_label.mouse_exited.is_connected(_on_money_label_mouse_exited):
 		money_label.mouse_exited.connect(_on_money_label_mouse_exited)
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_money_label_mouse_entered() -> void:
 	_finance_tooltip_visible = true
 	_aktualizuj_financni_tooltip_text()
@@ -2278,17 +2388,21 @@ func _on_money_label_mouse_entered() -> void:
 	if _finance_tooltip_panel:
 		_finance_tooltip_panel.show()
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_money_label_mouse_exited() -> void:
 	_finance_tooltip_visible = false
 	if _finance_tooltip_panel:
 		_finance_tooltip_panel.hide()
 
+# Brief: Formats raw values into user-facing display text.
 func _format_finance_value(value: float) -> String:
 	return "%.2f M USD" % value
 
+# Brief: Formats raw values into user-facing display text.
 func _format_finance_signed(value: float) -> String:
 	return "%+.2f M USD" % value
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func _aktualizuj_financni_tooltip_text() -> void:
 	if _finance_tooltip_text == null:
 		return
@@ -2326,6 +2440,7 @@ func _aktualizuj_financni_tooltip_text() -> void:
 	t += "[b][color=#FFFFFF]TREASURY CHANGE (CASHFLOW): %s[/color][/b]" % _format_finance_signed(cashflow)
 	_finance_tooltip_text.text = t
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func _aktualizuj_financni_tooltip_pozici() -> void:
 	if _finance_tooltip_panel == null:
 		return
@@ -2348,6 +2463,7 @@ func _aktualizuj_financni_tooltip_pozici() -> void:
 	desired.y = clampf(desired.y, topbar_bottom + 8.0, max(topbar_bottom + 8.0, viewport_size.y - tooltip_size.y - 4.0))
 	_finance_tooltip_panel.position = desired
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func nastav_hrace(tag: String, jmeno_statu: String, ideologie: String = ""):
 	if player_name:
 		player_name.text = jmeno_statu
@@ -2377,6 +2493,7 @@ func nastav_hrace(tag: String, jmeno_statu: String, ideologie: String = ""):
 				return
 		player_flag.texture = null
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_map_loader_node() -> Node:
 	var scene_root = get_tree().current_scene
 	if scene_root and scene_root.has_method("_ziskej_map_pozici_provincie") and scene_root.has_method("_ziskej_map_offset"):
@@ -2387,6 +2504,7 @@ func _ziskej_map_loader_node() -> Node:
 			return by_name
 	return null
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_map_pozici_provincie_bezpecne(map_loader: Node, prov_id: int, prov_data: Dictionary) -> Vector2:
 	var pos := Vector2.ZERO
 	var map_offset := Vector2.ZERO
@@ -2408,6 +2526,7 @@ func _ziskej_map_pozici_provincie_bezpecne(map_loader: Node, prov_id: int, prov_
 		return Vector2.ZERO
 	return pos
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_fokus_statu_na_mape(tag: String) -> Dictionary:
 	var wanted = tag.strip_edges().to_upper()
 	if wanted == "" or wanted == "SEA":
@@ -2451,6 +2570,7 @@ func _ziskej_fokus_statu_na_mape(tag: String) -> Dictionary:
 
 	return {"ok": false}
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _vycentruj_kameru_na_stat(tag: String, smooth: bool = true) -> void:
 	var center = _ziskej_fokus_statu_na_mape(tag)
 	if not bool(center.get("ok", false)):
@@ -2472,3 +2592,4 @@ func _vycentruj_kameru_na_stat(tag: String, smooth: bool = true) -> void:
 		_player_focus_tween.tween_property(camera, "position", target_pos, 0.70)
 	else:
 		camera.position = target_pos
+

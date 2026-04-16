@@ -1,6 +1,17 @@
+﻿# ==================================================================================================
+# ███╗   ███╗ █████╗ ██████╗ ███████╗    ██████╗ ██╗   ██╗    █████╗ ███████╗██████╗  ██████╗ ██╗  ██╗
+# ████╗ ████║██╔══██╗██╔══██╗██╔════╝    ██╔══██╗╚██╗ ██╔╝   ██╔══██╗██╔════╝██╔══██╗██╔═══██╗╚██╗██╔╝
+# ██╔████╔██║███████║██║  ██║█████╗      ██████╔╝ ╚████╔╝    ███████║█████╗  ██████╔╝██║   ██║ ╚███╔╝
+# ██║╚██╔╝██║██╔══██║██║  ██║██╔══╝      ██╔══██╗  ╚██╔╝     ██╔══██║██╔══╝  ██╔══██╗██║   ██║ ██╔██╗
+# ██║ ╚═╝ ██║██║  ██║██████╔╝███████╗    ██████╔╝   ██║      ██║  ██║██║     ██║  ██║╚██████╔╝██╔╝ ██╗
+# ╚═╝     ╚═╝╚═╝  ╚═╝╚═════╝ ╚══════╝    ╚═════╝    ╚═╝      ╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝
+#
+#                                         Made By: Afrox26TP
+# ==================================================================================================
 extends Sprite2D
+# Brief: this script drives a specific gameplay/UI area and keeps related logic together.
 
-# Handles map clicking, hover and selection overlays on top of the shader map sprite.
+# Processes map clicking, hover, and selection overlays on top of the shader map sprite.
 
 @export var logic_map: Texture2D
 var map_image: Image
@@ -70,6 +81,7 @@ var country_colors = {
 }
 
 # Occupied provinces are tinted a bit, so the player sees non-core land faster.
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _barva_politickeho_vlastnictvi(d: Dictionary) -> Color:
 	var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
 	var base = country_colors.get(owner_tag, Color.from_hsv(owner_tag.hash() / float(0x7FFFFFFF), 0.7, 0.8))
@@ -82,6 +94,7 @@ func _barva_politickeho_vlastnictvi(d: Dictionary) -> Color:
 
 	return base
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_barvu_hrace_pro_vyber() -> Color:
 	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
 	var base = country_colors.get(player_tag, Color(0.95, 0.85, 0.25, 1.0))
@@ -91,6 +104,7 @@ func _ziskej_barvu_hrace_pro_vyber() -> Color:
 		return col
 	return Color(0.95, 0.85, 0.25, 1.0)
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_barvu_statu(tag: String) -> Color:
 	var clean = str(tag).strip_edges().to_upper()
 	var base = country_colors.get(clean, Color(0.72, 0.34, 0.34, 1.0))
@@ -100,6 +114,7 @@ func _ziskej_barvu_statu(tag: String) -> Color:
 		return col
 	return Color(0.72, 0.34, 0.34, 1.0)
 
+# Brief: Initializes references, connects signals, and prepares default runtime state.
 func _ready():
 	if logic_map:
 		map_image = logic_map.get_image()
@@ -148,29 +163,34 @@ func _ready():
 	_connect_labels_cache_signals()
 
 # These small caches matter a lot, jinak hover/select spam would do too much lookup work.
+# Brief: Applies incoming values and synchronizes dependent state.
 func nastav_potato_mode(enabled: bool) -> void:
 	_potato_mode_enabled = enabled
 	if material:
 		material.set_shader_parameter("low_detail_mode", enabled)
 
+# Brief: Reads current runtime data and returns it to callers.
 func _get_root() -> Node:
 	var parent_node = get_parent()
 	if _root_cache == null or not is_instance_valid(_root_cache) or _root_cache != parent_node:
 		_root_cache = parent_node
 	return _root_cache
 
+# Brief: Reads current runtime data and returns it to callers.
 func _get_info_ui() -> Node:
 	if _info_ui_cache == null or not is_instance_valid(_info_ui_cache):
 		var current_scene = get_tree().current_scene
 		_info_ui_cache = current_scene.find_child("InfoUI", true, false) if current_scene else null
 	return _info_ui_cache
 
+# Brief: Reads current runtime data and returns it to callers.
 func _get_game_ui() -> Node:
 	if _game_ui_cache == null or not is_instance_valid(_game_ui_cache):
 		var current_scene = get_tree().current_scene
 		_game_ui_cache = current_scene.find_child("GameUI", true, false) if current_scene else null
 	return _game_ui_cache
 
+# Brief: Reads current runtime data and returns it to callers.
 func _get_map_loader() -> Node:
 	if _map_loader_cache == null or not is_instance_valid(_map_loader_cache):
 		var current_scene = get_tree().current_scene
@@ -180,6 +200,7 @@ func _get_map_loader() -> Node:
 			_map_loader_cache = current_scene.find_child("Map", true, false)
 	return _map_loader_cache
 
+# Brief: Reads current runtime data and returns it to callers.
 func _get_labels_node() -> Node2D:
 	var root = _get_root()
 	var next_labels = root.get_node_or_null("ProvinceLabels") as Node2D if root else null
@@ -190,6 +211,7 @@ func _get_labels_node() -> Node2D:
 		_connect_labels_cache_signals()
 	return _labels_node_cache
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _connect_labels_cache_signals() -> void:
 	var labels = _labels_node_cache
 	if labels == null:
@@ -201,6 +223,7 @@ func _connect_labels_cache_signals() -> void:
 	if not labels.child_exiting_tree.is_connected(_on_labels_child_changed):
 		labels.child_exiting_tree.connect(_on_labels_child_changed)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _disconnect_labels_cache_signals() -> void:
 	if _labels_node_cache == null:
 		return
@@ -209,9 +232,11 @@ func _disconnect_labels_cache_signals() -> void:
 	if _labels_node_cache.child_exiting_tree.is_connected(_on_labels_child_changed):
 		_labels_node_cache.child_exiting_tree.disconnect(_on_labels_child_changed)
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_labels_child_changed(_node: Node) -> void:
 	_labels_cache_dirty = true
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _ensure_labels_cache() -> void:
 	var labels = _get_labels_node()
 	if labels == null:
@@ -225,16 +250,19 @@ func _ensure_labels_cache() -> void:
 		_labels_by_province_id[int(lbl.get("province_id"))] = lbl
 	_labels_cache_dirty = false
 
+# Brief: Reads current runtime data and returns it to callers.
 func _get_label_for_province(province_id: int) -> Node:
 	_ensure_labels_cache()
 	return _labels_by_province_id.get(province_id, null)
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func _set_cursor_shape(shape: int) -> void:
 	if _last_cursor_shape == shape:
 		return
 	_last_cursor_shape = shape
 	Input.set_default_cursor_shape(shape)
 
+# Brief: Clears temporary data and resets transient runtime/UI state.
 func _clear_selection_label_states() -> void:
 	if _selection_label_states.is_empty():
 		return
@@ -244,6 +272,7 @@ func _clear_selection_label_states() -> void:
 			lbl.reset_stav()
 	_selection_label_states.clear()
 
+# Brief: Applies prepared settings/effects to runtime systems.
 func _apply_selection_label_states(target_id: int, neighbor_ids: Array) -> void:
 	var next_states: Dictionary = {}
 	next_states[target_id] = 2
@@ -269,6 +298,7 @@ func _apply_selection_label_states(target_id: int, neighbor_ids: Array) -> void:
 
 	_selection_label_states = next_states
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func nastav_nahled_hlavniho_mesta(owned_ids: Array, valid_ids: Array) -> void:
 	if capital_focus_owned_image == null or capital_focus_valid_image == null:
 		return
@@ -292,6 +322,7 @@ func nastav_nahled_hlavniho_mesta(owned_ids: Array, valid_ids: Array) -> void:
 	capital_focus_valid_texture.update(capital_focus_valid_image)
 	material.set_shader_parameter("capital_focus_mode", true)
 
+# Brief: Clears temporary data and resets transient runtime/UI state.
 func vycisti_nahled_hlavniho_mesta() -> void:
 	if capital_focus_owned_image == null or capital_focus_valid_image == null:
 		return
@@ -301,6 +332,7 @@ func vycisti_nahled_hlavniho_mesta() -> void:
 	capital_focus_valid_texture.update(capital_focus_valid_image)
 	material.set_shader_parameter("capital_focus_mode", false)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _ensure_mode_hover_tooltip() -> void:
 	if _mode_hover_layer != null:
 		return
@@ -361,12 +393,14 @@ func _ensure_mode_hover_tooltip() -> void:
 	_mode_hover_debug_label.add_theme_constant_override("shadow_offset_y", 1)
 	_mode_hover_layer.add_child(_mode_hover_debug_label)
 
+# Brief: Hides UI/output and resets related temporary state.
 func _hide_mode_hover_tooltip() -> void:
 	if _mode_hover_panel:
 		_mode_hover_panel.visible = false
 	if _mode_hover_debug_label:
 		_mode_hover_debug_label.visible = false
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func _update_mode_hover_tooltip_position(_global_pos: Vector2) -> void:
 	if _mode_hover_panel == null or not _mode_hover_panel.visible:
 		return
@@ -379,6 +413,7 @@ func _update_mode_hover_tooltip_position(_global_pos: Vector2) -> void:
 	target.y = clamp(target.y, 4.0, max(4.0, vp_size.y - panel_size.y - 4.0))
 	_mode_hover_panel.position = target
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_aktualni_mapovy_mod(root: Node) -> String:
 	if _aktualni_mapovy_mod_local != "":
 		return _aktualni_mapovy_mod_local
@@ -388,6 +423,7 @@ func _ziskej_aktualni_mapovy_mod(root: Node) -> String:
 			return maybe_mod
 	return "political"
 
+# Brief: Formats raw values into user-facing display text.
 func _format_int_compact(value: int) -> String:
 	var s = str(abs(value))
 	var out := ""
@@ -399,6 +435,7 @@ func _format_int_compact(value: int) -> String:
 		return "-" + out
 	return out
 
+# Brief: Formats raw values into user-facing display text.
 func _format_money_compact(value: float) -> String:
 	var rounded = snapped(max(0.0, value), 0.01)
 	var whole = int(floor(rounded))
@@ -408,6 +445,7 @@ func _format_money_compact(value: float) -> String:
 		decimals = 0
 	return "%s.%02d" % [_format_int_compact(whole), decimals]
 
+# Brief: Displays UI/output and updates visible presentation data.
 func _show_capital_target_tooltip(province_id: int, _data: Dictionary, root: Node) -> void:
 	if _mode_hover_panel == null or _mode_hover_label == null:
 		return
@@ -436,6 +474,7 @@ func _show_capital_target_tooltip(province_id: int, _data: Dictionary, root: Nod
 		_mode_hover_debug_label.visible = false
 	_update_mode_hover_tooltip_position(get_global_mouse_position())
 
+# Brief: Displays UI/output and updates visible presentation data.
 func _show_peace_target_tooltip(province_id: int, data: Dictionary, root: Node) -> void:
 	if _mode_hover_panel == null or _mode_hover_label == null:
 		return
@@ -456,12 +495,14 @@ func _show_peace_target_tooltip(province_id: int, data: Dictionary, root: Node) 
 		_mode_hover_debug_label.visible = false
 	_update_mode_hover_tooltip_position(get_global_mouse_position())
 
+# Brief: Formats raw values into user-facing display text.
 func _format_pct_signed(value: float) -> String:
 	var pct = int(round(value * 100.0))
 	if pct >= 0:
 		return "+%d%%" % pct
 	return "%d%%" % pct
 
+# Brief: Displays UI/output and updates visible presentation data.
 func _show_attack_target_tooltip(from_id: int, province_id: int, data: Dictionary, root: Node) -> bool:
 	if _mode_hover_panel == null or _mode_hover_label == null:
 		return false
@@ -503,6 +544,7 @@ func _show_attack_target_tooltip(from_id: int, province_id: int, data: Dictionar
 	_update_mode_hover_tooltip_position(get_global_mouse_position())
 	return true
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _sestav_text_hover_modu(data: Dictionary, mod: String) -> String:
 	match mod:
 		"population":
@@ -530,6 +572,7 @@ func _sestav_text_hover_modu(data: Dictionary, mod: String) -> String:
 		_:
 			return ""
 
+# Brief: Displays UI/output and updates visible presentation data.
 func _show_mode_hover_tooltip(data: Dictionary, root: Node) -> void:
 	if _mode_hover_panel == null or _mode_hover_label == null:
 		return
@@ -554,6 +597,7 @@ func _show_mode_hover_tooltip(data: Dictionary, root: Node) -> void:
 		_last_mode_hover_debug_text = txt
 	_update_mode_hover_tooltip_position(get_global_mouse_position())
 
+# Brief: Renders custom visuals for this control.
 func _draw():
 	if not _drag_select_active or not _drag_select_started:
 		return
@@ -570,12 +614,14 @@ func _draw():
 
 	draw_rect(rect_draw, Color(0.1, 1.0, 1.0, 1.0), false, 3.0)
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_localni_pozici_mysi(global_mouse_pos: Vector2) -> Vector2:
 	var local_pos = to_local(global_mouse_pos)
 	if centered:
 		local_pos += texture.get_size() / 2.0
 	return local_pos
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func _aktualizuj_hromadny_selection_texture(ids: Array):
 	if selected_multi_image == null or selected_multi_texture == null:
 		return
@@ -598,17 +644,20 @@ func _aktualizuj_hromadny_selection_texture(ids: Array):
 		selected_multi_image.set_pixel(pid, 0, Color(1, 1, 1, 1))
 	selected_multi_texture.update(selected_multi_image)
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func nastav_nahled_mirovych_cilu(porazeny_tag: String) -> void:
 	if material == null:
 		return
 	material.set_shader_parameter("peace_target_visual_mode", true)
 	material.set_shader_parameter("peace_target_owner_color", _ziskej_barvu_statu(porazeny_tag))
 
+# Brief: Clears temporary data and resets transient runtime/UI state.
 func vycisti_nahled_mirovych_cilu() -> void:
 	if material == null:
 		return
 	material.set_shader_parameter("peace_target_visual_mode", false)
 
+# Brief: Processes input that was not consumed by other controls.
 func _unhandled_input(event):
 	if event is InputEventMouseMotion:
 		if _drag_select_active:
@@ -718,6 +767,7 @@ func _unhandled_input(event):
 				else:
 					GameManager.ukonci_kolo()
 
+# Brief: Applies prepared settings/effects to runtime systems.
 func _aplikuj_drag_hromadny_vyber():
 	if map_image == null:
 		return
@@ -768,6 +818,7 @@ func _aplikuj_drag_hromadny_vyber():
 			if info_ui_single and info_ui_single.has_method("zobraz_data"):
 				info_ui_single.zobraz_data(root.provinces[pid])
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_drag_select_anchor(root: Node, prov_id: int, prov_data: Dictionary) -> Vector2:
 	if _drag_select_anchor_cache.has(prov_id):
 		return _drag_select_anchor_cache[prov_id]
@@ -792,6 +843,7 @@ func _ziskej_drag_select_anchor(root: Node, prov_id: int, prov_data: Dictionary)
 	return Vector2.ZERO
 
 # Completely clears the active selection and hides all contextual UI panels
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _odzanc_vse():
 	material.set_shader_parameter("has_selected", false)
 	material.set_shader_parameter("selected_id", -1.0)
@@ -838,6 +890,7 @@ func _odzanc_vse():
 		game_ui.schovej_se()
 	_clear_selection_label_states()
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _zpracuj_interakci(_mouse_pos: Vector2, je_kliknuti: bool, shift_held: bool = false):
 	if map_image == null: return
 
@@ -865,6 +918,7 @@ func _zpracuj_interakci(_mouse_pos: Vector2, je_kliknuti: bool, shift_held: bool
 	_vymaz_hover()
 
 # Updates selection and hover states
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shift_held: bool = false):
 	var root = _get_root()
 	var is_targeting = "ceka_na_cil_presunu" in root and root.ceka_na_cil_presunu
@@ -1166,6 +1220,7 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 		else:
 			_show_mode_hover_tooltip(data, root)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _vymaz_hover():
 	material.set_shader_parameter("has_hover", false)
 	material.set_shader_parameter("is_target_hover", false)
@@ -1177,6 +1232,7 @@ func _vymaz_hover():
 	_vymaz_hover_labely()
 
 # Safely resets the previously hovered label to its correct persistent state
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _vymaz_hover_labely():
 	if _posledni_hover_id != -1:
 		var sel_id = int(material.get_shader_parameter("selected_id"))
@@ -1199,6 +1255,7 @@ func _vymaz_hover_labely():
 				lbl.reset_stav()
 		_posledni_hover_id = -1
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func aktualizuj_mapovy_mod(mod: String, province_db: Dictionary):
 	_aktualni_mapovy_mod_local = str(mod)
 	for prov_id in province_db.keys():
@@ -1289,6 +1346,7 @@ func aktualizuj_mapovy_mod(mod: String, province_db: Dictionary):
 	data_texture.update(data_image)
 	occupation_texture.update(occupation_image)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _barva_aliance(owner_tag: String) -> Color:
 	var alliances = GameManager.ziskej_aliance_statu(owner_tag)
 	if alliances.size() == 0:
@@ -1297,6 +1355,7 @@ func _barva_aliance(owner_tag: String) -> Color:
 	var barva_str = str(skupina.get("color", "#4488ff"))
 	return Color.html(barva_str)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func dobyt_provincii(prov_id: int, novy_vlastnik: String, z_dev_nastroje: bool = false):
 	var root = get_parent()
 	if not root or not "provinces" in root: return
@@ -1332,3 +1391,4 @@ func dobyt_provincii(prov_id: int, novy_vlastnik: String, z_dev_nastroje: bool =
 		var prov_labels = root.get_node_or_null("ProvinceLabels")
 		if labels_manager and prov_labels:
 			labels_manager.aktualizuj_labely_statu(root.provinces, prov_labels)
+

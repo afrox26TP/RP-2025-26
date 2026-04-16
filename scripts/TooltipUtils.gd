@@ -1,6 +1,18 @@
+﻿# ==================================================================================================
+# ███╗   ███╗ █████╗ ██████╗ ███████╗    ██████╗ ██╗   ██╗    █████╗ ███████╗██████╗  ██████╗ ██╗  ██╗
+# ████╗ ████║██╔══██╗██╔══██╗██╔════╝    ██╔══██╗╚██╗ ██╔╝   ██╔══██╗██╔════╝██╔══██╗██╔═══██╗╚██╗██╔╝
+# ██╔████╔██║███████║██║  ██║█████╗      ██████╔╝ ╚████╔╝    ███████║█████╗  ██████╔╝██║   ██║ ╚███╔╝
+# ██║╚██╔╝██║██╔══██║██║  ██║██╔══╝      ██╔══██╗  ╚██╔╝     ██╔══██║██╔══╝  ██╔══██╗██║   ██║ ██╔██╗
+# ██║ ╚═╝ ██║██║  ██║██████╔╝███████╗    ██████╔╝   ██║      ██║  ██║██║     ██║  ██║╚██████╔╝██╔╝ ██╗
+# ╚═╝     ╚═╝╚═╝  ╚═╝╚═════╝ ╚══════╝    ╚═════╝    ╚═╝      ╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝
+#
+#                                         Made By: Afrox26TP
+# ==================================================================================================
 class_name TooltipUtils
 extends RefCounted
+# Brief: this script drives a specific gameplay/UI area and keeps related logic together.
 
+# Brief: Builds required objects/UI nodes and wires essential defaults/signals.
 static func create_help_button(tooltip_text: String) -> Button:
 	var button := Button.new()
 	button.text = "?"
@@ -35,6 +47,7 @@ static func create_help_button(tooltip_text: String) -> Button:
 	button.add_theme_stylebox_override("focus", hover)
 	return button
 
+# Brief: Displays UI/output and updates visible presentation data.
 static func show_help_dropdown(owner: Node, anchor: Control, text: String) -> void:
 	if owner == null or anchor == null:
 		return
@@ -107,11 +120,13 @@ static func show_help_dropdown(owner: Node, anchor: Control, text: String) -> vo
 	popup.position = pos
 	popup.popup()
 
+# Brief: Applies prepared settings/effects to runtime systems.
 static func apply_default_tooltips(root: Node) -> void:
 	if root == null:
 		return
 	_apply_recursive(root)
 
+# Brief: Applies prepared settings/effects to runtime systems.
 static func _apply_recursive(node: Node) -> void:
 	if node is Control:
 		var control := node as Control
@@ -127,6 +142,7 @@ static func _apply_recursive(node: Node) -> void:
 	for child in node.get_children():
 		_apply_recursive(child)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 static func _guess_tooltip(control: Control) -> String:
 	if control is Button:
 		var button_text := (control as Button).text.strip_edges()

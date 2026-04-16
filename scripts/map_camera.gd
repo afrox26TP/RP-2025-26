@@ -1,4 +1,15 @@
+﻿# ==================================================================================================
+# ███╗   ███╗ █████╗ ██████╗ ███████╗    ██████╗ ██╗   ██╗    █████╗ ███████╗██████╗  ██████╗ ██╗  ██╗
+# ████╗ ████║██╔══██╗██╔══██╗██╔════╝    ██╔══██╗╚██╗ ██╔╝   ██╔══██╗██╔════╝██╔══██╗██╔═══██╗╚██╗██╔╝
+# ██╔████╔██║███████║██║  ██║█████╗      ██████╔╝ ╚████╔╝    ███████║█████╗  ██████╔╝██║   ██║ ╚███╔╝
+# ██║╚██╔╝██║██╔══██║██║  ██║██╔══╝      ██╔══██╗  ╚██╔╝     ██╔══██║██╔══╝  ██╔══██╗██║   ██║ ██╔██╗
+# ██║ ╚═╝ ██║██║  ██║██████╔╝███████╗    ██████╔╝   ██║      ██║  ██║██║     ██║  ██║╚██████╔╝██╔╝ ██╗
+# ╚═╝     ╚═╝╚═╝  ╚═╝╚═════╝ ╚══════╝    ╚═════╝    ╚═╝      ╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝
+#
+#                                         Made By: Afrox26TP
+# ==================================================================================================
 extends Camera2D
+# Brief: this script drives a specific gameplay/UI area and keeps related logic together.
 
 # Camera script is intentionally simple: keyboard move, wheel zoom, RMB drag.
 signal zoom_zmenen(aktualni_zoom)
@@ -13,9 +24,11 @@ var drag_start = Vector2.ZERO
 var dragging = false
 var invert_zoom_wheel: bool = false
 
+# Brief: Initializes references, connects signals, and prepares default runtime state.
 func _ready() -> void:
 	_nacti_ovladani_ze_settings()
 
+# Brief: Runs frame-by-frame updates while this node is active.
 func _process(delta):
 	# Handle keyboard movement
 	var input_dir = Vector2.ZERO
@@ -31,6 +44,7 @@ func _process(delta):
 
 	position += input_dir * speed * delta * (1.0 / zoom.x)
 
+# Brief: Processes direct input events routed to this node.
 func _input(event):
 	# Handle mouse input for zooming and panning
 	if event is InputEventMouseButton:
@@ -59,6 +73,7 @@ func _input(event):
 		drag_start = drag_current
 
 # Prevent camera stealing input when mouse is above menus/HUD.
+# Brief: Returns whether required conditions are currently satisfied.
 func _is_hovering_any_ui_blocking_camera() -> bool:
 	var hovered := get_viewport().gui_get_hovered_control()
 	while hovered != null:
@@ -68,6 +83,7 @@ func _is_hovering_any_ui_blocking_camera() -> bool:
 		hovered = hovered.get_parent() as Control
 	return false
 
+# Brief: Returns whether required conditions are currently satisfied.
 func _is_canvas_layer_ui_control(ctrl: Control) -> bool:
 	var node: Node = ctrl
 	while node != null:
@@ -76,12 +92,14 @@ func _is_canvas_layer_ui_control(ctrl: Control) -> bool:
 		node = node.get_parent()
 	return false
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _zoom_camera(factor):
 	zoom = (zoom * factor).clamp(Vector2(min_zoom, min_zoom), Vector2(max_zoom, max_zoom))
 	
 	# Broadcast the new zoom level to other game systems
 	zoom_zmenen.emit(zoom.x)
 
+# Brief: Loads data/resources and validates parsed results.
 func _nacti_ovladani_ze_settings() -> void:
 	var cfg = ConfigFile.new()
 	if cfg.load(SETTINGS_FILE_PATH) != OK:
@@ -90,3 +108,4 @@ func _nacti_ovladani_ze_settings() -> void:
 	speed = float(cfg.get_value("controls", "camera_speed", speed))
 	zoom_speed = clamp(float(cfg.get_value("controls", "zoom_speed", zoom_speed)), 0.01, 0.6)
 	invert_zoom_wheel = bool(cfg.get_value("controls", "invert_zoom", invert_zoom_wheel))
+

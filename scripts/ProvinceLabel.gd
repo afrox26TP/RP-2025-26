@@ -1,4 +1,15 @@
+﻿# ==================================================================================================
+# ███╗   ███╗ █████╗ ██████╗ ███████╗    ██████╗ ██╗   ██╗    █████╗ ███████╗██████╗  ██████╗ ██╗  ██╗
+# ████╗ ████║██╔══██╗██╔══██╗██╔════╝    ██╔══██╗╚██╗ ██╔╝   ██╔══██╗██╔════╝██╔══██╗██╔═══██╗╚██╗██╔╝
+# ██╔████╔██║███████║██║  ██║█████╗      ██████╔╝ ╚████╔╝    ███████║█████╗  ██████╔╝██║   ██║ ╚███╔╝
+# ██║╚██╔╝██║██╔══██║██║  ██║██╔══╝      ██╔══██╗  ╚██╔╝     ██╔══██║██╔══╝  ██╔══██╗██║   ██║ ██╔██╗
+# ██║ ╚═╝ ██║██║  ██║██████╔╝███████╗    ██████╔╝   ██║      ██║  ██║██║     ██║  ██║╚██████╔╝██╔╝ ██╗
+# ╚═╝     ╚═╝╚═╝  ╚═╝╚═════╝ ╚══════╝    ╚═════╝    ╚═╝      ╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝
+#
+#                                         Made By: Afrox26TP
+# ==================================================================================================
 extends Node2D
+# Brief: this script drives a specific gameplay/UI area and keeps related logic together.
 
 @onready var hbox = $HBoxContainer # Reference to the container holding text/flag
 @onready var label = $HBoxContainer/Label
@@ -13,11 +24,13 @@ var aktualni_zoom: float = 1.0
 
 var plny_nazev: String = ""
 
+# Brief: Initializes references, connects signals, and prepares default runtime state.
 func _ready():
 	if label and plny_nazev == "":
 		plny_nazev = label.text
 	reset_stav()
 
+# Brief: Reads current runtime data and returns it to callers.
 func get_spravny_scale() -> Vector2:
 	if is_zoomed_out and is_capital:
 		var zvetseni = clamp(1.0 / aktualni_zoom, 1.0, 4.0) 
@@ -26,6 +39,7 @@ func get_spravny_scale() -> Vector2:
 		return Vector2(1.0, 1.0)
 
 # Checks if troops are present and toggles the army icon independently
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _zkontroluj_armadu() -> bool:
 	if army_icon and province_id != -1 and GameManager.map_data.has(province_id):
 		var troop_count = int(GameManager.map_data[province_id].get("soldiers", 0))
@@ -37,6 +51,7 @@ func _zkontroluj_armadu() -> bool:
 		army_icon.hide()
 	return false
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func nastav_stav_souseda(je_cil: bool, je_soused: bool):
 	var ma_armadu = _zkontroluj_armadu()
 	
@@ -67,6 +82,7 @@ func nastav_stav_souseda(je_cil: bool, je_soused: bool):
 		
 	visible = true 
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func reset_stav():
 	z_index = 0              
 	scale = get_spravny_scale() 
@@ -90,3 +106,4 @@ func reset_stav():
 	# THE CRUCIAL FIX: The entire province label object remains active 
 	# if either the UI is supposed to be shown OR an army is stationed here.
 	visible = (ukaz_ui or ma_armadu)
+

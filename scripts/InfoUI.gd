@@ -1,4 +1,15 @@
+﻿# ==================================================================================================
+# ███╗   ███╗ █████╗ ██████╗ ███████╗    ██████╗ ██╗   ██╗    █████╗ ███████╗██████╗  ██████╗ ██╗  ██╗
+# ████╗ ████║██╔══██╗██╔══██╗██╔════╝    ██╔══██╗╚██╗ ██╔╝   ██╔══██╗██╔════╝██╔══██╗██╔═══██╗╚██╗██╔╝
+# ██╔████╔██║███████║██║  ██║█████╗      ██████╔╝ ╚████╔╝    ███████║█████╗  ██████╔╝██║   ██║ ╚███╔╝
+# ██║╚██╔╝██║██╔══██║██║  ██║██╔══╝      ██╔══██╗  ╚██╔╝     ██╔══██║██╔══╝  ██╔══██╗██║   ██║ ██╔██╗
+# ██║ ╚═╝ ██║██║  ██║██████╔╝███████╗    ██████╔╝   ██║      ██║  ██║██║     ██║  ██║╚██████╔╝██╔╝ ██╗
+# ╚═╝     ╚═╝╚═╝  ╚═╝╚═════╝ ╚══════╝    ╚═════╝    ╚═╝      ╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝
+#
+#                                         Made By: Afrox26TP
+# ==================================================================================================
 extends CanvasLayer
+# Brief: this script drives a specific gameplay/UI area and keeps related logic together.
 
 
 @onready var id_label = $PanelContainer/VBoxContainer/IDLabel
@@ -64,21 +75,25 @@ const INFO_PANEL_MAX_W := 360.0
 const ACTION_MENU_MIN_W := 300.0
 const ACTION_MENU_MAX_W := 560.0
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_provincie_data() -> Dictionary:
 	var map_loader = get_tree().current_scene.find_child("Map", true, false)
 	if map_loader and "provinces" in map_loader:
 		return map_loader.provinces
 	return GameManager.map_data
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_map_loader():
 	return get_tree().current_scene.find_child("Map", true, false)
 
+# Brief: Formats raw values into user-facing display text.
 func _format_pct_signed(value: float) -> String:
 	var pct = int(round(value * 100.0))
 	if pct >= 0:
 		return "+%d%%" % pct
 	return "%d%%" % pct
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _terenni_obranny_bonus_fallback(terrain_raw: String) -> float:
 	var key = terrain_raw.strip_edges().to_lower()
 	match key:
@@ -95,6 +110,7 @@ func _terenni_obranny_bonus_fallback(terrain_raw: String) -> float:
 		_:
 			return 0.0
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_terenni_obranny_bonus_pro_data(data: Dictionary, terrain_raw: String) -> float:
 	var prov_id = int(data.get("id", -1))
 	var map_loader = _ziskej_map_loader()
@@ -102,21 +118,25 @@ func _ziskej_terenni_obranny_bonus_pro_data(data: Dictionary, terrain_raw: Strin
 		return float(map_loader.ziskej_terenni_obranny_bonus_pct(prov_id))
 	return _terenni_obranny_bonus_fallback(terrain_raw)
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_cenu_za_vojaka() -> float:
 	if GameManager.has_method("ziskej_cenu_za_vojaka"):
 		return float(GameManager.ziskej_cenu_za_vojaka(GameManager.hrac_stat))
 	return cena_za_vojaka
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_udrzbu_za_vojaka() -> float:
 	if GameManager.has_method("ziskej_udrzbu_za_vojaka"):
 		return float(GameManager.ziskej_udrzbu_za_vojaka(GameManager.hrac_stat))
 	return 0.001
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_prijmovou_sazbu_hdp() -> float:
 	if GameManager.has_method("ziskej_prijmovou_sazbu_hdp"):
 		return float(GameManager.ziskej_prijmovou_sazbu_hdp(GameManager.hrac_stat))
 	return 0.1
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _limit_verbovani_v_okupaci(requested: int, prov_data: Dictionary) -> int:
 	var owner_tag = str(prov_data.get("owner", "")).strip_edges().to_upper()
 	var core_owner = str(prov_data.get("core_owner", owner_tag)).strip_edges().to_upper()
@@ -126,6 +146,7 @@ func _limit_verbovani_v_okupaci(requested: int, prov_data: Dictionary) -> int:
 	# Occupation allows only limited local recruitment each action.
 	return int(max(0, floor(float(requested) * 0.2)))
 
+# Brief: Initializes references, connects signals, and prepares default runtime state.
 func _ready():
 	action_menu.hide()
 	_setup_inline_delta_rows()
@@ -169,18 +190,21 @@ func _ready():
 		viewport.size_changed.connect(_on_viewport_resized)
 	call_deferred("_on_viewport_resized")
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_viewport_resized() -> void:
 	_aktualizuj_responzivni_layout()
 	var game_ui = get_tree().current_scene.find_child("GameUI", true, false)
 	if game_ui and game_ui.has_method("obnov_layout_ui"):
 		game_ui.obnov_layout_ui()
 
+# Brief: Refreshes existing content to reflect current runtime values.
 func obnov_layout_ui() -> void:
 	_aktualizuj_responzivni_layout()
 	var game_ui = get_tree().current_scene.find_child("GameUI", true, false)
 	if game_ui and game_ui.has_method("obnov_layout_ui"):
 		game_ui.call_deferred("obnov_layout_ui")
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_safe_bottom_inset() -> float:
 	# Compensate taskbar overlap when window covers desktop working area.
 	var viewport = get_viewport()
@@ -199,6 +223,7 @@ func _ziskej_safe_bottom_inset() -> float:
 		return 0.0
 	return float(overlap_px) * (vp_h / win_h)
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func _aktualizuj_responzivni_layout() -> void:
 	if info_panel == null or action_menu == null:
 		return
@@ -284,6 +309,7 @@ func _aktualizuj_responzivni_layout() -> void:
 	if action_row:
 		action_row.add_theme_constant_override("separation", 3 if tiny else 4)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _clamp_popup_rect_to_viewport(rect: Rect2i) -> Rect2i:
 	var viewport = get_viewport()
 	if viewport == null:
@@ -294,6 +320,7 @@ func _clamp_popup_rect_to_viewport(rect: Rect2i) -> Rect2i:
 	out.position.y = int(clampi(out.position.y, 4, int(maxf(4.0, vp.y - out.size.y - 4.0))))
 	return out
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func _nastav_tooltipy_ui() -> void:
 	id_label.tooltip_text = "Name of the selected province."
 	owner_label.tooltip_text = "Current owner of the province."
@@ -321,6 +348,7 @@ func _nastav_tooltipy_ui() -> void:
 	btn_likvidace_zrusit.tooltip_text = "Close disband window without changes."
 	TooltipUtils.apply_default_tooltips(self)
 
+# Brief: Builds required objects/UI nodes and wires essential defaults/signals.
 func _vytvor_preview_label() -> void:
 	if _preview_label and is_instance_valid(_preview_label):
 		return
@@ -331,6 +359,7 @@ func _vytvor_preview_label() -> void:
 	_preview_label.visible = false
 	vbox.add_child(_preview_label)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _wrap_metric_label(key: String, base_label: Label) -> void:
 	if base_label == null:
 		return
@@ -363,6 +392,7 @@ func _wrap_metric_label(key: String, base_label: Label) -> void:
 	_metric_rows[key] = row
 	_metric_deltas[key] = delta
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _setup_inline_delta_rows() -> void:
 	_wrap_metric_label("pop", pop_label)
 	_wrap_metric_label("recruit", recruit_label)
@@ -370,12 +400,14 @@ func _setup_inline_delta_rows() -> void:
 	_wrap_metric_label("income", income_label)
 	_wrap_metric_label("soldiers", soldiers_label)
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func _set_metric_visible(key: String, metric_visible: bool) -> void:
 	if _metric_rows.has(key):
 		(_metric_rows[key] as Control).visible = metric_visible
 	if not metric_visible:
 		_set_metric_delta(key, "", Color.WHITE)
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func _set_metric_delta(key: String, text: String, color: Color) -> void:
 	if not _metric_deltas.has(key):
 		return
@@ -389,10 +421,12 @@ func _set_metric_delta(key: String, text: String, color: Color) -> void:
 	lbl.add_theme_color_override("font_color", color)
 	lbl.visible = true
 
+# Brief: Clears temporary data and resets transient runtime/UI state.
 func _clear_inline_deltas() -> void:
 	for key in _metric_deltas.keys():
 		_set_metric_delta(str(key), "", Color.WHITE)
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func _set_preview_text(text: String) -> void:
 	if not _preview_label:
 		return
@@ -404,17 +438,20 @@ func _set_preview_text(text: String) -> void:
 	_preview_label.text = "Preview: " + clean
 	_preview_label.visible = true
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _push_overview_deltas(deltas: Dictionary) -> void:
 	var game_ui = get_tree().current_scene.find_child("GameUI", true, false)
 	if game_ui and game_ui.has_method("nastav_akce_nahled_delta"):
 		game_ui.nastav_akce_nahled_delta(deltas)
 
+# Brief: Clears temporary data and resets transient runtime/UI state.
 func _clear_preview_text() -> void:
 	_set_preview_text("")
 	_clear_inline_deltas()
 	_push_overview_deltas({})
 	_ideology_preview_active = false
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func nastav_nahled_ideologie(preview: Dictionary) -> void:
 	if aktualni_provincie_id == -1:
 		return
@@ -465,6 +502,7 @@ func nastav_nahled_ideologie(preview: Dictionary) -> void:
 	_set_metric_delta("pop", "0", Color(0.75, 0.75, 0.75))
 	_ideology_preview_active = true
 
+# Brief: Clears temporary data and resets transient runtime/UI state.
 func vycisti_nahled_ideologie() -> void:
 	if not _ideology_preview_active:
 		return
@@ -473,6 +511,7 @@ func vycisti_nahled_ideologie() -> void:
 	_set_metric_delta("pop", "", Color.WHITE)
 	_ideology_preview_active = false
 
+# Brief: Computes derived values from current inputs and game state.
 func _spocitej_stat_hdp_a_vojaky(owner_tag: String, province_data: Dictionary) -> Dictionary:
 	var hdp := 0.0
 	var vojaci := 0
@@ -485,6 +524,7 @@ func _spocitej_stat_hdp_a_vojaky(owner_tag: String, province_data: Dictionary) -
 		vojaci += int(d.get("soldiers", 0))
 	return {"hdp": hdp, "vojaci": vojaci}
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _nahled_stavby_text(building_id: int, cena: float, prov_data: Dictionary) -> String:
 	_clear_inline_deltas()
 	var overview_deltas: Dictionary = {}
@@ -525,6 +565,7 @@ func _nahled_stavby_text(building_id: int, cena: float, prov_data: Dictionary) -
 	_push_overview_deltas(overview_deltas)
 	return "%s | Cost: %s | Funds after purchase: %s | No direct income change" % [bonus_text, _format_money_auto(cena, 2), _format_money_auto(cash_after, 2)]
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _nahled_verbovani_text(pocet: int) -> String:
 	_clear_inline_deltas()
 	var upkeep_delta = -float(pocet) * _ziskej_udrzbu_za_vojaka()
@@ -540,6 +581,7 @@ func _nahled_verbovani_text(pocet: int) -> String:
 	})
 	return "Recruitment: %s soldiers | Cost: %s | Funds after purchase: %s | Upkeep: %s | New net income: %s" % [_formatuj_cislo(pocet), _format_money_auto(cena, 2), _format_money_auto(cash_after, 2), _format_money_auto(upkeep_delta, 2, true, true), _format_money_auto(projected_income, 2, false, true)]
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _posun_stavba_menu():
 	var p = btn_stavet.get_popup()
 	var viewport = get_viewport()
@@ -552,9 +594,11 @@ func _posun_stavba_menu():
 	_stavba_last_focus_idx = -2
 	set_process(true)
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_stavba_zvyraznena(id: int) -> void:
 	_nastav_nahled_stavby_podle_id(id)
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func _nastav_nahled_stavby_podle_id(id: int) -> void:
 	if aktualni_provincie_id == -1:
 		return
@@ -568,10 +612,12 @@ func _nastav_nahled_stavby_podle_id(id: int) -> void:
 		return
 	_nahled_stavby_text(id, cena, province_data[aktualni_provincie_id])
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_stavba_menu_zavreno() -> void:
 	_stavba_last_focus_idx = -2
 	set_process(false)
 
+# Brief: Runs frame-by-frame updates while this node is active.
 func _process(_delta: float) -> void:
 	# Fallback hover tracking for PopupMenu (works even when id_focused is unreliable).
 	if _stavba_popup == null or not is_instance_valid(_stavba_popup):
@@ -594,6 +640,7 @@ func _process(_delta: float) -> void:
 
 	_nastav_nahled_stavby_podle_id(int(_stavba_popup.get_item_id(idx)))
 
+# Brief: Hides UI/output and resets related temporary state.
 func schovej_se():
 	$PanelContainer.hide()
 	action_menu.hide()
@@ -610,6 +657,7 @@ func schovej_se():
 	_clear_preview_text()
 	call_deferred("obnov_layout_ui")
 
+# Brief: Displays UI/output and updates visible presentation data.
 func zobraz_data(data: Dictionary):
 	if data.is_empty():
 		schovej_se()
@@ -721,6 +769,7 @@ func zobraz_data(data: Dictionary):
 		_clear_preview_text()
 	call_deferred("obnov_layout_ui")
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_likvidovat_pressed():
 	if aktualni_provincie_id == -1:
 		return
@@ -754,6 +803,7 @@ func _on_likvidovat_pressed():
 	rect = _clamp_popup_rect_to_viewport(rect)
 	likvidace_popup.popup(rect)
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_likvidace_slider_zmenen(hodnota: float):
 	if not likvidace_info:
 		return
@@ -763,6 +813,7 @@ func _on_likvidace_slider_zmenen(hodnota: float):
 	if btn_likvidace_potvrdit:
 		btn_likvidace_potvrdit.disabled = (pocet <= 0)
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_potvrdit_likvidaci():
 	if aktualni_provincie_id == -1:
 		return
@@ -803,6 +854,7 @@ func _on_potvrdit_likvidaci():
 	zobraz_data(prov_data)
 	GameManager.kolo_zmeneno.emit()
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_presunout_pressed():
 	if je_hromadny_rezim:
 		if hromadny_vyber_ids.is_empty():
@@ -832,6 +884,7 @@ func _on_presunout_pressed():
 	schovej_se()
 
 # --- NEW: Zobrazí slider po úspěšném kliknutí na souseda v mapě ---
+# Brief: Displays UI/output and updates visible presentation data.
 func zobraz_presun_slider(from_id: int, to_id: int, max_troops: int, path: Array = []):
 	presun_od_id = from_id
 	presun_do_id = to_id
@@ -849,10 +902,12 @@ func zobraz_presun_slider(from_id: int, to_id: int, max_troops: int, path: Array
 	else:
 		move_popup.show()
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_move_slider_zmenen(hodnota: float):
 	if move_count_label:
 		move_count_label.text = _formatuj_cislo(int(hodnota)) + " soldiers"
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_potvrdit_presun():
 	var amount = int(move_slider.value)
 	move_popup.hide()
@@ -865,6 +920,7 @@ func _on_potvrdit_presun():
 		map_loader.zaregistruj_presun_armady(presun_od_id, presun_do_id, amount, true, presun_path)
 # ------------------------------------------------------------------
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_stavba_vybrana(id: int):
 	if je_hromadny_rezim:
 		_postav_hromadne(id)
@@ -897,6 +953,7 @@ func _on_stavba_vybrana(id: int):
 	else:
 		_ukaz_stavbu_info("INSUFFICIENT FUNDS", "You do not have enough money for this construction.")
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _ukaz_stavbu_info(title: String, text: String):
 	var map_loader = get_tree().current_scene.find_child("Map", true, false)
 	if not map_loader and get_parent().has_method("_ukaz_bitevni_popup"):
@@ -905,6 +962,7 @@ func _ukaz_stavbu_info(title: String, text: String):
 	if map_loader and map_loader.has_method("_ukaz_bitevni_popup"):
 		map_loader._ukaz_bitevni_popup(title, text)
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_verbovat_pressed():
 	if je_hromadny_rezim:
 		_otevri_hromadne_verbovani()
@@ -934,6 +992,7 @@ func _on_verbovat_pressed():
 	rect = _clamp_popup_rect_to_viewport(rect)
 	recruit_popup.popup(rect)
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_slider_zmenen(hodnota: float):
 	var cena = hodnota * _ziskej_cenu_za_vojaka()
 	if je_hromadne_verbovani:
@@ -947,6 +1006,7 @@ func _on_slider_zmenen(hodnota: float):
 		_push_overview_deltas({})
 	btn_potvrdit.disabled = (hodnota == 0)
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_potvrdit_verbovani():
 	if je_hromadne_verbovani:
 		_potvrd_hromadne_verbovani()
@@ -979,6 +1039,7 @@ func _on_potvrdit_verbovani():
 	zobraz_data(prov_data) 
 	GameManager.kolo_zmeneno.emit()
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_kolo_zmeneno():
 	if je_hromadny_rezim:
 		var map_loader = get_tree().current_scene.find_child("Map", true, false)
@@ -998,6 +1059,7 @@ func _on_kolo_zmeneno():
 		return
 	zobraz_data(province_data[aktualni_provincie_id])
 
+# Brief: Formats raw values into user-facing display text.
 func _formatuj_cislo(cislo: int) -> String:
 	var text_cisla = str(cislo)
 	var vysledek = ""
@@ -1007,6 +1069,7 @@ func _formatuj_cislo(cislo: int) -> String:
 		vysledek += text_cisla[i]
 	return vysledek
 
+# Brief: Formats raw values into user-facing display text.
 func _format_money_auto(value: float, mil_decimals: int = 2, signed: bool = false, per_turn: bool = false) -> String:
 	if absf(value) < 0.01:
 		var tis_decimals = max(1, mil_decimals - 1)
@@ -1017,6 +1080,7 @@ func _format_money_auto(value: float, mil_decimals: int = 2, signed: bool = fals
 	var txt_mil = fmt_mil % value
 	return txt_mil + "M" + ("/turn" if per_turn else "")
 
+# Brief: Displays UI/output and updates visible presentation data.
 func zobraz_hromadna_data(ids: Array, all_provinces: Dictionary):
 	if ids.size() <= 1:
 		if ids.size() == 1 and all_provinces.has(int(ids[0])):
@@ -1082,6 +1146,7 @@ func zobraz_hromadna_data(ids: Array, all_provinces: Dictionary):
 	btn_stavet.text = "Build"
 	call_deferred("obnov_layout_ui")
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_hromadne_vlastni_pozemni() -> Array:
 	var out: Array = []
 	var province_data = _ziskej_provincie_data()
@@ -1095,6 +1160,7 @@ func _ziskej_hromadne_vlastni_pozemni() -> Array:
 			out.append(pid)
 	return out
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_hromadne_zdroje_s_armadou() -> Array:
 	var out: Array = []
 	var province_data = _ziskej_provincie_data()
@@ -1111,6 +1177,7 @@ func _ziskej_hromadne_zdroje_s_armadou() -> Array:
 			out.append(pid)
 	return out
 
+# Brief: Opens a UI flow/panel and prepares its data and position.
 func _otevri_hromadne_verbovani():
 	var pozemni = _ziskej_hromadne_vlastni_pozemni()
 	if pozemni.is_empty():
@@ -1144,6 +1211,7 @@ func _otevri_hromadne_verbovani():
 	rect = _clamp_popup_rect_to_viewport(rect)
 	recruit_popup.popup(rect)
 
+# Brief: Validates and confirms an action, then commits the result.
 func _potvrd_hromadne_verbovani():
 	var remaining = int(recruit_slider.value)
 	if remaining <= 0:
@@ -1179,6 +1247,7 @@ func _potvrd_hromadne_verbovani():
 	_clear_preview_text()
 	GameManager.kolo_zmeneno.emit()
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _postav_hromadne(building_id: int):
 	var pozemni = _ziskej_hromadne_vlastni_pozemni()
 	if pozemni.is_empty():
@@ -1212,3 +1281,4 @@ func _postav_hromadne(building_id: int):
 		GameManager.kolo_zmeneno.emit()
 
 	_ukaz_stavbu_info("BULK CONSTRUCTION", "Built: %d | Skipped: %d" % [postaveno, preskoceno])
+

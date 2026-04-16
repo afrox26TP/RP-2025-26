@@ -1,4 +1,15 @@
+﻿# ==================================================================================================
+# ███╗   ███╗ █████╗ ██████╗ ███████╗    ██████╗ ██╗   ██╗    █████╗ ███████╗██████╗  ██████╗ ██╗  ██╗
+# ████╗ ████║██╔══██╗██╔══██╗██╔════╝    ██╔══██╗╚██╗ ██╔╝   ██╔══██╗██╔════╝██╔══██╗██╔═══██╗╚██╗██╔╝
+# ██╔████╔██║███████║██║  ██║█████╗      ██████╔╝ ╚████╔╝    ███████║█████╗  ██████╔╝██║   ██║ ╚███╔╝
+# ██║╚██╔╝██║██╔══██║██║  ██║██╔══╝      ██╔══██╗  ╚██╔╝     ██╔══██║██╔══╝  ██╔══██╗██║   ██║ ██╔██╗
+# ██║ ╚═╝ ██║██║  ██║██████╔╝███████╗    ██████╔╝   ██║      ██║  ██║██║     ██║  ██║╚██████╔╝██╔╝ ██╗
+# ╚═╝     ╚═╝╚═╝  ╚═╝╚═════╝ ╚══════╝    ╚═════╝    ╚═╝      ╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝
+#
+#                                         Made By: Afrox26TP
+# ==================================================================================================
 extends Control
+# Brief: this script drives a specific gameplay/UI area and keeps related logic together.
 
 const TooltipUtilsScript = preload("res://scripts/TooltipUtils.gd")
 
@@ -251,6 +262,7 @@ const BROWSER_CLOSE_START_TEXT := "Start game"
 const COUNTRY_BROWSER_WIDTH := 1160.0
 const COUNTRY_BROWSER_HEIGHT := 520.0
 
+# Brief: Loads data/resources and validates parsed results.
 func _load_texture_cached(path: String):
 	if path == "" or not ResourceLoader.exists(path):
 		return null
@@ -258,6 +270,7 @@ func _load_texture_cached(path: String):
 		flag_texture_cache[path] = load(path)
 	return flag_texture_cache[path]
 
+# Brief: Loads data/resources and validates parsed results.
 func _load_normalized_flag_texture(path: String, width: int, height: int):
 	var cache_key = "%s|%d|%d" % [path, width, height]
 	if normalized_flag_texture_cache.has(cache_key):
@@ -292,6 +305,7 @@ func _load_normalized_flag_texture(path: String, width: int, height: int):
 	normalized_flag_texture_cache[cache_key] = normalized_tex
 	return normalized_tex
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _vloz_centered_helper_pred_label(label: Label) -> Button:
 	if label == null or label.get_parent() == null:
 		return null
@@ -311,6 +325,7 @@ func _vloz_centered_helper_pred_label(label: Label) -> Button:
 	label.hide()
 	return help_btn
 
+# Brief: Builds required objects/UI nodes and wires essential defaults/signals.
 func _vytvor_clean_helpery() -> void:
 	if _browser_helper_btn == null and btn_close_corner and btn_close_corner.get_parent() != null:
 		_browser_helper_btn = TooltipUtilsScript.create_help_button("")
@@ -328,6 +343,7 @@ func _vytvor_clean_helpery() -> void:
 		language_hint.hide()
 	_aktualizuj_clean_helpery()
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func _aktualizuj_clean_helpery() -> void:
 	if _browser_helper_btn:
 		var browser_parts: Array[String] = []
@@ -341,6 +357,7 @@ func _aktualizuj_clean_helpery() -> void:
 		_language_hint_helper_btn.tooltip_text = language_hint.text
 		_language_hint_helper_btn.visible = language_hint.text.strip_edges() != ""
 
+# Brief: Initializes references, connects signals, and prepares default runtime state.
 func _ready():
 	_nacti_nastaveni()
 	_nastav_texty_dialogu()
@@ -398,6 +415,7 @@ func _ready():
 	_styluj_mainmenu_popup_dialogy()
 	_show_settings_tab(0)  # Start with Controls tab
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _log_export_data_diagnostics() -> void:
 	# Export diagnostics for missing data/assets in standalone builds.
 	var checks: Array[String] = [
@@ -415,6 +433,7 @@ func _log_export_data_diagnostics() -> void:
 	if country_stats.is_empty():
 		push_warning("[ExportCheck] country_stats is empty after data load. Export likely misses map_data raw files.")
 
+# Brief: Displays UI/output and updates visible presentation data.
 func _show_export_diagnostics_if_missing_data() -> void:
 	if not country_stats.is_empty():
 		return
@@ -449,6 +468,7 @@ func _show_export_diagnostics_if_missing_data() -> void:
 	add_child(dlg)
 	dlg.popup_centered_ratio(0.72)
 
+# Brief: Applies prepared settings/effects to runtime systems.
 func _apply_country_browser_window_size() -> void:
 	if country_browser_panel == null:
 		return
@@ -463,6 +483,7 @@ func _apply_country_browser_window_size() -> void:
 	country_browser_panel.offset_right = COUNTRY_BROWSER_WIDTH * 0.5
 	country_browser_panel.offset_bottom = COUNTRY_BROWSER_HEIGHT * 0.5
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _default_ai_aggression_from_ideology(ideology_raw: String) -> float:
 	var ideol = ideology_raw.strip_edges().to_lower()
 	match ideol:
@@ -479,6 +500,7 @@ func _default_ai_aggression_from_ideology(ideology_raw: String) -> float:
 		_:
 			return 0.50
 
+# Brief: Reads current runtime data and returns it to callers.
 func _get_ai_aggression_for_tag(tag: String) -> float:
 	if tag != "" and country_stats.has(tag):
 		var ideol = str((country_stats[tag] as Dictionary).get("ideology", ""))
@@ -487,6 +509,7 @@ func _get_ai_aggression_for_tag(tag: String) -> float:
 		return clamp((ideology_default * 0.20) + (_global_ai_aggression * 0.80), 0.0, 1.0)
 	return clamp(_global_ai_aggression, 0.0, 1.0)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _ensure_ai_aggression_control() -> void:
 	if _browser_current_settings_panel != null:
 		return
@@ -576,6 +599,7 @@ func _ensure_ai_aggression_control() -> void:
 	# Initialize the global aggression slider from current stored value.
 	_set_ai_aggression_ui_for_tag("")  # tag ignored — always shows global value
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _ensure_selected_players_flag_list() -> void:
 	if _selected_players_flag_list != null:
 		return
@@ -602,6 +626,7 @@ func _ensure_selected_players_flag_list() -> void:
 	_selected_players_flag_list.add_theme_constant_override("separation", 4)
 	_selected_players_scroll.add_child(_selected_players_flag_list)
 
+# Brief: Clears temporary data and resets transient runtime/UI state.
 func _clear_selected_players_flag_rows() -> void:
 	if _selected_players_flag_list == null:
 		return
@@ -609,6 +634,7 @@ func _clear_selected_players_flag_rows() -> void:
 		_selected_players_flag_list.remove_child(child)
 		child.free()
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _add_selected_player_row(row_text: String, tag: String, is_active: bool) -> void:
 	if _selected_players_flag_list == null:
 		return
@@ -633,6 +659,7 @@ func _add_selected_player_row(row_text: String, tag: String, is_active: bool) ->
 
 	_selected_players_flag_list.add_child(row)
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func _set_ai_aggression_ui_for_tag(_tag: String) -> void:
 	if _ai_aggression_slider == null or _ai_aggression_value == null:
 		return
@@ -642,12 +669,14 @@ func _set_ai_aggression_ui_for_tag(_tag: String) -> void:
 	_ai_aggression_slider.set_block_signals(false)
 	_ai_aggression_value.text = "%d%%" % percent
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_ai_aggression_changed(value: float) -> void:
 	var percent = int(round(value))
 	if _ai_aggression_value:
 		_ai_aggression_value.text = "%d%%" % percent
 	_global_ai_aggression = clamp(value / 100.0, 0.0, 1.0)
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_browser_potato_mode_toggled(enabled: bool) -> void:
 	nastaveni_data["other"]["potato_mode"] = enabled
 	_aplikuj_potato_mode_globalne(enabled)
@@ -656,6 +685,7 @@ func _on_browser_potato_mode_toggled(enabled: bool) -> void:
 		potato_mode_check.button_pressed = enabled
 		potato_mode_check.set_block_signals(false)
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_browser_ai_debug_mode_toggled(enabled: bool) -> void:
 	nastaveni_data["other"]["ai_debug_mode"] = enabled
 	_aplikuj_ai_debug_mode_globalne(enabled)
@@ -664,12 +694,14 @@ func _on_browser_ai_debug_mode_toggled(enabled: bool) -> void:
 		ai_debug_mode_check.button_pressed = enabled
 		ai_debug_mode_check.set_block_signals(false)
 
+# Brief: Applies prepared settings/effects to runtime systems.
 func _apply_ai_aggression_overrides(_local_tags: Array) -> void:
 	if not GameManager or not GameManager.has_method("nastav_globalni_ai_agresi"):
 		return
 	GameManager.nastav_globalni_ai_agresi(_global_ai_aggression)
 
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func _nastav_tooltipy_ui() -> void:
 	btn_new_game.tooltip_text = "Start a new game and open country selection."
 	btn_continue.tooltip_text = "Load the latest saved game."
@@ -707,6 +739,7 @@ func _nastav_tooltipy_ui() -> void:
 		ai_debug_mode_check.tooltip_text = "Shows debug panel and detailed diagnostics in output."
 	TooltipUtilsScript.apply_default_tooltips(self)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _ensure_potato_mode_checkbox() -> void:
 	if potato_mode_check != null or settings_content == null:
 		return
@@ -722,6 +755,7 @@ func _ensure_potato_mode_checkbox() -> void:
 	settings_content.add_child(potato_mode_check)
 	settings_content.move_child(potato_mode_check, insert_index)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _ensure_ai_debug_mode_checkbox() -> void:
 	if ai_debug_mode_check != null or settings_content == null:
 		return
@@ -737,6 +771,7 @@ func _ensure_ai_debug_mode_checkbox() -> void:
 	settings_content.add_child(ai_debug_mode_check)
 	settings_content.move_child(ai_debug_mode_check, insert_index)
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func _nastav_texty_dialogu():
 	settings_dialog.title = SETTINGS_DIALOG_TITLE
 	settings_dialog.ok_button_text = "Close"
@@ -754,6 +789,7 @@ func _nastav_texty_dialogu():
 		_exit_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		_exit_lbl.size_flags_vertical = Control.SIZE_EXPAND_FILL
 
+# Brief: Reads current runtime data and returns it to callers.
 func _get_settings_button_apply() -> Button:
 	if _btn_apply_cache and is_instance_valid(_btn_apply_cache):
 		return _btn_apply_cache
@@ -771,6 +807,7 @@ func _get_settings_button_apply() -> Button:
 	
 	return null
 
+# Brief: Reads current runtime data and returns it to callers.
 func _get_settings_button_reset() -> Button:
 	if _btn_reset_cache and is_instance_valid(_btn_reset_cache):
 		return _btn_reset_cache
@@ -788,6 +825,7 @@ func _get_settings_button_reset() -> Button:
 	
 	return null
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _ensure_settings_buttons_connected() -> void:
 	var apply_btn = _get_settings_button_apply()
 	var reset_btn = _get_settings_button_reset()
@@ -817,6 +855,7 @@ func _ensure_settings_buttons_connected() -> void:
 		_exit_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		_exit_lbl.size_flags_vertical = Control.SIZE_EXPAND_FILL
 
+# Brief: Applies prepared settings/effects to runtime systems.
 func _aplikuj_spolecny_popup_styl(dialog: Window, target_size: Vector2i) -> void:
 	if dialog == null:
 		return
@@ -830,6 +869,7 @@ func _aplikuj_spolecny_popup_styl(dialog: Window, target_size: Vector2i) -> void
 	if base_panel != null:
 		dialog.add_theme_stylebox_override("panel", base_panel.duplicate())
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _styluj_mainmenu_popup_dialogy() -> void:
 	_aplikuj_spolecny_popup_styl(settings_dialog, Vector2i(960, 840))
 	_aplikuj_spolecny_popup_styl(credits_dialog, Vector2i(680, 360))
@@ -837,6 +877,7 @@ func _styluj_mainmenu_popup_dialogy() -> void:
 	if _load_dialog != null:
 		_aplikuj_spolecny_popup_styl(_load_dialog, Vector2i(720, 560))
 
+# Brief: Builds required objects/UI nodes and wires essential defaults/signals.
 func _vytvor_vychozi_nastaveni() -> Dictionary:
 	return {
 		"controls": {
@@ -856,6 +897,7 @@ func _vytvor_vychozi_nastaveni() -> Dictionary:
 		}
 	}
 
+# Brief: Loads data/resources and validates parsed results.
 func _nacti_nastaveni() -> void:
 	nastaveni_data = _vytvor_vychozi_nastaveni()
 	var cfg = ConfigFile.new()
@@ -876,6 +918,7 @@ func _nacti_nastaveni() -> void:
 	nastaveni_data["other"]["ai_debug_mode"] = false
 	nastaveni_data["other"]["master_volume"] = float(cfg.get_value("other", "master_volume", nastaveni_data["other"]["master_volume"]))
 
+# Brief: Persists runtime/configuration data to storage.
 func _uloz_nastaveni() -> void:
 	var cfg = ConfigFile.new()
 	cfg.set_value("controls", "camera_speed", float(nastaveni_data["controls"]["camera_speed"]))
@@ -894,19 +937,23 @@ func _uloz_nastaveni() -> void:
 	if save_err != OK:
 		push_warning("Failed to save settings. Error: %s" % str(save_err))
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _normalizuj_jazyk(raw_code: String) -> String:
 	var code = raw_code.strip_edges().to_lower()
 	if not UI_TEXTS.has(code):
 		return SETTINGS_DEFAULT_LANGUAGE
 	return code
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _aktualni_jazyk() -> String:
 	var code = str(nastaveni_data.get("language", {}).get("code", SETTINGS_DEFAULT_LANGUAGE))
 	return _normalizuj_jazyk(code)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _texty_ui() -> Dictionary:
 	return UI_TEXTS[_aktualni_jazyk()]
 
+# Brief: Populates UI/data structures from available runtime data.
 func _napln_language_option() -> void:
 	language_option.clear()
 	language_option.add_item("English")
@@ -914,6 +961,7 @@ func _napln_language_option() -> void:
 	language_option.add_item("Cesky")
 	language_option.set_item_metadata(1, "cs")
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _jazyk_z_option() -> String:
 	var idx = language_option.selected
 	if idx < 0:
@@ -923,6 +971,7 @@ func _jazyk_z_option() -> String:
 		return SETTINGS_DEFAULT_LANGUAGE
 	return _normalizuj_jazyk(str(metadata))
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func _nastav_settings_ui_z_dat() -> void:
 	camera_speed_slider.value = float(nastaveni_data["controls"]["camera_speed"])
 	zoom_speed_slider.value = float(nastaveni_data["controls"]["zoom_speed"])
@@ -942,6 +991,7 @@ func _nastav_settings_ui_z_dat() -> void:
 		ai_debug_mode_check.button_pressed = bool(nastaveni_data["other"].get("ai_debug_mode", false))
 	master_volume_slider.value = clamp(float(nastaveni_data["other"]["master_volume"]), 0.0, 1.0)
 
+# Brief: Persists runtime/configuration data to storage.
 func _uloz_settings_ui_do_dat() -> void:
 	nastaveni_data["controls"]["camera_speed"] = clamp(camera_speed_slider.value, 400.0, 2600.0)
 	nastaveni_data["controls"]["zoom_speed"] = clamp(zoom_speed_slider.value, 0.03, 0.35)
@@ -953,11 +1003,13 @@ func _uloz_settings_ui_do_dat() -> void:
 	nastaveni_data["other"]["ai_debug_mode"] = ai_debug_mode_check.button_pressed if ai_debug_mode_check else false
 	nastaveni_data["other"]["master_volume"] = clamp(master_volume_slider.value, 0.0, 1.0)
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func _aktualizuj_settings_hodnoty(_v: float = 0.0) -> void:
 	camera_speed_value.text = "%d" % int(round(camera_speed_slider.value))
 	zoom_speed_value.text = "%.2f" % zoom_speed_slider.value
 	master_volume_value.text = "%d%%" % int(round(master_volume_slider.value * 100.0))
 
+# Brief: Applies prepared settings/effects to runtime systems.
 func _aplikuj_nastaveni_globalne() -> void:
 	var fullscreen = bool(nastaveni_data["other"]["fullscreen"])
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if fullscreen else DisplayServer.WINDOW_MODE_WINDOWED)
@@ -973,15 +1025,18 @@ func _aplikuj_nastaveni_globalne() -> void:
 		var db_volume = -80.0 if linear_volume <= 0.0001 else linear_to_db(linear_volume)
 		AudioServer.set_bus_volume_db(master_bus, db_volume)
 
+# Brief: Applies prepared settings/effects to runtime systems.
 func _aplikuj_potato_mode_globalne(enabled: bool) -> void:
 	Engine.max_fps = 45 if enabled else 0
 	OS.low_processor_usage_mode = enabled
 	OS.low_processor_usage_mode_sleep_usec = 12000 if enabled else 6900
 
+# Brief: Applies prepared settings/effects to runtime systems.
 func _aplikuj_ai_debug_mode_globalne(enabled: bool) -> void:
 	if GameManager and GameManager.has_method("nastav_ai_debug_mode"):
 		GameManager.nastav_ai_debug_mode(enabled)
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func _aktualizuj_texty_dle_jazyka() -> void:
 	var t = _texty_ui()
 	title_label.text = str(t["title"])
@@ -1016,6 +1071,7 @@ func _aktualizuj_texty_dle_jazyka() -> void:
 	btn_settings_apply.text = str(t["apply"])
 	_aktualizuj_clean_helpery()
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func _aktualizuj_settings_header_stav(dirty: bool) -> void:
 	var t = _texty_ui()
 	if dirty:
@@ -1025,6 +1081,7 @@ func _aktualizuj_settings_header_stav(dirty: bool) -> void:
 		settings_header_subtitle.text = str(t["settings_header_subtitle_clean"])
 		settings_header_subtitle.modulate = Color(0.72, 0.88, 1.0, 1.0)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _read_settings_from_ui() -> Dictionary:
 	return {
 		"camera_speed": int(round(camera_speed_slider.value)),
@@ -1038,6 +1095,7 @@ func _read_settings_from_ui() -> Dictionary:
 		"master_volume": snapped(master_volume_slider.value, 0.01)
 	}
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _settings_state_equals(a: Dictionary, b: Dictionary) -> bool:
 	for key in ["camera_speed", "zoom_speed", "invert_zoom", "language", "fullscreen", "vsync", "potato_mode", "ai_debug_mode", "master_volume"]:
 		if not a.has(key) or not b.has(key):
@@ -1046,6 +1104,7 @@ func _settings_state_equals(a: Dictionary, b: Dictionary) -> bool:
 			return false
 	return true
 
+# Brief: Refreshes existing content to reflect current runtime values.
 func _refresh_apply_button_state() -> void:
 	var apply_btn = _get_settings_button_apply()
 	var reset_btn = _get_settings_button_reset()
@@ -1080,6 +1139,7 @@ func _refresh_apply_button_state() -> void:
 	
 	print("Settings buttons refreshed - apply visible: ", apply_btn.visible, " reset visible: ", reset_btn.visible)
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func _nastav_vychozi_vyber_statu():
 	if country_stats.has(selected_country_tag):
 		return
@@ -1092,15 +1152,18 @@ func _nastav_vychozi_vyber_statu():
 	vsechny_tagy.sort()
 	selected_country_tag = str(vsechny_tagy[0])
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _raw_data_path_exists(path: String) -> bool:
 	return FileAccess.file_exists(path) or ResourceLoader.exists(path)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _resolve_provinces_data_path() -> String:
 	for path in PROVINCES_DATA_PATHS:
 		if _raw_data_path_exists(path):
 			return path
 	return str(PROVINCES_DATA_PATHS[PROVINCES_DATA_PATHS.size() - 1])
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _build_column_index(header_line: String) -> Dictionary:
 	var out: Dictionary = {}
 	var cols = header_line.split(";")
@@ -1108,6 +1171,7 @@ func _build_column_index(header_line: String) -> Dictionary:
 		out[str(cols[i]).strip_edges().to_lower()] = i
 	return out
 
+# Brief: Searches available data and returns the best matching result.
 func _find_column_idx(col_index: Dictionary, names: Array, fallback_idx: int = -1) -> int:
 	for raw_name in names:
 		var key = str(raw_name).strip_edges().to_lower()
@@ -1115,6 +1179,7 @@ func _find_column_idx(col_index: Dictionary, names: Array, fallback_idx: int = -
 			return int(col_index[key])
 	return fallback_idx
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _read_int(parts: Array, idx: int, default_val: int = 0) -> int:
 	if idx < 0 or idx >= parts.size():
 		return default_val
@@ -1123,6 +1188,7 @@ func _read_int(parts: Array, idx: int, default_val: int = 0) -> int:
 		return default_val
 	return int(raw)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _read_float(parts: Array, idx: int, default_val: float = 0.0) -> float:
 	if idx < 0 or idx >= parts.size():
 		return default_val
@@ -1131,11 +1197,13 @@ func _read_float(parts: Array, idx: int, default_val: float = 0.0) -> float:
 		return default_val
 	return float(raw)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _read_text(parts: Array, idx: int, default_val: String = "") -> String:
 	if idx < 0 or idx >= parts.size():
 		return default_val
 	return str(parts[idx]).strip_edges()
 
+# Brief: Loads data/resources and validates parsed results.
 func _nacti_data_statu_pro_browser():
 	country_stats.clear()
 	var data_path = _resolve_provinces_data_path()
@@ -1191,6 +1259,7 @@ func _nacti_data_statu_pro_browser():
 		country_stats[tag]["province_count"] += 1
 		country_stats[tag]["soldiers"] += _read_int(parts, idx_soldiers)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _naplni_browser_seznam():
 	for child in country_list.get_children():
 		child.queue_free()
@@ -1213,6 +1282,7 @@ func _naplni_browser_seznam():
 	_obnov_texty_radku_statu()
 	_aktualizuj_panel_vyberu_hracu()
 
+# Brief: Builds required objects/UI nodes and wires essential defaults/signals.
 func _vytvor_radek_statu(tag: String) -> Button:
 	var stats = country_stats[tag]
 	var row_btn = Button.new()
@@ -1235,6 +1305,7 @@ func _vytvor_radek_statu(tag: String) -> Button:
 	row_btn.pressed.connect(func(): _on_country_row_pressed(tag))
 	return row_btn
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _sestav_text_radku_statu(tag: String) -> String:
 	if not country_stats.has(tag):
 		return tag
@@ -1264,6 +1335,7 @@ func _sestav_text_radku_statu(tag: String) -> String:
 		float(stats["gdp"])
 	]
 
+# Brief: Refreshes existing content to reflect current runtime values.
 func _obnov_texty_radku_statu() -> void:
 	for tag in country_rows.keys():
 		var row_btn = country_rows[tag]
@@ -1283,6 +1355,7 @@ func _obnov_texty_radku_statu() -> void:
 				row_btn.disabled = false
 				row_btn.modulate = Color(1, 1, 1, 1)
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func _aktualizuj_panel_vyberu_hracu() -> void:
 	if not selected_players_title or not selected_players_list:
 		return
@@ -1326,6 +1399,7 @@ func _aktualizuj_panel_vyberu_hracu() -> void:
 	# Deferred reset to prevent the panel from jumping when layout recalculates
 	call_deferred("_apply_country_browser_window_size")
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _zobrazene_jmeno_statu(tag: String) -> String:
 	for nazev in hratelne_staty.keys():
 		if hratelne_staty[nazev] == tag:
@@ -1334,6 +1408,7 @@ func _zobrazene_jmeno_statu(tag: String) -> String:
 		return str(country_stats[tag].get("country_name_en", tag))
 	return tag
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func _nastav_detail_statu(tag: String, update_aggression_ui: bool = true):
 	if not country_stats.has(tag):
 		return
@@ -1361,6 +1436,7 @@ func _nastav_detail_statu(tag: String, update_aggression_ui: bool = true):
 	var flag_tex = _load_normalized_flag_texture("res://map_data/Flags/%s.svg" % tag, 240, 150)
 	detail_flag.texture = flag_tex
 
+# Brief: Builds required objects/UI nodes and wires essential defaults/signals.
 func _vytvor_souhrn_statu(jmeno: String, s: Dictionary) -> String:
 	var populace = max(1, int(s.get("population", 0)))
 	var hdp = float(s.get("gdp", 0.0))
@@ -1420,6 +1496,7 @@ func _vytvor_souhrn_statu(jmeno: String, s: Dictionary) -> String:
 
 	return "%s is a %s country with a %s base and %s military readiness. Strengths: %s. Risks: %s." % [jmeno, velikost, vyspelost, vojenska_sila, silne_text, slabiny_text]
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_country_row_pressed(tag: String):
 	if new_game_browser_flow:
 		_prirad_stat_aktivnimu_hraci(tag)
@@ -1427,6 +1504,7 @@ func _on_country_row_pressed(tag: String):
 	_nastav_detail_statu(tag)
 	_obnov_texty_radku_statu()
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_setup_tag_aktivniho_hrace() -> String:
 	if local_player_tags.is_empty():
 		return ""
@@ -1434,6 +1512,7 @@ func _ziskej_setup_tag_aktivniho_hrace() -> String:
 		return ""
 	return str(local_player_tags[setup_active_player_index])
 
+# Brief: Searches available data and returns the best matching result.
 func _najdi_prvni_volny_tag() -> String:
 	var vsechny_tagy = country_stats.keys()
 	vsechny_tagy.sort_custom(func(a, b):
@@ -1447,6 +1526,7 @@ func _najdi_prvni_volny_tag() -> String:
 
 	return ""
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _prirad_stat_aktivnimu_hraci(tag: String) -> void:
 	if local_player_tags.is_empty():
 		return
@@ -1469,6 +1549,7 @@ func _prirad_stat_aktivnimu_hraci(tag: String) -> void:
 	_aktualizuj_panel_vyberu_hracu()
 	_aktualizuj_browser_napovedu()
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _pridej_dalsiho_hrace_do_setupu() -> void:
 	var novy_tag = _najdi_prvni_volny_tag()
 	if novy_tag == "":
@@ -1484,6 +1565,7 @@ func _pridej_dalsiho_hrace_do_setupu() -> void:
 	_aktualizuj_panel_vyberu_hracu()
 	_aktualizuj_browser_napovedu()
 
+# Brief: Opens a UI flow/panel and prepares its data and position.
 func _otevri_browser_statu():
 	_apply_country_browser_window_size()
 	if selected_country_tag != "" and country_stats.has(selected_country_tag):
@@ -1491,6 +1573,7 @@ func _otevri_browser_statu():
 	_aktualizuj_browser_napovedu()
 	country_browser_panel.show()
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_confirm_country_pressed():
 	if new_game_browser_flow:
 		_pridej_dalsiho_hrace_do_setupu()
@@ -1503,6 +1586,7 @@ func _on_confirm_country_pressed():
 
 	country_browser_panel.hide()
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_close_browser_pressed():
 	if new_game_browser_flow:
 		if local_player_tags.is_empty() and selected_country_tag != "":
@@ -1527,6 +1611,7 @@ func _on_close_browser_pressed():
 	_aktualizuj_browser_napovedu()
 	country_browser_panel.hide()
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_close_browser_corner_pressed():
 	new_game_browser_flow = false
 	setup_active_player_index = 0
@@ -1538,6 +1623,7 @@ func _on_close_browser_corner_pressed():
 	_aktualizuj_browser_napovedu()
 	country_browser_panel.hide()
 
+# Brief: Refreshes existing content to reflect current runtime values.
 func _obnov_text_vyberu():
 	if local_player_tags.size() > 1:
 		selected_country_label.text = "Local players: %s" % ", ".join(local_player_tags)
@@ -1559,6 +1645,7 @@ func _obnov_text_vyberu():
 	_aktualizuj_panel_vyberu_hracu()
 	_aktualizuj_clean_helpery()
 
+# Brief: Recomputes and refreshes state from the latest game/UI data.
 func _aktualizuj_browser_napovedu():
 	if not browser_flow_hint or not browser_subtitle or not list_hint:
 		return
@@ -1578,6 +1665,7 @@ func _aktualizuj_browser_napovedu():
 		browser_flow_hint.text = "Solo mode: choose a country and confirm."
 	_aktualizuj_clean_helpery()
 
+# Brief: Applies incoming values and synchronizes dependent state.
 func _nastav_stav_pokracovani():
 	var ma_save = FileAccess.file_exists(SAVE_FILE_PATH)
 	if GameManager and GameManager.has_method("ma_ulozene_hry"):
@@ -1589,6 +1677,7 @@ func _nastav_stav_pokracovani():
 	else:
 		btn_continue.text = str(t["continue_empty"])
 
+# Brief: Builds required objects/UI nodes and wires essential defaults/signals.
 func _vytvor_load_dialog() -> void:
 	if _load_dialog != null:
 		return
@@ -1690,6 +1779,7 @@ func _vytvor_load_dialog() -> void:
 	_styluj_mainmenu_popup_dialogy()
 	_obnov_load_sloty_v_menu()
 
+# Brief: Builds required objects/UI nodes and wires essential defaults/signals.
 func _vytvor_load_row_style(selected: bool) -> StyleBoxFlat:
 	var s = StyleBoxFlat.new()
 	if selected:
@@ -1716,6 +1806,7 @@ func _vytvor_load_row_style(selected: bool) -> StyleBoxFlat:
 	s.corner_radius_bottom_left = 6
 	return s
 
+# Brief: Refreshes existing content to reflect current runtime values.
 func _obnov_load_sloty_v_menu() -> void:
 	if _load_scroll_vbox == null:
 		return
@@ -1806,15 +1897,18 @@ func _obnov_load_sloty_v_menu() -> void:
 		var first_key = str((all_slots[0] as Dictionary).get("key", ""))
 		_on_load_row_highlight(first_key)
 
+# Brief: Opens a UI flow/panel and prepares its data and position.
 func _otevri_load_okno() -> void:
 	if _load_dialog == null:
 		_vytvor_load_dialog()
 	_obnov_load_sloty_v_menu()
 	_load_dialog.popup_centered(_load_dialog.min_size)
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_load_row_pressed(slot_key: String) -> void:
 	_on_load_row_highlight(slot_key)
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_load_row_highlight(slot_key: String) -> void:
 	_selected_load_slot_key = slot_key
 	for key in _load_slot_btns.keys():
@@ -1826,9 +1920,11 @@ func _on_load_row_highlight(slot_key: String) -> void:
 	if _load_open_button:
 		_load_open_button.disabled = slot_key == ""
 
+# Brief: Reads current runtime data and returns it to callers.
 func _ziskej_vybrany_load_slot() -> String:
 	return _selected_load_slot_key
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_load_selected_pressed() -> void:
 	var slot_key = _ziskej_vybrany_load_slot()
 	if slot_key == "":
@@ -1839,6 +1935,7 @@ func _on_load_selected_pressed() -> void:
 		_load_dialog.hide()
 	_spust_load_ze_slotu(slot_key)
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _pockej_na_map_scenu(max_frames: int = 180) -> bool:
 	for _i in range(max_frames):
 		if GameManager and GameManager.has_method("_get_map_loader"):
@@ -1848,6 +1945,7 @@ func _pockej_na_map_scenu(max_frames: int = 180) -> bool:
 		await get_tree().process_frame
 	return false
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _spust_load_ze_slotu(slot_key: String) -> void:
 	var err = get_tree().change_scene_to_file(MAP_SCENE_PATH)
 	if err != OK:
@@ -1874,6 +1972,7 @@ func _spust_load_ze_slotu(slot_key: String) -> void:
 	if not loaded_ok:
 		push_warning("Load failed: save could not be loaded.")
 
+# Brief: Executes module-specific gameplay/UI logic for the current context.
 func _spust_hru_vyberem(player_tags: Array = []):
 	var final_tags = player_tags.duplicate()
 	if final_tags.is_empty() and selected_country_tag != "":
@@ -1899,6 +1998,7 @@ func _spust_hru_vyberem(player_tags: Array = []):
 	# Load the main map scene
 	get_tree().change_scene_to_file(MAP_SCENE_PATH)
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_new_game_pressed():
 	local_player_tags.clear()
 	new_game_browser_flow = true
@@ -1924,9 +2024,11 @@ func _on_new_game_pressed():
 	_aktualizuj_browser_napovedu()
 	_otevri_browser_statu()
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_continue_pressed():
 	_otevri_load_okno()
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_settings_pressed():
 	_nastav_settings_ui_z_dat()
 	_aktualizuj_settings_hodnoty()
@@ -1977,6 +2079,7 @@ func _on_settings_pressed():
 	# Refresh button state after dialog is shown
 	call_deferred("_refresh_apply_button_state")
 
+# Brief: Displays UI/output and updates visible presentation data.
 func _show_settings_tab(tab_index: int) -> void:
 	if tab_index == 0:
 		controls_panel.show()
@@ -1993,12 +2096,15 @@ func _show_settings_tab(tab_index: int) -> void:
 		settings_btn.modulate = Color(1.0, 1.0, 1.0, 1.0)
 		settings_btn.mouse_default_cursor_shape = Control.CURSOR_ARROW
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_controls_tab_clicked() -> void:
 	_show_settings_tab(0)
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_settings_tab_clicked() -> void:
 	_show_settings_tab(1)
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_apply_settings_pressed() -> void:
 	_uloz_settings_ui_do_dat()
 	_aplikuj_nastaveni_globalne()
@@ -2008,6 +2114,7 @@ func _on_apply_settings_pressed() -> void:
 	_settings_original_ui_state = _read_settings_from_ui()
 	_refresh_apply_button_state()
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_reset_settings_pressed() -> void:
 	nastaveni_data = _vytvor_vychozi_nastaveni()
 	_nastav_settings_ui_z_dat()
@@ -2019,6 +2126,7 @@ func _on_reset_settings_pressed() -> void:
 	_settings_original_ui_state = _read_settings_from_ui()
 	_refresh_apply_button_state()
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_language_option_selected(_idx: int) -> void:
 	# Language switch is applied immediately to avoid UI/data desync.
 	nastaveni_data["language"]["code"] = _jazyk_z_option()
@@ -2028,24 +2136,30 @@ func _on_language_option_selected(_idx: int) -> void:
 	_settings_original_ui_state = _read_settings_from_ui()
 	_refresh_apply_button_state()
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_settings_value_changed(_value: float) -> void:
 	_aktualizuj_settings_hodnoty()
 	_refresh_apply_button_state()
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_settings_toggle_changed(_pressed: bool) -> void:
 	_refresh_apply_button_state()
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_credits_pressed():
 	_styluj_mainmenu_popup_dialogy()
 	credits_dialog.popup_centered(credits_dialog.min_size)
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_exit_pressed():
 	_styluj_mainmenu_popup_dialogy()
 	exit_dialog.popup_centered(exit_dialog.min_size)
 
+# Brief: Signal/event callback that reacts to user actions or game events.
 func _on_exit_confirmed():
 	get_tree().quit()
 
+# Brief: Formats raw values into user-facing display text.
 func _formatuj_cislo(cislo: int) -> String:
 	var text_cisla = str(cislo)
 	var vysledek = ""
@@ -2055,3 +2169,4 @@ func _formatuj_cislo(cislo: int) -> String:
 			vysledek += " "
 		vysledek += text_cisla[i]
 	return vysledek
+
