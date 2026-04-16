@@ -1,5 +1,6 @@
 extends Camera2D
 
+# Camera script is intentionally simple: keyboard move, wheel zoom, RMB drag.
 signal zoom_zmenen(aktualni_zoom)
 
 @export var speed = 1000.0
@@ -57,6 +58,7 @@ func _input(event):
 		position += diff
 		drag_start = drag_current
 
+# Prevent camera stealing input when mouse is above menus/HUD.
 func _is_hovering_any_ui_blocking_camera() -> bool:
 	var hovered := get_viewport().gui_get_hovered_control()
 	while hovered != null:

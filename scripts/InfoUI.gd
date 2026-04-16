@@ -171,6 +171,33 @@ func _ready():
 
 func _on_viewport_resized() -> void:
 	_aktualizuj_responzivni_layout()
+	var game_ui = get_tree().current_scene.find_child("GameUI", true, false)
+	if game_ui and game_ui.has_method("obnov_layout_ui"):
+		game_ui.obnov_layout_ui()
+
+func obnov_layout_ui() -> void:
+	_aktualizuj_responzivni_layout()
+	var game_ui = get_tree().current_scene.find_child("GameUI", true, false)
+	if game_ui and game_ui.has_method("obnov_layout_ui"):
+		game_ui.call_deferred("obnov_layout_ui")
+
+func _ziskej_safe_bottom_inset() -> float:
+	# Compensate taskbar overlap when window covers desktop working area.
+	var viewport = get_viewport()
+	if viewport == null:
+		return 0.0
+	var vp_h = maxf(1.0, viewport.get_visible_rect().size.y)
+	var screen_idx = DisplayServer.window_get_current_screen()
+	var usable = DisplayServer.screen_get_usable_rect(screen_idx)
+	var win_pos = DisplayServer.window_get_position()
+	var win_size = DisplayServer.window_get_size()
+	var win_h = maxf(1.0, float(win_size.y))
+	var window_bottom = int(win_pos.y + win_size.y)
+	var usable_bottom = int(usable.position.y + usable.size.y)
+	var overlap_px = max(0, window_bottom - usable_bottom)
+	if overlap_px <= 0:
+		return 0.0
+	return float(overlap_px) * (vp_h / win_h)
 
 func _aktualizuj_responzivni_layout() -> void:
 	if info_panel == null or action_menu == null:
@@ -181,6 +208,8 @@ func _aktualizuj_responzivni_layout() -> void:
 	var vp_size = viewport.get_visible_rect().size
 	var vp_w = maxf(320.0, vp_size.x)
 	var vp_h = maxf(240.0, vp_size.y)
+	var safe_bottom = _ziskej_safe_bottom_inset()
+	var bottom_margin = INFO_UI_MARGIN + safe_bottom
 
 	var panel_w = clampf(vp_w * 0.24, INFO_PANEL_MIN_W, INFO_PANEL_MAX_W)
 	panel_w = minf(panel_w, vp_w - (INFO_UI_MARGIN * 2.0))
@@ -193,9 +222,9 @@ func _aktualizuj_responzivni_layout() -> void:
 	info_panel.offset_right = INFO_UI_MARGIN + panel_w
 
 	# Province info must stay glued to bottom edge.
-	var panel_h = maxf(140.0, info_panel.size.y)
-	info_panel.offset_top = -panel_h - INFO_UI_MARGIN
-	info_panel.offset_bottom = -INFO_UI_MARGIN
+	var panel_h = clampf(info_panel.size.y, 140.0, maxf(140.0, vp_h - 72.0 - bottom_margin))
+	info_panel.offset_top = -panel_h - bottom_margin
+	info_panel.offset_bottom = -bottom_margin
 
 	var side_space = vp_w - (panel_w + INFO_UI_GAP + INFO_UI_MARGIN)
 	var action_w = clampf(side_space, ACTION_MENU_MIN_W, ACTION_MENU_MAX_W)
@@ -207,8 +236,8 @@ func _aktualizuj_responzivni_layout() -> void:
 	# Action panel must stay glued to bottom edge too.
 	action_menu.offset_left = panel_w + INFO_UI_GAP
 	action_menu.offset_right = action_menu.offset_left + action_w
-	action_menu.offset_top = -INFO_UI_MARGIN - action_menu.size.y
-	action_menu.offset_bottom = -INFO_UI_MARGIN
+	action_menu.offset_top = -bottom_margin - action_menu.size.y
+	action_menu.offset_bottom = -bottom_margin
 
 	# If there is not enough side space, keep panel glued to the right+bottom edge.
 	if action_menu.offset_right > vp_w:
@@ -217,11 +246,11 @@ func _aktualizuj_responzivni_layout() -> void:
 		action_menu.anchor_right = 1.0
 		action_menu.offset_right = -INFO_UI_MARGIN
 		action_menu.offset_left = -INFO_UI_MARGIN - action_w
-		action_menu.offset_top = -INFO_UI_MARGIN - action_menu.size.y
-		action_menu.offset_bottom = -INFO_UI_MARGIN
+		action_menu.offset_top = -bottom_margin - action_menu.size.y
+		action_menu.offset_bottom = -bottom_margin
 
 	# Clamp action menu vertically only; horizontal edge anchoring is intentional.
-	var min_bottom = -INFO_UI_MARGIN
+	var min_bottom = -bottom_margin
 	var max_top = -vp_h + 72.0
 	if action_menu.offset_top < max_top:
 		var delta_y = max_top - action_menu.offset_top
@@ -579,6 +608,7 @@ func schovej_se():
 	if map_loader and map_loader.has_method("vycisti_hromadny_vyber_provincii"):
 		map_loader.vycisti_hromadny_vyber_provincii()
 	_clear_preview_text()
+	call_deferred("obnov_layout_ui")
 
 func zobraz_data(data: Dictionary):
 	if data.is_empty():
@@ -689,6 +719,7 @@ func zobraz_data(data: Dictionary):
 	else:
 		action_menu.hide()
 		_clear_preview_text()
+	call_deferred("obnov_layout_ui")
 
 func _on_likvidovat_pressed():
 	if aktualni_provincie_id == -1:
@@ -1049,6 +1080,7 @@ func zobraz_hromadna_data(ids: Array, all_provinces: Dictionary):
 	btn_verbovat.disabled = vlastni_pozemni.is_empty()
 	btn_presunout.disabled = vlastni_s_armadou.is_empty()
 	btn_stavet.text = "Build"
+	call_deferred("obnov_layout_ui")
 
 func _ziskej_hromadne_vlastni_pozemni() -> Array:
 	var out: Array = []

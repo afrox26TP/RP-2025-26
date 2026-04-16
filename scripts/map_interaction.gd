@@ -1,5 +1,7 @@
 extends Sprite2D
 
+# Handles map clicking, hover and selection overlays on top of the shader map sprite.
+
 @export var logic_map: Texture2D
 var map_image: Image
 
@@ -67,6 +69,7 @@ var country_colors = {
 	"UKR": Color("#DEC243"), "GBR": Color("#9E2633"), "SEA": Color("5b556fff")
 }
 
+# Occupied provinces are tinted a bit, so the player sees non-core land faster.
 func _barva_politickeho_vlastnictvi(d: Dictionary) -> Color:
 	var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
 	var base = country_colors.get(owner_tag, Color.from_hsv(owner_tag.hash() / float(0x7FFFFFFF), 0.7, 0.8))
@@ -144,6 +147,7 @@ func _ready():
 	_ensure_mode_hover_tooltip()
 	_connect_labels_cache_signals()
 
+# These small caches matter a lot, jinak hover/select spam would do too much lookup work.
 func nastav_potato_mode(enabled: bool) -> void:
 	_potato_mode_enabled = enabled
 	if material:

@@ -895,6 +895,43 @@ func _otevri_prehled_statu_podle_tagu(tag: String) -> void:
 	if info_ui and info_ui.has_method("zobraz_data"):
 		info_ui.zobraz_data(preview_data)
 
+func _ziskej_overview_left_bottom_reserved(target_w: float) -> Dictionary:
+	var viewport = get_viewport()
+	if viewport == null:
+		return {"bottom_height": 0.0}
+	var vp_size = viewport.get_visible_rect().size
+	var vp_h = maxf(1.0, vp_size.y)
+
+	var top_y: float = vp_h
+	var scene_root = get_tree().current_scene
+	if scene_root == null:
+		return {"bottom_height": 0.0}
+
+	var info_ui = scene_root.find_child("InfoUI", true, false)
+	if info_ui == null:
+		return {"bottom_height": 0.0}
+
+	var left_edge = 0.0
+	var right_edge = left_edge + target_w
+	for node_name in ["PanelContainer", "ActionMenu"]:
+		var c = info_ui.get_node_or_null(node_name) as Control
+		if c == null or not c.visible:
+			continue
+		var r = c.get_global_rect()
+		var overlap_x = r.position.x < right_edge and (r.position.x + r.size.x) > left_edge
+		if overlap_x:
+			top_y = minf(top_y, r.position.y)
+
+	if top_y >= vp_h:
+		return {"bottom_height": 0.0}
+	var reserved = maxf(0.0, vp_h - top_y)
+	return {"bottom_height": reserved}
+
+func obnov_layout_ui() -> void:
+	_aktualizuj_overview_panel_layout()
+	_pozicuj_ai_debug_panel()
+	_aktualizuj_pozice_popupu()
+
 func _ziskej_map_pozici_provincie_bezpecne(map_loader: Node, prov_id: int, prov_data: Dictionary) -> Vector2:
 	var pos := Vector2.ZERO
 	var map_offset := Vector2.ZERO
@@ -3507,20 +3544,47 @@ func _aktualizuj_overview_panel_layout() -> void:
 	if panel == null or not is_instance_valid(panel):
 		return
 	var viewport_size = get_viewport().get_visible_rect().size
-	var fit_h = max(OVERVIEW_MIN_HEIGHT, viewport_size.y - OVERVIEW_SCREEN_MARGIN * 2.0)
-	var target_h = min(OVERVIEW_TARGET_HEIGHT, fit_h)
-	var target_w = OVERVIEW_TARGET_WIDTH
+	var target_w = minf(OVERVIEW_TARGET_WIDTH, maxf(260.0, viewport_size.x))
+	var left_bottom_reserved = _ziskej_overview_left_bottom_reserved(target_w)
+	var bottom_reserved = float(left_bottom_reserved.get("bottom_height", 0.0))
+	var available_h = maxf(96.0, viewport_size.y - bottom_reserved)
+	var target_h = minf(OVERVIEW_TARGET_HEIGHT, available_h)
 
+	panel.offset_left = 0.0
+	panel.offset_top = 0.0
 	panel.offset_right = target_w
 	panel.offset_bottom = target_h
 
-	var compact = target_h < 780.0
+	var compact = target_h < 780.0 or target_w < OVERVIEW_TARGET_WIDTH
 	var vbox = panel.get_node_or_null("VBoxContainer") as VBoxContainer
 	if vbox:
 		vbox.add_theme_constant_override("separation", 7 if compact else 10)
 
 	if ideology_effects_label:
 		ideology_effects_label.custom_minimum_size = Vector2(0, 120 if compact else 180)
+
+	# Prevent random vertical stretching when other UI popups trigger relayout.
+	var overview_btn_h = 34.0 if compact else 38.0
+	for b in [
+		improve_rel_btn,
+		worsen_rel_btn,
+		gift_money_btn,
+		trade_btn,
+		alliance_btn,
+		declare_war_btn,
+		propose_peace_btn,
+		non_aggression_btn,
+		_military_access_btn,
+		give_loan_btn,
+		take_loan_btn,
+		research_btn,
+		_vassals_btn,
+		ideology_apply_btn,
+		ideology_relocate_capital_btn,
+	]:
+		if b and b is Button:
+			b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			b.custom_minimum_size = Vector2(0, overview_btn_h)
 
 func _input(event):
 	if event is InputEventKey and event.pressed and not event.is_echo():
@@ -8182,6 +8246,7 @@ func zobraz_prehled_statu(data: Dictionary, all_provinces: Dictionary):
 			if research_btn: research_btn.hide()
 	
 	panel.show()
+	call_deferred("obnov_layout_ui")
 
 func _aktualizuj_mirove_overview_statistiky(owner_tag: String, je_hracuv_stat: bool) -> void:
 	if vassals_label == null or war_reparations_label == null:
@@ -8281,6 +8346,7 @@ func schovej_se():
 	_ceka_na_vyber_cile_hlavniho_mesta = false
 	_relocate_capital_action_lock = false
 	_vycisti_nahled_ideologie_v_ui()
+	call_deferred("obnov_layout_ui")
 
 func _formatuj_cislo(cislo: int) -> String:
 	var text_cisla = str(cislo)

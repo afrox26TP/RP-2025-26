@@ -1,5 +1,6 @@
 extends Node
 
+# Small loader for alliance CSV data. Nothing fancy, just keeps parsed tables ready.
 # Aliances data
 var alliances: Dictionary = {}  # alliance_id -> {name, color, founded_year, description}
 var country_alliances: Dictionary = {}  # country_iso3 -> [alliance_ids]
@@ -9,6 +10,7 @@ func _ready():
 	load_alliances()
 	load_country_alliance_membership()
 
+# Reads base alliance defs first, then membership is linked in second pass.
 func load_alliances():
 	"""Load alliances from CSV file"""
 	var file_path = "res://map_data/Alliances.csv"
@@ -47,6 +49,7 @@ func load_alliances():
 	
 	print("Loaded ", alliances.size(), " alliances")
 
+# Separate pass so missing alliance rows dont instantly break everything.
 func load_country_alliance_membership():
 	"""Load country-alliance membership mappings"""
 	var file_path = "res://map_data/CountryAllianceMembership.csv"

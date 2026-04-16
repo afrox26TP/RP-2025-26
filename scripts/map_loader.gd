@@ -1,5 +1,6 @@
 extends Node2D
 
+# Loads province data, switches map modes and resolves army movement on the actual map.
 signal mapovy_mod_zmenen(mod: String)
 
 @export var label_scene = preload("res://scenes/ProvinceLabel.tscn")
@@ -96,6 +97,7 @@ const TERRAIN_DEFENDER_BONUS_PCT := {
 const ATTACKER_LIBERATION_BONUS_PCT := 0.10
 # --------------------------------------------------------
 
+# Tries a few filename variants because raw data names changed during dev a bit.
 func _raw_data_path_exists(path: String) -> bool:
 	return FileAccess.file_exists(path) or ResourceLoader.exists(path)
 
@@ -158,6 +160,7 @@ func _je_potato_mode_ze_settings() -> bool:
 	var other_mode = bool(cfg.get_value("other", "potato_mode", display_mode))
 	return display_mode or other_mode
 
+# Potato mode turns off some heavier visuals for weaker notebooks/PCs.
 func nastav_potato_mode(enabled: bool) -> void:
 	_potato_mode_enabled = enabled
 	Engine.max_fps = 45 if enabled else 0
@@ -239,6 +242,7 @@ func _skryj_loading_overlay() -> void:
 	_loading_label = null
 	_loading_bar = null
 
+# Map mode switch updates shader colors and visibility of army/port markers.
 func nastav_mapovy_mod(mod: String):
 	aktualni_mapovy_mod = mod
 	_aktualizuj_aktivni_mapovy_mod()

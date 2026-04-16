@@ -217,6 +217,7 @@ class StatsLineChart:
 @onready var mode_btn_terrain = $Panel/HBoxContainer/MapModes/ModeTerrain
 @onready var mode_btn_resources = $Panel/HBoxContainer/MapModes/ModeResources
 @onready var mode_btn_alliances = $Panel/HBoxContainer/MapModes/ModeAlliances
+var _map_modes_dropdown: OptionButton
 
 # Panel rows: 1) flag + next turn, 2) state name, 3) queue flags.
 @onready var player_flag = $PlayerTurnPanel/VBoxContainer/TurnRow/PlayerFlag
@@ -328,6 +329,18 @@ const MAP_MODE_ICON_PATHS := {
 	"resources": "res://map_data/pickaxe.svg",
 	"alliances": "res://map_data/port_icon.svg"
 }
+const MAP_MODE_ORDER := [
+	"political",
+	"population",
+	"gdp",
+	"ideology",
+	"recruitable_population",
+	"relationships",
+	"terrain",
+	"resources",
+	"alliances"
+]
+const MAP_MODE_DROPDOWN_BREAKPOINT := 1817.0
 
 func _cached_texture(path: String):
 	if path == "" or not ResourceLoader.exists(path):
@@ -420,6 +433,7 @@ func _ready():
 		zpravy_btn.focus_mode = Control.FOCUS_NONE
 		zpravy_btn.toggle_mode = false
 	_zapoj_tlacitka_mapovych_modu()
+	_vytvor_dropdown_mapovych_modu()
 	_napoj_signal_mapoveho_modu()
 	_vytvor_financni_tooltip_panel()
 	_napoj_financni_hover()
@@ -437,6 +451,7 @@ func _ready():
 	_aktualizuj_sirku_panelu_hrace()
 	aktualizuj_ui()
 	call_deferred("_registruj_anchor_zprav")
+	call_deferred("_aktualizuj_stav_tlacitek_modu")
 
 func _nastav_tooltipy_ui() -> void:
 	if money_label:
@@ -613,11 +628,15 @@ func _aktualizuj_sirku_panelu_hrace() -> void:
 
 func _aktualizuj_responzivni_topbar(vp_width: float) -> void:
 	var compact = vp_width < 1360.0
-	var narrow = vp_width < 1180.0
+	var narrow = vp_width < MAP_MODE_DROPDOWN_BREAKPOINT
 	var tiny = vp_width < 980.0
 
 	if map_modes_box:
 		map_modes_box.visible = not narrow
+	if _map_modes_dropdown:
+		_map_modes_dropdown.visible = narrow
+		_map_modes_dropdown.custom_minimum_size.x = 170.0 if tiny else (190.0 if compact else 210.0)
+		_map_modes_dropdown.add_theme_font_size_override("font_size", 14 if tiny else (15 if compact else 16))
 
 	if money_label:
 		money_label.custom_minimum_size.x = 300.0 if compact else 425.0
@@ -686,6 +705,46 @@ func _nastav_tooltipy_mapovych_modu() -> void:
 				str(MAP_MODE_DISPLAY_NAMES.get(mod, mod)),
 				str(MAP_MODE_HOTKEYS.get(mod, "-"))
 			]
+	if _map_modes_dropdown:
+		_map_modes_dropdown.tooltip_text = "Map mode menu (auto-shown on small screens)."
+
+func _vytvor_dropdown_mapovych_modu() -> void:
+	if _map_modes_dropdown != null:
+		return
+	if top_panel == null:
+		return
+	var box = top_panel.get_node_or_null("HBoxContainer") as HBoxContainer
+	if box == null:
+		return
+
+	_map_modes_dropdown = OptionButton.new()
+	_map_modes_dropdown.name = "MapModesDropdown"
+	_map_modes_dropdown.visible = false
+	_map_modes_dropdown.focus_mode = Control.FOCUS_NONE
+	_map_modes_dropdown.custom_minimum_size = Vector2(210, 38)
+	_map_modes_dropdown.add_theme_font_size_override("font_size", 16)
+	if not _map_modes_dropdown.item_selected.is_connected(_on_map_mode_dropdown_selected):
+		_map_modes_dropdown.item_selected.connect(_on_map_mode_dropdown_selected)
+
+	for mod in MAP_MODE_ORDER:
+		var label = str(MAP_MODE_DISPLAY_NAMES.get(mod, mod))
+		_map_modes_dropdown.add_item(label)
+		var idx = _map_modes_dropdown.item_count - 1
+		_map_modes_dropdown.set_item_metadata(idx, mod)
+
+	box.add_child(_map_modes_dropdown)
+	if map_modes_box and map_modes_box.get_parent() == box:
+		box.move_child(_map_modes_dropdown, map_modes_box.get_index() + 1)
+
+func _on_map_mode_dropdown_selected(index: int) -> void:
+	if _map_modes_dropdown == null:
+		return
+	if index < 0 or index >= _map_modes_dropdown.item_count:
+		return
+	var mod = str(_map_modes_dropdown.get_item_metadata(index))
+	if mod == "":
+		return
+	_prepni_mapovy_mod(mod)
 
 func _ziskej_cesty_ikony_map_modu(mod: String) -> Array:
 	# Relationships icon can be replaced later by adding one of these files.
@@ -819,24 +878,29 @@ func _ziskej_aktualni_mapovy_mod() -> String:
 	return str(map_loader.get("aktualni_mapovy_mod"))
 
 func _aktualizuj_stav_tlacitek_modu(active_mode: String = "") -> void:
-	if map_modes_box == null:
-		return
 	var mode = active_mode if active_mode != "" else _ziskej_aktualni_mapovy_mod()
-	for child in map_modes_box.get_children():
-		if child is Button:
-			var b = child as Button
-			b.button_pressed = false
-			b.custom_minimum_size = Vector2(MAP_MODE_BUTTON_WIDTH, MAP_MODE_BUTTON_HEIGHT)
-	for mod in MAP_MODE_TO_BUTTON_PATHS.keys():
-		if mod != mode:
-			continue
-		var btn_name = str(MAP_MODE_TO_BUTTON_PATHS[mod])
-		var btn = map_modes_box.get_node_or_null(btn_name)
-		if btn and btn is Button:
-			var active_btn = btn as Button
-			active_btn.button_pressed = true
-			active_btn.custom_minimum_size = Vector2(MAP_MODE_BUTTON_WIDTH, MAP_MODE_BUTTON_SELECTED_HEIGHT)
-		break
+	if map_modes_box:
+		for child in map_modes_box.get_children():
+			if child is Button:
+				var b = child as Button
+				b.button_pressed = false
+				b.custom_minimum_size = Vector2(MAP_MODE_BUTTON_WIDTH, MAP_MODE_BUTTON_HEIGHT)
+		for mod in MAP_MODE_TO_BUTTON_PATHS.keys():
+			if mod != mode:
+				continue
+			var btn_name = str(MAP_MODE_TO_BUTTON_PATHS[mod])
+			var btn = map_modes_box.get_node_or_null(btn_name)
+			if btn and btn is Button:
+				var active_btn = btn as Button
+				active_btn.button_pressed = true
+				active_btn.custom_minimum_size = Vector2(MAP_MODE_BUTTON_WIDTH, MAP_MODE_BUTTON_SELECTED_HEIGHT)
+			break
+
+	if _map_modes_dropdown:
+		for i in range(_map_modes_dropdown.item_count):
+			if str(_map_modes_dropdown.get_item_metadata(i)) == mode:
+				_map_modes_dropdown.select(i)
+				break
 
 func _zapoj_tlacitka_mapovych_modu() -> void:
 	if map_modes_box == null:

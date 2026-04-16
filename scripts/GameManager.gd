@@ -1,5 +1,7 @@
 extends Node
 
+# Main game state lives here. Kinda giant, but it keeps map, econ and diplo in one place.
+
 signal kolo_zmeneno 
 signal zpracovani_tahu_zmeneno(aktivni: bool)
 
@@ -7,6 +9,7 @@ var hrac_stat = "ALB"
 var hrac_jmeno = "" 
 var hrac_ideologie = "" 
 
+# Basic player + economy stuff used all over teh UI.
 # Initial treasury is set dynamically from 5% of total state GDP.
 var statni_kasa: float = 0.0 
 var celkovy_prijem: float = 0.0
@@ -240,6 +243,7 @@ const VYZKUM_PROJEKTY := {
 	}
 }
 
+# Diplomacy data. Tohle se pak skoro cele uklada do save.
 # Diplomacy
 var valky: Dictionary = {}
 var cekajici_kapitulace: Array = []
@@ -369,6 +373,7 @@ const AI_GOAL_RETARGET_JITTER_MAX := 3
 
 const RELATIONSHIPS_CSV_PATH := "res://map_data/Relationships.csv"
 
+# Small helper so local multiplayer only keeps valid country tags.
 func _normalizuj_lidske_staty(staty: Array) -> Array:
 	var out: Array = []
 	for s in staty:
@@ -997,6 +1002,7 @@ func _zajisti_slozku_save() -> void:
 	if root_dir and not root_dir.dir_exists("saves"):
 		root_dir.make_dir_recursive("saves")
 
+# Save is mostly one big snapshot, becuase rebuilding every sub-system would be pain.
 func _vytvor_save_state() -> Dictionary:
 	if lokalni_hraci_staty.size() > 1:
 		_uloz_finance_aktivniho_hrace()
@@ -1075,6 +1081,7 @@ func _nacti_state_z_cesty(path: String) -> Dictionary:
 
 	return raw as Dictionary
 
+# Re-load snapshot and then refresh caches/UI facing state from it.
 func _aplikuj_save_state(state: Dictionary) -> bool:
 	if state.is_empty():
 		return false
@@ -1419,6 +1426,7 @@ func _ziskej_nazev_statu_podle_owner(owner_tag: String) -> String:
 func _clamp_arm_lab_quality(level: int) -> int:
 	return clampi(level, 0, 8)
 
+# Army lab is basically a tiny grid-builder per state, jen schovany tady v manageru.
 func _zajisti_armadni_lab_statu(tag: String) -> Dictionary:
 	var cisty = _normalizuj_tag(tag)
 	if cisty == "" or cisty == "SEA":
@@ -1699,6 +1707,7 @@ func _arm_lab_muze_umistit_na_ignorovat(grid_items: Array, w: int, h: int, x: in
 				return false
 	return true
 
+# Offers refresh by turn, so UI can just ask for current state and not solve timing sama.
 func _arm_lab_zajisti_nabidky(state_tag: String) -> void:
 	var cisty = _normalizuj_tag(state_tag)
 	if cisty == "" or cisty == "SEA":
@@ -2529,6 +2538,7 @@ func _ziskej_statove_modifikatory_ideologie(ideology: String) -> Dictionary:
 		"recruit_mult": recruit_mult
 	}
 
+# Preview and apply share same math, aby preview nekecal jinak nez final apply.
 func _nahled_nebo_aplikace_ideologie_statistik(state: String, old_ideology: String, new_ideology: String, apply_changes: bool) -> Dictionary:
 	var old_mods = _ziskej_statove_modifikatory_ideologie(old_ideology)
 	var new_mods = _ziskej_statove_modifikatory_ideologie(new_ideology)
@@ -3109,6 +3119,7 @@ func prejmenuj_stat(state_tag: String, new_name: String) -> Dictionary:
 		"changed_provinces": changed
 	}
 
+# Trade flow is: normalize -> validate -> queue/AI decide -> execute.
 func odeslat_obchodni_nabidku(odesilatel: String, prijemce: String, terms_from_sender_raw: Dictionary, terms_from_receiver_raw: Dictionary) -> Dictionary:
 	var from_tag = _normalizuj_tag(odesilatel)
 	var to_tag = _normalizuj_tag(prijemce)
@@ -3241,6 +3252,7 @@ func _trade_extract_numeric_tokens(raw: String) -> Array:
 			out.append(float(token))
 	return out
 
+# Tiny parser for UI text input, so player can write stuff a bit messy and it still works.
 func _trade_parse_loan_terms(value_a: String, value_b: String) -> Dictionary:
 	var numbers: Array = []
 	numbers.append_array(_trade_extract_numeric_tokens(value_a))
@@ -3872,6 +3884,7 @@ func _klic_vztah_pair(tag_a: String, tag_b: String) -> String:
 		return "%s|%s" % [a, b]
 	return "%s|%s" % [b, a]
 
+# Relations load lazy from CSV and then are mirrored both ways for faster reads.
 func _nacti_vztahy_statu() -> void:
 	if _vztahy_nactene:
 		return
@@ -4029,7 +4042,6 @@ func zbyva_kol_do_upravy_vztahu(tag_a: String, tag_b: String) -> int:
 	var b = _normalizuj_tag(tag_b)
 	if a == "" or b == "" or a == b:
 		return 0
-
 	var key = _klic_vztah_pair(a, b)
 	if not _vztah_akce_posledni_kolo.has(key):
 		return 0
@@ -4091,6 +4103,7 @@ func _nastav_uroven_aliance_bez_kontroly(tag_a: String, tag_b: String, level: in
 		_ai_allies_cache.clear()
 		_mark_ai_war_pair_eval_dirty_pair(tag_a, tag_b)
 
+# If relation drops under thresholds, alliance gets downgraded automaticky.
 func nastav_uroven_aliance(tag_a: String, tag_b: String, level: int, ignoruj_vztahove_podminky: bool = false) -> bool:
 	var a = _normalizuj_tag(tag_a)
 	var b = _normalizuj_tag(tag_b)
