@@ -1,15 +1,15 @@
 ﻿# ==================================================================================================
-# ███╗   ███╗ █████╗ ██████╗ ███████╗    ██████╗ ██╗   ██╗    █████╗ ███████╗██████╗  ██████╗ ██╗  ██╗
-# ████╗ ████║██╔══██╗██╔══██╗██╔════╝    ██╔══██╗╚██╗ ██╔╝   ██╔══██╗██╔════╝██╔══██╗██╔═══██╗╚██╗██╔╝
-# ██╔████╔██║███████║██║  ██║█████╗      ██████╔╝ ╚████╔╝    ███████║█████╗  ██████╔╝██║   ██║ ╚███╔╝
-# ██║╚██╔╝██║██╔══██║██║  ██║██╔══╝      ██╔══██╗  ╚██╔╝     ██╔══██║██╔══╝  ██╔══██╗██║   ██║ ██╔██╗
-# ██║ ╚═╝ ██║██║  ██║██████╔╝███████╗    ██████╔╝   ██║      ██║  ██║██║     ██║  ██║╚██████╔╝██╔╝ ██╗
-# ╚═╝     ╚═╝╚═╝  ╚═╝╚═════╝ ╚══════╝    ╚═════╝    ╚═╝      ╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝
+# â–â–â–â•—   â–â–â–â•— â–â–â–â–â–â•— â–â–â–â–â–â–â•— â–â–â–â–â–â–â–â•—    â–â–â–â–â–â–â•— â–â–â•—   â–â–â•—    â–â–â–â–â–â•— â–â–â–â–â–â–â–â•—â–â–â–â–â–â–â•—  â–â–â–â–â–â–â•— â–â–â•—  â–â–â•—
+# â–â–â–â–â•— â–â–â–â–â•‘â–â–â•”â•â•â–â–â•—â–â–â•”â•â•â–â–â•—â–â–â•”â•â•â•â•â•ť    â–â–â•”â•â•â–â–â•—â•šâ–â–â•— â–â–â•”â•ť   â–â–â•”â•â•â–â–â•—â–â–â•”â•â•â•â•â•ťâ–â–â•”â•â•â–â–â•—â–â–â•”â•â•â•â–â–â•—â•šâ–â–â•—â–â–â•”â•ť
+# â–â–â•”â–â–â–â–â•”â–â–â•‘â–â–â–â–â–â–â–â•‘â–â–â•‘  â–â–â•‘â–â–â–â–â–â•—      â–â–â–â–â–â–â•”â•ť â•šâ–â–â–â–â•”â•ť    â–â–â–â–â–â–â–â•‘â–â–â–â–â–â•—  â–â–â–â–â–â–â•”â•ťâ–â–â•‘   â–â–â•‘ â•šâ–â–â–â•”â•ť
+# â–â–â•‘â•šâ–â–â•”â•ťâ–â–â•‘â–â–â•”â•â•â–â–â•‘â–â–â•‘  â–â–â•‘â–â–â•”â•â•â•ť      â–â–â•”â•â•â–â–â•—  â•šâ–â–â•”â•ť     â–â–â•”â•â•â–â–â•‘â–â–â•”â•â•â•ť  â–â–â•”â•â•â–â–â•—â–â–â•‘   â–â–â•‘ â–â–â•”â–â–â•—
+# â–â–â•‘ â•šâ•â•ť â–â–â•‘â–â–â•‘  â–â–â•‘â–â–â–â–â–â–â•”â•ťâ–â–â–â–â–â–â–â•—    â–â–â–â–â–â–â•”â•ť   â–â–â•‘      â–â–â•‘  â–â–â•‘â–â–â•‘     â–â–â•‘  â–â–â•‘â•šâ–â–â–â–â–â–â•”â•ťâ–â–â•”â•ť â–â–â•—
+# â•šâ•â•ť     â•šâ•â•ťâ•šâ•â•ť  â•šâ•â•ťâ•šâ•â•â•â•â•â•ť â•šâ•â•â•â•â•â•â•ť    â•šâ•â•â•â•â•â•ť    â•šâ•â•ť      â•šâ•â•ť  â•šâ•â•ťâ•šâ•â•ť     â•šâ•â•ť  â•šâ•â•ť â•šâ•â•â•â•â•â•ť â•šâ•â•ť  â•šâ•â•ť
 #
 #                                         Made By: Afrox26TP
 # ==================================================================================================
 extends Node
-# Brief: this script drives a specific gameplay/UI area and keeps related logic together.
+# this script drives a specific gameplay/UI area and keeps related logic together.
 
 # Main game state lives here. Kinda giant, but it keeps map, econ and diplo in one place.
 
@@ -371,6 +371,9 @@ const AI_MIN_TREASURY_RESERVE := 25.0
 const AI_BUILDING_COST_ECON := 150.0
 const AI_BUILDING_COST_RECRUIT := 200.0
 const AI_BUILDING_COST_PORT := 250.0
+const AI_BUILDING_COST_FARM := 165.0
+const AI_BUILDING_COST_ARMY_BASE := 225.0
+const AI_BUILDING_COST_FORTRESS := 280.0
 const AI_BUILD_MAX_PER_TURN := 1
 const AI_ARM_LAB_MIN_SURPLUS := 45.0
 const AI_RECRUIT_BASE_FRACTION := 0.32
@@ -385,10 +388,70 @@ const AI_GOAL_STAGNATION_RETARGET := 7
 const AI_GOAL_MIN_AGE_FOR_STAGNATION_RETARGET := 10
 const AI_GOAL_RETARGET_JITTER_MAX := 3
 
+const BUILDING_ID_ECON_HUB := "econ_hub"
+const BUILDING_ID_RECRUIT_CENTER := "recruit_center"
+const BUILDING_ID_PORT := "port"
+const BUILDING_ID_FARM := "farm"
+const BUILDING_ID_ARMY_BASE := "army_base"
+const BUILDING_ID_FORTRESS := "fortress"
+
+const BUILDING_DEFS := {
+	BUILDING_ID_ECON_HUB: {
+		"name": "Factory",
+		"cost": AI_BUILDING_COST_ECON,
+		"build_time": 3,
+		"gdp_flat": 10.0,
+		"max_level": 3
+	},
+	BUILDING_ID_RECRUIT_CENTER: {
+		"name": "Training Camp",
+		"cost": AI_BUILDING_COST_RECRUIT,
+		"build_time": 3,
+		"state_modifiers": {
+			"recruit_cost_mult": 0.95
+		},
+		"max_level": 3
+	},
+	BUILDING_ID_PORT: {
+		"name": "Port",
+		"cost": AI_BUILDING_COST_PORT,
+		"build_time": 3,
+		"grant_port": true,
+		"max_level": 1
+	},
+	BUILDING_ID_FARM: {
+		"name": "Farm",
+		"cost": AI_BUILDING_COST_FARM,
+		"build_time": 3,
+		"province_modifiers": {
+			"gdp_growth_mult": 1.03,
+			"population_growth_mult": 1.06,
+			"recruit_regen_mult": 1.08
+		},
+		"max_level": 3
+	},
+	BUILDING_ID_ARMY_BASE: {
+		"name": "Army Base",
+		"cost": AI_BUILDING_COST_ARMY_BASE,
+		"build_time": 3,
+		"province_modifiers": {
+			"upkeep_mult": 0.90
+		},
+		"max_level": 2
+	},
+	BUILDING_ID_FORTRESS: {
+		"name": "Fortress",
+		"cost": AI_BUILDING_COST_FORTRESS,
+		"build_time": 4,
+		"defense_bonus_pct": 0.18,
+		"max_level": 2
+	}
+}
+
 const RELATIONSHIPS_CSV_PATH := "res://map_data/Relationships.csv"
 
 # Small helper so local multiplayer only keeps valid country tags.
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _normalizuj_lidske_staty(staty: Array) -> Array:
 	var out: Array = []
 	for s in staty:
@@ -400,7 +463,7 @@ func _normalizuj_lidske_staty(staty: Array) -> Array:
 		out.append(tag)
 	return out
 
-# Brief: Applies incoming values and synchronizes dependent state.
+# Writes new values and refreshes related state.
 func nastav_lokalni_hrace(staty: Array) -> void:
 	var normalizovane = _normalizuj_lidske_staty(staty)
 	if normalizovane.is_empty():
@@ -431,7 +494,7 @@ func nastav_lokalni_hrace(staty: Array) -> void:
 
 	_synchronizuj_jmeno_a_ideologii_hrace()
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _pridej_popup_hraci(tag: String, titulek: String, text: String, force_popup: bool = false) -> void:
 	var cisty_tag = _normalizuj_tag(tag)
 	if cisty_tag == "" or not je_lidsky_stat(cisty_tag):
@@ -448,7 +511,7 @@ func _pridej_popup_hraci(tag: String, titulek: String, text: String, force_popup
 		"text": text
 	})
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _pridej_notifikaci_pujcky_hraci(tag: String, text: String) -> void:
 	var cisty = _normalizuj_tag(tag)
 	if cisty == "" or not je_lidsky_stat(cisty):
@@ -459,7 +522,7 @@ func _pridej_notifikaci_pujcky_hraci(tag: String, text: String) -> void:
 		notifikace_pujcek_hracu[cisty] = []
 	(notifikace_pujcek_hracu[cisty] as Array).append(text)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func vyzvedni_notifikace_pujcek_hrace(tag: String) -> Array:
 	var cisty = _normalizuj_tag(tag)
 	if cisty == "" or not notifikace_pujcek_hracu.has(cisty):
@@ -468,7 +531,7 @@ func vyzvedni_notifikace_pujcek_hrace(tag: String) -> Array:
 	notifikace_pujcek_hracu.erase(cisty)
 	return arr
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Condition check helper.
 func _je_dulezity_popup(titulek: String, text: String) -> bool:
 	var t = titulek.to_lower()
 	var msg = text.to_lower()
@@ -486,7 +549,7 @@ func _je_dulezity_popup(titulek: String, text: String) -> bool:
 
 	return false
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _normalizuj_kategorii_logu_pro_prioritu(category: String, title: String, text: String) -> String:
 	var c = category.strip_edges().to_lower()
 	match c:
@@ -535,7 +598,7 @@ func _normalizuj_kategorii_logu_pro_prioritu(category: String, title: String, te
 		return "negotiations"
 	return "other"
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _priorita_kategorie_logu(category: String, title: String, text: String) -> int:
 	# Higher number = higher importance, kept longer during trimming.
 	match _normalizuj_kategorii_logu_pro_prioritu(category, title, text):
@@ -556,7 +619,7 @@ func _priorita_kategorie_logu(category: String, title: String, text: String) -> 
 		_:
 			return 2
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _odstran_expirovane_historicke_smlouvy(log_arr: Array) -> void:
 	if log_arr.is_empty():
 		return
@@ -576,7 +639,7 @@ func _odstran_expirovane_historicke_smlouvy(log_arr: Array) -> void:
 		if (aktualni_kolo - turn) >= NON_AGGRESSION_DURATION_TURNS:
 			log_arr.remove_at(i)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _udrzba_vsech_logu() -> void:
 	if _defer_log_maintenance:
 		_log_maintenance_dirty = true
@@ -586,7 +649,7 @@ func _udrzba_vsech_logu() -> void:
 	_trim_log_pole(log_globalnich_zprav)
 	_log_maintenance_dirty = false
 
-# Brief: Searches available data and returns the best matching result.
+# Finds the best matching result.
 func _najdi_index_zpravy_k_odstraneni(log_arr: Array) -> int:
 	if log_arr.is_empty():
 		return -1
@@ -615,7 +678,7 @@ func _najdi_index_zpravy_k_odstraneni(log_arr: Array) -> int:
 
 	return chosen_idx
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _trim_log_pole(log_arr: Array, max_items: int = MAX_LOG_ZPRAV) -> void:
 	if _defer_log_maintenance:
 		_log_maintenance_dirty = true
@@ -628,7 +691,7 @@ func _trim_log_pole(log_arr: Array, max_items: int = MAX_LOG_ZPRAV) -> void:
 		else:
 			log_arr.remove_at(idx)
 
-# Brief: Applies incoming values and synchronizes dependent state.
+# Writes new values and refreshes related state.
 func _set_defer_log_maintenance(enabled: bool) -> void:
 	if _defer_log_maintenance == enabled:
 		return
@@ -636,7 +699,7 @@ func _set_defer_log_maintenance(enabled: bool) -> void:
 	if not enabled and _log_maintenance_dirty:
 		_udrzba_vsech_logu()
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _zaloguj_zpravu_hraci(tag: String, titulek: String, text: String, kategorie: String = "general") -> void:
 	var cisty = _normalizuj_tag(tag)
 	if cisty == "" or titulek.strip_edges() == "" or text.strip_edges() == "":
@@ -664,7 +727,7 @@ func _zaloguj_zpravu_hraci(tag: String, titulek: String, text: String, kategorie
 
 	_trim_log_pole(log_zprav_hracu[cisty] as Array)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _zaloguj_globalni_zpravu(titulek: String, text: String, kategorie: String = "global") -> void:
 	if titulek.strip_edges() == "" or text.strip_edges() == "":
 		return
@@ -676,7 +739,7 @@ func _zaloguj_globalni_zpravu(titulek: String, text: String, kategorie: String =
 	})
 	_trim_log_pole(log_globalnich_zprav)
 
-# Brief: Reads current runtime data and returns it to callers.
+# Returns current runtime data.
 func ziskej_zpravy_hrace(tag: String, limit: int = 120) -> Array:
 	_udrzba_vsech_logu()
 	var cisty = _normalizuj_tag(tag)
@@ -689,7 +752,7 @@ func ziskej_zpravy_hrace(tag: String, limit: int = 120) -> Array:
 	var from_idx = max(0, src.size() - cnt)
 	return src.slice(from_idx, src.size())
 
-# Brief: Reads current runtime data and returns it to callers.
+# Pulls current state data.
 func ziskej_globalni_zpravy(limit: int = 160) -> Array:
 	_udrzba_vsech_logu()
 	if log_globalnich_zprav.is_empty():
@@ -698,7 +761,7 @@ func ziskej_globalni_zpravy(limit: int = 160) -> Array:
 	var from_idx = max(0, log_globalnich_zprav.size() - cnt)
 	return log_globalnich_zprav.slice(from_idx, log_globalnich_zprav.size())
 
-# Brief: Reads current runtime data and returns it to callers.
+# Returns current runtime data.
 func ziskej_pocet_zprav_hrace(tag: String) -> int:
 	_udrzba_vsech_logu()
 	var cisty = _normalizuj_tag(tag)
@@ -706,12 +769,12 @@ func ziskej_pocet_zprav_hrace(tag: String) -> int:
 		return 0
 	return (log_zprav_hracu[cisty] as Array).size()
 
-# Brief: Reads current runtime data and returns it to callers.
+# Pulls current state data.
 func ziskej_pocet_globalnich_zprav() -> int:
 	_udrzba_vsech_logu()
 	return log_globalnich_zprav.size()
 
-# Brief: Reads current runtime data and returns it to callers.
+# Pulls current state data.
 func _ziskej_jmeno_statu_podle_tagu(tag: String) -> String:
 	var wanted = _normalizuj_tag(tag)
 	if wanted == "" or map_data.is_empty():
@@ -723,7 +786,7 @@ func _ziskej_jmeno_statu_podle_tagu(tag: String) -> String:
 			return state_name if state_name != "" else wanted
 	return wanted
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _zprava_obsahuje_stat(entry: Dictionary, state_tag: String) -> bool:
 	var wanted = _normalizuj_tag(state_tag)
 	if wanted == "":
@@ -737,7 +800,7 @@ func _zprava_obsahuje_stat(entry: Dictionary, state_tag: String) -> bool:
 		return false
 	return full_text.to_lower().findn(country_name.to_lower()) != -1
 
-# Brief: Reads current runtime data and returns it to callers.
+# Fetches data for callers.
 func ziskej_relevantni_zpravy_statu(state_tag: String, limit: int = 160, jen_aktualni_kolo: bool = true) -> Array:
 	_udrzba_vsech_logu()
 	var wanted = _normalizuj_tag(state_tag)
@@ -777,7 +840,7 @@ func ziskej_relevantni_zpravy_statu(state_tag: String, limit: int = 160, jen_akt
 		return merged.slice(merged.size() - limit, merged.size())
 	return merged
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _pridej_popup_zucastnenym_hracum(tag_a: String, tag_b: String, titulek: String, text: String) -> void:
 	var a = _normalizuj_tag(tag_a)
 	var b = _normalizuj_tag(tag_b)
@@ -789,7 +852,7 @@ func _pridej_popup_zucastnenym_hracum(tag_a: String, tag_b: String, titulek: Str
 			_pridej_popup_hraci(t, titulek, text)
 			pridane[t] = true
 
-# Brief: Displays UI/output and updates visible presentation data.
+# Display update for visible data.
 func _zobraz_cekajici_popupy_aktivniho_hrace() -> void:
 	var aktivni = _normalizuj_tag(hrac_stat)
 	if aktivni == "":
@@ -827,7 +890,7 @@ func _zobraz_cekajici_popupy_aktivniho_hrace() -> void:
 			continue
 		await map_loader._ukaz_bitevni_popup(t, msg)
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Eligibility/guard check.
 func je_lidsky_stat(tag: String) -> bool:
 	var cisty = _normalizuj_tag(tag)
 	if cisty == "":
@@ -836,7 +899,7 @@ func je_lidsky_stat(tag: String) -> bool:
 		return cisty == _normalizuj_tag(hrac_stat)
 	return lokalni_hraci_staty.has(cisty)
 
-# Brief: Persists runtime/configuration data to storage.
+# Save routine for runtime data.
 func _uloz_finance_aktivniho_hrace() -> void:
 	var aktivni = _normalizuj_tag(hrac_stat)
 	if aktivni == "":
@@ -844,7 +907,7 @@ func _uloz_finance_aktivniho_hrace() -> void:
 	hrac_kasy[aktivni] = statni_kasa
 	hrac_prijmy[aktivni] = celkovy_prijem
 
-# Brief: Loads data/resources and validates parsed results.
+# Resource loading with validation.
 func _nacti_finance_aktivniho_hrace() -> void:
 	var aktivni = _normalizuj_tag(hrac_stat)
 	if aktivni == "":
@@ -852,7 +915,7 @@ func _nacti_finance_aktivniho_hrace() -> void:
 	statni_kasa = float(hrac_kasy.get(aktivni, statni_kasa))
 	celkovy_prijem = float(hrac_prijmy.get(aktivni, celkovy_prijem))
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _sjednot_multiplayer_finance_cache() -> void:
 	if lokalni_hraci_staty.size() <= 1:
 		return
@@ -924,7 +987,7 @@ func _sjednot_multiplayer_finance_cache() -> void:
 	aktivni_hrac_index = clampi(lokalni_hraci_staty.find(aktivni_tag), 0, lokalni_hraci_staty.size() - 1)
 	_nacti_finance_aktivniho_hrace()
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _sjednot_financni_toky_cache() -> void:
 	_sim_cache_validni = false
 	var sjednocene_vztahy: Dictionary = {}
@@ -964,7 +1027,7 @@ func _sjednot_financni_toky_cache() -> void:
 		})
 	valecne_reparace = sjednocene_reparace
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _synchronizuj_jmeno_a_ideologii_hrace() -> void:
 	hrac_jmeno = ""
 	hrac_ideologie = ""
@@ -977,7 +1040,7 @@ func _synchronizuj_jmeno_a_ideologii_hrace() -> void:
 			hrac_ideologie = str(d.get("ideology", ""))
 			return
 
-# Brief: Switches mode/state and updates related behavior and visuals.
+# State/mode switch with visual update.
 func _prepni_na_hrace(index: int) -> void:
 	if lokalni_hraci_staty.is_empty():
 		return
@@ -986,18 +1049,18 @@ func _prepni_na_hrace(index: int) -> void:
 	_nacti_finance_aktivniho_hrace()
 	_synchronizuj_jmeno_a_ideologii_hrace()
 
-# Brief: Switches mode/state and updates related behavior and visuals.
+# Handles mode transition updates.
 func _prepni_na_dalsiho_hrace() -> void:
 	if lokalni_hraci_staty.size() <= 1:
 		return
 	var dalsi_index = (aktivni_hrac_index + 1) % lokalni_hraci_staty.size()
 	_prepni_na_hrace(dalsi_index)
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Eligibility/guard check.
 func _je_posledni_hrac_v_poradi() -> bool:
 	return lokalni_hraci_staty.size() <= 1 or aktivni_hrac_index >= (lokalni_hraci_staty.size() - 1)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func odeber_lidsky_stat(tag: String) -> void:
 	var cisty = _normalizuj_tag(tag)
 	if cisty == "":
@@ -1022,14 +1085,14 @@ func odeber_lidsky_stat(tag: String) -> void:
 		aktivni_hrac_index = 0
 	_prepni_na_hrace(aktivni_hrac_index)
 
-# Brief: Reads current runtime data and returns it to callers.
+# Reads values from active state.
 func _ziskej_data_mapy_pro_ulozeni() -> Dictionary:
 	var map_loader = _get_map_loader()
 	if map_loader and "provinces" in map_loader:
 		return (map_loader.provinces as Dictionary)
 	return map_data
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _normalizuj_nazev_save(slot_name: String) -> String:
 	var clean_name = slot_name.strip_edges()
 	if clean_name == "":
@@ -1044,18 +1107,18 @@ func _normalizuj_nazev_save(slot_name: String) -> String:
 		clean_name = "save"
 	return clean_name
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _cesta_slotu_save(slot_name: String) -> String:
 	return "%s/%s%s" % [SAVE_SLOTS_DIR, _normalizuj_nazev_save(slot_name), SAVE_SLOT_EXT]
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _zajisti_slozku_save() -> void:
 	var root_dir = DirAccess.open("user://")
 	if root_dir and not root_dir.dir_exists("saves"):
 		root_dir.make_dir_recursive("saves")
 
 # Save is mostly one big snapshot, becuase rebuilding every sub-system would be pain.
-# Brief: Builds required objects/UI nodes and wires essential defaults/signals.
+# Sets up nodes, defaults, and signals.
 func _vytvor_save_state() -> Dictionary:
 	if lokalni_hraci_staty.size() > 1:
 		_uloz_finance_aktivniho_hrace()
@@ -1113,7 +1176,7 @@ func _vytvor_save_state() -> Dictionary:
 		"hrac_kasa_inicializovana_single": _hrac_kasa_inicializovana
 	}
 
-# Brief: Persists runtime/configuration data to storage.
+# Saves runtime/config data.
 func _uloz_state_do_cesty(path: String, state: Dictionary) -> bool:
 	var file = FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
@@ -1121,7 +1184,7 @@ func _uloz_state_do_cesty(path: String, state: Dictionary) -> bool:
 	file.store_var(state, true)
 	return true
 
-# Brief: Loads data/resources and validates parsed results.
+# Load pass with basic validation.
 func _nacti_state_z_cesty(path: String) -> Dictionary:
 	if not FileAccess.file_exists(path):
 		return {}
@@ -1137,7 +1200,7 @@ func _nacti_state_z_cesty(path: String) -> Dictionary:
 	return raw as Dictionary
 
 # Re-load snapshot and then refresh caches/UI facing state from it.
-# Brief: Applies prepared settings/effects to runtime systems.
+# Applies prepared settings/effects to runtime systems.
 func _aplikuj_save_state(state: Dictionary) -> bool:
 	if state.is_empty():
 		return false
@@ -1152,7 +1215,7 @@ func _aplikuj_save_state(state: Dictionary) -> bool:
 	if not (loaded_map_any is Dictionary):
 		loaded_map_any = {}
 	map_data = (loaded_map_any as Dictionary).duplicate(true)
-	provincie_cooldowny = (state.get("provincie_cooldowny", {}) as Dictionary).duplicate(true)
+	provincie_cooldowny = _normalizuj_provincie_cooldowny(state.get("provincie_cooldowny", {}))
 	ai_kasy = (state.get("ai_kasy", {}) as Dictionary).duplicate(true)
 	_ai_profily = (state.get("ai_profily", {}) as Dictionary).duplicate(true)
 	_ai_randomized_ideologies_applied = bool(state.get("ai_randomized_ideologies_applied", false))
@@ -1218,7 +1281,7 @@ func _aplikuj_save_state(state: Dictionary) -> bool:
 	kolo_zmeneno.emit()
 	return true
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func reset_pro_novou_hru() -> void:
 	hrac_stat = "ALB"
 	hrac_jmeno = ""
@@ -1279,7 +1342,7 @@ func reset_pro_novou_hru() -> void:
 	_turn_border_pairs.clear()
 	_turn_active_states.clear()
 
-# Brief: Reads current runtime data and returns it to callers.
+# Read-only data accessor.
 func ziskej_save_sloty() -> Array:
 	_zajisti_slozku_save()
 	var slots: Array = []
@@ -1312,7 +1375,7 @@ func ziskej_save_sloty() -> Array:
 	)
 	return slots
 
-# Brief: Reads current runtime data and returns it to callers.
+# Fetches data for callers.
 func ziskej_save_slot_pro_kolo(turn_number: int) -> String:
 	if turn_number <= 0:
 		return ""
@@ -1328,21 +1391,21 @@ func ziskej_save_slot_pro_kolo(turn_number: int) -> String:
 			return str(slot.get("name", ""))
 	return ""
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Eligibility/guard check.
 func ma_save_pro_kolo(turn_number: int) -> bool:
 	return ziskej_save_slot_pro_kolo(turn_number) != ""
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Boolean check for required state.
 func ma_ulozene_hry() -> bool:
 	if FileAccess.file_exists(SAVEGAME_STATE_PATH):
 		return true
 	return not ziskej_save_sloty().is_empty()
 
-# Brief: Reads current runtime data and returns it to callers.
+# Reads values from active state.
 func ziskej_aktivni_pujcky() -> Array:
 	return aktivni_pujcky.duplicate(true)
 
-# Brief: Persists runtime/configuration data to storage.
+# Stores current data to disk.
 func uloz_hru_do_slotu(slot_name: String) -> bool:
 	_zajisti_slozku_save()
 	var state = _vytvor_save_state()
@@ -1355,13 +1418,13 @@ func uloz_hru_do_slotu(slot_name: String) -> bool:
 	_uloz_state_do_cesty(SAVEGAME_STATE_PATH, state)
 	return ok_slot
 
-# Brief: Loads data/resources and validates parsed results.
+# Data/resource load and sanity checks.
 func nacti_hru_ze_slotu(slot_name: String) -> bool:
 	var slot_path = _cesta_slotu_save(slot_name)
 	var state = _nacti_state_z_cesty(slot_path)
 	return _aplikuj_save_state(state)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func smaz_save_slot(slot_name: String) -> bool:
 	var clean = _normalizuj_nazev_save(slot_name)
 	if clean == "":
@@ -1374,14 +1437,14 @@ func smaz_save_slot(slot_name: String) -> bool:
 	var abs_path = ProjectSettings.globalize_path(slot_path)
 	return DirAccess.remove_absolute(abs_path) == OK
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func smaz_legacy_save() -> bool:
 	if not FileAccess.file_exists(SAVEGAME_STATE_PATH):
 		return false
 	var abs_path = ProjectSettings.globalize_path(SAVEGAME_STATE_PATH)
 	return DirAccess.remove_absolute(abs_path) == OK
 
-# Brief: Loads data/resources and validates parsed results.
+# Load pass with basic validation.
 func nacti_posledni_hru() -> bool:
 	var slots = ziskej_save_sloty()
 	if not slots.is_empty():
@@ -1391,11 +1454,11 @@ func nacti_posledni_hru() -> bool:
 			return true
 	return nacti_hru()
 
-# Brief: Persists runtime/configuration data to storage.
+# Stores current data to disk.
 func uloz_hru() -> bool:
 	return uloz_hru_do_slotu("quicksave")
 
-# Brief: Loads data/resources and validates parsed results.
+# Resource loading with validation.
 func nacti_hru() -> bool:
 	var legacy_state = _nacti_state_z_cesty(SAVEGAME_STATE_PATH)
 	if _aplikuj_save_state(legacy_state):
@@ -1403,7 +1466,7 @@ func nacti_hru() -> bool:
 	# Fallback to slot-based quicksave if legacy file is missing.
 	return nacti_hru_ze_slotu("quicksave")
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func spust_load_ze_slotu_pres_scenu(slot_key: String, scene_path: String) -> void:
 	if _menu_load_in_progress:
 		push_warning("Menu load is already in progress.")
@@ -1411,7 +1474,7 @@ func spust_load_ze_slotu_pres_scenu(slot_key: String, scene_path: String) -> voi
 	_menu_load_in_progress = true
 	call_deferred("_dokoncit_load_ze_slotu_pres_scenu", slot_key, scene_path)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _pockej_na_map_loader_pripravenost(tree: SceneTree, max_frames: int = 300) -> bool:
 	if tree == null:
 		return false
@@ -1426,7 +1489,7 @@ func _pockej_na_map_loader_pripravenost(tree: SceneTree, max_frames: int = 300) 
 		await tree.process_frame
 	return false
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _dokoncit_load_ze_slotu_pres_scenu(slot_key: String, scene_path: String) -> void:
 	var tree := get_tree()
 	if tree == null:
@@ -1481,7 +1544,7 @@ func _dokoncit_load_ze_slotu_pres_scenu(slot_key: String, scene_path: String) ->
 	_menu_load_in_progress = false
 
 # Safely get the map node
-# Brief: Reads current runtime data and returns it to callers.
+# Reads values from active state.
 func _get_map_loader():
 	var current_scene = get_tree().current_scene
 	if _map_loader_cache_scene == current_scene and _map_loader_cache != null and is_instance_valid(_map_loader_cache) and _map_loader_cache.has_method("zpracuj_tah_armad"):
@@ -1503,7 +1566,7 @@ func _get_map_loader():
 	_map_loader_cache_scene = current_scene
 	return null
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _normalizuj_tag(tag: String) -> String:
 	var clean = tag.strip_edges().to_upper()
 	if clean == "" or clean == "SEA":
@@ -1515,7 +1578,7 @@ func _normalizuj_tag(tag: String) -> String:
 		return str(_tag_alias_to_owner[clean])
 	return clean
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Boolean check for required state.
 func _je_pravdepodobny_stat_tag(value: String) -> bool:
 	var s = value.strip_edges().to_upper()
 	if s.length() != 3:
@@ -1526,7 +1589,7 @@ func _je_pravdepodobny_stat_tag(value: String) -> bool:
 			return false
 	return true
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _rebuild_tag_alias_cache() -> void:
 	_tag_alias_to_owner.clear()
 	var country_name_to_owner: Dictionary = {}
@@ -1560,11 +1623,11 @@ func _rebuild_tag_alias_cache() -> void:
 		_tag_alias_to_owner[str(alias_name)] = str(country_name_to_owner[alias_name])
 	_tag_alias_cache_dirty = false
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _normalizuj_nazev_statu(raw_name: String) -> String:
 	return raw_name.strip_edges().to_upper()
 
-# Brief: Reads current runtime data and returns it to callers.
+# Read-only data accessor.
 func _ziskej_nazev_statu_podle_owner(owner_tag: String) -> String:
 	var wanted = _normalizuj_tag(owner_tag)
 	if wanted == "":
@@ -1578,12 +1641,12 @@ func _ziskej_nazev_statu_podle_owner(owner_tag: String) -> String:
 			return nm
 	return ""
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _clamp_arm_lab_quality(level: int) -> int:
 	return clampi(level, 0, 8)
 
 # Army lab is basically a tiny grid-builder per state, jen schovany tady v manageru.
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _zajisti_armadni_lab_statu(tag: String) -> Dictionary:
 	var cisty = _normalizuj_tag(tag)
 	if cisty == "" or cisty == "SEA":
@@ -1643,7 +1706,7 @@ func _zajisti_armadni_lab_statu(tag: String) -> Dictionary:
 	armadni_lab_statu[cisty] = lab
 	return lab
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _arm_lab_odemcene_dict(lab: Dictionary) -> Dictionary:
 	var out: Dictionary = {}
 	var arr = lab.get("unlocked_cells", []) as Array
@@ -1659,7 +1722,7 @@ func _arm_lab_odemcene_dict(lab: Dictionary) -> Dictionary:
 		out["%d_%d" % [x, y]] = true
 	return out
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _arm_lab_odemcene_array(unlocked: Dictionary) -> Array:
 	var arr: Array = []
 	for key in unlocked.keys():
@@ -1667,7 +1730,7 @@ func _arm_lab_odemcene_array(unlocked: Dictionary) -> Array:
 	arr.sort()
 	return arr
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _arm_lab_obsah_mrizky_odemykani(unlocked: Dictionary) -> Dictionary:
 	var max_x = ARM_LAB_GRID_W - 1
 	var max_y = ARM_LAB_GRID_H - 1
@@ -1683,7 +1746,7 @@ func _arm_lab_obsah_mrizky_odemykani(unlocked: Dictionary) -> Dictionary:
 		"h": clampi(max_y + 1, ARM_LAB_GRID_H, ARM_LAB_GRID_MAX_H)
 	}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _arm_lab_je_kandidat_expanze(unlocked: Dictionary, x: int, y: int) -> bool:
 	if x < 0 or y < 0 or x >= ARM_LAB_GRID_MAX_W or y >= ARM_LAB_GRID_MAX_H:
 		return false
@@ -1707,7 +1770,7 @@ func _arm_lab_je_kandidat_expanze(unlocked: Dictionary, x: int, y: int) -> bool:
 
 	return false
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _arm_lab_tier_roll(quality_level: int) -> int:
 	var q = _clamp_arm_lab_quality(quality_level)
 	var roll = randf()
@@ -1719,7 +1782,7 @@ func _arm_lab_tier_roll(quality_level: int) -> int:
 		return 2
 	return 1
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _arm_lab_level_roll(quality_level: int) -> int:
 	var q = _clamp_arm_lab_quality(quality_level)
 	var roll = randf()
@@ -1734,7 +1797,7 @@ func _arm_lab_level_roll(quality_level: int) -> int:
 		return 2
 	return 1
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _arm_lab_vyber_sablonu_dle_tieru(tier: int) -> Dictionary:
 	var pool: Array = []
 	for tpl_any in ARM_LAB_ITEM_POOL:
@@ -1748,7 +1811,7 @@ func _arm_lab_vyber_sablonu_dle_tieru(tier: int) -> Dictionary:
 		return {}
 	return (pool[randi_range(0, pool.size() - 1)] as Dictionary)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _arm_lab_vytvor_random_offer(quality_level: int) -> Dictionary:
 	var tier = _arm_lab_tier_roll(quality_level)
 	var level = max(_arm_lab_level_roll(quality_level), tier)
@@ -1785,7 +1848,7 @@ func _arm_lab_vytvor_random_offer(quality_level: int) -> Dictionary:
 		"power_pct": max(0.0, power_pct)
 	}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _arm_lab_obsazena_mrizka(grid_items: Array) -> Dictionary:
 	var occupied: Dictionary = {}
 	for item_any in grid_items:
@@ -1799,7 +1862,7 @@ func _arm_lab_obsazena_mrizka(grid_items: Array) -> Dictionary:
 				occupied["%d_%d" % [xx, yy]] = true
 	return occupied
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _arm_lab_najdi_prvni_volne_misto(grid_items: Array, w: int, h: int, grid_w: int, grid_h: int, unlocked: Dictionary = {}) -> Vector2i:
 	var iw = max(1, w)
 	var ih = max(1, h)
@@ -1824,7 +1887,7 @@ func _arm_lab_najdi_prvni_volne_misto(grid_items: Array, w: int, h: int, grid_w:
 				return Vector2i(x, y)
 	return Vector2i(-1, -1)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _arm_lab_muze_umistit_na(grid_items: Array, w: int, h: int, x: int, y: int, grid_w: int, grid_h: int, unlocked: Dictionary = {}) -> bool:
 	var iw = max(1, w)
 	var ih = max(1, h)
@@ -1844,7 +1907,7 @@ func _arm_lab_muze_umistit_na(grid_items: Array, w: int, h: int, x: int, y: int,
 				return false
 	return true
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _arm_lab_muze_umistit_na_ignorovat(grid_items: Array, w: int, h: int, x: int, y: int, ignore_uid: String, grid_w: int, grid_h: int, unlocked: Dictionary = {}) -> bool:
 	var iw = max(1, w)
 	var ih = max(1, h)
@@ -1877,7 +1940,7 @@ func _arm_lab_muze_umistit_na_ignorovat(grid_items: Array, w: int, h: int, x: in
 	return true
 
 # Offers refresh by turn, so UI can just ask for current state and not solve timing sama.
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _arm_lab_zajisti_nabidky(state_tag: String) -> void:
 	var cisty = _normalizuj_tag(state_tag)
 	if cisty == "" or cisty == "SEA":
@@ -1899,7 +1962,7 @@ func _arm_lab_zajisti_nabidky(state_tag: String) -> void:
 	lab["rerolls_this_turn"] = 0
 	armadni_lab_statu[cisty] = lab
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _arm_lab_spocitej_bonus(grid_items: Array) -> Dictionary:
 	var total_flat := 0
 	var total_pct := 0.0
@@ -1912,7 +1975,7 @@ func _arm_lab_spocitej_bonus(grid_items: Array) -> Dictionary:
 		"pct": total_pct
 	}
 
-# Brief: Reads current runtime data and returns it to callers.
+# Read-only data accessor.
 func ziskej_armadni_lab_statu(state_tag: String) -> Dictionary:
 	var cisty = _normalizuj_tag(state_tag)
 	if cisty == "" or cisty == "SEA":
@@ -1956,7 +2019,7 @@ func ziskej_armadni_lab_statu(state_tag: String) -> Dictionary:
 		"treasury": _ziskej_kasu_statu(cisty)
 	}
 
-# Brief: Reads current runtime data and returns it to callers.
+# Reads values from active state.
 func ziskej_silu_armady_statu(state_tag: String, base_soldiers: int = -1) -> Dictionary:
 	var cisty = _normalizuj_tag(state_tag)
 	if cisty == "" or cisty == "SEA":
@@ -1986,7 +2049,7 @@ func ziskej_silu_armady_statu(state_tag: String, base_soldiers: int = -1) -> Dic
 		"total": total
 	}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func kup_armadni_nabidku_na_pozici(state_tag: String, offer_index: int, target_x: int, target_y: int) -> Dictionary:
 	var cisty = _normalizuj_tag(state_tag)
 	if cisty == "" or cisty == "SEA":
@@ -2046,11 +2109,11 @@ func kup_armadni_nabidku_na_pozici(state_tag: String, offer_index: int, target_x
 		"treasury_after": _ziskej_kasu_statu(cisty)
 	}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func kup_armadni_nabidku(state_tag: String, offer_index: int) -> Dictionary:
 	return kup_armadni_nabidku_na_pozici(state_tag, offer_index, -1, -1)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func kup_a_slouc_armadni_nabidku(state_tag: String, offer_index: int, target_uid: String) -> Dictionary:
 	var cisty = _normalizuj_tag(state_tag)
 	if cisty == "" or cisty == "SEA":
@@ -2115,7 +2178,7 @@ func kup_a_slouc_armadni_nabidku(state_tag: String, offer_index: int, target_uid
 		"treasury_after": _ziskej_kasu_statu(cisty)
 	}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func presun_armadni_item(state_tag: String, item_uid: String, target_x: int, target_y: int) -> Dictionary:
 	var cisty = _normalizuj_tag(state_tag)
 	if cisty == "" or cisty == "SEA":
@@ -2160,7 +2223,7 @@ func presun_armadni_item(state_tag: String, item_uid: String, target_x: int, tar
 		"y": target_y
 	}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func rozsirit_armadni_mrizku(state_tag: String) -> Dictionary:
 	var cisty = _normalizuj_tag(state_tag)
 	if cisty == "" or cisty == "SEA":
@@ -2175,7 +2238,7 @@ func rozsirit_armadni_mrizku(state_tag: String) -> Dictionary:
 				return koupit_armadni_bunku(cisty, x, y)
 	return {"ok": false, "reason": "Grid is already at maximum size."}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func koupit_armadni_bunku(state_tag: String, x: int, y: int) -> Dictionary:
 	var cisty = _normalizuj_tag(state_tag)
 	if cisty == "" or cisty == "SEA":
@@ -2215,7 +2278,7 @@ func koupit_armadni_bunku(state_tag: String, x: int, y: int) -> Dictionary:
 		"treasury_after": _ziskej_kasu_statu(cisty)
 	}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func prodej_armadni_item(state_tag: String, item_uid: String) -> Dictionary:
 	var cisty = _normalizuj_tag(state_tag)
 	if cisty == "" or cisty == "SEA":
@@ -2256,7 +2319,7 @@ func prodej_armadni_item(state_tag: String, item_uid: String) -> Dictionary:
 		"treasury_after": _ziskej_kasu_statu(cisty)
 	}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func sloucit_armadni_itemy(state_tag: String, source_uid: String, target_uid: String) -> Dictionary:
 	var cisty = _normalizuj_tag(state_tag)
 	if cisty == "" or cisty == "SEA":
@@ -2308,7 +2371,7 @@ func sloucit_armadni_itemy(state_tag: String, source_uid: String, target_uid: St
 		"new_level": int(dst.get("level", 1))
 	}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func reroll_armadni_nabidky(state_tag: String) -> Dictionary:
 	var cisty = _normalizuj_tag(state_tag)
 	if cisty == "" or cisty == "SEA":
@@ -2342,7 +2405,7 @@ func reroll_armadni_nabidky(state_tag: String) -> Dictionary:
 
 	return {"ok": true, "cost": cost, "treasury_after": _ziskej_kasu_statu(cisty)}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func vylepsi_kvalitu_dropu_armady(state_tag: String) -> Dictionary:
 	var cisty = _normalizuj_tag(state_tag)
 	if cisty == "" or cisty == "SEA":
@@ -2379,7 +2442,7 @@ func vylepsi_kvalitu_dropu_armady(state_tag: String) -> Dictionary:
 		"treasury_after": _ziskej_kasu_statu(cisty)
 	}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _zajisti_vyzkum_statu(tag: String) -> Array:
 	var cisty = _normalizuj_tag(tag)
 	if cisty == "" or cisty == "SEA":
@@ -2392,7 +2455,7 @@ func _zajisti_vyzkum_statu(tag: String) -> Array:
 		return vyzkum_statu[cisty] as Array
 	return research_any as Array
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Returns true when conditions are met.
 func je_vyzkum_hotovy(state_tag: String, project_id: String) -> bool:
 	if not RESEARCH_PROJECTS_ENABLED:
 		return false
@@ -2402,7 +2465,7 @@ func je_vyzkum_hotovy(state_tag: String, project_id: String) -> bool:
 	var completed = _zajisti_vyzkum_statu(cisty)
 	return completed.has(project_id)
 
-# Brief: Reads current runtime data and returns it to callers.
+# Read-only data accessor.
 func ziskej_vyzkum_projekty() -> Array:
 	if not RESEARCH_PROJECTS_ENABLED:
 		return []
@@ -2421,7 +2484,7 @@ func ziskej_vyzkum_projekty() -> Array:
 	)
 	return out
 
-# Brief: Reads current runtime data and returns it to callers.
+# Read-only data accessor.
 func ziskej_vyzkum_statu(state_tag: String) -> Dictionary:
 	var cisty = _normalizuj_tag(state_tag)
 	if cisty == "" or cisty == "SEA":
@@ -2467,7 +2530,7 @@ func ziskej_vyzkum_statu(state_tag: String) -> Dictionary:
 		"treasury": _ziskej_kasu_statu(cisty)
 	}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func muze_vyzkoumat_projekt(state_tag: String, project_id: String) -> Dictionary:
 	if not RESEARCH_PROJECTS_ENABLED:
 		return {"ok": false, "reason": "Research projects are temporarily disabled."}
@@ -2503,7 +2566,7 @@ func muze_vyzkoumat_projekt(state_tag: String, project_id: String) -> Dictionary
 		"treasury": treasury
 	}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func proved_vyzkum_projektu(state_tag: String, project_id: String) -> Dictionary:
 	var check = muze_vyzkoumat_projekt(state_tag, project_id)
 	if not bool(check.get("ok", false)):
@@ -2535,7 +2598,7 @@ func proved_vyzkum_projektu(state_tag: String, project_id: String) -> Dictionary
 		"treasury_after": _ziskej_kasu_statu(cisty)
 	}
 
-# Brief: Reads current runtime data and returns it to callers.
+# Pulls current state data.
 func _ziskej_modifikatory_vyzkumu_statu(state_tag: String) -> Dictionary:
 	var out := {
 		"recruit_cost_mult": 1.0,
@@ -2566,7 +2629,7 @@ func _ziskej_modifikatory_vyzkumu_statu(state_tag: String) -> Dictionary:
 
 	return out
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _normalizuj_ideologii(ideology: String) -> String:
 	var raw = ideology.strip_edges().to_lower()
 	match raw:
@@ -2591,7 +2654,7 @@ func _normalizuj_ideologii(ideology: String) -> String:
 		_:
 			return raw
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _klic_ideologickeho_paru(ideology_a: String, ideology_b: String) -> String:
 	var a = _normalizuj_ideologii(ideology_a)
 	var b = _normalizuj_ideologii(ideology_b)
@@ -2599,7 +2662,7 @@ func _klic_ideologickeho_paru(ideology_a: String, ideology_b: String) -> String:
 		return "%s|%s" % [a, b]
 	return "%s|%s" % [b, a]
 
-# Brief: Reads current runtime data and returns it to callers.
+# Returns current runtime data.
 func _ziskej_ideologii_statu(tag: String) -> String:
 	var wanted = _normalizuj_tag(tag)
 	if wanted == "" or wanted == "SEA":
@@ -2610,7 +2673,7 @@ func _ziskej_ideologii_statu(tag: String) -> String:
 			return _normalizuj_ideologii(str(d.get("ideology", "")))
 	return ""
 
-# Brief: Reads current runtime data and returns it to callers.
+# Pulls current state data.
 func _ziskej_ekonomicke_modifikatory_ideologie(ideology: String) -> Dictionary:
 	var key = _normalizuj_ideologii(ideology)
 	var base = {
@@ -2627,7 +2690,7 @@ func _ziskej_ekonomicke_modifikatory_ideologie(ideology: String) -> Dictionary:
 			base[k] = src[k]
 	return base
 
-# Brief: Reads current runtime data and returns it to callers.
+# Pulls current state data.
 func ziskej_ekonomicke_modifikatory_statu(state_tag: String) -> Dictionary:
 	var base = _ziskej_ekonomicke_modifikatory_ideologie(_ziskej_ideologii_statu(state_tag))
 	var research = _ziskej_modifikatory_vyzkumu_statu(state_tag)
@@ -2635,28 +2698,65 @@ func ziskej_ekonomicke_modifikatory_statu(state_tag: String) -> Dictionary:
 		if not base.has(k):
 			continue
 		base[k] = float(base[k]) * float(research[k])
+	var building_mods = _ziskej_modifikatory_budov_statu(state_tag)
+	for k in building_mods.keys():
+		if not base.has(k):
+			continue
+		base[k] = float(base[k]) * float(building_mods[k])
 	return base
 
-# Brief: Reads current runtime data and returns it to callers.
+# Returns current runtime data.
 func ziskej_cenu_za_vojaka(state_tag: String) -> float:
 	var mods = ziskej_ekonomicke_modifikatory_statu(state_tag)
 	return BASE_RECRUIT_COST_PER_SOLDIER * max(0.01, float(mods.get("recruit_cost_mult", 1.0)))
 
-# Brief: Reads current runtime data and returns it to callers.
+# Returns current runtime data.
 func ziskej_udrzbu_za_vojaka(state_tag: String) -> float:
 	var mods = ziskej_ekonomicke_modifikatory_statu(state_tag)
 	return BASE_UPKEEP_PER_SOLDIER * max(0.01, float(mods.get("upkeep_mult", 1.0)))
 
-# Brief: Reads current runtime data and returns it to callers.
+func ziskej_udrzbu_za_vojaka_v_provincii(state_tag: String, prov_id: int) -> float:
+	# Province upkeep is state upkeep multiplied by province-only building modifiers.
+	# When province lookup fails, we gracefully fall back to pure state upkeep.
+	var state = _normalizuj_tag(state_tag)
+	if state == "" or state == "SEA":
+		return 0.0
+	if not map_data.has(prov_id):
+		return ziskej_udrzbu_za_vojaka(state)
+	var d = map_data[prov_id] as Dictionary
+	if _normalizuj_tag(str(d.get("owner", ""))) != state:
+		return ziskej_udrzbu_za_vojaka(state)
+	var base_upkeep = ziskej_udrzbu_za_vojaka(state)
+	var prov_mods = _ziskej_modifikatory_budov_provincie(prov_id)
+	var local_mult = max(0.01, float(prov_mods.get("upkeep_mult", 1.0)))
+	return base_upkeep * local_mult
+
+func _spocitej_naklady_udrzby_statu(state_tag: String) -> float:
+	var state = _normalizuj_tag(state_tag)
+	if state == "" or state == "SEA":
+		return 0.0
+	var total_upkeep := 0.0
+	for p_id_any in map_data.keys():
+		var p_id = int(p_id_any)
+		var d = map_data[p_id] as Dictionary
+		if _normalizuj_tag(str(d.get("owner", ""))) != state:
+			continue
+		var soldiers = max(0, int(d.get("soldiers", 0)))
+		if soldiers <= 0:
+			continue
+		total_upkeep += float(soldiers) * ziskej_udrzbu_za_vojaka_v_provincii(state, p_id)
+	return total_upkeep
+
+# Returns current runtime data.
 func ziskej_prijmovou_sazbu_hdp(state_tag: String) -> float:
 	var mods = ziskej_ekonomicke_modifikatory_statu(state_tag)
 	return BASE_INCOME_RATE * max(0.01, float(mods.get("income_rate_mult", 1.0)))
 
-# Brief: Reads current runtime data and returns it to callers.
+# Read-only data accessor.
 func ziskej_ekonomicke_modifikatory_ideologie(ideology: String) -> Dictionary:
 	return _ziskej_ekonomicke_modifikatory_ideologie(ideology)
 
-# Brief: Reads current runtime data and returns it to callers.
+# Fetches data for callers.
 func ziskej_ideologicky_ekonomicky_profil(ideology: String) -> Dictionary:
 	var mods = _ziskej_ekonomicke_modifikatory_ideologie(ideology)
 	var recruit_cost_mult = max(0.01, float(mods.get("recruit_cost_mult", 1.0)))
@@ -2684,7 +2784,7 @@ func ziskej_ideologicky_ekonomicky_profil(ideology: String) -> Dictionary:
 		}
 	}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _jsou_ideologie_podobne(ideology_a: String, ideology_b: String) -> bool:
 	var a = _normalizuj_ideologii(ideology_a)
 	var b = _normalizuj_ideologii(ideology_b)
@@ -2702,7 +2802,7 @@ func _jsou_ideologie_podobne(ideology_a: String, ideology_b: String) -> bool:
 	}
 	return similar_pairs.has(_klic_ideologickeho_paru(a, b))
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _jsou_ideologie_uplne_odlisne(ideology_a: String, ideology_b: String) -> bool:
 	var a = _normalizuj_ideologii(ideology_a)
 	var b = _normalizuj_ideologii(ideology_b)
@@ -2720,7 +2820,7 @@ func _jsou_ideologie_uplne_odlisne(ideology_a: String, ideology_b: String) -> bo
 	}
 	return opposite_pairs.has(_klic_ideologickeho_paru(a, b))
 
-# Brief: Computes derived values from current inputs and game state.
+# Computes derived values from current inputs and game state.
 func _spocitej_zmeny_vztahu_po_ideologii(state: String, target_ideology: String) -> Array:
 	var relation_changes: Array = []
 	for other_state in _ziskej_aktivni_staty():
@@ -2748,7 +2848,7 @@ func _spocitej_zmeny_vztahu_po_ideologii(state: String, target_ideology: String)
 		})
 	return relation_changes
 
-# Brief: Reads current runtime data and returns it to callers.
+# Pulls current state data.
 func _ziskej_statove_modifikatory_ideologie(ideology: String) -> Dictionary:
 	var key = _normalizuj_ideologii(ideology)
 	var gdp_mult = float(IDEOLOGY_GDP_MULTIPLIERS.get(key, 1.0))
@@ -2759,7 +2859,7 @@ func _ziskej_statove_modifikatory_ideologie(ideology: String) -> Dictionary:
 	}
 
 # Preview and apply share same math, aby preview nekecal jinak nez final apply.
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _nahled_nebo_aplikace_ideologie_statistik(state: String, old_ideology: String, new_ideology: String, apply_changes: bool) -> Dictionary:
 	var old_mods = _ziskej_statove_modifikatory_ideologie(old_ideology)
 	var new_mods = _ziskej_statove_modifikatory_ideologie(new_ideology)
@@ -2870,7 +2970,7 @@ func _nahled_nebo_aplikace_ideologie_statistik(state: String, old_ideology: Stri
 		}
 	}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func nahled_zmeny_ideologie_statu(state_tag: String, new_ideology: String) -> Dictionary:
 	var state = _normalizuj_tag(state_tag)
 	var target_ideology = _normalizuj_ideologii(new_ideology)
@@ -2898,7 +2998,7 @@ func nahled_zmeny_ideologie_statu(state_tag: String, new_ideology: String) -> Di
 		"stat_changes": stat_changes
 	}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func zmen_ideologii_statu(state_tag: String, new_ideology: String) -> Dictionary:
 	var state = _normalizuj_tag(state_tag)
 	var target_ideology = _normalizuj_ideologii(new_ideology)
@@ -2965,7 +3065,7 @@ func zmen_ideologii_statu(state_tag: String, new_ideology: String) -> Dictionary
 		"stat_changes": stat_changes
 	}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _stat_existuje(tag: String) -> bool:
 	var wanted = _normalizuj_tag(tag)
 	if wanted == "" or wanted == "SEA":
@@ -2976,7 +3076,7 @@ func _stat_existuje(tag: String) -> bool:
 			return true
 	return false
 
-# Brief: Reads current runtime data and returns it to callers.
+# Reads values from active state.
 func _ziskej_kasu_statu(tag: String) -> float:
 	var t = _normalizuj_tag(tag)
 	if t == "":
@@ -2987,7 +3087,7 @@ func _ziskej_kasu_statu(tag: String) -> float:
 		return float(hrac_kasy.get(t, 0.0))
 	return float(ai_kasy.get(t, 0.0))
 
-# Brief: Applies incoming values and synchronizes dependent state.
+# Updates state and keeps things in sync.
 func _nastav_kasu_statu(tag: String, value: float) -> void:
 	var t = _normalizuj_tag(tag)
 	if t == "":
@@ -3000,7 +3100,7 @@ func _nastav_kasu_statu(tag: String, value: float) -> void:
 	else:
 		ai_kasy[t] = safe_value
 
-# Brief: Reads current runtime data and returns it to callers.
+# Fetches data for callers.
 func _ziskej_pozici_provincie(province_id: int) -> Vector2:
 	if not map_data.has(province_id):
 		return Vector2.ZERO
@@ -3009,7 +3109,7 @@ func _ziskej_pozici_provincie(province_id: int) -> Vector2:
 		return Vector2.ZERO
 	return Vector2(float(d.get("x", 0.0)), float(d.get("y", 0.0)))
 
-# Brief: Reads current runtime data and returns it to callers.
+# Pulls current state data.
 func _ziskej_vzdalenostni_nasobic_presunu_hlavniho_mesta(source_province_id: int, target_province_id: int) -> float:
 	if source_province_id <= 0 or target_province_id <= 0:
 		return 1.0
@@ -3027,7 +3127,7 @@ func _ziskej_vzdalenostni_nasobic_presunu_hlavniho_mesta(source_province_id: int
 	var distance_factor = (distance / max(1.0, CAPITAL_RELOCATION_DISTANCE_STEP)) * CAPITAL_RELOCATION_DISTANCE_RATIO_PER_STEP
 	return clamp(1.0 + distance_factor, 1.0, CAPITAL_RELOCATION_DISTANCE_MULTIPLIER_MAX)
 
-# Brief: Reads current runtime data and returns it to callers.
+# Fetches data for callers.
 func ziskej_cenu_presunu_hlavniho_mesta(state_tag: String, target_province_id: int = -1) -> float:
 	var tag = _normalizuj_tag(state_tag)
 	if tag == "" or tag == "SEA":
@@ -3044,7 +3144,7 @@ func ziskej_cenu_presunu_hlavniho_mesta(state_tag: String, target_province_id: i
 	var distance_multiplier = _ziskej_vzdalenostni_nasobic_presunu_hlavniho_mesta(current_capital_id, target_province_id)
 	return snapped(base_cost * distance_multiplier, 0.01)
 
-# Brief: Reads current runtime data and returns it to callers.
+# Pulls current state data.
 func _ziskej_hlavni_mesto_statu(state_tag: String) -> int:
 	var wanted = _normalizuj_tag(state_tag)
 	if wanted == "" or wanted == "SEA":
@@ -3068,7 +3168,7 @@ func _ziskej_hlavni_mesto_statu(state_tag: String) -> int:
 
 	return -1
 
-# Brief: Cancels the active flow and restores a safe default state.
+# Cancels the active flow and restores a safe default state.
 func _zrus_cekajici_kapitulace_pro_obrance(obrance_tag: String) -> int:
 	var obr = _normalizuj_tag(obrance_tag)
 	if obr == "":
@@ -3080,7 +3180,7 @@ func _zrus_cekajici_kapitulace_pro_obrance(obrance_tag: String) -> int:
 			removed += 1
 	return removed
 
-# Brief: Recomputes and refreshes state from the latest game/UI data.
+# Recomputes values from current data.
 func _aktualizuj_label_hlavniho_mesta(map_loader: Node, prov_id: int, is_capital: bool, state_tag: String) -> void:
 	var labels = map_loader.get_node_or_null("ProvinceLabels")
 	if labels == null:
@@ -3121,7 +3221,7 @@ func _aktualizuj_label_hlavniho_mesta(map_loader: Node, prov_id: int, is_capital
 			lbl.reset_stav()
 		break
 
-# Brief: Recomputes and refreshes state from the latest game/UI data.
+# Refresh pass for current state.
 func _aktualizuj_mapu_po_presunu_hlavniho_mesta(old_capital_id: int, new_capital_id: int, state_tag: String) -> void:
 	var map_loader = _get_map_loader()
 	if map_loader == null:
@@ -3143,7 +3243,7 @@ func _aktualizuj_mapu_po_presunu_hlavniho_mesta(old_capital_id: int, new_capital
 	if map_loader.has_method("_aktualizuj_indikatory_kapitulace"):
 		map_loader._aktualizuj_indikatory_kapitulace()
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func muze_presunout_hlavni_mesto(state_tag: String, target_province_id: int) -> Dictionary:
 	var state = _normalizuj_tag(state_tag)
 	if state == "" or state == "SEA":
@@ -3190,7 +3290,7 @@ func muze_presunout_hlavni_mesto(state_tag: String, target_province_id: int) -> 
 		"target_capital_name": target_name
 	}
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Eligibility/guard check.
 func ma_dostupny_cil_presunu_hlavniho_mesta(state_tag: String) -> bool:
 	var state = _normalizuj_tag(state_tag)
 	if state == "" or state == "SEA":
@@ -3205,7 +3305,7 @@ func ma_dostupny_cil_presunu_hlavniho_mesta(state_tag: String) -> bool:
 			return true
 	return false
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func presun_hlavni_mesto(state_tag: String, target_province_id: int, pay_cost: bool = true, emit_ui_signal: bool = true) -> Dictionary:
 	var check = muze_presunout_hlavni_mesto(state_tag, target_province_id)
 	if not bool(check.get("ok", false)):
@@ -3252,7 +3352,7 @@ func presun_hlavni_mesto(state_tag: String, target_province_id: int, pay_cost: b
 		"cash_after": _ziskej_kasu_statu(state)
 	}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func daruj_penize_statu(odesilatel: String, prijemce: String, amount: float) -> Dictionary:
 	var from_tag = _normalizuj_tag(odesilatel)
 	var to_tag = _normalizuj_tag(prijemce)
@@ -3302,7 +3402,7 @@ func daruj_penize_statu(odesilatel: String, prijemce: String, amount: float) -> 
 		"to_cash": _ziskej_kasu_statu(to_tag)
 	}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func prejmenuj_stat(state_tag: String, new_name: String) -> Dictionary:
 	var state = _normalizuj_tag(state_tag)
 	if state == "" or state == "SEA":
@@ -3358,7 +3458,7 @@ func prejmenuj_stat(state_tag: String, new_name: String) -> Dictionary:
 	}
 
 # Trade flow is: normalize -> validate -> queue/AI decide -> execute.
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func odeslat_obchodni_nabidku(odesilatel: String, prijemce: String, terms_from_sender_raw: Dictionary, terms_from_receiver_raw: Dictionary) -> Dictionary:
 	var from_tag = _normalizuj_tag(odesilatel)
 	var to_tag = _normalizuj_tag(prijemce)
@@ -3416,7 +3516,7 @@ func odeslat_obchodni_nabidku(odesilatel: String, prijemce: String, terms_from_s
 	apply_result["accepted"] = true
 	return apply_result
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _normalizuj_trade_terms(raw_terms: Dictionary) -> Dictionary:
 	var out: Dictionary = {}
 	for slot_any in raw_terms.keys():
@@ -3434,7 +3534,7 @@ func _normalizuj_trade_terms(raw_terms: Dictionary) -> Dictionary:
 		out[slot] = {"a": value_a, "b": value_b}
 	return out
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _trade_parse_amount(raw: String) -> float:
 	var sanitized = raw.strip_edges().replace(",", ".").to_lower()
 	if sanitized == "":
@@ -3454,7 +3554,7 @@ func _trade_parse_amount(raw: String) -> float:
 		return -1.0
 	return float(parsed)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _trade_parse_province_id(raw: String) -> int:
 	var sanitized = raw.strip_edges()
 	if sanitized == "":
@@ -3463,7 +3563,7 @@ func _trade_parse_province_id(raw: String) -> int:
 		return -1
 	return int(sanitized)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _trade_parse_province_ids(raw: String) -> Array:
 	var text = raw.strip_edges().replace(";", ",").replace(" ", "")
 	if text == "":
@@ -3478,11 +3578,11 @@ func _trade_parse_province_ids(raw: String) -> Array:
 			out.append(pid)
 	return out
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _trade_parse_target_tag(raw: String) -> String:
 	return _normalizuj_tag(raw)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _trade_extract_numeric_tokens(raw: String) -> Array:
 	var text = raw.strip_edges().replace(",", ".")
 	if text == "":
@@ -3498,7 +3598,7 @@ func _trade_extract_numeric_tokens(raw: String) -> Array:
 	return out
 
 # Tiny parser for UI text input, so player can write stuff a bit messy and it still works.
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _trade_parse_loan_terms(value_a: String, value_b: String) -> Dictionary:
 	var numbers: Array = []
 	numbers.append_array(_trade_extract_numeric_tokens(value_a))
@@ -3533,7 +3633,7 @@ func _trade_parse_loan_terms(value_a: String, value_b: String) -> Dictionary:
 		"turns": turns
 	}
 
-# Brief: Builds required objects/UI nodes and wires essential defaults/signals.
+# Builds UI objects and default wiring.
 func _vytvor_statni_pujcku(lender_tag: String, borrower_tag: String, principal: float, interest_pct: float, turns: int) -> Dictionary:
 	var lender = _normalizuj_tag(lender_tag)
 	var borrower = _normalizuj_tag(borrower_tag)
@@ -3591,7 +3691,7 @@ func _vytvor_statni_pujcku(lender_tag: String, borrower_tag: String, principal: 
 		"installment": installment
 	}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func navrhni_statni_pujcku(lender_tag: String, borrower_tag: String, principal: float, interest_pct: float, turns: int, requester_tag: String = "") -> Dictionary:
 	var lender = _normalizuj_tag(lender_tag)
 	var borrower = _normalizuj_tag(borrower_tag)
@@ -3657,7 +3757,7 @@ func navrhni_statni_pujcku(lender_tag: String, borrower_tag: String, principal: 
 
 	return {"ok": true, "pending": true, "offer": offer}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _ai_ma_prijmout_pujcku_nabidku(lender: String, borrower: String, principal: float, interest_pct: float, turns: int) -> bool:
 	var borrower_cash = _ziskej_kasu_statu(borrower)
 	var income = max(0.0, _spocitej_cisty_prijem_statu(borrower))
@@ -3690,7 +3790,7 @@ func _ai_ma_prijmout_pujcku_nabidku(lender: String, borrower: String, principal:
 	var accept_chance = clamp(0.5 + score, 0.05, 0.95)
 	return randf() < accept_chance
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _ai_ma_poskytnout_pujcku(lender: String, borrower: String, principal: float, interest_pct: float, turns: int) -> bool:
 	var lender_cash = _ziskej_kasu_statu(lender)
 	var lender_income = max(0.0, _spocitej_cisty_prijem_statu(lender))
@@ -3738,7 +3838,7 @@ func _ai_ma_poskytnout_pujcku(lender: String, borrower: String, principal: float
 	var accept_chance = clamp(0.45 + score, 0.05, 0.95)
 	return randf() < accept_chance
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _zpracuj_cekajici_pujcky_za_kolo() -> void:
 	if cekajici_pujcky.is_empty():
 		return
@@ -3807,7 +3907,7 @@ func _zpracuj_cekajici_pujcky_za_kolo() -> void:
 
 	cekajici_pujcky = stale
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _trade_can_declare_war(attacker_tag: String, defender_tag: String) -> bool:
 	var a = _normalizuj_tag(attacker_tag)
 	var b = _normalizuj_tag(defender_tag)
@@ -3825,7 +3925,7 @@ func _trade_can_declare_war(attacker_tag: String, defender_tag: String) -> bool:
 		return false
 	return true
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _trade_validate_terms(provider_tag: String, receiver_tag: String, terms: Dictionary) -> Dictionary:
 	var provider = _normalizuj_tag(provider_tag)
 	var receiver = _normalizuj_tag(receiver_tag)
@@ -3907,7 +4007,7 @@ func _trade_validate_terms(provider_tag: String, receiver_tag: String, terms: Di
 
 	return {"ok": true}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _trade_transfer_province(provider_tag: String, receiver_tag: String, province_id: int) -> Dictionary:
 	var provider = _normalizuj_tag(provider_tag)
 	var receiver = _normalizuj_tag(receiver_tag)
@@ -3927,7 +4027,7 @@ func _trade_transfer_province(provider_tag: String, receiver_tag: String, provin
 	d["army_owner"] = receiver if int(d.get("soldiers", 0)) > 0 else ""
 	return {"ok": true}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _trade_execute_terms(provider_tag: String, receiver_tag: String, terms: Dictionary) -> Dictionary:
 	var provider = _normalizuj_tag(provider_tag)
 	var receiver = _normalizuj_tag(receiver_tag)
@@ -3988,7 +4088,7 @@ func _trade_execute_terms(provider_tag: String, receiver_tag: String, terms: Dic
 
 	return {"ok": true, "map_changed": map_changed}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _trade_update_map_after_changes() -> void:
 	var map_loader = _get_map_loader()
 	if map_loader:
@@ -3999,7 +4099,7 @@ func _trade_update_map_after_changes() -> void:
 		if map_loader.has_method("aktualizuj_ikony_armad"):
 			map_loader.aktualizuj_ikony_armad()
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _trade_spocitej_hodnotu_terms(receiver_tag: String, provider_tag: String, terms: Dictionary) -> float:
 	var receiver = _normalizuj_tag(receiver_tag)
 	var provider = _normalizuj_tag(provider_tag)
@@ -4047,7 +4147,7 @@ func _trade_spocitej_hodnotu_terms(receiver_tag: String, provider_tag: String, t
 				score += 7.0
 	return score
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _vyhodnot_trade_nabidku_ai(from_tag: String, to_tag: String, from_terms: Dictionary, to_terms: Dictionary) -> bool:
 	var ai_gain = _trade_spocitej_hodnotu_terms(to_tag, from_tag, from_terms)
 	var ai_cost = _trade_spocitej_hodnotu_terms(to_tag, from_tag, to_terms)
@@ -4055,7 +4155,7 @@ func _vyhodnot_trade_nabidku_ai(from_tag: String, to_tag: String, from_terms: Di
 	var threshold = 1.0 - clamp(relation / 25.0, -2.0, 2.0)
 	return (ai_gain - ai_cost) >= threshold
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _proved_trade_dohodu(from_tag: String, to_tag: String, payload: Dictionary) -> Dictionary:
 	var from_clean = _normalizuj_tag(from_tag)
 	var to_clean = _normalizuj_tag(to_tag)
@@ -4098,7 +4198,7 @@ func _proved_trade_dohodu(from_tag: String, to_tag: String, payload: Dictionary)
 		"to_terms": to_terms
 	}
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Eligibility/guard check.
 func _je_more_provincie(prov_id: int) -> bool:
 	if not map_data.has(prov_id):
 		return false
@@ -4107,7 +4207,7 @@ func _je_more_provincie(prov_id: int) -> bool:
 	var typ = str(d.get("type", "")).strip_edges().to_lower()
 	return owner_tag == "SEA" or typ == "sea"
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Validates required conditions.
 func je_pobrezni_provincie(prov_id: int) -> bool:
 	if not map_data.has(prov_id):
 		return false
@@ -4118,13 +4218,13 @@ func je_pobrezni_provincie(prov_id: int) -> bool:
 			return true
 	return false
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func provincie_ma_pristav(prov_id: int) -> bool:
 	if not map_data.has(prov_id):
 		return false
 	return bool(map_data[prov_id].get("has_port", false))
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func muze_postavit_pristav(prov_id: int) -> bool:
 	if not map_data.has(prov_id):
 		return false
@@ -4137,11 +4237,248 @@ func muze_postavit_pristav(prov_id: int) -> bool:
 		return false
 	return je_pobrezni_provincie(prov_id)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+func _legacy_building_id(building_any) -> String:
+	if building_any is String:
+		return str(building_any).strip_edges().to_lower()
+	var typ = int(building_any)
+	if typ == 0:
+		return BUILDING_ID_ECON_HUB
+	if typ == 1:
+		return BUILDING_ID_RECRUIT_CENTER
+	if typ == 2:
+		return BUILDING_ID_PORT
+	return ""
+
+func _normalizuj_provincie_cooldowny(raw_any) -> Dictionary:
+	if not (raw_any is Dictionary):
+		return {}
+	var raw = raw_any as Dictionary
+	var out: Dictionary = {}
+	for prov_key in raw.keys():
+		var prov_id = int(prov_key)
+		if prov_id <= 0:
+			continue
+
+		var entry = raw[prov_key]
+		var build_id := ""
+		var zbyva := 1
+
+		if entry is Dictionary:
+			var e = entry as Dictionary
+			var build_any = e.get("budova", e.get("building", e.get("building_id", e.get("typ", e.get("type", e.get("building_type", ""))))))
+			build_id = _legacy_building_id(build_any)
+			zbyva = int(e.get("zbyva", e.get("remaining", e.get("remaining_turns", e.get("turns", 1)))))
+		elif entry is Array:
+			var arr = entry as Array
+			if arr.size() >= 2:
+				zbyva = int(arr[0])
+				build_id = _legacy_building_id(arr[1])
+		elif entry is String:
+			build_id = _legacy_building_id(entry)
+		elif entry is int or entry is float:
+			var as_int = int(entry)
+			if as_int >= 0 and as_int <= 2:
+				build_id = _legacy_building_id(as_int)
+
+		if build_id == "" or _ziskej_building_def(build_id).is_empty():
+			continue
+		out[prov_id] = {"zbyva": max(1, zbyva), "budova": build_id}
+	return out
+
+func _ziskej_building_def(building_id: String) -> Dictionary:
+	if BUILDING_DEFS.has(building_id):
+		return BUILDING_DEFS[building_id] as Dictionary
+	return {}
+
+func _ziskej_nazev_budovy(building_any) -> String:
+	var build_id = _legacy_building_id(building_any)
+	var bdef = _ziskej_building_def(build_id)
+	if bdef.is_empty():
+		return "Building"
+	return str(bdef.get("name", "Building"))
+
+func ziskej_dostupne_building_ids() -> Array:
+	return [
+		BUILDING_ID_ECON_HUB,
+		BUILDING_ID_RECRUIT_CENTER,
+		BUILDING_ID_PORT,
+		BUILDING_ID_FARM,
+		BUILDING_ID_ARMY_BASE,
+		BUILDING_ID_FORTRESS
+	]
+
+func ziskej_building_def_pro_ui(building_any) -> Dictionary:
+	var build_id = _legacy_building_id(building_any)
+	if build_id == "":
+		return {}
+	return _ziskej_building_def(build_id).duplicate(true)
+
+func muze_postavit_budovu(prov_id: int, building_any) -> Dictionary:
+	# Validation order matters here: fast reject invalid ownership/cooldown first,
+	# then expensive checks (definition lookup and cost validation).
+	if not map_data.has(prov_id):
+		return {"ok": false, "reason": "Invalid province."}
+
+	var owner_tag = _normalizuj_tag(str((map_data[prov_id] as Dictionary).get("owner", "")))
+	if owner_tag == "" or owner_tag == "SEA":
+		return {"ok": false, "reason": "Construction is only possible on land provinces."}
+	if owner_tag != _normalizuj_tag(hrac_stat):
+		return {"ok": false, "reason": "You can only build in your own provinces."}
+	if provincie_cooldowny.has(prov_id):
+		return {"ok": false, "reason": "Another construction is already in progress here."}
+
+	var building_id = _legacy_building_id(building_any)
+	if building_id == "":
+		return {"ok": false, "reason": "Unknown building type."}
+	var bdef = _ziskej_building_def(building_id)
+	if bdef.is_empty():
+		return {"ok": false, "reason": "Unknown building type."}
+
+	var level = _ziskej_level_budovy_provincie(prov_id, building_id)
+	var max_level = max(1, int(bdef.get("max_level", 1)))
+	if level >= max_level:
+		return {"ok": false, "reason": "Maximum level already reached."}
+
+	if building_id == BUILDING_ID_PORT and not muze_postavit_pristav(prov_id):
+		return {"ok": false, "reason": "A port can only be built in your coastal province adjacent to sea."}
+
+	var cost = max(0.0, float(bdef.get("cost", 0.0)))
+	if _ziskej_kasu_statu(owner_tag) < cost:
+		return {"ok": false, "reason": "Not enough money.", "cost": cost}
+
+	return {
+		"ok": true,
+		"building_id": building_id,
+		"cost": cost,
+		"build_time": max(1, int(bdef.get("build_time", 3))),
+		"name": str(bdef.get("name", "Building")),
+		"current_level": level,
+		"next_level": level + 1,
+		"max_level": max_level
+	}
+
+func rozpocni_stavbu_pro_hrace(prov_id: int, building_any) -> Dictionary:
+	# One-way transaction: verify -> charge treasury -> create cooldown record.
+	# If validation fails, this function returns early and does not mutate state.
+	var can_build = muze_postavit_budovu(prov_id, building_any)
+	if not bool(can_build.get("ok", false)):
+		return can_build
+
+	var owner_tag = _normalizuj_tag(str((map_data[prov_id] as Dictionary).get("owner", "")))
+	var cost = float(can_build.get("cost", 0.0))
+	_nastav_kasu_statu(owner_tag, _ziskej_kasu_statu(owner_tag) - cost)
+
+	var build_time = max(1, int(can_build.get("build_time", 3)))
+	var building_id = str(can_build.get("building_id", ""))
+	provincie_cooldowny[prov_id] = {"zbyva": build_time, "budova": building_id}
+
+	var out = can_build.duplicate(true)
+	out["cash_after"] = _ziskej_kasu_statu(owner_tag)
+	return out
+
+func _ziskej_buildings_provincie(prov_id: int) -> Dictionary:
+	if not map_data.has(prov_id):
+		return {}
+	var d = map_data[prov_id] as Dictionary
+	if not d.has("buildings") or not (d.get("buildings") is Dictionary):
+		d["buildings"] = {}
+	return d["buildings"] as Dictionary
+
+func _ziskej_level_budovy_provincie(prov_id: int, building_id: String) -> int:
+	if not map_data.has(prov_id):
+		return 0
+	var buildings = _ziskej_buildings_provincie(prov_id)
+	return max(0, int(buildings.get(building_id, 0)))
+
+func _pridej_budovu_provincie(prov_id: int, building_id: String) -> bool:
+	if not map_data.has(prov_id):
+		return false
+	var bdef = _ziskej_building_def(building_id)
+	if bdef.is_empty():
+		return false
+	var buildings = _ziskej_buildings_provincie(prov_id)
+	var level = int(buildings.get(building_id, 0))
+	var max_level = max(1, int(bdef.get("max_level", 1)))
+	if level >= max_level:
+		return false
+	buildings[building_id] = level + 1
+	return true
+
+func _ziskej_modifikatory_budov_provincie(prov_id: int) -> Dictionary:
+	var out := {
+		"gdp_growth_mult": 1.0,
+		"population_growth_mult": 1.0,
+		"recruit_regen_mult": 1.0,
+		"upkeep_mult": 1.0
+	}
+	if not map_data.has(prov_id):
+		return out
+	var buildings = _ziskej_buildings_provincie(prov_id)
+	for building_id in buildings.keys():
+		var level = max(0, int(buildings[building_id]))
+		if level <= 0:
+			continue
+		var bdef = _ziskej_building_def(str(building_id))
+		if bdef.is_empty():
+			continue
+		var province_mods = bdef.get("province_modifiers", {}) as Dictionary
+		for k in province_mods.keys():
+			if not out.has(k):
+				continue
+			out[k] = float(out[k]) * pow(max(0.01, float(province_mods[k])), level)
+	return out
+
+func _ziskej_modifikatory_budov_statu(state_tag: String) -> Dictionary:
+	var out := {
+		"recruit_cost_mult": 1.0,
+		"upkeep_mult": 1.0,
+		"income_rate_mult": 1.0,
+		"gdp_growth_mult": 1.0,
+		"population_growth_mult": 1.0,
+		"recruit_regen_mult": 1.0
+	}
+	var state = _normalizuj_tag(state_tag)
+	if state == "" or state == "SEA":
+		return out
+	for p_id in map_data.keys():
+		var d = map_data[p_id] as Dictionary
+		if _normalizuj_tag(str(d.get("owner", ""))) != state:
+			continue
+		var buildings = _ziskej_buildings_provincie(int(p_id))
+		for building_id in buildings.keys():
+			var level = max(0, int(buildings[building_id]))
+			if level <= 0:
+				continue
+			var bdef = _ziskej_building_def(str(building_id))
+			if bdef.is_empty():
+				continue
+			var state_mods = bdef.get("state_modifiers", {}) as Dictionary
+			for k in state_mods.keys():
+				if not out.has(k):
+					continue
+				out[k] = float(out[k]) * pow(max(0.01, float(state_mods[k])), level)
+	return out
+
+func ziskej_bonus_obrany_stavby_provincie(prov_id: int) -> float:
+	if not map_data.has(prov_id):
+		return 0.0
+	var bonus := 0.0
+	var buildings = _ziskej_buildings_provincie(prov_id)
+	for building_id in buildings.keys():
+		var level = max(0, int(buildings[building_id]))
+		if level <= 0:
+			continue
+		var bdef = _ziskej_building_def(str(building_id))
+		if bdef.is_empty():
+			continue
+		bonus += float(bdef.get("defense_bonus_pct", 0.0)) * float(level)
+	return bonus
+
+# Main runtime logic lives here.
 func _klic_vztahu(tag_a: String, tag_b: String) -> String:
 	return "%s|%s" % [_normalizuj_tag(tag_a), _normalizuj_tag(tag_b)]
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _klic_vztah_pair(tag_a: String, tag_b: String) -> String:
 	var a = _normalizuj_tag(tag_a)
 	var b = _normalizuj_tag(tag_b)
@@ -4150,7 +4487,7 @@ func _klic_vztah_pair(tag_a: String, tag_b: String) -> String:
 	return "%s|%s" % [b, a]
 
 # Relations load lazy from CSV and then are mirrored both ways for faster reads.
-# Brief: Loads data/resources and validates parsed results.
+# Loads resources and validates parsed data.
 func _nacti_vztahy_statu() -> void:
 	if _vztahy_nactene:
 		return
@@ -4189,7 +4526,7 @@ func _nacti_vztahy_statu() -> void:
 
 	_vztahy_nactene = true
 
-# Brief: Reads current runtime data and returns it to callers.
+# Fetches data for callers.
 func ziskej_vztah_statu(tag_a: String, tag_b: String) -> float:
 	_nacti_vztahy_statu()
 	var a = _normalizuj_tag(tag_a)
@@ -4207,7 +4544,7 @@ func ziskej_vztah_statu(tag_a: String, tag_b: String) -> float:
 
 	return float(_vztahy_statu.get("%s|%s" % [a, b], 0.0))
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func uprav_vztah_statu(tag_a: String, tag_b: String, delta: float) -> float:
 	_nacti_vztahy_statu()
 	var a = _normalizuj_tag(tag_a)
@@ -4234,7 +4571,7 @@ func uprav_vztah_statu(tag_a: String, tag_b: String, delta: float) -> float:
 		_synchronizuj_aliance_po_zmene_vztahu(a, b)
 	return updated
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _uprav_vztah_statu_bez_cooldown(tag_a: String, tag_b: String, delta: float) -> float:
 	_nacti_vztahy_statu()
 	var a = _normalizuj_tag(tag_a)
@@ -4258,7 +4595,7 @@ func _uprav_vztah_statu_bez_cooldown(tag_a: String, tag_b: String, delta: float)
 		_synchronizuj_aliance_po_zmene_vztahu(a, b)
 	return updated
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _uprav_vztah_statu_bez_cooldown_rychle(tag_a: String, tag_b: String, delta: float) -> float:
 	var a = _normalizuj_tag(tag_a)
 	var b = _normalizuj_tag(tag_b)
@@ -4281,7 +4618,7 @@ func _uprav_vztah_statu_bez_cooldown_rychle(tag_a: String, tag_b: String, delta:
 		_synchronizuj_aliance_po_zmene_vztahu(a, b)
 	return updated
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _vyzaduje_vztahova_synchronizace(old_rel: float, new_rel: float) -> bool:
 	if new_rel >= old_rel:
 		return false
@@ -4290,21 +4627,21 @@ func _vyzaduje_vztahova_synchronizace(old_rel: float, new_rel: float) -> bool:
 			return true
 	return false
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func zlepsi_vztah_statu(tag_a: String, tag_b: String, amount: float = RELATION_STEP_PLAYER) -> float:
 	return uprav_vztah_statu(tag_a, tag_b, absf(amount))
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func zhorsi_vztah_statu(tag_a: String, tag_b: String, amount: float = RELATION_STEP_PLAYER) -> float:
 	return uprav_vztah_statu(tag_a, tag_b, -absf(amount))
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Boolean check for required state.
 func _je_pratelsky_vztah(tag_a: String, tag_b: String) -> bool:
 	if tag_a == "" or tag_b == "" or tag_a == tag_b:
 		return false
 	return ziskej_vztah_statu(tag_a, tag_b) >= AI_FRIEND_RELATION_THRESHOLD
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func muze_upravit_vztah_statu(tag_a: String, tag_b: String) -> bool:
 	var a = _normalizuj_tag(tag_a)
 	var b = _normalizuj_tag(tag_b)
@@ -4312,7 +4649,7 @@ func muze_upravit_vztah_statu(tag_a: String, tag_b: String) -> bool:
 		return false
 	return zbyva_kol_do_upravy_vztahu(a, b) <= 0
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func zbyva_kol_do_upravy_vztahu(tag_a: String, tag_b: String) -> int:
 	var a = _normalizuj_tag(tag_a)
 	var b = _normalizuj_tag(tag_b)
@@ -4326,7 +4663,7 @@ func zbyva_kol_do_upravy_vztahu(tag_a: String, tag_b: String) -> int:
 	var elapsed = aktualni_kolo - last_turn
 	return max(0, RELATION_ACTION_COOLDOWN_TURNS - elapsed)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _minimalni_vztah_pro_alianci(level: int) -> float:
 	match level:
 		ALLIANCE_DEFENSE:
@@ -4338,7 +4675,7 @@ func _minimalni_vztah_pro_alianci(level: int) -> float:
 		_:
 			return RELATION_MIN
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func nazev_urovne_aliance(level: int) -> String:
 	match level:
 		ALLIANCE_DEFENSE:
@@ -4350,7 +4687,7 @@ func nazev_urovne_aliance(level: int) -> String:
 		_:
 			return "No Alliance"
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Returns true when conditions are met.
 func _ma_stat_prijmout_alianci(tag_a: String, tag_b: String, target_level: int) -> bool:
 	if _vazal_musi_prijmout_zadost(tag_a, tag_b):
 		return true
@@ -4359,14 +4696,14 @@ func _ma_stat_prijmout_alianci(tag_a: String, tag_b: String, target_level: int) 
 		return false
 	return rel >= _minimalni_vztah_pro_alianci(target_level)
 
-# Brief: Reads current runtime data and returns it to callers.
+# Pulls current state data.
 func ziskej_uroven_aliance(tag_a: String, tag_b: String) -> int:
 	var key = _klic_pair(tag_a, tag_b)
 	if key == "":
 		return ALLIANCE_NONE
 	return int(aliance_statu.get(key, ALLIANCE_NONE))
 
-# Brief: Applies incoming values and synchronizes dependent state.
+# Applies updates and syncs dependent state.
 func _nastav_uroven_aliance_bez_kontroly(tag_a: String, tag_b: String, level: int) -> void:
 	var key = _klic_pair(tag_a, tag_b)
 	if key == "":
@@ -4385,7 +4722,7 @@ func _nastav_uroven_aliance_bez_kontroly(tag_a: String, tag_b: String, level: in
 		_mark_ai_war_pair_eval_dirty_pair(tag_a, tag_b)
 
 # If relation drops under thresholds, alliance gets downgraded automaticky.
-# Brief: Applies incoming values and synchronizes dependent state.
+# Applies incoming data to runtime state.
 func nastav_uroven_aliance(tag_a: String, tag_b: String, level: int, ignoruj_vztahove_podminky: bool = false) -> bool:
 	var a = _normalizuj_tag(tag_a)
 	var b = _normalizuj_tag(tag_b)
@@ -4425,7 +4762,7 @@ func nastav_uroven_aliance(tag_a: String, tag_b: String, level: int, ignoruj_vzt
 			_pridej_popup_zucastnenym_hracum(a, b, title, text)
 	return true
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _synchronizuj_aliance_po_zmene_vztahu(tag_a: String, tag_b: String) -> void:
 	var a = _normalizuj_tag(tag_a)
 	var b = _normalizuj_tag(tag_b)
@@ -4461,33 +4798,33 @@ func _synchronizuj_aliance_po_zmene_vztahu(tag_a: String, tag_b: String) -> void
 
 	_synchronizuj_vojensky_pristup_po_zmene_vztahu(a, b)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _synchronizuj_vojensky_pristup_po_zmene_vztahu(tag_a: String, tag_b: String) -> void:
 	var rel = ziskej_vztah_statu(tag_a, tag_b)
 	if rel >= 15.0:
 		return
-	# Revoke A→B grant if A gave B access
+	# Revoke Aâ†’B grant if A gave B access
 	for pair in [[tag_a, tag_b], [tag_b, tag_a]]:
 		var host = pair[0]
 		var guest = pair[1]
 		var key = "%s|%s" % [host, guest]
 		if vojensky_pristup.has(key):
 			vojensky_pristup.erase(key)
-			_zaloguj_globalni_zpravu("Diplomacy", "Military access %s→%s revoked (relations dropped below 15)." % [host, guest], "diplomacy")
+			_zaloguj_globalni_zpravu("Diplomacy", "Military access %sâ†’%s revoked (relations dropped below 15)." % [host, guest], "diplomacy")
 			if je_lidsky_stat(guest):
-				_pridej_popup_hraci(guest, "Diplomacy", "Military access in %s revoked — relations dropped too low." % host)
+				_pridej_popup_hraci(guest, "Diplomacy", "Military access in %s revoked â€” relations dropped too low." % host)
 			if je_lidsky_stat(host):
 				_pridej_popup_hraci(host, "Diplomacy", "You revoked military access for %s (relations too low)." % guest)
 			_expeluj_jednotky_bez_pristupu(guest)
 
 # ---- Alliance Groups ----
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _generuj_id_aliance() -> String:
 	_aliance_skupiny_seq += 1
 	return "alliance_%d" % _aliance_skupiny_seq
 
-# Brief: Builds required objects/UI nodes and wires essential defaults/signals.
+# Creates required nodes and connects signals.
 func vytvor_alianci_skupinu(nazev: String, level: int, zakladatel: String, clenove: Array = [], barva: String = "#4488ff") -> Dictionary:
 	var founder = _normalizuj_tag(zakladatel)
 	if founder == "":
@@ -4521,7 +4858,7 @@ func vytvor_alianci_skupinu(nazev: String, level: int, zakladatel: String, cleno
 	_zaloguj_globalni_zpravu("Alliance", "%s founded alliance '%s' (%s)." % [founder, clean_name, nazev_urovne_aliance(target_level)], "alliance")
 	return {"ok": true, "id": alliance_id}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func upravit_alianci_skupinu(alliance_id: String, novy_nazev: String = "", novy_level: int = -1) -> bool:
 	if not aliance_skupiny.has(alliance_id):
 		return false
@@ -4538,7 +4875,7 @@ func upravit_alianci_skupinu(alliance_id: String, novy_nazev: String = "", novy_
 		_synchronizuj_bilateralni_aliance_skupiny(alliance_id)
 	return changed
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func pridej_clena_do_aliance(alliance_id: String, tag: String, ignoruj_vztahove_podminky: bool = false) -> Dictionary:
 	if not aliance_skupiny.has(alliance_id):
 		return {"ok": false, "reason": "Alliance does not exist."}
@@ -4580,7 +4917,7 @@ func pridej_clena_do_aliance(alliance_id: String, tag: String, ignoruj_vztahove_
 		_pridej_popup_hraci(candidate_overlord, "Alliance", "%s joined '%s' automatically as your vassal." % [clean, str(skupina.get("name", ""))])
 	return {"ok": true}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func odeber_clena_z_aliance(alliance_id: String, tag: String) -> bool:
 	if not aliance_skupiny.has(alliance_id):
 		return false
@@ -4609,7 +4946,7 @@ func odeber_clena_z_aliance(alliance_id: String, tag: String) -> bool:
 	_resynchronizuj_bilateralni_aliance_vsech_skupin()
 	return true
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func rozpust_alianci(alliance_id: String) -> bool:
 	if not aliance_skupiny.has(alliance_id):
 		return false
@@ -4626,7 +4963,7 @@ func rozpust_alianci(alliance_id: String) -> bool:
 	_resynchronizuj_bilateralni_aliance_vsech_skupin()
 	return true
 
-# Brief: Reads current runtime data and returns it to callers.
+# Fetches data for callers.
 func ziskej_aliance_statu(tag: String) -> Array:
 	var clean = _normalizuj_tag(tag)
 	if clean == "":
@@ -4639,13 +4976,13 @@ func ziskej_aliance_statu(tag: String) -> Array:
 			result.append(skupina.duplicate(true))
 	return result
 
-# Brief: Reads current runtime data and returns it to callers.
+# Returns current runtime data.
 func ziskej_alianci_podle_id(alliance_id: String) -> Dictionary:
 	if not aliance_skupiny.has(alliance_id):
 		return {}
 	return (aliance_skupiny[alliance_id] as Dictionary).duplicate(true)
 
-# Brief: Reads current runtime data and returns it to callers.
+# Pulls current state data.
 func ziskej_spolecne_aliance(tag_a: String, tag_b: String) -> Array:
 	var a = _normalizuj_tag(tag_a)
 	var b = _normalizuj_tag(tag_b)
@@ -4659,7 +4996,7 @@ func ziskej_spolecne_aliance(tag_a: String, tag_b: String) -> Array:
 			result.append(skupina.duplicate(true))
 	return result
 
-# Brief: Reads current runtime data and returns it to callers.
+# Reads values from active state.
 func ziskej_podminky_clenstvi_aliance(alliance_id: String, candidate_tag: String) -> Array:
 	if not aliance_skupiny.has(alliance_id):
 		return []
@@ -4695,7 +5032,7 @@ func ziskej_podminky_clenstvi_aliance(alliance_id: String, candidate_tag: String
 		})
 	return conditions
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _synchronizuj_bilateralni_aliance_skupiny(alliance_id: String) -> void:
 	if not aliance_skupiny.has(alliance_id):
 		return
@@ -4713,7 +5050,7 @@ func _synchronizuj_bilateralni_aliance_skupiny(alliance_id: String) -> void:
 			if level > current:
 				_nastav_uroven_aliance_bez_kontroly(a, b, level)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _resynchronizuj_bilateralni_aliance_vsech_skupin() -> void:
 	var max_levels: Dictionary = {}
 	for aid in aliance_skupiny:
@@ -4751,7 +5088,7 @@ func _resynchronizuj_bilateralni_aliance_vsech_skupin() -> void:
 	if _ai_phase_cache_active:
 		_ai_allies_cache.clear()
 
-# Brief: Clears temporary data and resets transient runtime/UI state.
+# Resets transient runtime/UI data.
 func _vycisti_aliance_skupiny_mrtve_staty() -> void:
 	var active = _ziskej_aktivni_staty()
 	var changed = false
@@ -4772,14 +5109,14 @@ func _vycisti_aliance_skupiny_mrtve_staty() -> void:
 	if changed:
 		_resynchronizuj_bilateralni_aliance_vsech_skupin()
 
-# Brief: Reads current runtime data and returns it to callers.
+# Returns current runtime data.
 func _ziskej_vsechny_aliance_skupiny() -> Array:
 	var result: Array = []
 	for aid in aliance_skupiny:
 		result.append((aliance_skupiny[aid] as Dictionary).duplicate(true))
 	return result
 
-# Brief: Reads current runtime data and returns it to callers.
+# Returns current runtime data.
 func _ziskej_aliance_kde_je_zakladatel(tag: String) -> Array:
 	var clean = _normalizuj_tag(tag)
 	if clean == "":
@@ -4791,7 +5128,7 @@ func _ziskej_aliance_kde_je_zakladatel(tag: String) -> Array:
 			result.append(skupina.duplicate(true))
 	return result
 
-# Brief: Reads current runtime data and returns it to callers.
+# Fetches data for callers.
 func _ziskej_spojence_s_min_alianci(state_tag: String, min_level: int) -> Array:
 	var out: Array = []
 	var cisty = _normalizuj_tag(state_tag)
@@ -4814,7 +5151,7 @@ func _ziskej_spojence_s_min_alianci(state_tag: String, min_level: int) -> Array:
 		_ai_allies_cache["%s|%d" % [cisty, min_level]] = out.duplicate()
 	return out
 
-# Brief: Clears temporary data and resets transient runtime/UI state.
+# Resets transient runtime/UI data.
 func _vycisti_expirovane_neagresivni_smlouvy() -> void:
 	var keys = neagresivni_smlouvy.keys().duplicate()
 	for k in keys:
@@ -4822,7 +5159,7 @@ func _vycisti_expirovane_neagresivni_smlouvy() -> void:
 		if expiry_turn < aktualni_kolo:
 			neagresivni_smlouvy.erase(k)
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Returns true when conditions are met.
 func ma_neagresivni_smlouvu(tag_a: String, tag_b: String) -> bool:
 	_vycisti_expirovane_neagresivni_smlouvy()
 	var key = _klic_pair(tag_a, tag_b)
@@ -4830,7 +5167,7 @@ func ma_neagresivni_smlouvu(tag_a: String, tag_b: String) -> bool:
 		return false
 	return neagresivni_smlouvy.has(key)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func zbyva_kol_neagresivni_smlouvy(tag_a: String, tag_b: String) -> int:
 	_vycisti_expirovane_neagresivni_smlouvy()
 	var key = _klic_pair(tag_a, tag_b)
@@ -4839,7 +5176,7 @@ func zbyva_kol_neagresivni_smlouvy(tag_a: String, tag_b: String) -> int:
 	var expiry_turn = int(neagresivni_smlouvy[key])
 	return max(0, expiry_turn - aktualni_kolo + 1)
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Validates required conditions.
 func je_aliancni_zadost_cekajici(odesilatel: String, prijemce: String) -> bool:
 	var from_clean = _normalizuj_tag(odesilatel)
 	var to_clean = _normalizuj_tag(prijemce)
@@ -4854,7 +5191,7 @@ func je_aliancni_zadost_cekajici(odesilatel: String, prijemce: String) -> bool:
 		return true
 	return false
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func odeslat_aliancni_zadost(tag_a: String, tag_b: String, level: int, ignoruj_vztahove_podminky: bool = false) -> bool:
 	var a = _normalizuj_tag(tag_a)
 	var b = _normalizuj_tag(tag_b)
@@ -4889,7 +5226,7 @@ func odeslat_aliancni_zadost(tag_a: String, tag_b: String, level: int, ignoruj_v
 		_pridej_popup_hraci(a, "Diplomacy", "Request for %s was sent to %s." % [nazev_urovne_aliance(target_level), b])
 	return true
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _vyhodnot_aliancni_zadosti_pred_ai() -> void:
 	if cekajici_aliancni_zadosti.is_empty():
 		return
@@ -4920,7 +5257,7 @@ func _vyhodnot_aliancni_zadosti_pred_ai() -> void:
 				_zaloguj_zpravu_hraci(from_tag, "Alliance", "Country %s rejected your request for %s." % [to_tag, nazev_urovne_aliance(level)], "alliance")
 				_pridej_popup_hraci(from_tag, "Diplomacy", "Country %s rejected your request for %s." % [to_tag, nazev_urovne_aliance(level)])
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func uzavrit_neagresivni_smlouvu(tag_a: String, tag_b: String) -> bool:
 	var a = _normalizuj_tag(tag_a)
 	var b = _normalizuj_tag(tag_b)
@@ -4949,10 +5286,10 @@ func uzavrit_neagresivni_smlouvu(tag_a: String, tag_b: String) -> bool:
 	return true
 
 # ---- Military access ----
-# vojensky_pristup["HOST|GUEST"] = true  →  HOST has granted GUEST right to move troops through HOST's territory.
+# vojensky_pristup["HOST|GUEST"] = true  â†’  HOST has granted GUEST right to move troops through HOST's territory.
 # Alliance automatically grants mutual access (checked in ma_vojensky_pristup, not stored).
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Eligibility/guard check.
 func ma_vojensky_pristup(guest: String, host: String) -> bool:
 	var g = _normalizuj_tag(guest)
 	var h = _normalizuj_tag(host)
@@ -4964,7 +5301,7 @@ func ma_vojensky_pristup(guest: String, host: String) -> bool:
 	# Manual grant: HOST|GUEST
 	return vojensky_pristup.has("%s|%s" % [h, g])
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func udelit_vojensky_pristup(host: String, guest: String) -> void:
 	var h = _normalizuj_tag(host)
 	var g = _normalizuj_tag(guest)
@@ -4972,7 +5309,7 @@ func udelit_vojensky_pristup(host: String, guest: String) -> void:
 		return
 	vojensky_pristup["%s|%s" % [h, g]] = true
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func odvolej_vojensky_pristup(host: String, guest: String) -> void:
 	var h = _normalizuj_tag(host)
 	var g = _normalizuj_tag(guest)
@@ -4981,7 +5318,7 @@ func odvolej_vojensky_pristup(host: String, guest: String) -> void:
 	vojensky_pristup.erase("%s|%s" % [h, g])
 	_expeluj_jednotky_bez_pristupu(g)
 
-# Brief: Searches available data and returns the best matching result.
+# Data lookup with best-match logic.
 func _najdi_nejblizsi_vlastni_provincii_pro_presun(tag: String, from_prov_id: int) -> int:
 	var source = map_data.get(from_prov_id, {})
 	var sx = float(source.get("x", 0.0))
@@ -5006,7 +5343,7 @@ func _najdi_nejblizsi_vlastni_provincii_pro_presun(tag: String, from_prov_id: in
 			best_id = p_id
 	return best_id
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _expeluj_jednotky_bez_pristupu(filter_tag: String = "") -> void:
 	if map_data.is_empty():
 		return
@@ -5063,7 +5400,7 @@ func _expeluj_jednotky_bez_pristupu(filter_tag: String = "") -> void:
 	if ml and ml.has_method("aktualizuj_ikony_armad"):
 		ml.aktualizuj_ikony_armad()
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _oprav_neplatne_vlastniky_armad() -> bool:
 	if map_data.is_empty():
 		return false
@@ -5106,7 +5443,7 @@ func _oprav_neplatne_vlastniky_armad() -> bool:
 
 	return changed
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func pozadej_vojensky_pristup(guest: String, host: String) -> bool:
 	var g = _normalizuj_tag(guest)
 	var h = _normalizuj_tag(host)
@@ -5118,7 +5455,7 @@ func pozadej_vojensky_pristup(guest: String, host: String) -> bool:
 		return false
 	if ma_vojensky_pristup(g, h):
 		return false
-	# If target is AI, grant immediately when relations ≥ 15, otherwise deny.
+	# If target is AI, grant immediately when relations â‰Ą 15, otherwise deny.
 	if not je_lidsky_stat(h):
 		if _vazal_musi_prijmout_zadost(h, g):
 			udelit_vojensky_pristup(h, g)
@@ -5137,10 +5474,10 @@ func pozadej_vojensky_pristup(guest: String, host: String) -> bool:
 			if je_lidsky_stat(g):
 				_pridej_popup_hraci(g, "Diplomacy", "Military access denied by %s (relations too low: %.0f, need 15)." % [h, rel])
 			return false
-	# Target is human — send a diplomatic request.
+	# Target is human â€” send a diplomatic request.
 	return _pridej_diplomatickou_zadost(g, h, "military_access")
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Boolean check for required state.
 func _ma_cekajici_zadost_vojenskeho_pristupu(guest: String, host: String) -> bool:
 	var g = _normalizuj_tag(guest)
 	var h = _normalizuj_tag(host)
@@ -5153,7 +5490,7 @@ func _ma_cekajici_zadost_vojenskeho_pristupu(guest: String, host: String) -> boo
 			return true
 	return false
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _pridej_diplomatickou_zadost(from_tag: String, to_tag: String, req_type: String, alliance_level: int = ALLIANCE_NONE, payload: Dictionary = {}) -> bool:
 	var from_clean = _normalizuj_tag(from_tag)
 	var to_clean = _normalizuj_tag(to_tag)
@@ -5223,7 +5560,7 @@ func _pridej_diplomatickou_zadost(from_tag: String, to_tag: String, req_type: St
 		_zaloguj_globalni_zpravu("Loans", "%s sent loan proposal to %s." % [from_clean, to_clean], "trade")
 	return true
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Validates required conditions.
 func _je_essential_diplomaticka_zadost(from_tag: String, to_tag: String, req_type: String, alliance_level: int) -> bool:
 	var from_clean = _normalizuj_tag(from_tag)
 	var to_clean = _normalizuj_tag(to_tag)
@@ -5254,7 +5591,7 @@ func _je_essential_diplomaticka_zadost(from_tag: String, to_tag: String, req_typ
 		_:
 			return false
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _diplomaticka_zadost_priorita(req: Dictionary) -> int:
 	var from_tag = _normalizuj_tag(str(req.get("from", "")))
 	if je_lidsky_stat(from_tag):
@@ -5276,7 +5613,7 @@ func _diplomaticka_zadost_priorita(req: Dictionary) -> int:
 		_:
 			return 100
 
-# Brief: Reads current runtime data and returns it to callers.
+# Reads values from active state.
 func _ziskej_index_nejvyssi_priority_zadosti(queue: Array) -> int:
 	if queue.is_empty():
 		return -1
@@ -5296,7 +5633,7 @@ func _ziskej_index_nejvyssi_priority_zadosti(queue: Array) -> int:
 
 	return best_idx
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _odeber_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> Dictionary:
 	var player_clean = _normalizuj_tag(hrac_tag)
 	var from_clean = _normalizuj_tag(from_tag)
@@ -5314,7 +5651,7 @@ func _odeber_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> Diction
 		return req
 	return {}
 
-# Brief: Reads current runtime data and returns it to callers.
+# Reads values from active state.
 func ziskej_cekajici_zadost_od_statu(hrac_tag: String, from_tag: String) -> Dictionary:
 	var player_clean = _normalizuj_tag(hrac_tag)
 	var from_clean = _normalizuj_tag(from_tag)
@@ -5328,7 +5665,7 @@ func ziskej_cekajici_zadost_od_statu(hrac_tag: String, from_tag: String) -> Dict
 			return req.duplicate(true)
 	return {}
 
-# Brief: Reads current runtime data and returns it to callers.
+# Read-only data accessor.
 func ziskej_prvni_cekajici_diplomatickou_zadost(hrac_tag: String) -> Dictionary:
 	var player_clean = _normalizuj_tag(hrac_tag)
 	if player_clean == "":
@@ -5345,7 +5682,7 @@ func ziskej_prvni_cekajici_diplomatickou_zadost(hrac_tag: String) -> Dictionary:
 		return {}
 	return (queue[idx] as Dictionary).duplicate(true)
 
-# Brief: Reads current runtime data and returns it to callers.
+# Fetches data for callers.
 func ziskej_pocet_cekajicich_diplomatickych_zadosti(hrac_tag: String) -> int:
 	var player_clean = _normalizuj_tag(hrac_tag)
 	if player_clean == "":
@@ -5354,7 +5691,7 @@ func ziskej_pocet_cekajicich_diplomatickych_zadosti(hrac_tag: String) -> int:
 		return 0
 	return (cekajici_diplomaticke_zadosti[player_clean] as Array).size()
 
-# Brief: Reads current runtime data and returns it to callers.
+# Fetches data for callers.
 func ziskej_cekajici_diplomaticke_zadosti(hrac_tag: String) -> Array:
 	var player_clean = _normalizuj_tag(hrac_tag)
 	if player_clean == "":
@@ -5374,7 +5711,7 @@ func ziskej_cekajici_diplomaticke_zadosti(hrac_tag: String) -> Array:
 	)
 	return queue
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _vazal_musi_prijmout_zadost(receiver_tag: String, sender_tag: String) -> bool:
 	var receiver = _normalizuj_tag(receiver_tag)
 	var sender = _normalizuj_tag(sender_tag)
@@ -5382,7 +5719,7 @@ func _vazal_musi_prijmout_zadost(receiver_tag: String, sender_tag: String) -> bo
 		return false
 	return ziskej_overlorda_statu(receiver) == sender
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _vykonej_prijeti_diplomaticke_zadosti(player_clean: String, req: Dictionary, forced_vassal_accept: bool = false) -> bool:
 	var sender = _normalizuj_tag(str(req.get("from", "")))
 	var req_type = str(req.get("type", ""))
@@ -5481,7 +5818,7 @@ func _vykonej_prijeti_diplomaticke_zadosti(player_clean: String, req: Dictionary
 		_pridej_popup_hraci(player_clean, "Diplomacy", "As a vassal, you automatically accepted a diplomatic request from your overlord (%s)." % sender)
 	return false
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func hrac_prijmi_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> bool:
 	var player_clean = _normalizuj_tag(hrac_tag)
 	var req = _odeber_diplomatickou_zadost(player_clean, from_tag)
@@ -5489,7 +5826,7 @@ func hrac_prijmi_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> boo
 		return false
 	return _vykonej_prijeti_diplomaticke_zadosti(player_clean, req)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func hrac_odmitni_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> bool:
 	var player_clean = _normalizuj_tag(hrac_tag)
 	var from_clean = _normalizuj_tag(from_tag)
@@ -5525,7 +5862,7 @@ func hrac_odmitni_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> bo
 	_zaloguj_globalni_zpravu("Diplomacy", "%s declined %s from %s." % [player_clean, req_name, sender], "diplomacy")
 	return true
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func hrac_odmitni_vsechny_diplomaticke_zadosti(hrac_tag: String) -> int:
 	var player_clean = _normalizuj_tag(hrac_tag)
 	if player_clean == "":
@@ -5584,7 +5921,7 @@ func hrac_odmitni_vsechny_diplomaticke_zadosti(hrac_tag: String) -> int:
 			_pridej_popup_hraci(player_clean, "Diplomacy", "You declined all pending diplomatic requests (%d)." % count)
 	return count
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func hrac_prijmi_vsechny_diplomaticke_zadosti(hrac_tag: String) -> int:
 	var player_clean = _normalizuj_tag(hrac_tag)
 	if player_clean == "":
@@ -5609,14 +5946,14 @@ func hrac_prijmi_vsechny_diplomaticke_zadosti(hrac_tag: String) -> int:
 	return accepted
 
 # Diplomacy helpers
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func jsou_ve_valce(tag1: String, tag2: String) -> bool:
 	var klic = _klic_valky(tag1, tag2)
 	if klic == "":
 		return false
 	return valky.has(klic)
 
-# Brief: Clears temporary data and resets transient runtime/UI state.
+# Clears temporary state.
 func vycisti_stat_po_kapitulaci(tag: String):
 	var target = tag.strip_edges().to_upper()
 	if target == "":
@@ -5733,7 +6070,7 @@ func vycisti_stat_po_kapitulaci(tag: String):
 	_core_state_cache.erase(target)
 	_expeluj_jednotky_bez_pristupu(target)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _vyhlasit_valku_par(utocnik: String, obrance: String, headline: String, details: String) -> bool:
 	var a = _normalizuj_tag(utocnik)
 	var b = _normalizuj_tag(obrance)
@@ -5767,7 +6104,7 @@ func _vyhlasit_valku_par(utocnik: String, obrance: String, headline: String, det
 		_nastav_uroven_aliance_bez_kontroly(a, b, ALLIANCE_NONE)
 	return true
 
-# Brief: Applies prepared settings/effects to runtime systems.
+# Applies prepared settings/effects to runtime systems.
 func _aplikuj_diplomatickou_reakci_na_agresi(utocnik: String, obrance: String) -> void:
 	var attacker = _normalizuj_tag(utocnik)
 	var defender = _normalizuj_tag(obrance)
@@ -5818,7 +6155,7 @@ func _aplikuj_diplomatickou_reakci_na_agresi(utocnik: String, obrance: String) -
 	if je_lidsky_stat(attacker) and not reakce_na_utocnika.is_empty():
 		_pridej_popup_hraci(attacker, "Diplomacy", "\n".join(reakce_na_utocnika))
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Returns true when conditions are met.
 func _ma_byt_spojenec_povolan(state_tag: String, ally_tag: String, enemy_tag: String, min_alliance_level: int) -> bool:
 	if state_tag == "" or ally_tag == "" or enemy_tag == "":
 		return false
@@ -5847,7 +6184,7 @@ func _ma_byt_spojenec_povolan(state_tag: String, ally_tag: String, enemy_tag: St
 
 	return true
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _aktivuj_aliance_po_vyhlaseni_valky(utocnik: String, obrance: String) -> void:
 	var attacker = _normalizuj_tag(utocnik)
 	var defender = _normalizuj_tag(obrance)
@@ -5887,7 +6224,7 @@ func _aktivuj_aliance_po_vyhlaseni_valky(utocnik: String, obrance: String) -> vo
 			"%s entered the war alongside ally %s against %s." % [ally_tag2, attacker, defender]
 		)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func vyhlasit_valku(utocnik: String, obrance: String):
 	var a = _normalizuj_tag(utocnik)
 	var b = _normalizuj_tag(obrance)
@@ -5934,7 +6271,7 @@ func vyhlasit_valku(utocnik: String, obrance: String):
 	_end_ai_cache_batch()
 	return true
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func nabidnout_mir(tag1: String, tag2: String):
 	var cisty_tag1 = tag1.strip_edges().to_upper()
 	var cisty_tag2 = tag2.strip_edges().to_upper()
@@ -5959,7 +6296,7 @@ func nabidnout_mir(tag1: String, tag2: String):
 
 	print("Peace offer sent: %s -> %s" % [cisty_tag1, cisty_tag2])
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Validates required conditions.
 func je_mirova_nabidka_cekajici(odesilatel: String, prijemce: String) -> bool:
 	var from_tag = odesilatel.strip_edges().to_upper()
 	var to_tag = prijemce.strip_edges().to_upper()
@@ -5975,7 +6312,7 @@ func je_mirova_nabidka_cekajici(odesilatel: String, prijemce: String) -> bool:
 			return true
 	return false
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _uzavri_mir_mezi(tag1: String, tag2: String, prepis_okupace: bool = true):
 	var cisty_tag1 = tag1.strip_edges().to_upper()
 	var cisty_tag2 = tag2.strip_edges().to_upper()
@@ -6005,7 +6342,7 @@ func _uzavri_mir_mezi(tag1: String, tag2: String, prepis_okupace: bool = true):
 		if stejna_dvojice_mir:
 			cekajici_mirove_nabidky.remove_at(i)
 
-# Brief: Clears temporary data and resets transient runtime/UI state.
+# Wipes short-lived state.
 func _vycisti_expirovane_povalecne_cooldowny() -> void:
 	var keys = povalecne_cooldowny.keys().duplicate()
 	for k in keys:
@@ -6013,14 +6350,14 @@ func _vycisti_expirovane_povalecne_cooldowny() -> void:
 		if expiry_turn < aktualni_kolo:
 			povalecne_cooldowny.erase(k)
 
-# Brief: Applies incoming values and synchronizes dependent state.
+# Applies updates and syncs dependent state.
 func _nastav_povalecny_cooldown(tag_a: String, tag_b: String) -> void:
 	var key = _klic_pair(tag_a, tag_b)
 	if key == "":
 		return
 	povalecne_cooldowny[key] = aktualni_kolo + PEACE_WAR_COOLDOWN_TURNS - 1
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func zbyva_kol_do_dalsi_valky(tag_a: String, tag_b: String) -> int:
 	_vycisti_expirovane_povalecne_cooldowny()
 	var key = _klic_pair(tag_a, tag_b)
@@ -6029,7 +6366,7 @@ func zbyva_kol_do_dalsi_valky(tag_a: String, tag_b: String) -> int:
 	var expiry_turn = int(povalecne_cooldowny[key])
 	return max(0, expiry_turn - aktualni_kolo + 1)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _prepis_okupace_po_miru(tag_a: String, tag_b: String) -> void:
 	if map_data.is_empty():
 		return
@@ -6055,7 +6392,7 @@ func _prepis_okupace_po_miru(tag_a: String, tag_b: String) -> void:
 		if map_loader.has_method("_aktualizuj_aktivni_mapovy_mod"):
 			map_loader._aktualizuj_aktivni_mapovy_mod()
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Boolean check for required state.
 func _ma_aktivni_tlak_na_kapitulaci(obrance: String, utocnik: String) -> bool:
 	var obr_tag = obrance.strip_edges().to_upper()
 	var uto_tag = utocnik.strip_edges().to_upper()
@@ -6064,7 +6401,7 @@ func _ma_aktivni_tlak_na_kapitulaci(obrance: String, utocnik: String) -> bool:
 			return true
 	return false
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Validates required conditions.
 func _ma_stat_cekajici_kapitulaci(state_tag: String) -> bool:
 	var wanted = _normalizuj_tag(state_tag)
 	if wanted == "":
@@ -6074,7 +6411,7 @@ func _ma_stat_cekajici_kapitulaci(state_tag: String) -> bool:
 			return true
 	return false
 
-# Brief: Reads current runtime data and returns it to callers.
+# Fetches data for callers.
 func _ziskej_statove_provincie(owner_tag: String) -> Array:
 	var owner_clean = _normalizuj_tag(owner_tag)
 	var out: Array = []
@@ -6086,7 +6423,7 @@ func _ziskej_statove_provincie(owner_tag: String) -> Array:
 			out.append(int(p_id))
 	return out
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Eligibility/guard check.
 func _je_mirova_provincie_porazeneho(vitez_tag: String, porazeny_tag: String, d: Dictionary) -> bool:
 	var winner = _normalizuj_tag(vitez_tag)
 	var loser = _normalizuj_tag(porazeny_tag)
@@ -6102,7 +6439,7 @@ func _je_mirova_provincie_porazeneho(vitez_tag: String, porazeny_tag: String, d:
 		return true
 	return false
 
-# Brief: Reads current runtime data and returns it to callers.
+# Fetches data for callers.
 func _ziskej_mirove_provincie_porazeneho(vitez_tag: String, porazeny_tag: String) -> Array:
 	var out: Array = []
 	for p_id in map_data:
@@ -6111,7 +6448,7 @@ func _ziskej_mirove_provincie_porazeneho(vitez_tag: String, porazeny_tag: String
 			out.append(int(p_id))
 	return out
 
-# Brief: Reads current runtime data and returns it to callers.
+# Fetches data for callers.
 func _ziskej_potencialni_mirove_provincie_dle_losera(porazeny_tag: String) -> Array:
 	var loser = _normalizuj_tag(porazeny_tag)
 	var out: Array = []
@@ -6127,7 +6464,7 @@ func _ziskej_potencialni_mirove_provincie_dle_losera(porazeny_tag: String) -> Ar
 			out.append(int(p_id))
 	return out
 
-# Brief: Computes derived values from current inputs and game state.
+# Computes derived values from current inputs and game state.
 func _spocitej_body_mirove_konference(vitez_tag: String, porazeny_tag: String, reason: String = "") -> int:
 	var vitez = _normalizuj_tag(vitez_tag)
 	var porazeny = _normalizuj_tag(porazeny_tag)
@@ -6160,7 +6497,7 @@ func _spocitej_body_mirove_konference(vitez_tag: String, porazeny_tag: String, r
 
 	return max(12, body)
 
-# Brief: Computes derived values from current inputs and game state.
+# Computes derived values from current inputs and game state.
 func _spocitej_cenu_mirovych_pozadavku(porazeny_tag: String, provinces_to_take: int, annex_all: bool, make_vassal: bool, reparations_turns: int) -> int:
 	var loser = _normalizuj_tag(porazeny_tag)
 	var loser_provinces = _ziskej_potencialni_mirove_provincie_dle_losera(loser)
@@ -6176,11 +6513,11 @@ func _spocitej_cenu_mirovych_pozadavku(porazeny_tag: String, provinces_to_take: 
 	cost += clamped_turns * PEACE_COST_REPARATIONS_PER_TURN
 	return max(0, cost)
 
-# Brief: Computes derived values from current inputs and game state.
+# Computes derived values from current inputs and game state.
 func spocitej_cenu_mirovych_pozadavku(porazeny_tag: String, provinces_to_take: int, annex_all: bool, make_vassal: bool, reparations_turns: int) -> int:
 	return _spocitej_cenu_mirovych_pozadavku(porazeny_tag, provinces_to_take, annex_all, make_vassal, reparations_turns)
 
-# Brief: Reads current runtime data and returns it to callers.
+# Reads values from active state.
 func _ziskej_profile_statu_pro_mir(tag: String) -> Dictionary:
 	var wanted = _normalizuj_tag(tag)
 	for p_id in map_data:
@@ -6206,7 +6543,7 @@ func _ziskej_profile_statu_pro_mir(tag: String) -> Dictionary:
 		"ideology": ""
 	}
 
-# Brief: Refreshes existing content to reflect current runtime values.
+# Refreshes existing content to reflect current runtime values.
 func _obnov_okupovana_uzemi_porazeneho(vitez_tag: String, porazeny_tag: String) -> int:
 	var winner = _normalizuj_tag(vitez_tag)
 	var loser = _normalizuj_tag(porazeny_tag)
@@ -6230,7 +6567,7 @@ func _obnov_okupovana_uzemi_porazeneho(vitez_tag: String, porazeny_tag: String) 
 
 	return restored
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _anektuj_cely_stat(vitez_tag: String, porazeny_tag: String) -> Dictionary:
 	var vitez = _normalizuj_tag(vitez_tag)
 	var porazeny = _normalizuj_tag(porazeny_tag)
@@ -6258,7 +6595,7 @@ func _anektuj_cely_stat(vitez_tag: String, porazeny_tag: String) -> Dictionary:
 
 	return {"transferred": prevedeno}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _vezmi_cast_provincii(vitez_tag: String, porazeny_tag: String, count: int) -> Dictionary:
 	var vitez = _normalizuj_tag(vitez_tag)
 	var porazeny = _normalizuj_tag(porazeny_tag)
@@ -6301,7 +6638,7 @@ func _vezmi_cast_provincii(vitez_tag: String, porazeny_tag: String, count: int) 
 
 	return {"transferred": transferred}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _vezmi_konkretni_provincie(vitez_tag: String, porazeny_tag: String, selected_ids: Array) -> Dictionary:
 	var vitez = _normalizuj_tag(vitez_tag)
 	var porazeny = _normalizuj_tag(porazeny_tag)
@@ -6328,7 +6665,7 @@ func _vezmi_konkretni_provincie(vitez_tag: String, porazeny_tag: String, selecte
 
 	return {"transferred": transferred}
 
-# Brief: Applies incoming values and synchronizes dependent state.
+# Applies incoming data to runtime state.
 func _nastav_vazala(overlord_tag: String, subject_tag: String) -> void:
 	var overlord = _normalizuj_tag(overlord_tag)
 	var subject = _normalizuj_tag(subject_tag)
@@ -6341,7 +6678,7 @@ func _nastav_vazala(overlord_tag: String, subject_tag: String) -> void:
 	if not ma_neagresivni_smlouvu(overlord, subject):
 		uzavrit_neagresivni_smlouvu(overlord, subject)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _uzavri_valky_statu_krome(state_tag: String, except_tags: Array = []) -> void:
 	var state = _normalizuj_tag(state_tag)
 	if state == "":
@@ -6372,7 +6709,7 @@ func _uzavri_valky_statu_krome(state_tag: String, except_tags: Array = []) -> vo
 			continue
 		_uzavri_mir_mezi(state, enemy, true)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _pridej_valecne_reparace(from_tag: String, to_tag: String, turns: int) -> void:
 	var from_clean = _normalizuj_tag(from_tag)
 	var to_clean = _normalizuj_tag(to_tag)
@@ -6386,24 +6723,23 @@ func _pridej_valecne_reparace(from_tag: String, to_tag: String, turns: int) -> v
 		"rate": WAR_REPARATIONS_RATE
 	})
 
-# Brief: Computes derived values from current inputs and game state.
+# Computes derived values from current inputs and game state.
 func _spocitej_cisty_prijem_statu(tag: String) -> float:
+	# This is the "base net" economy used by AI and projections.
+	# Cross-state money flows (vassals, loans, reparations) are applied later.
 	var state = _normalizuj_tag(tag)
 	if state == "" or state == "SEA":
 		return 0.0
 	var hdp := 0.0
-	var soldiers := 0
 	for p_id in map_data:
 		var d = map_data[p_id]
 		if _normalizuj_tag(str(d.get("owner", ""))) != state:
 			continue
 		hdp += float(d.get("gdp", 0.0))
-		soldiers += int(d.get("soldiers", 0))
 	var income_rate = ziskej_prijmovou_sazbu_hdp(state)
-	var upkeep = ziskej_udrzbu_za_vojaka(state)
-	return (hdp * income_rate) - (float(soldiers) * upkeep)
+	return (hdp * income_rate) - _spocitej_naklady_udrzby_statu(state)
 
-# Brief: Reads current runtime data and returns it to callers.
+# Pulls current state data.
 func _ziskej_staty_pro_financni_projekci() -> Array:
 	var states: Dictionary = {}
 	for raw_tag in _ziskej_aktivni_staty():
@@ -6442,7 +6778,7 @@ func _ziskej_staty_pro_financni_projekci() -> Array:
 			states[borrower] = true
 	return states.keys()
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Returns true when conditions are met.
 func _ma_prijem_pred_toky_v_aktualnim_tahu(state_tag: String) -> bool:
 	var state = _normalizuj_tag(state_tag)
 	if state == "" or state == "SEA":
@@ -6454,7 +6790,7 @@ func _ma_prijem_pred_toky_v_aktualnim_tahu(state_tag: String) -> bool:
 		return false
 	return state == _normalizuj_tag(hrac_stat)
 
-# Brief: Reads current runtime data and returns it to callers.
+# Fetches data for callers.
 func _ziskej_urokovou_cast_splatky_pujcky(loan: Dictionary, paid_this_turn: float) -> float:
 	var due_paid = max(0.0, paid_this_turn)
 	if due_paid <= 0.0:
@@ -6467,7 +6803,7 @@ func _ziskej_urokovou_cast_splatky_pujcky(loan: Dictionary, paid_this_turn: floa
 	var scheduled_interest = max(0.0, total_interest / float(turns_total))
 	return min(due_paid, scheduled_interest)
 
-# Brief: Reads current runtime data and returns it to callers.
+# Read-only data accessor.
 func _ziskej_vychozi_kasu_pro_financni_projekci(state_tag: String) -> float:
 	var state = _normalizuj_tag(state_tag)
 	if state == "":
@@ -6476,7 +6812,7 @@ func _ziskej_vychozi_kasu_pro_financni_projekci(state_tag: String) -> float:
 		return float(_finance_projection_cash_overrides[state])
 	return _ziskej_kasu_statu(state)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _simuluj_financni_toky_aktualniho_tahu() -> Dictionary:
 	if _finance_projection_cash_overrides.is_empty() and _sim_cache_validni:
 		return _sim_cache
@@ -6611,12 +6947,14 @@ func _simuluj_financni_toky_aktualniho_tahu() -> Dictionary:
 		_sim_cache_validni = true
 	return vysledek
 
-# Brief: Reads current runtime data and returns it to callers.
+# Pulls current state data.
 func ziskej_cisty_prijem_statu(tag: String) -> float:
 	return _spocitej_cisty_prijem_statu(tag)
 
-# Brief: Reads current runtime data and returns it to callers.
+# Pulls current state data.
 func ziskej_financni_rozpad_statu(state_tag: String = "") -> Dictionary:
+	# Financial breakdown combines base economy with projected flow simulation.
+	# `profit` is structural balance, while `cashflow` includes transfer timing.
 	var state = _normalizuj_tag(state_tag)
 	if state == "":
 		state = _normalizuj_tag(hrac_stat)
@@ -6630,18 +6968,15 @@ func ziskej_financni_rozpad_statu(state_tag: String = "") -> Dictionary:
 	var projected = projected_states.get(state, {}) as Dictionary
 
 	var celkove_hdp := 0.0
-	var celkem_vojaku := 0
 	for p_id in map_data:
 		var d = map_data[p_id]
 		if _normalizuj_tag(str(d.get("owner", ""))) != state:
 			continue
 		celkove_hdp += float(d.get("gdp", 0.0))
-		celkem_vojaku += int(d.get("soldiers", 0))
 
 	var prijmova_sazba = ziskej_prijmovou_sazbu_hdp(state)
-	var upkeep_za_vojaka = ziskej_udrzbu_za_vojaka(state)
 	var prijem_hdp = celkove_hdp * prijmova_sazba
-	var vydaj_armada = float(celkem_vojaku) * upkeep_za_vojaka
+	var vydaj_armada = _spocitej_naklady_udrzby_statu(state)
 
 	var prijem_vazalove := float(projected.get("vassal_in", 0.0))
 	var vydaj_vazalsky_odvod := float(projected.get("vassal_out", 0.0))
@@ -6688,7 +7023,7 @@ func ziskej_financni_rozpad_statu(state_tag: String = "") -> Dictionary:
 		"projected_net_income": cashflow
 	}
 
-# Brief: Reads current runtime data and returns it to callers.
+# Reads values from active state.
 func ziskej_projektovany_vazalsky_odvod(overlord_tag: String, subject_tag: String) -> Dictionary:
 	var overlord = _normalizuj_tag(overlord_tag)
 	var subject = _normalizuj_tag(subject_tag)
@@ -6709,7 +7044,7 @@ func ziskej_projektovany_vazalsky_odvod(overlord_tag: String, subject_tag: Strin
 		"paid": paid
 	}
 
-# Brief: Reads current runtime data and returns it to callers.
+# Pulls current state data.
 func ziskej_vazalsky_odvod(overlord_tag: String, subject_tag: String) -> float:
 	var overlord = _normalizuj_tag(overlord_tag)
 	var subject = _normalizuj_tag(subject_tag)
@@ -6720,7 +7055,7 @@ func ziskej_vazalsky_odvod(overlord_tag: String, subject_tag: String) -> float:
 	var rate = float(vazalske_odvody.get(subject, VASSAL_TRIBUTE_DEFAULT_RATE))
 	return clamp(rate, VASSAL_TRIBUTE_MIN_RATE, VASSAL_TRIBUTE_MAX_RATE)
 
-# Brief: Applies incoming values and synchronizes dependent state.
+# Sync update for linked values.
 func nastav_vazalsky_odvod(overlord_tag: String, subject_tag: String, procenta: float) -> bool:
 	var overlord = _normalizuj_tag(overlord_tag)
 	var subject = _normalizuj_tag(subject_tag)
@@ -6738,7 +7073,7 @@ func nastav_vazalsky_odvod(overlord_tag: String, subject_tag: String, procenta: 
 	vazalske_odvody_posledni_zmena_kolo[subject] = aktualni_kolo
 	return true
 
-# Brief: Reads current runtime data and returns it to callers.
+# Pulls current state data.
 func ziskej_zbyvajici_cooldown_vazalskeho_odvodu(overlord_tag: String, subject_tag: String) -> int:
 	var overlord = _normalizuj_tag(overlord_tag)
 	var subject = _normalizuj_tag(subject_tag)
@@ -6752,7 +7087,7 @@ func ziskej_zbyvajici_cooldown_vazalskeho_odvodu(overlord_tag: String, subject_t
 	var turns_passed = max(0, aktualni_kolo - last_turn)
 	return maxi(0, VASSAL_TRIBUTE_CHANGE_COOLDOWN_TURNS - turns_passed)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _zpracuj_vazalske_odvody_za_kolo() -> void:
 	if vazalske_vztahy.is_empty():
 		return
@@ -6776,7 +7111,7 @@ func _zpracuj_vazalske_odvody_za_kolo() -> void:
 		_nastav_kasu_statu(subject, subject_cash - paid)
 		_nastav_kasu_statu(overlord, _ziskej_kasu_statu(overlord) + paid)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _zpracuj_valecne_reparace_za_kolo() -> void:
 	if valecne_reparace.is_empty():
 		return
@@ -6807,7 +7142,7 @@ func _zpracuj_valecne_reparace_za_kolo() -> void:
 
 	valecne_reparace = active
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _zpracuj_aktivni_pujcky_za_kolo() -> void:
 	if aktivni_pujcky.is_empty():
 		return
@@ -6860,7 +7195,7 @@ func _zpracuj_aktivni_pujcky_za_kolo() -> void:
 
 	aktivni_pujcky = active
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _odstran_neplatne_mirove_konference() -> void:
 	var keys = cekajici_mirove_konference.keys().duplicate()
 	for k in keys:
@@ -6881,7 +7216,7 @@ func _odstran_neplatne_mirove_konference() -> void:
 		if queue.is_empty():
 			cekajici_mirove_konference.erase(k)
 
-# Brief: Builds required objects/UI nodes and wires essential defaults/signals.
+# Construct/setup block for required nodes.
 func _vytvor_mirovou_konferenci(vitez_tag: String, porazeny_tag: String, reason: String = "peace") -> Dictionary:
 	var winner = _normalizuj_tag(vitez_tag)
 	var loser = _normalizuj_tag(porazeny_tag)
@@ -6901,7 +7236,7 @@ func _vytvor_mirovou_konferenci(vitez_tag: String, porazeny_tag: String, reason:
 		"max_reparations_turns": PEACE_MAX_REPARATIONS_TURNS
 	}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _auto_navrh_mirovych_podminek(conf: Dictionary) -> Dictionary:
 	var points = int(conf.get("points", 0))
 	var loser_count = int(conf.get("loser_province_count", 0))
@@ -6918,7 +7253,7 @@ func _auto_navrh_mirovych_podminek(conf: Dictionary) -> Dictionary:
 		"reparations_turns": repar_turns
 	}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _proved_mirovou_konferenci(conf: Dictionary, demands: Dictionary) -> Dictionary:
 	var winner = _normalizuj_tag(str(conf.get("winner", "")))
 	var loser = _normalizuj_tag(str(conf.get("loser", "")))
@@ -7005,7 +7340,7 @@ func _proved_mirovou_konferenci(conf: Dictionary, demands: Dictionary) -> Dictio
 		"reparations_turns": repar_turns
 	}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func uzavri_mir_a_zahaj_konferenci(tag1: String, tag2: String, reason: String = "peace") -> Dictionary:
 	var a = _normalizuj_tag(tag1)
 	var b = _normalizuj_tag(tag2)
@@ -7034,7 +7369,7 @@ func uzavri_mir_a_zahaj_konferenci(tag1: String, tag2: String, reason: String = 
 	result["queued_for_player"] = false
 	return result
 
-# Brief: Reads current runtime data and returns it to callers.
+# Reads values from active state.
 func ziskej_prvni_mirovou_konferenci_pro_hrace(hrac_tag: String) -> Dictionary:
 	_odstran_neplatne_mirove_konference()
 	var player = _normalizuj_tag(hrac_tag)
@@ -7045,7 +7380,7 @@ func ziskej_prvni_mirovou_konferenci_pro_hrace(hrac_tag: String) -> Dictionary:
 		return {}
 	return (queue[0] as Dictionary).duplicate(true)
 
-# Brief: Reads current runtime data and returns it to callers.
+# Returns current runtime data.
 func ziskej_pocet_mirovych_konferenci_pro_hrace(hrac_tag: String) -> int:
 	_odstran_neplatne_mirove_konference()
 	var player = _normalizuj_tag(hrac_tag)
@@ -7054,7 +7389,7 @@ func ziskej_pocet_mirovych_konferenci_pro_hrace(hrac_tag: String) -> int:
 	var queue = cekajici_mirove_konference[player] as Array
 	return queue.size()
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Returns true when conditions are met.
 func ma_cekajici_mirovou_konferenci_pro_stat(stat_tag: String) -> bool:
 	_odstran_neplatne_mirove_konference()
 	var wanted = _normalizuj_tag(stat_tag)
@@ -7070,7 +7405,7 @@ func ma_cekajici_mirovou_konferenci_pro_stat(stat_tag: String) -> bool:
 				return true
 	return false
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func hrac_uzavri_mirovou_konferenci(hrac_tag: String, conference_id: int, demands: Dictionary) -> Dictionary:
 	var player = _normalizuj_tag(hrac_tag)
 	if player == "" or not cekajici_mirove_konference.has(player):
@@ -7095,7 +7430,7 @@ func hrac_uzavri_mirovou_konferenci(hrac_tag: String, conference_id: int, demand
 			cekajici_mirove_konference.erase(player)
 	return result
 
-# Brief: Reads current runtime data and returns it to callers.
+# Fetches data for callers.
 func ziskej_vazaly_statu(overlord_tag: String) -> Array:
 	var overlord = _normalizuj_tag(overlord_tag)
 	var out: Array = []
@@ -7111,14 +7446,14 @@ func ziskej_vazaly_statu(overlord_tag: String) -> Array:
 	out.sort()
 	return out
 
-# Brief: Reads current runtime data and returns it to callers.
+# Returns current runtime data.
 func ziskej_overlorda_statu(subject_tag: String) -> String:
 	var subject = _normalizuj_tag(subject_tag)
 	if subject == "":
 		return ""
 	return _normalizuj_tag(str(vazalske_vztahy.get(subject, "")))
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Boolean check for required state.
 func je_vazal_statu(subject_tag: String, overlord_tag: String = "") -> bool:
 	var subject = _normalizuj_tag(subject_tag)
 	if subject == "":
@@ -7130,7 +7465,7 @@ func je_vazal_statu(subject_tag: String, overlord_tag: String = "") -> bool:
 		return true
 	return current_lord == _normalizuj_tag(overlord_tag)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func jsou_vazalsky_spojeni(tag_a: String, tag_b: String) -> bool:
 	var a = _normalizuj_tag(tag_a)
 	var b = _normalizuj_tag(tag_b)
@@ -7138,7 +7473,7 @@ func jsou_vazalsky_spojeni(tag_a: String, tag_b: String) -> bool:
 		return false
 	return je_vazal_statu(a, b) or je_vazal_statu(b, a)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func muze_vstoupit_na_uzemi(actor_tag: String, owner_tag: String) -> bool:
 	var actor = _normalizuj_tag(actor_tag)
 	var owner_state = _normalizuj_tag(owner_tag)
@@ -7156,7 +7491,7 @@ func muze_vstoupit_na_uzemi(actor_tag: String, owner_tag: String) -> bool:
 		return true
 	return false
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func propustit_vazala(overlord_tag: String, subject_tag: String) -> bool:
 	var overlord = _normalizuj_tag(overlord_tag)
 	var subject = _normalizuj_tag(subject_tag)
@@ -7172,7 +7507,7 @@ func propustit_vazala(overlord_tag: String, subject_tag: String) -> bool:
 		nastav_uroven_aliance(overlord, subject, ALLIANCE_NONE, true)
 	return true
 
-# Brief: Reads current runtime data and returns it to callers.
+# Fetches data for callers.
 func ziskej_aktivni_reparace_statu(state_tag: String) -> Dictionary:
 	var state = _normalizuj_tag(state_tag)
 	var incoming: Array = []
@@ -7194,7 +7529,7 @@ func ziskej_aktivni_reparace_statu(state_tag: String) -> Dictionary:
 
 	return {"incoming": incoming, "outgoing": outgoing}
 
-# Brief: Computes derived values from current inputs and game state.
+# Computes derived values from current inputs and game state.
 func _spocitej_silu_statu(tag: String) -> int:
 	var hledany = tag.strip_edges().to_upper()
 	if hledany == "":
@@ -7211,7 +7546,7 @@ func _spocitej_silu_statu(tag: String) -> int:
 		return int(army_power.get("total", base_sila))
 	return base_sila
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Validates required conditions.
 func _ma_ai_prijmout_mir(prijemce: String, odesilatel: String) -> bool:
 	var prij = prijemce.strip_edges().to_upper()
 	var ode = odesilatel.strip_edges().to_upper()
@@ -7270,7 +7605,7 @@ func _ma_ai_prijmout_mir(prijemce: String, odesilatel: String) -> bool:
 	chance = clamp(chance, 0.05, 0.95)
 	return randf() < chance
 
-# Brief: Reads current runtime data and returns it to callers.
+# Returns current runtime data.
 func _ziskej_ai_staty() -> Array:
 	var ai_staty: Dictionary = {}
 	for state_tag in _ziskej_aktivni_staty():
@@ -7280,7 +7615,7 @@ func _ziskej_ai_staty() -> Array:
 		ai_staty[tag] = true
 	return ai_staty.keys()
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _klic_pair(tag_a: String, tag_b: String) -> String:
 	var a = _normalizuj_tag(tag_a)
 	var b = _normalizuj_tag(tag_b)
@@ -7290,7 +7625,7 @@ func _klic_pair(tag_a: String, tag_b: String) -> String:
 		return "%s|%s" % [a, b]
 	return "%s|%s" % [b, a]
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _klic_valky(tag_a: String, tag_b: String) -> String:
 	var a = _normalizuj_tag(tag_a)
 	var b = _normalizuj_tag(tag_b)
@@ -7300,7 +7635,7 @@ func _klic_valky(tag_a: String, tag_b: String) -> String:
 		return "%s_%s" % [a, b]
 	return "%s_%s" % [b, a]
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _normalizuj_valecne_klice() -> void:
 	if valky.is_empty():
 		return
@@ -7323,11 +7658,11 @@ func _normalizuj_valecne_klice() -> void:
 	valky = normalized
 	_ai_war_cache.clear()
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _begin_ai_cache_batch() -> void:
 	_ai_cache_batch_depth += 1
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _end_ai_cache_batch() -> void:
 	if _ai_cache_batch_depth <= 0:
 		_ai_cache_batch_depth = 0
@@ -7337,21 +7672,21 @@ func _end_ai_cache_batch() -> void:
 	if _ai_cache_batch_depth == 0:
 		_flush_ai_war_pair_eval_dirty_states()
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _mark_ai_war_pair_eval_dirty_state(tag: String) -> void:
 	var clean = _normalizuj_tag(tag)
 	if clean == "":
 		return
 	_ai_war_pair_eval_dirty_states[clean] = true
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _mark_ai_war_pair_eval_dirty_pair(tag_a: String, tag_b: String) -> void:
 	_mark_ai_war_pair_eval_dirty_state(tag_a)
 	_mark_ai_war_pair_eval_dirty_state(tag_b)
 	if _ai_cache_batch_depth == 0:
 		_flush_ai_war_pair_eval_dirty_states()
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _flush_ai_war_pair_eval_dirty_states() -> void:
 	if _ai_war_pair_eval_dirty_states.is_empty():
 		return
@@ -7360,7 +7695,7 @@ func _flush_ai_war_pair_eval_dirty_states() -> void:
 	_ai_war_pair_eval_cache.clear()
 	_ai_war_pair_eval_dirty_states.clear()
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _invalidate_turn_cache() -> void:
 	_turn_cache_valid = false
 	_tag_alias_to_owner.clear()
@@ -7374,7 +7709,7 @@ func _invalidate_turn_cache() -> void:
 	_turn_soldiers_by_province.clear()
 	_turn_neighbors_by_province.clear()
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _rebuild_turn_cache() -> void:
 	_invalidate_turn_cache()
 
@@ -7415,7 +7750,7 @@ func _rebuild_turn_cache() -> void:
 	_turn_active_states = active.keys()
 	_turn_cache_valid = true
 
-# Brief: Refreshes existing content to reflect current runtime values.
+# Refreshes existing content to reflect current runtime values.
 func _refresh_turn_runtime_owner_soldier_cache() -> void:
 	if not _turn_cache_valid:
 		return
@@ -7425,7 +7760,7 @@ func _refresh_turn_runtime_owner_soldier_cache() -> void:
 		_turn_owner_by_province[pid] = _normalizuj_tag(str(d.get("owner", "")))
 		_turn_soldiers_by_province[pid] = int(d.get("soldiers", 0))
 
-# Brief: Reads current runtime data and returns it to callers.
+# Fetches data for callers.
 func _ziskej_aktivni_staty() -> Array:
 	if _turn_cache_valid:
 		return _turn_active_states.duplicate()
@@ -7438,7 +7773,7 @@ func _ziskej_aktivni_staty() -> Array:
 		ai_staty[owner_tag] = true
 	return ai_staty.keys()
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Boolean check for required state.
 func _ma_spolecnou_hranici(tag_a: String, tag_b: String) -> bool:
 	if tag_a == "" or tag_b == "" or tag_a == tag_b:
 		return false
@@ -7458,7 +7793,7 @@ func _ma_spolecnou_hranici(tag_a: String, tag_b: String) -> bool:
 				return true
 	return false
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _zpracuj_ai_diplomacii(ai_staty: Array) -> Array:
 	var aktivni_staty = _ziskej_aktivni_staty()
 	var aktivni_staty_norm: Array = []
@@ -7544,7 +7879,7 @@ func _zpracuj_ai_diplomacii(ai_staty: Array) -> Array:
 
 	return zmeny_vztahu_k_hraci
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _zpracuj_ai_aliance(ai_staty: Array) -> Array:
 	var zmeny_alianci: Array = []
 	var aktivni_staty = _ziskej_aktivni_staty()
@@ -7681,7 +8016,7 @@ func _zpracuj_ai_aliance(ai_staty: Array) -> Array:
 
 	return zmeny_alianci
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _zpracuj_ai_neagresivni_smlouvy(ai_staty: Array) -> Array:
 	var zmeny: Array = []
 	var aktivni_staty = _ziskej_aktivni_staty()
@@ -7741,7 +8076,7 @@ func _zpracuj_ai_neagresivni_smlouvy(ai_staty: Array) -> Array:
 
 	return zmeny
 
-# Brief: Displays UI/output and updates visible presentation data.
+# Display update for visible data.
 func _zobraz_hlaseni_neagresivnich_smluv_hrace(zmeny: Array) -> void:
 	if zmeny.is_empty():
 		return
@@ -7774,7 +8109,7 @@ func _zobraz_hlaseni_neagresivnich_smluv_hrace(zmeny: Array) -> void:
 			continue
 		_pridej_popup_hraci(str(target_tag), "Diplomacy", "\n".join(lines))
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _zpracuj_ai_opusteni_alianci(ai_staty: Array) -> Array:
 	var zmeny_opusteni: Array = []
 	var processed_pairs: Dictionary = {}
@@ -7844,7 +8179,7 @@ func _zpracuj_ai_opusteni_alianci(ai_staty: Array) -> Array:
 
 	return zmeny_opusteni
 
-# Brief: Displays UI/output and updates visible presentation data.
+# Applies visual/UI updates.
 func _zobraz_hlaseni_opusteni_alianci_hrace(zmeny: Array) -> void:
 	if zmeny.is_empty():
 		return
@@ -7872,7 +8207,7 @@ func _zobraz_hlaseni_opusteni_alianci_hrace(zmeny: Array) -> void:
 			continue
 		_pridej_popup_hraci(str(target_tag), "Alliance", "\n".join(lines))
 
-# Brief: Displays UI/output and updates visible presentation data.
+# Draws/updates visible UI output.
 func _zobraz_hlaseni_alianci_hrace(zmeny: Array) -> void:
 	if zmeny.is_empty():
 		return
@@ -7906,7 +8241,7 @@ func _zobraz_hlaseni_alianci_hrace(zmeny: Array) -> void:
 			continue
 		_pridej_popup_hraci(str(target_tag), "Alliance", "\n".join(lines))
 
-# Brief: Displays UI/output and updates visible presentation data.
+# Updates what the player sees.
 func _zobraz_hlaseni_vztahu_hrace(zmeny: Array):
 	if zmeny.is_empty():
 		return
@@ -7932,7 +8267,7 @@ func _zobraz_hlaseni_vztahu_hrace(zmeny: Array):
 			continue
 		_pridej_popup_hraci(str(target_tag), "Diplomacy", "\n".join(lines))
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _vyhodnot_mirove_nabidky_pred_ai():
 	if cekajici_mirove_nabidky.is_empty():
 		return
@@ -7970,7 +8305,7 @@ func _vyhodnot_mirove_nabidky_pred_ai():
 			if je_lidsky_stat(odesilatel) or je_lidsky_stat(prijemce):
 				_pridej_popup_zucastnenym_hracum(odesilatel, prijemce, "DIPLOMACY", no_msg)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func zaregistruj_obsazeni_hlavniho_mesta(obrance: String, utocnik: String, capital_province_id: int):
 	if obrance == "" or utocnik == "" or obrance == utocnik:
 		return
@@ -7995,7 +8330,7 @@ func zaregistruj_obsazeni_hlavniho_mesta(obrance: String, utocnik: String, capit
 		"war"
 	)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func vyhodnot_odlozene_kapitulace() -> Array:
 	var hotove: Array = []
 	var stale_cekaji: Array = []
@@ -8021,7 +8356,7 @@ func vyhodnot_odlozene_kapitulace() -> Array:
 	cekajici_kapitulace = stale_cekaji
 	return hotove
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Eligibility/guard check.
 func _je_more_provincie_v_datech(all_provinces: Dictionary, prov_id: int) -> bool:
 	if not all_provinces.has(prov_id):
 		return false
@@ -8030,7 +8365,7 @@ func _je_more_provincie_v_datech(all_provinces: Dictionary, prov_id: int) -> boo
 	var typ = str(d.get("type", "")).strip_edges().to_lower()
 	return owner_tag == "SEA" or typ == "sea"
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Eligibility/guard check.
 func _je_pobrezni_v_datech(all_provinces: Dictionary, prov_id: int) -> bool:
 	if not all_provinces.has(prov_id):
 		return false
@@ -8041,7 +8376,7 @@ func _je_pobrezni_v_datech(all_provinces: Dictionary, prov_id: int) -> bool:
 			return true
 	return false
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _vyber_startovni_port_kandidata(all_provinces: Dictionary, kandidati: Array) -> int:
 	var vybrany := -1
 	var best_pop := -1
@@ -8060,7 +8395,7 @@ func _vyber_startovni_port_kandidata(all_provinces: Dictionary, kandidati: Array
 
 	return vybrany
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func pridej_startovni_pristavy(all_provinces: Dictionary):
 	if all_provinces.is_empty():
 		return
@@ -8096,12 +8431,11 @@ func pridej_startovni_pristavy(all_provinces: Dictionary):
 		if vybrany != -1 and all_provinces.has(vybrany):
 			all_provinces[vybrany]["has_port"] = true
 
-# Brief: Computes derived values from current inputs and game state.
+# Computes derived values from current inputs and game state.
 func spocitej_prijem(all_provinces: Dictionary, emit_ui_signal: bool = true):
 	map_data = all_provinces
 	_synchronizuj_jmeno_a_ideologii_hrace()
 	var celkove_hdp = 0.0
-	var celkem_vojaku = 0
 	var hrac_clean = _normalizuj_tag(hrac_stat)
 	
 	for p_id in map_data:
@@ -8112,7 +8446,6 @@ func spocitej_prijem(all_provinces: Dictionary, emit_ui_signal: bool = true):
 				hrac_ideologie = str(d.get("ideology", ""))
 			
 			celkove_hdp += float(d.get("gdp", 0.0))
-			celkem_vojaku += int(d.get("soldiers", 0))
 
 	if lokalni_hraci_staty.size() > 1:
 		if not hrac_kasa_inicializovana.has(hrac_clean) and celkove_hdp > 0.0:
@@ -8129,9 +8462,8 @@ func spocitej_prijem(all_provinces: Dictionary, emit_ui_signal: bool = true):
 			
 	# Balanced income: 10% GDP minus army upkeep
 	var prijmova_sazba = ziskej_prijmovou_sazbu_hdp(hrac_clean)
-	var upkeep_za_vojaka = ziskej_udrzbu_za_vojaka(hrac_clean)
 	var prijem_z_hdp = celkove_hdp * prijmova_sazba
-	var naklady_na_vojaky = celkem_vojaku * upkeep_za_vojaka
+	var naklady_na_vojaky = _spocitej_naklady_udrzby_statu(hrac_clean)
 	celkovy_prijem = prijem_z_hdp - naklady_na_vojaky
 	var finance_breakdown = ziskej_financni_rozpad_statu(hrac_clean)
 	if bool(finance_breakdown.get("ok", false)):
@@ -8145,7 +8477,7 @@ func spocitej_prijem(all_provinces: Dictionary, emit_ui_signal: bool = true):
 	if emit_ui_signal:
 		kolo_zmeneno.emit()
 
-# Brief: Computes derived values from current inputs and game state.
+# Computes derived values from current inputs and game state.
 func _spocitej_hdp_statu(tag: String) -> float:
 	var hledany = _normalizuj_tag(tag)
 	if hledany == "":
@@ -8159,14 +8491,14 @@ func _spocitej_hdp_statu(tag: String) -> float:
 			hdp += float(d.get("gdp", 0.0))
 	return hdp
 
-# Brief: Applies incoming values and synchronizes dependent state.
+# Sync update for linked values.
 func _nastav_stav_zpracovani_tahu(aktivni: bool) -> void:
 	if zpracovava_se_tah == aktivni:
 		return
 	zpracovava_se_tah = aktivni
 	zpracovani_tahu_zmeneno.emit(aktivni)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _spust_turn_watchdog(token: int) -> void:
 	await get_tree().create_timer(float(TURN_STUCK_WATCHDOG_MS) / 1000.0).timeout
 	if token != _turn_watchdog_token:
@@ -8177,18 +8509,18 @@ func _spust_turn_watchdog(token: int) -> void:
 	_nastav_stav_zpracovani_tahu(false)
 	kolo_zmeneno.emit()
 
-# Brief: Cancels the active flow and restores a safe default state.
+# Cancels the active flow and restores a safe default state.
 func _zrus_turn_watchdog() -> void:
 	_turn_watchdog_token += 1
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func muze_ukoncit_kolo() -> bool:
 	if zpracovava_se_tah:
 		return false
 	var elapsed = Time.get_ticks_msec() - _last_end_turn_request_ms
 	return elapsed >= NEXT_TURN_INPUT_COOLDOWN_MS
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func pozaduj_ukonceni_kola() -> bool:
 	if zpracovava_se_tah:
 		_queued_end_turn_requests += 1
@@ -8199,7 +8531,7 @@ func pozaduj_ukonceni_kola() -> bool:
 	ukonci_kolo()
 	return true
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _spust_dalsi_pozadovane_kolo() -> void:
 	if zpracovava_se_tah:
 		return
@@ -8209,7 +8541,7 @@ func _spust_dalsi_pozadovane_kolo() -> void:
 	_last_end_turn_request_ms = Time.get_ticks_msec()
 	ukonci_kolo()
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _dokoncit_ukonceni_kola(turn_start_ms: int, turn_phases: Dictionary) -> void:
 	_uloz_debug_turn_profile(Time.get_ticks_msec() - turn_start_ms, turn_phases)
 	_zrus_turn_watchdog()
@@ -8218,7 +8550,7 @@ func _dokoncit_ukonceni_kola(turn_start_ms: int, turn_phases: Dictionary) -> voi
 	if _queued_end_turn_requests > 0:
 		call_deferred("_spust_dalsi_pozadovane_kolo")
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _append_debug_turn_event(message: String) -> void:
 	if not _ai_debug_mode_enabled:
 		return
@@ -8227,7 +8559,7 @@ func _append_debug_turn_event(message: String) -> void:
 		return
 	_debug_turn_live_events.append(trimmed)
 
-# Brief: Persists runtime/configuration data to storage.
+# Stores current data to disk.
 func _uloz_debug_turn_profile(total_ms: int, phases: Dictionary) -> void:
 	if not _ai_debug_mode_enabled:
 		return
@@ -8243,7 +8575,7 @@ func _uloz_debug_turn_profile(total_ms: int, phases: Dictionary) -> void:
 		_debug_turn_history.remove_at(0)
 	_debug_turn_live_events.clear()
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _log_turn_profile(total_ms: int, phases: Dictionary) -> void:
 	if not TURN_PROFILE_ENABLED:
 		return
@@ -8268,7 +8600,7 @@ func _log_turn_profile(total_ms: int, phases: Dictionary) -> void:
 		p_ui
 	])
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _log_ai_profile(total_ms: int, phases: Dictionary) -> void:
 	if not AI_PROFILE_ENABLED:
 		return
@@ -8289,7 +8621,7 @@ func _log_ai_profile(total_ms: int, phases: Dictionary) -> void:
 		p_clean
 	])
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _ai_debug(msg: String) -> void:
 	if not AI_DECISION_DEBUG_ENABLED:
 		return
@@ -8307,14 +8639,14 @@ func _ai_debug(msg: String) -> void:
 	_ai_debug_lines_this_turn += 1
 	print("[AI_DEBUG][turn=%d] %s" % [aktualni_kolo, msg])
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _money_debug(msg: String) -> void:
 	if not _ai_debug_mode_enabled:
 		return
 	_append_debug_turn_event(msg)
 	print("[MONEY_DEBUG][turn=%d] %s" % [aktualni_kolo, msg])
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _money_debug_expense(state_tag: String, category: String, amount: float, treasury_before: float, treasury_after: float, detail: String = "") -> void:
 	if not _ai_debug_mode_enabled:
 		return
@@ -8325,7 +8657,7 @@ func _money_debug_expense(state_tag: String, category: String, amount: float, tr
 		suffix = " | %s" % clean_detail
 	_money_debug("expense %s %s amount=%.2f cash_before=%.2f cash_after=%.2f%s" % [state, category, amount, treasury_before, treasury_after, suffix])
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _money_debug_income_event(state_tag: String, category: String, amount: float, treasury_before: float, treasury_after: float, detail: String = "") -> void:
 	if not _ai_debug_mode_enabled:
 		return
@@ -8336,7 +8668,7 @@ func _money_debug_income_event(state_tag: String, category: String, amount: floa
 		suffix = " | %s" % clean_detail
 	_money_debug("income_event %s %s amount=%.2f cash_before=%.2f cash_after=%.2f%s" % [state, category, amount, treasury_before, treasury_after, suffix])
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _snapshot_lidske_kasy() -> Dictionary:
 	var snapshot: Dictionary = {}
 	for raw_tag in lokalni_hraci_staty:
@@ -8346,18 +8678,20 @@ func _snapshot_lidske_kasy() -> Dictionary:
 		snapshot[t] = _ziskej_kasu_statu(t)
 	return snapshot
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _with_finance_projection_cash_overrides(overrides: Dictionary, callback: Callable):
+	# mala helper vrstva: docasne prehodi cash snapshot jen pro vypocet projekce.
 	var previous = _finance_projection_cash_overrides.duplicate(true)
 	_finance_projection_cash_overrides = overrides.duplicate(true)
 	var result = callback.call()
 	_finance_projection_cash_overrides = previous
 	return result
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _money_debug_log_delta(stage: String, before: Dictionary) -> void:
 	if not _ai_debug_mode_enabled:
 		return
+	# debug je schvalne po statech, aby se rychle nasel kdo rozhoupal kasu.
 	for raw_tag in lokalni_hraci_staty:
 		var t = _normalizuj_tag(str(raw_tag))
 		if t == "":
@@ -8369,18 +8703,21 @@ func _money_debug_log_delta(stage: String, before: Dictionary) -> void:
 			continue
 		_money_debug("%s %s delta=%.2f cash_before=%.2f cash_after=%.2f" % [stage, t, delta, old_cash, new_cash])
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _turn_slice_wait(counter: int, chunk: int) -> int:
 	if not TURN_FRAME_SLICE_ENABLED:
 		return counter
+	# mikro-yield drzi frame plynulejsi pri dlouhych turn fazich.
 	var next_counter = counter + 1
 	if next_counter >= max(1, chunk):
 		await get_tree().process_frame
 		return 0
 	return next_counter
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func ukonci_kolo():
+	# End-turn pipeline runs in deterministic phases so profiling output stays readable
+	# and multiplayer turn-switch logic can short-circuit before global AI processing.
 	if zpracovava_se_tah:
 		return
 	_nastav_stav_zpracovani_tahu(true)
@@ -8408,6 +8745,8 @@ func ukonci_kolo():
 		_sjednot_multiplayer_finance_cache()
 
 	if lokalni_hraci_staty.size() > 1 and not _je_posledni_hrac_v_poradi():
+		# In local multiplayer, non-last players only rotate control and refresh UI.
+		# Heavy world simulation runs after the last local player confirms end turn.
 		_uloz_finance_aktivniho_hrace()
 		_prepni_na_dalsiho_hrace()
 		if not map_data.is_empty():
@@ -8434,6 +8773,9 @@ func ukonci_kolo():
 	phase_start_ms = Time.get_ticks_msec()
 
 	if lokalni_hraci_staty.size() > 1:
+		# Multi-local mode computes each human state's base income first,
+		# then keeps projected cashflow separately for UI and finance tooltips.
+		# dulezity detail: base income se pripise do kasy, cashflow je jen projekce pro UI.
 		_uloz_finance_aktivniho_hrace()
 		var treasury_before_income = _snapshot_lidske_kasy()
 		for tag in lokalni_hraci_staty:
@@ -8481,6 +8823,7 @@ func ukonci_kolo():
 	phase_start_ms = Time.get_ticks_msec()
 
 	aktualni_kolo += 1
+	# tohle je snapshot pred "flow" efekty (reparace/odvody/pujcky), at jde ladit delta.
 	var _money_before_flow_effects: Dictionary = _snapshot_lidske_kasy() if lokalni_hraci_staty.size() > 1 else {}
 	var _single_before_flow_effects = statni_kasa
 	_zpracuj_valecne_reparace_za_kolo()
@@ -8508,13 +8851,14 @@ func ukonci_kolo():
 		var typ_budovy = provincie_cooldowny[prov_id]["budova"]
 		provincie_cooldowny.erase(prov_id)
 		_aplikuj_bonus(prov_id, typ_budovy)
-		if typ_budovy == 2 and map_data.has(prov_id):
+		if map_data.has(prov_id):
 			var nazev = str(map_data[prov_id].get("province_name", "Province %d" % int(prov_id)))
 			var owner_tag = _normalizuj_tag(str(map_data[prov_id].get("owner", "")))
 			if je_lidsky_stat(owner_tag):
 				if not hlaseni_dokoncene_stavby.has(owner_tag):
 					hlaseni_dokoncene_stavby[owner_tag] = []
-				(hlaseni_dokoncene_stavby[owner_tag] as Array).append("Port completed: %s" % nazev)
+				var build_name = _ziskej_nazev_budovy(typ_budovy)
+				(hlaseni_dokoncene_stavby[owner_tag] as Array).append("%s completed: %s" % [build_name, nazev])
 		finish_slice_counter = await _turn_slice_wait(finish_slice_counter, TURN_FRAME_SLICE_PROVINCES)
 
 	if not map_data.is_empty():
@@ -8535,9 +8879,10 @@ func ukonci_kolo():
 			if not econ_mods_by_owner.has(owner_tag):
 				econ_mods_by_owner[owner_tag] = ziskej_ekonomicke_modifikatory_statu(owner_tag)
 			var econ_mods = econ_mods_by_owner[owner_tag] as Dictionary
-			var recruit_regen_mult = max(0.01, float(econ_mods.get("recruit_regen_mult", 1.0)))
-			var gdp_growth_mult = max(0.01, float(econ_mods.get("gdp_growth_mult", 1.0)))
-			var pop_growth_mult = max(0.01, float(econ_mods.get("population_growth_mult", 1.0)))
+			var build_mods = _ziskej_modifikatory_budov_provincie(int(p_id))
+			var recruit_regen_mult = max(0.01, float(econ_mods.get("recruit_regen_mult", 1.0))) * max(0.01, float(build_mods.get("recruit_regen_mult", 1.0)))
+			var gdp_growth_mult = max(0.01, float(econ_mods.get("gdp_growth_mult", 1.0))) * max(0.01, float(build_mods.get("gdp_growth_mult", 1.0)))
+			var pop_growth_mult = max(0.01, float(econ_mods.get("population_growth_mult", 1.0))) * max(0.01, float(build_mods.get("population_growth_mult", 1.0)))
 			var regen_ratio = 0.025 if je_okupace else 0.10
 			regen_ratio *= recruit_regen_mult
 			var regen_per_turn = max(1, int(round(float(base_recruits) * regen_ratio)))
@@ -8582,21 +8927,41 @@ func ukonci_kolo():
 	turn_phases["ui"] = int(turn_phases["ui"]) + (Time.get_ticks_msec() - phase_start_ms)
 	_dokoncit_ukonceni_kola(turn_start_ms, turn_phases)
 
-# Brief: Applies prepared settings/effects to runtime systems.
-func _aplikuj_bonus(prov_id: int, typ: int):
-	if not map_data.has(prov_id): return
-	if typ == 0: 
-		map_data[prov_id]["gdp"] += 10.0 
-	elif typ == 1: 
-		map_data[prov_id]["recruitable_population"] += 2000 
-	elif typ == 2:
-		map_data[prov_id]["has_port"] = true
+# Applies prepared settings/effects to runtime systems.
+func _aplikuj_bonus(prov_id: int, typ):
+	if not map_data.has(prov_id):
+		return
+
+	var building_id = _legacy_building_id(typ)
+	if building_id == "":
+		return
+	var bdef = _ziskej_building_def(building_id)
+	if bdef.is_empty():
+		return
+
+	if not _pridej_budovu_provincie(prov_id, building_id):
+		return
+
+	var d = map_data[prov_id] as Dictionary
+	d["gdp"] = float(d.get("gdp", 0.0)) + float(bdef.get("gdp_flat", 0.0))
+
+	var recruit_flat = int(bdef.get("recruitable_flat", 0))
+	if recruit_flat != 0:
+		var current_recruit = int(d.get("recruitable_population", 0)) + recruit_flat
+		d["recruitable_population"] = max(0, current_recruit)
+		var base_cap = int(d.get("base_recruitable_population", d.get("recruitable_population", 0))) + recruit_flat
+		d["base_recruitable_population"] = max(0, base_cap)
+		var raw_cap = int(d.get("base_recruitable_population_raw", d.get("base_recruitable_population", 0))) + recruit_flat
+		d["base_recruitable_population_raw"] = max(0, raw_cap)
+
+	if bool(bdef.get("grant_port", false)):
+		d["has_port"] = true
 		var map_loader = _get_map_loader()
 		if map_loader and map_loader.has_method("oznac_pristavy_k_aktualizaci"):
 			map_loader.oznac_pristavy_k_aktualizaci()
 
 # Bankruptcy logic
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _vyres_bankrot(tag: String):
 	var celkem_dezertovalo = 0
 	for p_id in map_data:
@@ -8617,7 +8982,7 @@ func _vyres_bankrot(tag: String):
 
 # Player actions
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func hrac_verbuje(provincie_id: int, pocet: int) -> bool:
 	var map_loader = _get_map_loader()
 	if not map_loader or map_data.is_empty(): return false
@@ -8642,7 +9007,7 @@ func hrac_verbuje(provincie_id: int, pocet: int) -> bool:
 			return true
 	return false
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _ai_vytvor_profil_pro_ideologii(ideology: String) -> Dictionary:
 	var ideol = _normalizuj_ideologii(ideology)
 	var aggression := 0.50
@@ -8705,7 +9070,7 @@ func _ai_vytvor_profil_pro_ideologii(ideology: String) -> Dictionary:
 		"personality": personality
 	}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _ai_ziskej_profil(state_tag: String) -> Dictionary:
 	var clean = _normalizuj_tag(state_tag)
 	if clean == "" or clean == "SEA":
@@ -8716,7 +9081,7 @@ func _ai_ziskej_profil(state_tag: String) -> Dictionary:
 	_ai_profily[clean] = created
 	return created
 
-# Brief: Reads current runtime data and returns it to callers.
+# Fetches data for callers.
 func ziskej_ai_profil_statu(state_tag: String) -> Dictionary:
 	var clean = _normalizuj_tag(state_tag)
 	if clean == "" or clean == "SEA":
@@ -8727,7 +9092,7 @@ func ziskej_ai_profil_statu(state_tag: String) -> Dictionary:
 		"profile": (_ai_ziskej_profil(clean) as Dictionary).duplicate(true)
 	}
 
-# Brief: Applies incoming values and synchronizes dependent state.
+# Updates state and keeps things in sync.
 func nastav_ai_agresivitu_statu(state_tag: String, aggression_0_to_1: float) -> Dictionary:
 	var clean = _normalizuj_tag(state_tag)
 	if clean == "" or clean == "SEA":
@@ -8760,7 +9125,7 @@ func nastav_ai_agresivitu_statu(state_tag: String, aggression_0_to_1: float) -> 
 		"profile": (profile as Dictionary).duplicate(true)
 	}
 
-# Brief: Applies incoming values and synchronizes dependent state.
+# Sync update for linked values.
 func nastav_globalni_ai_agresi(level: float) -> void:
 	_global_ai_aggression_level = clamp(level, 0.0, 1.0)
 	# Re-bake all existing profiles so the new setting takes effect immediately.
@@ -8772,7 +9137,7 @@ func nastav_globalni_ai_agresi(level: float) -> void:
 		profile["aggression"] = clampf(lerpf(base, _global_ai_aggression_level, 0.70), 0.0, 1.0)
 		_ai_profily[str(tag)] = profile
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _ai_randomizuj_ideologie_a_profily(ai_staty: Array) -> void:
 	if _ai_randomized_ideologies_applied:
 		return
@@ -8814,7 +9179,7 @@ func _ai_randomizuj_ideologie_a_profily(ai_staty: Array) -> void:
 
 	_ai_randomized_ideologies_applied = true
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _ai_ziskej_nepratele_statu(state_tag: String) -> Array:
 	var clean = _normalizuj_tag(state_tag)
 	if clean == "":
@@ -8832,7 +9197,7 @@ func _ai_ziskej_nepratele_statu(state_tag: String) -> Array:
 			enemies[a] = true
 	return enemies.keys()
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _ai_sdili_nepritele_s(state_a: String, state_b: String) -> bool:
 	var enemies_a = _ai_ziskej_nepratele_statu(state_a)
 	if enemies_a.is_empty():
@@ -8845,7 +9210,7 @@ func _ai_sdili_nepritele_s(state_a: String, state_b: String) -> bool:
 			return true
 	return false
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _ai_ziskej_mindset(state_tag: String) -> Dictionary:
 	var clean = _normalizuj_tag(state_tag)
 	if clean == "" or clean == "SEA":
@@ -8976,7 +9341,7 @@ func _ai_ziskej_mindset(state_tag: String) -> Dictionary:
 	_ai_mindset_cache[clean] = mindset
 	return mindset
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _ai_ziskej_strategicky_cil(state_tag: String) -> Dictionary:
 	var clean = _normalizuj_tag(state_tag)
 	if clean == "" or clean == "SEA":
@@ -9063,7 +9428,7 @@ func _ai_ziskej_strategicky_cil(state_tag: String) -> Dictionary:
 	_ai_goal_cache[clean] = out
 	return out
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _ai_goal_signature(owner_tag: String, target_tag: String) -> Dictionary:
 	var owner = _normalizuj_tag(owner_tag)
 	var target = _normalizuj_tag(target_tag)
@@ -9102,7 +9467,7 @@ func _ai_goal_signature(owner_tag: String, target_tag: String) -> Dictionary:
 		"power_ratio": power_ratio
 	}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _ai_aktualizuj_goal_progres(state_tag: String) -> void:
 	var owner = _normalizuj_tag(state_tag)
 	if owner == "" or not _ai_goal_cache.has(owner):
@@ -9150,7 +9515,7 @@ func _ai_aktualizuj_goal_progres(state_tag: String) -> void:
 
 	_ai_goal_cache[owner] = goal
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _ai_spocitej_war_exhaustion(state_tag: String) -> float:
 	var clean = _normalizuj_tag(state_tag)
 	if clean == "" or clean == "SEA":
@@ -9203,7 +9568,7 @@ func _ai_spocitej_war_exhaustion(state_tag: String) -> float:
 	_ai_war_exhaustion_cache[clean] = exhaustion
 	return exhaustion
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _ai_ziskej_operacni_plan(state_tag: String) -> Dictionary:
 	var clean = _normalizuj_tag(state_tag)
 	if clean == "" or clean == "SEA":
@@ -9253,7 +9618,7 @@ func _ai_ziskej_operacni_plan(state_tag: String) -> Dictionary:
 	])
 	return out
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _ai_je_blizko_fronty(state_tag: String, province_id: int, frontline_cache: Dictionary) -> bool:
 	if not map_data.has(province_id):
 		return false
@@ -9268,7 +9633,7 @@ func _ai_je_blizko_fronty(state_tag: String, province_id: int, frontline_cache: 
 			return true
 	return false
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _ai_urci_roli_jednotky(state_tag: String, province_id: int, own_capital_id: int, frontline_cache: Dictionary) -> String:
 	if not map_data.has(province_id):
 		return "reserve"
@@ -9293,7 +9658,7 @@ func _ai_urci_roli_jednotky(state_tag: String, province_id: int, own_capital_id:
 
 	return "reserve"
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _ai_provincie_hranicni_k_targetu(state_tag: String, province_id: int, target_owner: String) -> bool:
 	var owner = _normalizuj_tag(state_tag)
 	var target = _normalizuj_tag(target_owner)
@@ -9310,7 +9675,7 @@ func _ai_provincie_hranicni_k_targetu(state_tag: String, province_id: int, targe
 			return true
 	return false
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _ai_provincie_hranicni_k_neprateli(state_tag: String, province_id: int, enemies_set: Dictionary) -> bool:
 	if enemies_set.is_empty() or not map_data.has(province_id):
 		return false
@@ -9322,7 +9687,7 @@ func _ai_provincie_hranicni_k_neprateli(state_tag: String, province_id: int, ene
 			return true
 	return false
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _ai_stat_ma_hranici_s_neprateli(state_tag: String, owned: Array, enemies_set: Dictionary) -> bool:
 	if enemies_set.is_empty():
 		return false
@@ -9334,7 +9699,7 @@ func _ai_stat_ma_hranici_s_neprateli(state_tag: String, owned: Array, enemies_se
 			return true
 	return false
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _ai_ziskej_primarni_front(state_tag: String) -> Dictionary:
 	var clean = _normalizuj_tag(state_tag)
 	if clean == "" or clean == "SEA":
@@ -9386,7 +9751,7 @@ func _ai_ziskej_primarni_front(state_tag: String) -> Dictionary:
 
 	return {"target": best_target, "score": best_score}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _ai_ziskej_recruit_kandidaty(state_tag: String, owned: Array, pressure: float) -> Array:
 	var scored: Array = []
 	var cap_id = _ziskej_hlavni_mesto_statu(state_tag)
@@ -9619,7 +9984,7 @@ func _ai_ziskej_recruit_kandidaty(state_tag: String, owned: Array, pressure: flo
 			return filtered.slice(0, max_front_targets)
 	return out
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _ai_spocitej_tlak_statu(state_tag: String, owned: Array) -> float:
 	var total_threat := 0
 	for p_id_any in owned:
@@ -9629,11 +9994,12 @@ func _ai_spocitej_tlak_statu(state_tag: String, owned: Array) -> float:
 		return 0.0
 	return float(total_threat) / float(max(1, owned.size()))
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _ai_spocitej_recruit_pass_skore(state_tag: String, p_id: int, cap_id: int, war_focus_target: String, enemies_set: Dictionary, recruit_orders_in_province: int, at_war_state: bool) -> float:
 	if not map_data.has(p_id):
 		return -INF
 	var d = map_data[p_id]
+	# score je schvalne slozenej z vic casti, at AI nespamuje jen jednu provincii dokola.
 	var recruits = int(d.get("recruitable_population", 0))
 	var local_soldiers = int(d.get("soldiers", 0))
 	var core_owner = str(d.get("core_owner", state_tag)).strip_edges().to_upper()
@@ -9664,6 +10030,7 @@ func _ai_spocitej_recruit_pass_skore(state_tag: String, p_id: int, cap_id: int, 
 	if at_war_state and not enemy_front_contact:
 		return -INF
 
+	# cilovej garnizon je orientacni strop/spodek obrany; neni to hard limit.
 	var desired_garrison = 950
 	if is_frontline:
 		desired_garrison = 1300
@@ -9686,10 +10053,11 @@ func _ai_spocitej_recruit_pass_skore(state_tag: String, p_id: int, cap_id: int, 
 	if at_war_state and (not is_frontline) and (not enemy_front_contact):
 		score -= 1400.0
 	if recruit_orders_in_province > 0:
+		# jemnej anti-stack postih, aby se nabory rozlozily po fronte.
 		score -= float(recruit_orders_in_province) * 1800.0
 	return score
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _ai_ziskej_recruit_emergency_level(state_tag: String, owned: Array, at_war_state: bool, state_pressure: float, state_exhaustion: float) -> float:
 	if not at_war_state:
 		return 0.0
@@ -9710,6 +10078,7 @@ func _ai_ziskej_recruit_emergency_level(state_tag: String, owned: Array, at_war_
 			frontline += 1
 	var frontline_ratio = float(frontline) / float(max(1, owned.size()))
 
+	# mix vah drzi emergency stabilni i kdyz jeden vstup kratce vystreli.
 	var level := 0.0
 	level += clamp((war_ratio - 1.10) / 1.25, 0.0, 1.0) * 0.46
 	level += clamp((state_pressure - AI_RECRUIT_EMERGENCY_PRESSURE) / 900.0, 0.0, 1.0) * 0.24
@@ -9717,7 +10086,7 @@ func _ai_ziskej_recruit_emergency_level(state_tag: String, owned: Array, at_war_
 	level += clamp((frontline_ratio - 0.28) / 0.42, 0.0, 1.0) * 0.10
 	return clamp(level, 0.0, 1.0)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _ai_odhad_dostupnych_rekrutu(state_tag: String, owned: Array, recruit_targets: Array, at_war_state: bool) -> int:
 	var used: Dictionary = {}
 	var pool: Array = []
@@ -9737,6 +10106,7 @@ func _ai_odhad_dostupnych_rekrutu(state_tag: String, owned: Array, recruit_targe
 
 	var soft_floor = 20 if at_war_state else 120
 	var available := 0
+	# soft floor chrani zakladni pool provincie, at ji AI nevyzere na nulu hned.
 	for p_any in pool:
 		var p_id = int(p_any)
 		if not map_data.has(p_id):
@@ -9761,6 +10131,7 @@ func _ai_odhad_dostupnych_rekrutu(state_tag: String, owned: Array, recruit_targe
 		return available
 
 	# Last-resort estimate: if strict floor leaves nothing, allow minimal draw from raw pools.
+	# nouzovka: radsi male naborove cislo nez total freeze celeho statu.
 	var raw_available := 0
 	for p_any in pool:
 		var p_id = int(p_any)
@@ -9774,7 +10145,7 @@ func _ai_odhad_dostupnych_rekrutu(state_tag: String, owned: Array, recruit_targe
 		raw_available += max(0, recruits)
 	return raw_available
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _ai_odhad_max_rekrutu_na_tah(state_tag: String, recruit_targets: Array, recruit_order_cap: int, at_war_state: bool, state_pressure: float, recruit_spend_cap: float, emergency_level: float = 0.0) -> int:
 	if recruit_targets.is_empty() or recruit_order_cap <= 0:
 		return 0
@@ -9790,6 +10161,7 @@ func _ai_odhad_max_rekrutu_na_tah(state_tag: String, recruit_targets: Array, rec
 	if emergency_level > 0.0:
 		threshold = min(threshold, int(round(lerp(12.0, 0.0, clamp(emergency_level, 0.0, 1.0)))))
 
+	# remaining/per_order_caps je dvoufazovy model: kolik jde vzit a kolik najednou poslat.
 	var remaining: Dictionary = {}
 	var per_order_caps: Dictionary = {}
 	for p_any in recruit_targets:
@@ -9847,6 +10219,7 @@ func _ai_odhad_max_rekrutu_na_tah(state_tag: String, recruit_targets: Array, rec
 	if remaining.is_empty():
 		return 0
 
+	# greedy pass: bere zatim nejlepsi moznej take, je to rychly a v praxi staci.
 	var recruited_units := 0
 	for _slot in range(recruit_order_cap):
 		var best_pid := -1
@@ -9867,24 +10240,18 @@ func _ai_odhad_max_rekrutu_na_tah(state_tag: String, recruit_targets: Array, rec
 
 	return recruited_units
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _ai_vypocitej_hotovostni_rezervu(state_tag: String, owned: Array) -> float:
-	var total_soldiers := 0
-	for p_id_any in owned:
-		var p_id = int(p_id_any)
-		if not map_data.has(p_id):
-			continue
-		total_soldiers += int(map_data[p_id].get("soldiers", 0))
-	var upkeep = ziskej_udrzbu_za_vojaka(state_tag)
+	var upkeep_total = _spocitej_naklady_udrzby_statu(state_tag)
 	var pressure = _ai_spocitej_tlak_statu(state_tag, owned)
 	var profile = _ai_ziskej_profil(state_tag)
 	var defense_bias = float(profile.get("defense", 0.55))
 	var reserve = AI_MIN_TREASURY_RESERVE * (0.9 + defense_bias * 0.6)
-	reserve += float(total_soldiers) * upkeep * 2.5
+	reserve += upkeep_total * 2.5
 	reserve += min(120.0, pressure * 0.008)
 	return reserve
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _ai_uprav_hotovostni_rezervu_pro_spending(state_tag: String, reserve: float, treasury: float, at_war_state: bool, pressure: float) -> float:
 	if treasury <= 0.0:
 		return 0.0
@@ -9903,6 +10270,7 @@ func _ai_uprav_hotovostni_rezervu_pro_spending(state_tag: String, reserve: float
 
 	# Wealthy states should always keep deployable cash so they do not stall.
 	if treasury >= 800.0:
+		# bohate staty musi mit vzdy kus volny kasy, jinak AI pusobi "zasekle".
 		var spend_floor = max(180.0, treasury * (0.22 if at_war_state else 0.15))
 		adjusted = min(adjusted, max(0.0, treasury - spend_floor))
 
@@ -9910,7 +10278,7 @@ func _ai_uprav_hotovostni_rezervu_pro_spending(state_tag: String, reserve: float
 	adjusted = max(min_guard, adjusted)
 	return clamp(adjusted, 0.0, treasury)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _ai_skore_vyzkumu(state_tag: String, project: Dictionary, pressure: float, treasury: float) -> float:
 	var mods = project.get("modifiers", {}) as Dictionary
 	var cost = max(1.0, float(project.get("cost", 1.0)))
@@ -9937,9 +10305,10 @@ func _ai_skore_vyzkumu(state_tag: String, project: Dictionary, pressure: float, 
 	if mods.has("population_growth_mult"):
 		score += (float(mods.get("population_growth_mult", 1.0)) - 1.0) * 95.0
 
+	# deleni cenou brzdi drahy projekty, co vypadaji hezky jen na papire.
 	return score / cost
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _ai_zvaz_vyzkum(state_tag: String, reserve: float, pressure: float) -> bool:
 	if not RESEARCH_PROJECTS_ENABLED:
 		return false
@@ -9982,7 +10351,7 @@ func _ai_zvaz_vyzkum(state_tag: String, reserve: float, pressure: float) -> bool
 		])
 	return bool(result.get("ok", false))
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _ai_stat_ma_pristav(owned: Array) -> bool:
 	for p_id_any in owned:
 		var p_id = int(p_id_any)
@@ -9992,7 +10361,7 @@ func _ai_stat_ma_pristav(owned: Array) -> bool:
 			return true
 	return false
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _ai_spocitej_core_defense_ohrozeni(state_tag: String, owned: Array) -> Dictionary:
 	var capital_id = _ziskej_hlavni_mesto_statu(state_tag)
 	var threatened_core_count := 0
@@ -10021,7 +10390,7 @@ func _ai_spocitej_core_defense_ohrozeni(state_tag: String, owned: Array) -> Dict
 		"capital_threat": capital_threat
 	}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _ai_zvaz_stavby(state_tag: String, owned: Array, reserve: float, pressure: float) -> int:
 	var built := 0
 	if owned.is_empty():
@@ -10031,14 +10400,15 @@ func _ai_zvaz_stavby(state_tag: String, owned: Array, reserve: float, pressure: 
 	var threatened_core_count = int(core_threat.get("threatened_core_count", 0))
 	var max_core_threat = int(core_threat.get("max_core_threat", 0))
 	var capital_threat = int(core_threat.get("capital_threat", 0))
-	if at_war and (capital_threat >= 340 or pressure >= 1400.0 or (threatened_core_count >= 3 and max_core_threat >= 450)):
+	var severe_defense_mode = at_war and (capital_threat >= 340 or pressure >= 1400.0 or (threatened_core_count >= 3 and max_core_threat >= 450))
+	# severe mode je schvalne prisny: preziti statu ma prednost pred ekonomikou.
+	if severe_defense_mode:
 		_ai_debug("build hold %s reason=core_defense threatened=%d max_threat=%d pressure=%.1f" % [
 			state_tag,
 			threatened_core_count,
 			max_core_threat,
 			pressure
 		])
-		return built
 
 	var has_port = _ai_stat_ma_pristav(owned)
 	var profile = _ai_ziskej_profil(state_tag)
@@ -10059,7 +10429,7 @@ func _ai_zvaz_stavby(state_tag: String, owned: Array, reserve: float, pressure: 
 			break
 
 		var best_pid := -1
-		var best_building := -1
+		var best_building := ""
 		var best_cost := 0.0
 		var best_score := -INF
 
@@ -10073,23 +10443,34 @@ func _ai_zvaz_stavby(state_tag: String, owned: Array, reserve: float, pressure: 
 				continue
 
 			var d = map_data[p_id]
+			if _normalizuj_tag(str(d.get("owner", ""))) != state_tag:
+				continue
+			var buildings = _ziskej_buildings_provincie(p_id)
 			var gdp = float(d.get("gdp", 0.0))
+			var pop = int(d.get("population", 0))
 			var recruits = int(d.get("recruitable_population", 0))
 			var is_frontline = _ma_nepratelskeho_souseda(state_tag, p_id)
+			var local_threat = _spocitej_hrozbu_nepratel_u_provincie(p_id, state_tag)
+			var is_capital = bool(d.get("is_capital", false))
 
-			if budget >= AI_BUILDING_COST_ECON:
+			if budget >= AI_BUILDING_COST_ECON and int(buildings.get(BUILDING_ID_ECON_HUB, 0)) < int((BUILDING_DEFS[BUILDING_ID_ECON_HUB] as Dictionary).get("max_level", 1)):
 				if at_war and is_frontline:
 					continue
+				if severe_defense_mode:
+					continue
 				var score_econ = gdp * 14.0 * (1.05 - defense * 0.2)
+				score_econ *= (1.05 + (1.0 - aggression) * 0.20)
+				if at_war:
+					score_econ *= 0.82
 				if not is_frontline:
 					score_econ += 120.0
 				if score_econ > best_score:
 					best_score = score_econ
 					best_pid = p_id
-					best_building = 0
+					best_building = BUILDING_ID_ECON_HUB
 					best_cost = AI_BUILDING_COST_ECON
 
-			if budget >= AI_BUILDING_COST_RECRUIT:
+			if budget >= AI_BUILDING_COST_RECRUIT and int(buildings.get(BUILDING_ID_RECRUIT_CENTER, 0)) < int((BUILDING_DEFS[BUILDING_ID_RECRUIT_CENTER] as Dictionary).get("max_level", 1)):
 				var score_recruit = float(recruits) * 0.09 + pressure * (0.014 + defense * 0.010)
 				if is_frontline:
 					score_recruit += 180.0
@@ -10098,25 +10479,75 @@ func _ai_zvaz_stavby(state_tag: String, owned: Array, reserve: float, pressure: 
 				if score_recruit > best_score:
 					best_score = score_recruit
 					best_pid = p_id
-					best_building = 1
+					best_building = BUILDING_ID_RECRUIT_CENTER
 					best_cost = AI_BUILDING_COST_RECRUIT
 
+			if budget >= AI_BUILDING_COST_FARM and int(buildings.get(BUILDING_ID_FARM, 0)) < int((BUILDING_DEFS[BUILDING_ID_FARM] as Dictionary).get("max_level", 1)):
+				if severe_defense_mode and is_frontline:
+					continue
+				var score_farm = gdp * 9.0 + float(recruits) * 0.04 + float(pop) * 0.0008
+				score_farm *= (1.04 + (1.0 - aggression) * 0.22)
+				if at_war:
+					score_farm *= 0.75
+				if not is_frontline:
+					score_farm += 100.0
+				if score_farm > best_score:
+					best_score = score_farm
+					best_pid = p_id
+					best_building = BUILDING_ID_FARM
+					best_cost = AI_BUILDING_COST_FARM
+
+			if budget >= AI_BUILDING_COST_ARMY_BASE and int(buildings.get(BUILDING_ID_ARMY_BASE, 0)) < int((BUILDING_DEFS[BUILDING_ID_ARMY_BASE] as Dictionary).get("max_level", 1)):
+				var score_base = float(recruits) * 0.08 + pressure * (0.013 + aggression * 0.012) + local_threat * 0.25
+				score_base *= (1.0 + aggression * 0.16)
+				if is_frontline:
+					score_base += 170.0
+				if at_war:
+					score_base += 120.0
+				if not at_war and not is_frontline:
+					score_base -= 60.0
+				if score_base > best_score:
+					best_score = score_base
+					best_pid = p_id
+					best_building = BUILDING_ID_ARMY_BASE
+					best_cost = AI_BUILDING_COST_ARMY_BASE
+
+			if budget >= AI_BUILDING_COST_FORTRESS and int(buildings.get(BUILDING_ID_FORTRESS, 0)) < int((BUILDING_DEFS[BUILDING_ID_FORTRESS] as Dictionary).get("max_level", 1)):
+				var score_fort = local_threat * 0.85 + pressure * 0.06
+				if is_frontline:
+					score_fort += 180.0
+				if is_capital:
+					score_fort += 190.0
+				if severe_defense_mode:
+					score_fort += 220.0
+				if not at_war and not is_capital and local_threat < 150:
+					score_fort -= 120.0
+				if score_fort > best_score:
+					best_score = score_fort
+					best_pid = p_id
+					best_building = BUILDING_ID_FORTRESS
+					best_cost = AI_BUILDING_COST_FORTRESS
+
 			if not has_port and budget >= AI_BUILDING_COST_PORT and muze_postavit_pristav(p_id):
+				if severe_defense_mode:
+					continue
 				var score_port = 260.0 + (gdp * (6.0 + aggression * 4.0))
 				if at_war:
 					score_port -= 140.0
 				if score_port > best_score:
 					best_score = score_port
 					best_pid = p_id
-					best_building = 2
+					best_building = BUILDING_ID_PORT
 					best_cost = AI_BUILDING_COST_PORT
 
-		if best_pid == -1 or best_building == -1:
+		if best_pid == -1 or best_building == "":
 			break
 
 		_nastav_kasu_statu(state_tag, treasury - best_cost)
-		provincie_cooldowny[best_pid] = {"zbyva": 3, "budova": best_building}
-		_ai_debug("build start %s prov=%d type=%d cost=%.2f treasury_after=%.2f" % [
+		var bdef = _ziskej_building_def(best_building)
+		var build_time = max(1, int(bdef.get("build_time", 3)))
+		provincie_cooldowny[best_pid] = {"zbyva": build_time, "budova": best_building}
+		_ai_debug("build start %s prov=%d type=%s cost=%.2f treasury_after=%.2f" % [
 			state_tag,
 			best_pid,
 			best_building,
@@ -10124,13 +10555,13 @@ func _ai_zvaz_stavby(state_tag: String, owned: Array, reserve: float, pressure: 
 			_ziskej_kasu_statu(state_tag)
 		])
 		used[best_pid] = true
-		if best_building == 2:
+		if best_building == BUILDING_ID_PORT:
 			has_port = true
 		built += 1
 
 	return built
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _ai_zvaz_armadni_lab(state_tag: String, reserve: float) -> bool:
 	var profile = _ai_ziskej_profil(state_tag)
 	var aggression = float(profile.get("aggression", 0.50))
@@ -10218,7 +10649,7 @@ func _ai_zvaz_armadni_lab(state_tag: String, reserve: float) -> bool:
 
 # AI logic
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func zpracuj_tah_ai():
 	if TURN_LOG_ENABLED:
 		print("--- AI THINKING START ---")
@@ -10327,7 +10758,6 @@ func zpracuj_tah_ai():
 
 		var ai_income_slice_counter := 0
 		var prijmova_sazba = ziskej_prijmovou_sazbu_hdp(owner_tag)
-		var upkeep_za_vojaka = ziskej_udrzbu_za_vojaka(owner_tag)
 		var income_gained_this_turn := 0.0
 		for p_id in owned:
 			if not map_data.has(p_id):
@@ -10335,6 +10765,7 @@ func zpracuj_tah_ai():
 			var d_income = map_data[p_id]
 			var gdp = float(d_income.get("gdp", 0.0))
 			var vojaci = int(d_income.get("soldiers", 0))
+			var upkeep_za_vojaka = ziskej_udrzbu_za_vojaka_v_provincii(owner_tag, int(p_id))
 			var prijem = (gdp * prijmova_sazba) - (vojaci * upkeep_za_vojaka)
 			ai_kasy[owner_tag] += prijem
 			income_gained_this_turn += prijem
@@ -10897,7 +11328,7 @@ func zpracuj_tah_ai():
 	if TURN_LOG_ENABLED:
 		print("--- AI THINKING END ---")
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _vyber_ai_kandidata_pro_presun_hlavniho_mesta(state_tag: String, current_capital_id: int) -> int:
 	var best_id := -1
 	var best_score := -2147483648
@@ -10931,7 +11362,7 @@ func _vyber_ai_kandidata_pro_presun_hlavniho_mesta(state_tag: String, current_ca
 
 	return best_id
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _ai_zvaz_presun_hlavniho_mesta(state_tag: String) -> void:
 	var state = _normalizuj_tag(state_tag)
 	if state == "" or state == "SEA":
@@ -10967,7 +11398,7 @@ func _ai_zvaz_presun_hlavniho_mesta(state_tag: String) -> void:
 		if TURN_LOG_ENABLED:
 			print("[AI] %s moved the capital to province %d for %.2f bn USD." % [state, candidate_id, cost])
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _naplanuj_ai_presuny(map_loader):
 	var ai_staty = _ziskej_ai_staty()
 	var movement_profile = AI_MOVEMENT_PROFILE_ENABLED
@@ -11269,7 +11700,7 @@ func _naplanuj_ai_presuny(map_loader):
 			movement_registered
 		])
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _seradene_ai_provincie(state_tag: String) -> Array:
 	var ids: Array = []
 	if _turn_cache_valid and _turn_state_owned_provinces.has(state_tag):
@@ -11324,7 +11755,7 @@ func _seradene_ai_provincie(state_tag: String) -> Array:
 	)
 	return ids
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _ai_ma_namorni_prilezitost(state_tag: String, from_id: int, preferred_front_owner: String = "") -> bool:
 	if state_tag == "" or state_tag == "SEA":
 		return false
@@ -11354,10 +11785,11 @@ func _ai_ma_namorni_prilezitost(state_tag: String, from_id: int, preferred_front
 			if _jsou_ve_valce_ai_cached(state_tag, coast_owner):
 				return true
 			if not _je_pratelsky_vztah_ai_cached(state_tag, coast_owner):
+				# i bez otevreny valky je to signal, ze more muze otevrit novej front.
 				return true
 	return false
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Condition check helper.
 func _ma_nepratelskeho_souseda(state_tag: String, province_id: int) -> bool:
 	if _ai_phase_cache_active:
 		var ck = "%s|%d" % [state_tag, province_id]
@@ -11387,7 +11819,7 @@ func _ma_nepratelskeho_souseda(state_tag: String, province_id: int) -> bool:
 		_ai_enemy_neighbor_cache["%s|%d" % [state_tag, province_id]] = found_enemy
 	return found_enemy
 
-# Brief: Computes derived values from current inputs and game state.
+# Computes derived values from current inputs and game state.
 func _spocitej_hrozbu_nepratel_u_provincie(province_id: int, state_tag: String) -> int:
 	if _ai_phase_cache_active:
 		var ck = "%s|%d" % [state_tag, province_id]
@@ -11399,6 +11831,7 @@ func _spocitej_hrozbu_nepratel_u_provincie(province_id: int, state_tag: String) 
 			_ai_threat_cache["%s|%d" % [state_tag, province_id]] = 0
 		return 0
 	var threat := 0
+	# hrozba = suma sousednich ne-pratelskych armad v jednom kroku od provincie.
 	var neighbors = (_turn_neighbors_by_province.get(province_id, map_data[province_id].get("neighbors", [])) as Array)
 	for n_raw in neighbors:
 		var n_id = int(n_raw)
@@ -11414,7 +11847,7 @@ func _spocitej_hrozbu_nepratel_u_provincie(province_id: int, state_tag: String) 
 		_ai_threat_cache["%s|%d" % [state_tag, province_id]] = threat
 	return threat
 
-# Brief: Computes derived values from current inputs and game state.
+# Computes derived values from current inputs and game state.
 func _spocitej_silu_na_hranici(state_tag: String, enemy: String) -> Dictionary:
 	var our_border := 0
 	var enemy_border := 0
@@ -11465,7 +11898,7 @@ func _spocitej_silu_na_hranici(state_tag: String, enemy: String) -> Dictionary:
 				break
 	return {"our": our_border, "enemy": enemy_border}
 
-# Brief: Reads current runtime data and returns it to callers.
+# Reads values from active state.
 func _ziskej_ai_border_strength_cached(state_tag: String, target_owner: String) -> Dictionary:
 	if not _ai_phase_cache_active:
 		return _spocitej_silu_na_hranici(state_tag, target_owner)
@@ -11476,7 +11909,7 @@ func _ziskej_ai_border_strength_cached(state_tag: String, target_owner: String) 
 	_ai_border_strength_cache[key] = computed
 	return computed
 
-# Brief: Reads current runtime data and returns it to callers.
+# Read-only data accessor.
 func _ziskej_ai_war_pair_eval_cached(state_tag: String, target_owner: String) -> Dictionary:
 	state_tag = _normalizuj_tag(state_tag)
 	target_owner = _normalizuj_tag(target_owner)
@@ -11544,7 +11977,7 @@ func _ziskej_ai_war_pair_eval_cached(state_tag: String, target_owner: String) ->
 	_ai_war_pair_eval_cache[key] = out
 	return out
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Boolean check for required state.
 func _ma_smyls_vyhlasit_valku(state_tag: String, target_owner: String, from_id: int, to_id: int, amount: int) -> bool:
 	state_tag = _normalizuj_tag(state_tag)
 	target_owner = _normalizuj_tag(target_owner)
@@ -11653,7 +12086,7 @@ func _ma_smyls_vyhlasit_valku(state_tag: String, target_owner: String, from_id: 
 		_ai_debug("war decide %s->%s reason=standard border=%.2f local=%.2f strategic=%.2f" % [state_tag, target_owner, ratio, local_ratio, strategic_ratio])
 	return final_ok
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _ai_otevri_valky(ai_staty: Array) -> int:
 	var opened := 0
 	for owner_any in ai_staty:
@@ -11758,7 +12191,7 @@ func _ai_otevri_valky(ai_staty: Array) -> int:
 
 	return opened
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _navrhni_krizovy_protiutok(state_tag: String, from_id: int, own_capital_id: int, frontline_cache: Dictionary = {}) -> Dictionary:
 	if not map_data.has(from_id):
 		return {}
@@ -11815,7 +12248,7 @@ func _navrhni_krizovy_protiutok(state_tag: String, from_id: int, own_capital_id:
 
 	return {"from": from_id, "to": best_target, "amount": best_amount}
 
-# Brief: Reads current runtime data and returns it to callers.
+# Pulls current state data.
 func _ziskej_ai_vztah_cached(tag_a: String, tag_b: String) -> float:
 	if not _ai_phase_cache_active:
 		return ziskej_vztah_statu(tag_a, tag_b)
@@ -11828,13 +12261,13 @@ func _ziskej_ai_vztah_cached(tag_a: String, tag_b: String) -> float:
 	_ai_relation_cache[key] = rel
 	return rel
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Boolean check for required state.
 func _je_pratelsky_vztah_ai_cached(tag_a: String, tag_b: String) -> bool:
 	if tag_a == "" or tag_b == "" or tag_a == tag_b:
 		return false
 	return _ziskej_ai_vztah_cached(tag_a, tag_b) >= AI_FRIEND_RELATION_THRESHOLD
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _jsou_ve_valce_ai_cached(tag_a: String, tag_b: String) -> bool:
 	if not _ai_phase_cache_active:
 		return jsou_ve_valce(tag_a, tag_b)
@@ -11847,7 +12280,7 @@ func _jsou_ve_valce_ai_cached(tag_a: String, tag_b: String) -> bool:
 	_ai_war_cache[key] = is_war
 	return is_war
 
-# Brief: Reads current runtime data and returns it to callers.
+# Reads values from active state.
 func _ziskej_uroven_aliance_ai_cached(tag_a: String, tag_b: String) -> int:
 	if not _ai_phase_cache_active:
 		return ziskej_uroven_aliance(tag_a, tag_b)
@@ -11860,7 +12293,7 @@ func _ziskej_uroven_aliance_ai_cached(tag_a: String, tag_b: String) -> int:
 	_ai_alliance_level_cache[key] = level
 	return level
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Returns true when conditions are met.
 func _ma_neagresivni_smlouvu_ai_cached(tag_a: String, tag_b: String) -> bool:
 	if not _ai_phase_cache_active:
 		return ma_neagresivni_smlouvu(tag_a, tag_b)
@@ -11873,7 +12306,7 @@ func _ma_neagresivni_smlouvu_ai_cached(tag_a: String, tag_b: String) -> bool:
 	_ai_non_aggr_cache[key] = has_pact
 	return has_pact
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _muze_upravit_vztah_ai_cached(tag_a: String, tag_b: String) -> bool:
 	if not _ai_phase_cache_active:
 		return muze_upravit_vztah_statu(tag_a, tag_b)
@@ -11887,7 +12320,7 @@ func _muze_upravit_vztah_ai_cached(tag_a: String, tag_b: String) -> bool:
 	_ai_can_adjust_relation_cache[key] = ok
 	return ok
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Condition check helper.
 func _ma_spolecnou_hranici_ai_cached(tag_a: String, tag_b: String) -> bool:
 	if not _ai_phase_cache_active:
 		return _ma_spolecnou_hranici(tag_a, tag_b)
@@ -11900,7 +12333,7 @@ func _ma_spolecnou_hranici_ai_cached(tag_a: String, tag_b: String) -> bool:
 	_ai_border_cache[key] = has_border
 	return has_border
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Eligibility/guard check.
 func _je_frontline_cached(state_tag: String, province_id: int, frontline_cache: Dictionary) -> bool:
 	if frontline_cache.has(province_id):
 		return bool(frontline_cache[province_id])
@@ -11908,7 +12341,7 @@ func _je_frontline_cached(state_tag: String, province_id: int, frontline_cache: 
 	frontline_cache[province_id] = is_frontline
 	return is_frontline
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _navrhni_neutocny_presun(state_tag: String, from_id: int, frontline_cache: Dictionary = {}, preferred_front_owner: String = "", staging_mode: bool = false) -> Dictionary:
 	if not map_data.has(from_id):
 		return {}
@@ -11960,7 +12393,7 @@ func _navrhni_neutocny_presun(state_tag: String, from_id: int, frontline_cache: 
 
 	return {"from": from_id, "to": best_target, "amount": amount}
 
-# Brief: Reads current runtime data and returns it to callers.
+# Returns current runtime data.
 func _ziskej_core_state(state_tag: String) -> String:
 	for p_id in map_data:
 		var d = map_data[p_id]
@@ -11970,7 +12403,7 @@ func _ziskej_core_state(state_tag: String) -> String:
 			return str(d.get("state", ""))
 	return ""
 
-# Brief: Reads current runtime data and returns it to callers.
+# Reads values from active state.
 func _ziskej_core_state_cached(state_tag: String) -> String:
 	if state_tag == "":
 		return ""
@@ -11980,7 +12413,7 @@ func _ziskej_core_state_cached(state_tag: String) -> String:
 	_core_state_cache[state_tag] = core_state
 	return core_state
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Boolean check for required state.
 func _je_core_provincie(state_tag: String, province_id: int, core_state: String) -> bool:
 	if not map_data.has(province_id):
 		return false
@@ -11993,7 +12426,7 @@ func _je_core_provincie(state_tag: String, province_id: int, core_state: String)
 		return true
 	return false
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _navrhni_core_obranu(state_tag: String, from_id: int, core_state: String = "", frontline_cache: Dictionary = {}) -> Dictionary:
 	if not map_data.has(from_id):
 		return {}
@@ -12035,7 +12468,7 @@ func _navrhni_core_obranu(state_tag: String, from_id: int, core_state: String = 
 
 	return {"from": from_id, "to": best_target, "amount": amount}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _navrhni_utok(state_tag: String, from_id: int, frontline_cache: Dictionary = {}, preferred_front_owner: String = "", coordinated_commitment: Dictionary = {}, strike_mode: bool = true) -> Dictionary:
 	if not map_data.has(from_id):
 		return {}
@@ -12245,7 +12678,7 @@ func _navrhni_utok(state_tag: String, from_id: int, frontline_cache: Dictionary 
 		"amount": best_amount
 	}
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _navrhni_namorni_presun(state_tag: String, from_id: int, preferred_front_owner: String = "") -> Dictionary:
 	if not map_data.has(from_id):
 		return {}
@@ -12323,21 +12756,21 @@ func _navrhni_namorni_presun(state_tag: String, from_id: int, preferred_front_ow
 		"amount": amount
 	}
 
-# Brief: Applies incoming values and synchronizes dependent state.
+# Applies updates and syncs dependent state.
 func nastav_potato_mode(enabled: bool) -> void:
 	_potato_mode_enabled = enabled
 
-# Brief: Applies incoming values and synchronizes dependent state.
+# Sync update for linked values.
 func nastav_ai_debug_mode(enabled: bool) -> void:
 	_ai_debug_mode_enabled = enabled
 	if not enabled:
 		_debug_turn_live_events.clear()
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Eligibility/guard check.
 func je_ai_debug_mode_zapnuty() -> bool:
 	return _ai_debug_mode_enabled
 
-# Brief: Reads current runtime data and returns it to callers.
+# Reads values from active state.
 func ziskej_debug_historii_tahu(limit: int = 6) -> Array:
 	var capped = clampi(limit, 1, DEBUG_TURN_HISTORY_MAX)
 	if _debug_turn_history.is_empty():
@@ -12345,7 +12778,7 @@ func ziskej_debug_historii_tahu(limit: int = 6) -> Array:
 	var from_idx = max(0, _debug_turn_history.size() - capped)
 	return _debug_turn_history.slice(from_idx, _debug_turn_history.size())
 
-# Brief: Reads current runtime data and returns it to callers.
+# Read-only data accessor.
 func ziskej_ai_debug_snapshot(state_tag: String = "") -> Dictionary:
 	var clean = _normalizuj_tag(state_tag)
 	if clean == "":
@@ -12426,4 +12859,6 @@ func ziskej_ai_debug_snapshot(state_tag: String = "") -> Dictionary:
 		"turn_profile": _debug_last_turn_profile.duplicate(true),
 		"turn_history": ziskej_debug_historii_tahu(6)
 	}
+
+
 

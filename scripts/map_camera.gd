@@ -1,15 +1,15 @@
 ﻿# ==================================================================================================
-# ███╗   ███╗ █████╗ ██████╗ ███████╗    ██████╗ ██╗   ██╗    █████╗ ███████╗██████╗  ██████╗ ██╗  ██╗
-# ████╗ ████║██╔══██╗██╔══██╗██╔════╝    ██╔══██╗╚██╗ ██╔╝   ██╔══██╗██╔════╝██╔══██╗██╔═══██╗╚██╗██╔╝
-# ██╔████╔██║███████║██║  ██║█████╗      ██████╔╝ ╚████╔╝    ███████║█████╗  ██████╔╝██║   ██║ ╚███╔╝
-# ██║╚██╔╝██║██╔══██║██║  ██║██╔══╝      ██╔══██╗  ╚██╔╝     ██╔══██║██╔══╝  ██╔══██╗██║   ██║ ██╔██╗
-# ██║ ╚═╝ ██║██║  ██║██████╔╝███████╗    ██████╔╝   ██║      ██║  ██║██║     ██║  ██║╚██████╔╝██╔╝ ██╗
-# ╚═╝     ╚═╝╚═╝  ╚═╝╚═════╝ ╚══════╝    ╚═════╝    ╚═╝      ╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝
+# â–â–â–â•—   â–â–â–â•— â–â–â–â–â–â•— â–â–â–â–â–â–â•— â–â–â–â–â–â–â–â•—    â–â–â–â–â–â–â•— â–â–â•—   â–â–â•—    â–â–â–â–â–â•— â–â–â–â–â–â–â–â•—â–â–â–â–â–â–â•—  â–â–â–â–â–â–â•— â–â–â•—  â–â–â•—
+# â–â–â–â–â•— â–â–â–â–â•‘â–â–â•”â•â•â–â–â•—â–â–â•”â•â•â–â–â•—â–â–â•”â•â•â•â•â•ť    â–â–â•”â•â•â–â–â•—â•šâ–â–â•— â–â–â•”â•ť   â–â–â•”â•â•â–â–â•—â–â–â•”â•â•â•â•â•ťâ–â–â•”â•â•â–â–â•—â–â–â•”â•â•â•â–â–â•—â•šâ–â–â•—â–â–â•”â•ť
+# â–â–â•”â–â–â–â–â•”â–â–â•‘â–â–â–â–â–â–â–â•‘â–â–â•‘  â–â–â•‘â–â–â–â–â–â•—      â–â–â–â–â–â–â•”â•ť â•šâ–â–â–â–â•”â•ť    â–â–â–â–â–â–â–â•‘â–â–â–â–â–â•—  â–â–â–â–â–â–â•”â•ťâ–â–â•‘   â–â–â•‘ â•šâ–â–â–â•”â•ť
+# â–â–â•‘â•šâ–â–â•”â•ťâ–â–â•‘â–â–â•”â•â•â–â–â•‘â–â–â•‘  â–â–â•‘â–â–â•”â•â•â•ť      â–â–â•”â•â•â–â–â•—  â•šâ–â–â•”â•ť     â–â–â•”â•â•â–â–â•‘â–â–â•”â•â•â•ť  â–â–â•”â•â•â–â–â•—â–â–â•‘   â–â–â•‘ â–â–â•”â–â–â•—
+# â–â–â•‘ â•šâ•â•ť â–â–â•‘â–â–â•‘  â–â–â•‘â–â–â–â–â–â–â•”â•ťâ–â–â–â–â–â–â–â•—    â–â–â–â–â–â–â•”â•ť   â–â–â•‘      â–â–â•‘  â–â–â•‘â–â–â•‘     â–â–â•‘  â–â–â•‘â•šâ–â–â–â–â–â–â•”â•ťâ–â–â•”â•ť â–â–â•—
+# â•šâ•â•ť     â•šâ•â•ťâ•šâ•â•ť  â•šâ•â•ťâ•šâ•â•â•â•â•â•ť â•šâ•â•â•â•â•â•â•ť    â•šâ•â•â•â•â•â•ť    â•šâ•â•ť      â•šâ•â•ť  â•šâ•â•ťâ•šâ•â•ť     â•šâ•â•ť  â•šâ•â•ť â•šâ•â•â•â•â•â•ť â•šâ•â•ť  â•šâ•â•ť
 #
 #                                         Made By: Afrox26TP
 # ==================================================================================================
 extends Camera2D
-# Brief: this script drives a specific gameplay/UI area and keeps related logic together.
+# this script drives a specific gameplay/UI area and keeps related logic together.
 
 const ControlsConfig = preload("res://scripts/ControlsConfig.gd")
 
@@ -26,12 +26,12 @@ var drag_start = Vector2.ZERO
 var dragging = false
 var invert_zoom_wheel: bool = false
 
-# Brief: Initializes references, connects signals, and prepares default runtime state.
+# Initializes references, connects signals, and prepares default runtime state.
 func _ready() -> void:
 	ControlsConfig.ensure_default_actions()
 	_nacti_ovladani_ze_settings()
 
-# Brief: Runs frame-by-frame updates while this node is active.
+# Per-frame runtime logic.
 func _process(delta):
 	# Handle keyboard movement
 	var input_dir = Vector2.ZERO
@@ -47,7 +47,7 @@ func _process(delta):
 
 	position += input_dir * speed * delta * (1.0 / zoom.x)
 
-# Brief: Processes direct input events routed to this node.
+# Input event handler for this node.
 func _input(event):
 	# Handle mouse input for zooming and panning
 	if event is InputEventMouseButton:
@@ -76,7 +76,7 @@ func _input(event):
 		drag_start = drag_current
 
 # Prevent camera stealing input when mouse is above menus/HUD.
-# Brief: Returns whether required conditions are currently satisfied.
+# Boolean check for required state.
 func _is_hovering_any_ui_blocking_camera() -> bool:
 	var hovered := get_viewport().gui_get_hovered_control()
 	while hovered != null:
@@ -86,7 +86,7 @@ func _is_hovering_any_ui_blocking_camera() -> bool:
 		hovered = hovered.get_parent() as Control
 	return false
 
-# Brief: Returns whether required conditions are currently satisfied.
+# Returns true when conditions are met.
 func _is_canvas_layer_ui_control(ctrl: Control) -> bool:
 	var node: Node = ctrl
 	while node != null:
@@ -95,14 +95,14 @@ func _is_canvas_layer_ui_control(ctrl: Control) -> bool:
 		node = node.get_parent()
 	return false
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _zoom_camera(factor):
 	zoom = (zoom * factor).clamp(Vector2(min_zoom, min_zoom), Vector2(max_zoom, max_zoom))
 	
 	# Broadcast the new zoom level to other game systems
 	zoom_zmenen.emit(zoom.x)
 
-# Brief: Loads data/resources and validates parsed results.
+# Pulls data and verifies parse output.
 func _nacti_ovladani_ze_settings() -> void:
 	ControlsConfig.apply_bindings(ControlsConfig.load_bindings_from_config())
 	var cfg = ConfigFile.new()
@@ -112,4 +112,6 @@ func _nacti_ovladani_ze_settings() -> void:
 	speed = float(cfg.get_value("controls", "camera_speed", speed))
 	zoom_speed = clamp(float(cfg.get_value("controls", "zoom_speed", zoom_speed)), 0.01, 0.6)
 	invert_zoom_wheel = bool(cfg.get_value("controls", "invert_zoom", invert_zoom_wheel))
+
+
 

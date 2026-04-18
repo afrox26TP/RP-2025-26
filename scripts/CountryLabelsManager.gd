@@ -1,15 +1,15 @@
 ﻿# ==================================================================================================
-# ███╗   ███╗ █████╗ ██████╗ ███████╗    ██████╗ ██╗   ██╗    █████╗ ███████╗██████╗  ██████╗ ██╗  ██╗
-# ████╗ ████║██╔══██╗██╔══██╗██╔════╝    ██╔══██╗╚██╗ ██╔╝   ██╔══██╗██╔════╝██╔══██╗██╔═══██╗╚██╗██╔╝
-# ██╔████╔██║███████║██║  ██║█████╗      ██████╔╝ ╚████╔╝    ███████║█████╗  ██████╔╝██║   ██║ ╚███╔╝
-# ██║╚██╔╝██║██╔══██║██║  ██║██╔══╝      ██╔══██╗  ╚██╔╝     ██╔══██║██╔══╝  ██╔══██╗██║   ██║ ██╔██╗
-# ██║ ╚═╝ ██║██║  ██║██████╔╝███████╗    ██████╔╝   ██║      ██║  ██║██║     ██║  ██║╚██████╔╝██╔╝ ██╗
-# ╚═╝     ╚═╝╚═╝  ╚═╝╚═════╝ ╚══════╝    ╚═════╝    ╚═╝      ╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝
+# â–â–â–â•—   â–â–â–â•— â–â–â–â–â–â•— â–â–â–â–â–â–â•— â–â–â–â–â–â–â–â•—    â–â–â–â–â–â–â•— â–â–â•—   â–â–â•—    â–â–â–â–â–â•— â–â–â–â–â–â–â–â•—â–â–â–â–â–â–â•—  â–â–â–â–â–â–â•— â–â–â•—  â–â–â•—
+# â–â–â–â–â•— â–â–â–â–â•‘â–â–â•”â•â•â–â–â•—â–â–â•”â•â•â–â–â•—â–â–â•”â•â•â•â•â•ť    â–â–â•”â•â•â–â–â•—â•šâ–â–â•— â–â–â•”â•ť   â–â–â•”â•â•â–â–â•—â–â–â•”â•â•â•â•â•ťâ–â–â•”â•â•â–â–â•—â–â–â•”â•â•â•â–â–â•—â•šâ–â–â•—â–â–â•”â•ť
+# â–â–â•”â–â–â–â–â•”â–â–â•‘â–â–â–â–â–â–â–â•‘â–â–â•‘  â–â–â•‘â–â–â–â–â–â•—      â–â–â–â–â–â–â•”â•ť â•šâ–â–â–â–â•”â•ť    â–â–â–â–â–â–â–â•‘â–â–â–â–â–â•—  â–â–â–â–â–â–â•”â•ťâ–â–â•‘   â–â–â•‘ â•šâ–â–â–â•”â•ť
+# â–â–â•‘â•šâ–â–â•”â•ťâ–â–â•‘â–â–â•”â•â•â–â–â•‘â–â–â•‘  â–â–â•‘â–â–â•”â•â•â•ť      â–â–â•”â•â•â–â–â•—  â•šâ–â–â•”â•ť     â–â–â•”â•â•â–â–â•‘â–â–â•”â•â•â•ť  â–â–â•”â•â•â–â–â•—â–â–â•‘   â–â–â•‘ â–â–â•”â–â–â•—
+# â–â–â•‘ â•šâ•â•ť â–â–â•‘â–â–â•‘  â–â–â•‘â–â–â–â–â–â–â•”â•ťâ–â–â–â–â–â–â–â•—    â–â–â–â–â–â–â•”â•ť   â–â–â•‘      â–â–â•‘  â–â–â•‘â–â–â•‘     â–â–â•‘  â–â–â•‘â•šâ–â–â–â–â–â–â•”â•ťâ–â–â•”â•ť â–â–â•—
+# â•šâ•â•ť     â•šâ•â•ťâ•šâ•â•ť  â•šâ•â•ťâ•šâ•â•â•â•â•â•ť â•šâ•â•â•â•â•â•â•ť    â•šâ•â•â•â•â•â•ť    â•šâ•â•ť      â•šâ•â•ť  â•šâ•â•ťâ•šâ•â•ť     â•šâ•â•ť  â•šâ•â•ť â•šâ•â•â•â•â•â•ť â•šâ•â•ť  â•šâ•â•ť
 #
 #                                         Made By: Afrox26TP
 # ==================================================================================================
 extends Node2D
-# Brief: this script drives a specific gameplay/UI area and keeps related logic together.
+# this script drives a specific gameplay/UI area and keeps related logic together.
 
 @export var label_scene: PackedScene = preload("res://scenes/CountryLabel.tscn")
 @export var min_velikost_pro_text: float = 85.0 
@@ -17,7 +17,7 @@ extends Node2D
 var aktivni_labely: Dictionary = {}
 var potato_mode_enabled: bool = false
 
-# Brief: Applies incoming values and synchronizes dependent state.
+# Applies updates and syncs dependent state.
 func nastav_potato_mode(enabled: bool) -> void:
 	potato_mode_enabled = enabled
 	visible = not enabled
@@ -28,7 +28,7 @@ func nastav_potato_mode(enabled: bool) -> void:
 				lbl.queue_free()
 		aktivni_labely.clear()
 
-# Brief: Recomputes and refreshes state from the latest game/UI data.
+# Updates derived state and UI.
 func aktualizuj_labely_statu(all_provinces: Dictionary, prov_labels_node: Node2D):
 	if potato_mode_enabled:
 		return
@@ -84,7 +84,7 @@ func aktualizuj_labely_statu(all_provinces: Dictionary, prov_labels_node: Node2D
 	for zniceny in znicene_staty:
 		aktivni_labely.erase(zniceny)
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _vykresli_label(tag: String, jmeno: String, pozice: Vector2, velikost: float, _ideologie: String):
 	var inst
 	if not aktivni_labely.has(tag):
@@ -112,4 +112,6 @@ func _vykresli_label(tag: String, jmeno: String, pozice: Vector2, velikost: floa
 		lbl.show()
 		if flag: 
 			flag.hide()
+
+
 

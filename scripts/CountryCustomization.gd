@@ -1,4 +1,4 @@
-extends RefCounted
+﻿extends RefCounted
 
 const CUSTOM_FLAGS_DIR := "user://custom_flags"
 
@@ -85,3 +85,4 @@ static func clear_all_custom_flags() -> void:
 		if lower.ends_with(".png") or lower.ends_with(".jpg") or lower.ends_with(".jpeg") or lower.ends_with(".webp") or lower.ends_with(".bmp"):
 			dir.remove(name)
 	dir.list_dir_end()
+

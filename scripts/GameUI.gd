@@ -1,10 +1,10 @@
 ﻿# ==================================================================================================
-# â–â–â–â•—   â–â–â–â•— â–â–â–â–â–â•— â–â–â–â–â–â–â•— â–â–â–â–â–â–â–â•—    â–â–â–â–â–â–â•— â–â–â•—   â–â–â•—    â–â–â–â–â–â•— â–â–â–â–â–â–â–â•—â–â–â–â–â–â–â•—  â–â–â–â–â–â–â•— â–â–â•—  â–â–â•—
-# â–â–â–â–â•— â–â–â–â–â•‘â–â–â•”â•â•â–â–â•—â–â–â•”â•â•â–â–â•—â–â–â•”â•â•â•â•â•ť    â–â–â•”â•â•â–â–â•—â•šâ–â–â•— â–â–â•”â•ť   â–â–â•”â•â•â–â–â•—â–â–â•”â•â•â•â•â•ťâ–â–â•”â•â•â–â–â•—â–â–â•”â•â•â•â–â–â•—â•šâ–â–â•—â–â–â•”â•ť
-# â–â–â•”â–â–â–â–â•”â–â–â•‘â–â–â–â–â–â–â–â•‘â–â–â•‘  â–â–â•‘â–â–â–â–â–â•—      â–â–â–â–â–â–â•”â•ť â•šâ–â–â–â–â•”â•ť    â–â–â–â–â–â–â–â•‘â–â–â–â–â–â•—  â–â–â–â–â–â–â•”â•ťâ–â–â•‘   â–â–â•‘ â•šâ–â–â–â•”â•ť
-# â–â–â•‘â•šâ–â–â•”â•ťâ–â–â•‘â–â–â•”â•â•â–â–â•‘â–â–â•‘  â–â–â•‘â–â–â•”â•â•â•ť      â–â–â•”â•â•â–â–â•—  â•šâ–â–â•”â•ť     â–â–â•”â•â•â–â–â•‘â–â–â•”â•â•â•ť  â–â–â•”â•â•â–â–â•—â–â–â•‘   â–â–â•‘ â–â–â•”â–â–â•—
-# â–â–â•‘ â•šâ•â•ť â–â–â•‘â–â–â•‘  â–â–â•‘â–â–â–â–â–â–â•”â•ťâ–â–â–â–â–â–â–â•—    â–â–â–â–â–â–â•”â•ť   â–â–â•‘      â–â–â•‘  â–â–â•‘â–â–â•‘     â–â–â•‘  â–â–â•‘â•šâ–â–â–â–â–â–â•”â•ťâ–â–â•”â•ť â–â–â•—
-# â•šâ•â•ť     â•šâ•â•ťâ•šâ•â•ť  â•šâ•â•ťâ•šâ•â•â•â•â•â•ť â•šâ•â•â•â•â•â•â•ť    â•šâ•â•â•â•â•â•ť    â•šâ•â•ť      â•šâ•â•ť  â•šâ•â•ťâ•šâ•â•ť     â•šâ•â•ť  â•šâ•â•ť â•šâ•â•â•â•â•â•ť â•šâ•â•ť  â•šâ•â•ť
+# Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť   Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť    Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť   Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť    Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ťÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť  Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť  Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť
+# Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ťÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ťÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„    Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ťÄ‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËÄąÄ„   Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ťÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ťÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ťÄ‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ťÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËÄąÄ„
+# Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬Â  Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť      Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËÄąÄ„ Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËÄąÄ„    Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť  Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËÄąÄ„Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬Â   Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬Â Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËÄąÄ„
+# Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËÄąÄ„Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬Â  Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„      Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť  Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËÄąÄ„     Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„  Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ťÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬Â   Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬Â Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť
+# Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬Â Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„ Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬Â  Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËÄąÄ„Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť    Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËÄąÄ„   Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬Â      Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬Â  Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬Â     Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬Â  Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËÄąÄ„Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËÄąÄ„ Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť
+# Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„     Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„  Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„ Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„    Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„    Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„      Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„  Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„     Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„  Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„ Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„ Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„  Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„
 #
 #                                         Made By: Afrox26TP
 # ==================================================================================================
@@ -20,6 +20,7 @@ const OVERVIEW_MAX_WIDTH := 324.0
 const OVERVIEW_TARGET_HEIGHT := 900.0
 const OVERVIEW_MIN_HEIGHT := 560.0
 const OVERVIEW_SCREEN_MARGIN := 10.0
+const OVERVIEW_INLINE_DELTA_WIDTH := 124.0
 const RENAME_DIALOG_SIZE := Vector2i(500, 230)
 
 class ArmyOfferCard:
@@ -162,7 +163,9 @@ var _pause_confirm_dialog: ConfirmationDialog
 var _pause_pending_action: String = ""
 var _overview_metric_rows: Dictionary = {}
 var _overview_metric_deltas: Dictionary = {}
+var _overview_metric_delta_holders: Dictionary = {}
 var _overview_preview_deltas: Dictionary = {}
+var _overview_action_econ_preview: Dictionary = {}
 var _save_dialog: PopupPanel
 var _save_name_input: LineEdit
 var _load_dialog: PopupPanel
@@ -438,7 +441,7 @@ func _ensure_ideology_flag_index() -> void:
 			_ideology_flag_path_index[key] = path
 	dir.list_dir_end()
 
-# Reads current runtime data and returns it to callers.
+# Read-only data accessor.
 func _ziskej_jmeno_statu_podle_tagu(tag: String) -> String:
 	var cisty = tag.strip_edges().to_upper()
 	if cisty == "":
@@ -580,7 +583,7 @@ func _ready():
 	_nastav_tooltipy_ui()
 	_aktualizuj_hlaseni_mirove_konference()
 
-# Runs frame-by-frame updates while this node is active.
+# Per-frame runtime logic.
 func _process(_delta: float) -> void:
 	if _research_dialog and _research_dialog.visible:
 		if panel == null or not panel.visible or research_btn == null or not research_btn.visible:
@@ -632,7 +635,7 @@ func _vytvor_turn_loading_overlay() -> void:
 	_turn_loading_label.add_theme_color_override("font_color", Color(0.95, 0.98, 1.0, 0.95))
 	_turn_loading_overlay.add_child(_turn_loading_label)
 
-# Signal/event callback that reacts to user actions or game events.
+# Triggered by a UI/game signal.
 func _on_zpracovani_tahu_zmeneno(aktivni: bool) -> void:
 	var now_ms := Time.get_ticks_msec()
 	if aktivni:
@@ -655,7 +658,7 @@ func _on_zpracovani_tahu_zmeneno(aktivni: bool) -> void:
 	if aktivni:
 		set_process(true)
 
-# Displays UI/output and updates visible presentation data.
+# Updates what the player sees.
 func _zobraz_pending_loan_notes() -> void:
 	if _showing_loan_notes:
 		return
@@ -672,7 +675,7 @@ func _zobraz_pending_loan_notes() -> void:
 		await zobraz_systemove_hlaseni("Loans", note)
 	_showing_loan_notes = false
 
-# Applies incoming values and synchronizes dependent state.
+# Applies updates and syncs dependent state.
 func nastav_pozastaveni_turn_overlay(pozastavit: bool) -> void:
 	_turn_loading_suppressed = pozastavit
 	if _turn_loading_overlay:
@@ -703,7 +706,7 @@ func _setup_country_flag_upload_link() -> void:
 		country_flag.mouse_filter = Control.MOUSE_FILTER_STOP
 		country_flag.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 
-# Builds required objects/UI nodes and wires essential defaults/signals.
+# Builds UI objects and default wiring.
 func _vytvor_custom_flag_dialog() -> void:
 	if _custom_flag_dialog:
 		return
@@ -723,42 +726,42 @@ func _vytvor_custom_flag_dialog() -> void:
 		_custom_flag_dialog.file_selected.connect(_on_custom_flag_file_selected)
 	add_child(_custom_flag_dialog)
 
-# Applies incoming values and synchronizes dependent state.
+# Applies updates and syncs dependent state.
 func _nastav_overview_text_properties() -> void:
 	if ideo_label:
 		ideo_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		ideo_label.custom_minimum_size = Vector2(300, 0)
+		ideo_label.custom_minimum_size = Vector2(0, 0)
 		ideo_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if pop_label:
 		pop_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		pop_label.custom_minimum_size = Vector2(300, 0)
+		pop_label.custom_minimum_size = Vector2(0, 0)
 		pop_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if recruit_label:
 		recruit_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		recruit_label.custom_minimum_size = Vector2(300, 0)
+		recruit_label.custom_minimum_size = Vector2(0, 0)
 		recruit_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if army_power_label:
 		army_power_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		army_power_label.custom_minimum_size = Vector2(300, 0)
+		army_power_label.custom_minimum_size = Vector2(0, 0)
 		army_power_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if gdp_label:
 		gdp_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		gdp_label.custom_minimum_size = Vector2(300, 0)
+		gdp_label.custom_minimum_size = Vector2(0, 0)
 		gdp_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if gdp_pc_label:
 		gdp_pc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		gdp_pc_label.custom_minimum_size = Vector2(300, 0)
+		gdp_pc_label.custom_minimum_size = Vector2(0, 0)
 		gdp_pc_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if vassals_label:
 		vassals_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		vassals_label.custom_minimum_size = Vector2(300, 0)
+		vassals_label.custom_minimum_size = Vector2(0, 0)
 		vassals_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if war_reparations_label:
 		war_reparations_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		war_reparations_label.custom_minimum_size = Vector2(300, 0)
+		war_reparations_label.custom_minimum_size = Vector2(0, 0)
 		war_reparations_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-# Applies incoming values and synchronizes dependent state.
+# Sync update for linked values.
 func _nastav_tooltipy_ui() -> void:
 	name_label.tooltip_text = "Name of the selected country. Double-click your own country name to rename it."
 	country_flag.tooltip_text = "Flag of the selected country. Double-click your own flag to upload a custom image."
@@ -817,7 +820,7 @@ func _on_popup_flag_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		_on_popup_country_reference_pressed()
 
-# Signal/event callback that reacts to user actions or game events.
+# Event handler for user or game actions.
 func _on_country_name_gui_input(event: InputEvent) -> void:
 	if not (event is InputEventMouseButton):
 		return
@@ -831,7 +834,7 @@ func _on_country_name_gui_input(event: InputEvent) -> void:
 		return
 	_otevri_prejmenovani_statu_dialog(player_tag)
 
-# Signal/event callback that reacts to user actions or game events.
+# Triggered by a UI/game signal.
 func _on_country_flag_gui_input(event: InputEvent) -> void:
 	if not (event is InputEventMouseButton):
 		return
@@ -946,7 +949,7 @@ func _on_rename_country_upload_flag_pressed() -> void:
 		return
 	_otevri_upload_vlajky_dialog(state_tag)
 
-# Signal/event callback that reacts to user actions or game events.
+# Callback for UI/game events.
 func _on_confirm_rename_country(_submitted_text: String = "") -> void:
 	if _rename_country_input == null:
 		return
@@ -1262,7 +1265,7 @@ func _ziskej_map_pozici_provincie_bezpecne(map_loader: Node, prov_id: int, prov_
 		return Vector2.ZERO
 	return pos
 
-# Reads current runtime data and returns it to callers.
+# Returns current runtime data.
 func _ziskej_fokus_statu_na_mape(tag: String, preferred_province_id: int = -1) -> Dictionary:
 	var wanted = tag.strip_edges().to_upper()
 	if wanted == "" or wanted == "SEA":
@@ -1385,7 +1388,7 @@ func _zajisti_tlacitko_obchodu() -> void:
 	if gift_money_btn and gift_money_btn.get_parent() == vbox:
 		vbox.move_child(trade_btn, gift_money_btn.get_index() + 1)
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _zajisti_tlacitko_vazalu() -> void:
 	_vassals_btn = get_node_or_null("OverviewPanel/VBoxContainer/VassalsButton") as Button
 	if _vassals_btn:
@@ -1402,7 +1405,7 @@ func _zajisti_tlacitko_vazalu() -> void:
 	if action_separator and action_separator.get_parent() == vbox:
 		vbox.move_child(_vassals_btn, action_separator.get_index() + 1)
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _zajisti_tlacitko_vojenskeho_pristupu() -> void:
 	_military_access_btn = get_node_or_null("OverviewPanel/VBoxContainer/MilitaryAccessButton") as Button
 	if _military_access_btn:
@@ -1422,7 +1425,7 @@ func _zajisti_tlacitko_vojenskeho_pristupu() -> void:
 		vbox.move_child(_military_access_btn, non_aggression_btn.get_index() + 1)
 	_military_access_btn.pressed.connect(_on_military_access_btn_pressed)
 
-# Builds required objects/UI nodes and wires essential defaults/signals.
+# Construct/setup block for required nodes.
 func _vytvor_panel_vazalu() -> void:
 	if _vassals_dialog != null:
 		return
@@ -1495,7 +1498,7 @@ func _vytvor_panel_vazalu() -> void:
 
 	_vassals_dialog.hide()
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _pozicuj_a_zmen_velikost_panelu_vazalu(vassal_count: int = -1) -> void:
 	if _vassals_dialog == null:
 		return
@@ -1537,7 +1540,7 @@ func _pozicuj_a_zmen_velikost_panelu_vazalu(vassal_count: int = -1) -> void:
 	y = clampf(y, min_y, maxf(min_y, vp.y - h - 8.0))
 	_vassals_dialog.position = Vector2(x, y)
 
-# Signal/event callback that reacts to user actions or game events.
+# Triggered by a UI/game signal.
 func _on_vassals_button_pressed() -> void:
 	if _vassals_dialog == null:
 		return
@@ -1760,7 +1763,7 @@ func _on_vassal_release_pressed(subject_tag: String) -> void:
 			_aktualizuj_vztah_ui(current_viewed_tag)
 		_aktualizuj_mirove_overview_statistiky(str(GameManager.hrac_stat).strip_edges().to_upper(), true)
 
-# Recomputes and refreshes state from the latest game/UI data.
+# Refresh pass for current state.
 func _aktualizuj_tlacitko_vazalu(je_hracuv_stat: bool) -> void:
 	if _vassals_btn == null:
 		return
@@ -1813,7 +1816,7 @@ func _zajisti_mirove_overview_labely() -> void:
 		vbox.move_child(vassals_label, action_separator.get_index())
 		vbox.move_child(war_reparations_label, action_separator.get_index())
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _zajisti_ai_debug_overview_labely() -> void:
 	ai_debug_panel = get_node_or_null("AIDebugPanel") as PanelContainer
 	if ai_debug_panel == null:
@@ -1957,7 +1960,7 @@ func _pozicuj_ai_debug_panel() -> void:
 	ai_debug_panel.offset_right = -side_margin
 	ai_debug_panel.offset_bottom = y_pos + height
 
-# Signal/event callback that reacts to user actions or game events.
+# Handles this signal callback.
 func _on_ai_debug_min_pressed() -> void:
 	_ai_debug_collapsed = not _ai_debug_collapsed
 	_pozicuj_ai_debug_panel()
@@ -1977,7 +1980,7 @@ func _nastav_ai_debug_filter_mode(mode: int) -> void:
 	else:
 		ai_debug_panel.hide()
 
-# Recomputes and refreshes state from the latest game/UI data.
+# Refreshes cached/UI state.
 func _aktualizuj_ai_debug_filter_tlacitka() -> void:
 	if _ai_debug_filter_all_btn:
 		_ai_debug_filter_all_btn.disabled = _ai_debug_filter_mode == 0
@@ -1998,7 +2001,7 @@ func _je_hracuv_tag(owner_tag: String) -> bool:
 			return true
 	return clean == str(GameManager.hrac_stat).strip_edges().to_upper()
 
-# Returns whether required conditions are currently satisfied.
+# Validates required conditions.
 func _je_debug_panel_povoleny_pro_stat(owner_tag: String) -> bool:
 	match _ai_debug_filter_mode:
 		1:
@@ -2008,7 +2011,7 @@ func _je_debug_panel_povoleny_pro_stat(owner_tag: String) -> bool:
 		_:
 			return true
 
-# Searches available data and returns the best matching result.
+# Search helper over available data.
 func _najdi_debug_panel_fallback_tag() -> String:
 	if GameManager == null:
 		return ""
@@ -2047,11 +2050,11 @@ func _on_ai_debug_filter_all_pressed() -> void:
 func _on_ai_debug_filter_mine_pressed() -> void:
 	_nastav_ai_debug_filter_mode(1)
 
-# Signal/event callback that reacts to user actions or game events.
+# Triggered by a UI/game signal.
 func _on_ai_debug_filter_other_pressed() -> void:
 	_nastav_ai_debug_filter_mode(2)
 
-# Recomputes and refreshes state from the latest game/UI data.
+# Refresh pass for current state.
 func _aktualizuj_ai_debug_overview(owner_tag: String, je_hracuv_stat: bool) -> void:
 	if ai_debug_label == null or ai_debug_panel == null:
 		return
@@ -2183,7 +2186,7 @@ func _aktualizuj_ai_debug_overview(owner_tag: String, je_hracuv_stat: bool) -> v
 	_pozicuj_ai_debug_panel()
 	ai_debug_panel.show()
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _zajisti_ideology_controls() -> void:
 	var vbox = get_node_or_null("OverviewPanel/VBoxContainer")
 	if vbox == null:
@@ -2407,7 +2410,7 @@ func _vytvor_vyzkum_dialog() -> void:
 
 	var trash_icon = Label.new()
 	trash_icon.name = "TrashIcon"
-	trash_icon.text = "đź—‘"
+	trash_icon.text = "Ă„â€ÄąĹźĂ˘â‚¬â€ťĂ˘â‚¬Â"
 	trash_icon.add_theme_color_override("font_color", Color(1.0, 0.89, 0.89, 1.0))
 	trash_icon.add_theme_font_size_override("font_size", 24)
 	trash_icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -2467,7 +2470,7 @@ func _predhrej_vyzkum_dialog_layout() -> void:
 	_research_dialog_user_open = false
 	_research_dialog_layout_warmed = true
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _pozicuj_vyzkum_dialog() -> void:
 	if _research_dialog == null:
 		return
@@ -2491,7 +2494,7 @@ func _pozicuj_vyzkum_dialog() -> void:
 	_research_dialog.size = Vector2(w, h)
 	_research_dialog.position = Vector2(clamp(left_x + margin, 0.0, max(0.0, vp.x - w)), clamp(top_offset, 0.0, max(0.0, vp.y - h)))
 
-# Signal/event callback that reacts to user actions or game events.
+# Reacts to incoming events.
 func _on_research_button_pressed() -> void:
 	if current_viewed_tag == "":
 		return
@@ -2512,7 +2515,7 @@ func _on_research_button_pressed() -> void:
 	# Update after popup layout is ready to avoid first-open visual glitches.
 	call_deferred("_aktualizuj_vyzkum_dialog", player_tag)
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _item_short_name(item_name: String) -> String:
 	var words = item_name.strip_edges().split(" ")
 	if words.size() >= 2:
@@ -2541,7 +2544,7 @@ func _format_army_item_title(item_name: String, level: int) -> String:
 	var safe_level = max(1, level)
 	return "%s L%d" % [_display_army_item_name(item_name), safe_level]
 
-# Recomputes and refreshes state from the latest game/UI data.
+# Updates derived state and UI.
 func _aktualizuj_vyzkum_dialog(state_tag: String) -> void:
 	if _research_dialog == null or _research_list == null:
 		return
@@ -2573,6 +2576,7 @@ func _aktualizuj_vyzkum_dialog(state_tag: String) -> void:
 	_army_research_grid_h = grid_h
 	_army_research_view_w = min(grid_max_w, grid_w + 1)
 	_army_research_view_h = min(grid_max_h, grid_h + 1)
+	# +1 viewport okno drzi UX plynule: hrac vidi i dalsi expand krok bez prepinani.
 	var unlocked = _army_unlocked_dict()
 	var plus_candidates = _army_plus_candidates(unlocked, grid_max_w, grid_max_h)
 	if _army_research_summary_label:
@@ -2605,6 +2609,7 @@ func _aktualizuj_vyzkum_dialog(state_tag: String) -> void:
 				cell_texts[yy * _army_research_view_w + xx] = "%s%d" % [short, lvl]
 
 	if _army_research_grid:
+		# grid se pri refreshi stavi znovu, at drag/drop stav nevisi na starych nodech.
 		for child in _army_research_grid.get_children():
 			child.queue_free()
 		_army_research_grid_cells.clear()
@@ -2666,6 +2671,7 @@ func _aktualizuj_vyzkum_dialog(state_tag: String) -> void:
 		_army_research_quality_btn.disabled = quality_level >= 8 or treasury < quality_cost
 
 	if _army_research_offers:
+		# nabidky cistime pred renderem, protoze jejich poradi/cena se muze menit rerollem.
 		for child in _army_research_offers.get_children():
 			child.queue_free()
 
@@ -2760,7 +2766,7 @@ func _vytvor_army_drag_preview(w: int, h: int, _level: int = 1) -> Control:
 	preview.position = -preview.size * 0.5
 	return root
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _army_offer_get_drag_data(offer_index: int, source: Control):
 	if not _army_research_last_info.has("offers"):
 		return null
@@ -2777,7 +2783,7 @@ func _army_offer_get_drag_data(offer_index: int, source: Control):
 		"offer_index": offer_index
 	}
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _army_unlocked_dict() -> Dictionary:
 	var out: Dictionary = {}
 	var arr = _army_research_last_info.get("unlocked_cells", []) as Array
@@ -2812,7 +2818,7 @@ func _army_cell_index_to_xy(cell_index: int) -> Vector2i:
 	var gw = max(1, _army_research_view_w)
 	return Vector2i(cell_index % gw, int(cell_index / gw))
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _army_grid_item_at_cell(cell_index: int) -> Dictionary:
 	var pos = _army_cell_index_to_xy(cell_index)
 	var x = pos.x
@@ -2842,7 +2848,7 @@ func _army_offer_mozno_sloucit_s_itemem(offer: Dictionary, item: Dictionary) -> 
 		return false
 	return int(offer.get("level", 1)) == int(item.get("level", 1))
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _army_grid_can_place_offer_at(cell_index: int, offer: Dictionary) -> bool:
 	var pos = _army_cell_index_to_xy(cell_index)
 	var x = pos.x
@@ -2877,7 +2883,7 @@ func _army_grid_can_place_offer_at(cell_index: int, offer: Dictionary) -> bool:
 				return false
 	return true
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _army_grid_cell_can_drop(cell_index: int, data) -> bool:
 	if not (data is Dictionary):
 		return false
@@ -2947,10 +2953,11 @@ func _army_grid_cell_can_drop(cell_index: int, data) -> bool:
 		return _army_offer_mozno_sloucit_s_itemem(offer, target_item)
 	return _army_grid_can_place_offer_at(cell_index, offer)
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _army_grid_cell_drop(cell_index: int, data) -> void:
 	if not _army_grid_cell_can_drop(cell_index, data):
 		return
+	# drop je centralni commit bod pro buy/move/merge armadnich itemu.
 	var d = data as Dictionary
 	var dtype = str(d.get("type", ""))
 	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
@@ -2993,11 +3000,12 @@ func _army_grid_cell_drop(cell_index: int, data) -> void:
 	else:
 		return
 	if not bool(result.get("ok", false)):
+		# chybu ukazeme, ale stejne refreshem srovname lokalni UI stav s backendem.
 		zobraz_systemove_hlaseni("Army", str(result.get("reason", "Item cannot be placed here.")))
 	_aktualizuj_vyzkum_dialog(player_tag)
 	_obnov_otevreny_prehled_statu()
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _army_grid_cell_get_drag_data(cell_index: int, source: Control):
 	var key = "%d" % cell_index
 	if not _army_cell_drag_uid.has(key):
@@ -3068,7 +3076,7 @@ func _on_army_research_buy_offer_pressed(offer_index: int) -> void:
 	_aktualizuj_vyzkum_dialog(player_tag)
 	_obnov_otevreny_prehled_statu()
 
-# Signal/event callback that reacts to user actions or game events.
+# Callback for UI/game events.
 func _on_army_research_buy_cell_pressed(x: int, y: int) -> void:
 	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
 	if player_tag == "":
@@ -3081,7 +3089,7 @@ func _on_army_research_buy_cell_pressed(x: int, y: int) -> void:
 	_aktualizuj_vyzkum_dialog(player_tag)
 	_obnov_otevreny_prehled_statu()
 
-# Signal/event callback that reacts to user actions or game events.
+# Reacts to incoming events.
 func _on_army_research_reroll_pressed() -> void:
 	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
 	if player_tag == "":
@@ -3130,7 +3138,7 @@ func _normalizuj_ideologii(ideology: String) -> String:
 		_:
 			return raw
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _display_ideologie(ideology: String) -> String:
 	var raw = _normalizuj_ideologii(ideology)
 	if raw == "":
@@ -3191,14 +3199,14 @@ func _set_ideology_effects_label(ideology: String) -> void:
 	_ideology_effects_base_text = _sestav_ideology_effects_text(ideology)
 	_set_ideology_effects_text(_ideology_effects_base_text)
 
-# Applies incoming values and synchronizes dependent state.
+# Sync update for linked values.
 func _set_ideology_effects_text(content: String) -> void:
 	if ideology_effects_label == null:
 		return
 	ideology_effects_label.clear()
 	ideology_effects_label.append_text(content)
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _sestav_ideology_effects_text(base_ideology: String, preview_ideology: String = "") -> String:
 	if not GameManager.has_method("ziskej_ideologicky_ekonomicky_profil"):
 		return "Ideology data is unavailable."
@@ -3238,21 +3246,47 @@ func _sestav_ideology_effects_text(base_ideology: String, preview_ideology: Stri
 		d_recruit_regen_core_pct = (float(preview_profile.get("recruit_regen_ratio_core", recruit_regen_core_pct / 100.0)) * 100.0) - recruit_regen_core_pct
 		d_recruit_regen_occ_pct = (float(preview_profile.get("recruit_regen_ratio_occupied", recruit_regen_occ_pct / 100.0)) * 100.0) - recruit_regen_occ_pct
 
+	var action_recruit_after = float(_overview_action_econ_preview.get("recruit_cost_after", recruit_cost))
+	var action_upkeep_after = float(_overview_action_econ_preview.get("upkeep_per_soldier_after", upkeep_cost))
+	var action_gdp_growth_after = float(_overview_action_econ_preview.get("gdp_growth_after", gdp_growth))
+	var action_pop_growth_after = float(_overview_action_econ_preview.get("population_growth_pct_after", pop_growth_pct))
+	var action_regen_core_after = float(_overview_action_econ_preview.get("recruit_regen_core_pct_after", recruit_regen_core_pct))
+	var action_regen_occ_after = float(_overview_action_econ_preview.get("recruit_regen_occ_pct_after", recruit_regen_occ_pct))
+
+	var action_recruit_text := ""
+	if _overview_action_econ_preview.has("recruit_cost_after"):
+		action_recruit_text = " [color=#5ec8ff](-> %s)[/color]" % _format_money_auto(action_recruit_after, 4)
+	var action_upkeep_text := ""
+	if _overview_action_econ_preview.has("upkeep_per_soldier_after"):
+		action_upkeep_text = " [color=#5ec8ff](-> %s)[/color]" % _format_money_auto(action_upkeep_after, 4)
+	var action_gdp_growth_text := ""
+	if _overview_action_econ_preview.has("gdp_growth_after"):
+		action_gdp_growth_text = " [color=#5ec8ff](-> %.3f)[/color]" % action_gdp_growth_after
+	var action_pop_growth_text := ""
+	if _overview_action_econ_preview.has("population_growth_pct_after"):
+		action_pop_growth_text = " [color=#5ec8ff](-> %.3f%%)[/color]" % action_pop_growth_after
+	var action_regen_core_text := ""
+	if _overview_action_econ_preview.has("recruit_regen_core_pct_after"):
+		action_regen_core_text = " [color=#5ec8ff](-> %.2f%%)[/color]" % action_regen_core_after
+	var action_regen_occ_text := ""
+	if _overview_action_econ_preview.has("recruit_regen_occ_pct_after"):
+		action_regen_occ_text = " [color=#5ec8ff](-> %.2f%%)[/color]" % action_regen_occ_after
+
 	return "Cost/soldier: %s%s\nUpkeep/soldier / turn: %s%s\nIncome rate from GDP: %.2f%%%s\nGDP growth: %.3f%s\nPopulation growth / turn: %.3f%%%s\nRecruit regen (core): %.2f%%%s\nRecruit regen (occupied): %.2f%%%s" % [
 		_format_money_auto(recruit_cost, 4),
-		_format_delta_text_color(d_recruit_cost, 4, " M") if show_delta else "",
+		(_format_delta_text_color(d_recruit_cost, 4, " M") if show_delta else "") + action_recruit_text,
 		_format_money_auto(upkeep_cost, 4),
-		_format_delta_text_color(d_upkeep_cost, 4, " M") if show_delta else "",
+		(_format_delta_text_color(d_upkeep_cost, 4, " M") if show_delta else "") + action_upkeep_text,
 		income_rate_pct,
 		_format_delta_text_color(d_income_rate_pct, 2, "%") if show_delta else "",
 		gdp_growth,
-		_format_delta_text_color(d_gdp_growth, 3, "") if show_delta else "",
+		(_format_delta_text_color(d_gdp_growth, 3, "") if show_delta else "") + action_gdp_growth_text,
 		pop_growth_pct,
-		_format_delta_text_color(d_pop_growth_pct, 3, "%") if show_delta else "",
+		(_format_delta_text_color(d_pop_growth_pct, 3, "%") if show_delta else "") + action_pop_growth_text,
 		recruit_regen_core_pct,
-		_format_delta_text_color(d_recruit_regen_core_pct, 2, "%") if show_delta else "",
+		(_format_delta_text_color(d_recruit_regen_core_pct, 2, "%") if show_delta else "") + action_regen_core_text,
 		recruit_regen_occ_pct,
-		_format_delta_text_color(d_recruit_regen_occ_pct, 2, "%") if show_delta else ""
+		(_format_delta_text_color(d_recruit_regen_occ_pct, 2, "%") if show_delta else "") + action_regen_occ_text
 	]
 
 func _format_money_auto(value: float, mil_decimals: int = 2) -> String:
@@ -3277,9 +3311,10 @@ func _format_delta_text_color(value: float, decimals: int, suffix: String = "") 
 		color = "#c0c0c0"
 	return " [color=%s](%s)[/color]" % [color, txt]
 
-# Clears temporary data and resets transient runtime/UI state.
+# Resets transient runtime/UI data.
 func _vycisti_nahled_ideologie_v_ui() -> void:
 	nastav_akce_nahled_delta({})
+	nastav_akce_nahled_ekonomiky({})
 	if ideology_effects_label and current_viewed_tag != "":
 		var current_ideo = _ziskej_aktualni_ideologii_statu(current_viewed_tag)
 		if current_ideo != "":
@@ -3309,7 +3344,7 @@ func _obnov_ideology_vizual_z_mapy() -> void:
 		country_flag.texture = _resolve_flag_texture(current_viewed_tag, current_ideo)
 	ideo_label.text = "Regime: " + _display_ideologie(current_ideo)
 
-# Signal/event callback that reacts to user actions or game events.
+# Event handler for user or game actions.
 func _on_ideology_dropdown_opened() -> void:
 	_ideology_dropdown_open = true
 	_ideology_hover_idx = -1
@@ -3330,7 +3365,7 @@ func _on_ideology_dropdown_item_focused(index: int) -> void:
 		country_flag.texture = _resolve_flag_texture(current_viewed_tag, selected)
 	ideo_label.text = "Regime: " + _display_ideologie(selected)
 
-# Signal/event callback that reacts to user actions or game events.
+# Reacts to incoming events.
 func _on_ideology_dropdown_closed() -> void:
 	_ideology_dropdown_open = false
 	_ideology_hover_idx = -1
@@ -3489,7 +3524,7 @@ func _obnov_otevreny_prehled_statu() -> void:
 	if representative_province_id >= 0 and provinces.has(representative_province_id):
 		zobraz_prehled_statu(provinces[representative_province_id], provinces)
 
-# Reads current runtime data and returns it to callers.
+# Read-only data accessor.
 func _ziskej_souhrn_statu(owner_tag: String, all_provinces: Dictionary) -> Dictionary:
 	var clean_tag = owner_tag.strip_edges().to_upper()
 	if clean_tag == "":
@@ -3583,7 +3618,7 @@ func _ziskej_dostupne_ideologie_pro_stat(tag: String) -> Array:
 	)
 	return out
 
-# Recomputes and refreshes state from the latest game/UI data.
+# Refresh pass for current state.
 func _aktualizuj_ideology_ui(owner_tag: String, current_ideology: String) -> void:
 	if ideology_separator == null or ideology_option == null or ideology_apply_btn == null or ideology_effects_label == null or ideology_relocate_capital_btn == null:
 		return
@@ -3773,7 +3808,7 @@ func zrus_vyber_cile_hlavniho_mesta_ui() -> void:
 	if current_viewed_tag != "":
 		_aktualizuj_tlacitko_presunu_hlavniho_mesta(current_viewed_tag)
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func obsluha_presunu_hlavniho_mesta_z_mapy(result: Dictionary, _target_province_id: int) -> void:
 	_ceka_na_vyber_cile_hlavniho_mesta = false
 	_relocate_capital_action_lock = false
@@ -3794,7 +3829,7 @@ func obsluha_presunu_hlavniho_mesta_z_mapy(result: Dictionary, _target_province_
 	)
 	_obnov_otevreny_prehled_statu()
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _wrap_overview_metric_label(key: String, base_label: Label) -> void:
 	if base_label == null:
 		return
@@ -3810,41 +3845,61 @@ func _wrap_overview_metric_label(key: String, base_label: Label) -> void:
 	var row = HBoxContainer.new()
 	row.name = "OverviewMetricRow_%s" % key
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 6)
 	parent.add_child(row)
 	parent.move_child(row, idx)
 
 	base_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	base_label.custom_minimum_size.x = 0.0
 	row.add_child(base_label)
+
+	var delta_holder = Control.new()
+	delta_holder.name = "OverviewDeltaHolder_%s" % key
+	delta_holder.custom_minimum_size = Vector2(OVERVIEW_INLINE_DELTA_WIDTH, 0)
+	delta_holder.clip_contents = true
+	delta_holder.visible = false
+	row.add_child(delta_holder)
 
 	var delta = Label.new()
 	delta.name = "OverviewDelta_%s" % key
+	delta.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	delta.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	delta.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	delta.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	delta.visible = false
-	row.add_child(delta)
+	delta_holder.add_child(delta)
 
 	_overview_metric_rows[key] = row
 	_overview_metric_deltas[key] = delta
+	_overview_metric_delta_holders[key] = delta_holder
 
 func _setup_overview_inline_deltas() -> void:
 	_wrap_overview_metric_label("pop", pop_label)
 	_wrap_overview_metric_label("recruit", recruit_label)
 	_wrap_overview_metric_label("gdp", gdp_label)
 	_wrap_overview_metric_label("gdp_pc", gdp_pc_label)
+	_wrap_overview_metric_label("army", army_power_label)
 
-# Applies incoming values and synchronizes dependent state.
+# Updates state and keeps things in sync.
 func _set_overview_metric_delta(key: String, text: String, color: Color) -> void:
 	if not _overview_metric_deltas.has(key):
 		return
 	var lbl = _overview_metric_deltas[key] as Label
+	var holder: Control = _overview_metric_delta_holders.get(key, null)
 	var clean = text.strip_edges()
 	if clean == "":
 		lbl.text = ""
 		lbl.visible = false
+		if holder:
+			holder.visible = false
 		return
 	lbl.text = "(%s)" % clean
 	lbl.add_theme_color_override("font_color", color)
 	lbl.visible = true
+	if holder:
+		holder.visible = true
 
-# Clears temporary data and resets transient runtime/UI state.
+# Wipes short-lived state.
 func _clear_overview_metric_deltas() -> void:
 	for k in _overview_metric_deltas.keys():
 		_set_overview_metric_delta(str(k), "", Color.WHITE)
@@ -3860,25 +3915,41 @@ func _apply_overview_preview_deltas() -> void:
 		var clr = entry.get("color", Color.WHITE)
 		_set_overview_metric_delta(str(key), txt, clr)
 
-# Applies incoming values and synchronizes dependent state.
+# Updates state and keeps things in sync.
 func nastav_akce_nahled_delta(deltas: Dictionary) -> void:
 	_overview_preview_deltas = deltas.duplicate(true)
 	_apply_overview_preview_deltas()
 
-# Applies incoming values and synchronizes dependent state.
+func nastav_akce_nahled_ekonomiky(preview: Dictionary) -> void:
+	_overview_action_econ_preview = preview.duplicate(true)
+	_obnov_overview_ekonomicky_blok()
+
+func _obnov_overview_ekonomicky_blok() -> void:
+	if current_viewed_tag == "":
+		return
+	var current_ideo = _ziskej_aktualni_ideologii_statu(current_viewed_tag)
+	if current_ideo == "":
+		return
+	if _ideology_dropdown_open and _ideology_hover_idx >= 0 and _ideology_hover_idx < _ideology_option_values.size():
+		var hovered = str(_ideology_option_values[_ideology_hover_idx])
+		_set_ideology_effects_text(_sestav_ideology_effects_text(current_ideo, hovered))
+		return
+	_set_ideology_effects_label(current_ideo)
+
+# Updates state and keeps things in sync.
 func nastav_akce_nahled(_text: String) -> void:
 	# Backward-compatible no-op; preview now uses inline deltas next to existing rows.
 	if _text.strip_edges() == "":
 		nastav_akce_nahled_delta({})
 
-# Signal/event callback that reacts to user actions or game events.
+# Triggered by a UI/game signal.
 func _on_system_message_ok_pressed():
 	_system_message_ack = true
 	if system_message_popup:
 		system_message_popup.hide()
 	_aktualizuj_pozice_popupu()
 
-# Signal/event callback that reacts to user actions or game events.
+# Event handler for user or game actions.
 func _on_viewport_resized():
 	_aktualizuj_overview_panel_layout()
 	_pozicuj_ai_debug_panel()
@@ -3991,7 +4062,7 @@ func _input(event):
 			_on_system_message_ok_pressed()
 			get_viewport().set_input_as_handled()
 
-# Builds required objects/UI nodes and wires essential defaults/signals.
+# Builds UI objects and default wiring.
 func _vytvor_pause_menu() -> void:
 	_pause_menu_panel = PopupPanel.new()
 	_pause_menu_panel.name = "PauseMenu"
@@ -4438,10 +4509,10 @@ func _pozicuj_loans_dialog() -> void:
 
 func _on_loan_button_pressed(mode: String) -> void:
 	if current_viewed_tag == "" or GameManager == null:
-		zobraz_systemove_hlaseni("Chyba", "NejdĹ™Ă­v si vyber stĂˇt.")
+		zobraz_systemove_hlaseni("Chyba", "NejdĂ„Ä…Ă˘â€žËĂ„â€šĂ‚Â­v si vyber stĂ„â€šĂ‹â€ˇt.")
 		return
 	if current_viewed_tag == str(GameManager.hrac_stat).strip_edges().to_upper():
-		zobraz_systemove_hlaseni("Chyba", "SĂˇm sobÄ› pĹŻjÄŤku dĂˇt nelze.")
+		zobraz_systemove_hlaseni("Chyba", "SĂ„â€šĂ‹â€ˇm sobÄ‚â€žĂ˘â‚¬Ĺź pĂ„Ä…ÄąÂ»jÄ‚â€žÄąÂ¤ku dĂ„â€šĂ‹â€ˇt nelze.")
 		return
 	
 	# Store mode for later use in confirmation
@@ -4456,21 +4527,21 @@ func _on_loan_button_pressed(mode: String) -> void:
 	_pozicuj_loans_dialog()
 	_loans_dialog.show()
 
-# Signal/event callback that reacts to user actions or game events.
+# Reacts to incoming events.
 func _on_loan_confirmed(principal_str: String, interest_str: String, turns_str: String) -> void:
 	# Validate state
 	var target = current_viewed_tag.strip_edges().to_upper()
 	if target == "":
-		zobraz_systemove_hlaseni("Chyba", "NejdĹ™Ă­v si vyber stĂˇt.")
+		zobraz_systemove_hlaseni("Chyba", "NejdĂ„Ä…Ă˘â€žËĂ„â€šĂ‚Â­v si vyber stĂ„â€šĂ‹â€ˇt.")
 		return
 	
 	# Get player country
 	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
 	if player_tag == "":
-		zobraz_systemove_hlaseni("Chyba", "HrĂˇÄŤĹŻv stĂˇt nebyl stanoven.")
+		zobraz_systemove_hlaseni("Chyba", "HrĂ„â€šĂ‹â€ˇÄ‚â€žÄąÂ¤Ă„Ä…ÄąÂ»v stĂ„â€šĂ‹â€ˇt nebyl stanoven.")
 		return
 	if target == player_tag:
-		zobraz_systemove_hlaseni("Chyba", "SĂˇm sobÄ› pĹŻjÄŤku dĂˇt nelze.")
+		zobraz_systemove_hlaseni("Chyba", "SĂ„â€šĂ‹â€ˇm sobÄ‚â€žĂ˘â‚¬Ĺź pĂ„Ä…ÄąÂ»jÄ‚â€žÄąÂ¤ku dĂ„â€šĂ‹â€ˇt nelze.")
 		return
 	
 	# Parse and validate principal
@@ -4478,7 +4549,7 @@ func _on_loan_confirmed(principal_str: String, interest_str: String, turns_str: 
 	if principal_str.strip_edges() != "":
 		principal = float(principal_str)
 	if principal <= 0.0:
-		zobraz_systemove_hlaseni("Chyba", "ÄŚĂˇstka musĂ­ bĂ˝t kladnĂˇ.")
+		zobraz_systemove_hlaseni("Chyba", "Ä‚â€žÄąĹˇĂ„â€šĂ‹â€ˇstka musĂ„â€šĂ‚Â­ bĂ„â€šĂ‹ĹĄt kladnĂ„â€šĂ‹â€ˇ.")
 		return
 	
 	# Parse and validate interest
@@ -4486,7 +4557,7 @@ func _on_loan_confirmed(principal_str: String, interest_str: String, turns_str: 
 	if interest_str.strip_edges() != "":
 		interest = float(interest_str)
 		if interest < 0.0 or interest > 100.0:
-			zobraz_systemove_hlaseni("Chyba", "Ăšrok musĂ­ bĂ˝t 0-100%.")
+			zobraz_systemove_hlaseni("Chyba", "Ă„â€šÄąË‡rok musĂ„â€šĂ‚Â­ bĂ„â€šĂ‹ĹĄt 0-100%.")
 			return
 	
 	# Parse and validate turns
@@ -4494,12 +4565,12 @@ func _on_loan_confirmed(principal_str: String, interest_str: String, turns_str: 
 	if turns_str.strip_edges() != "":
 		turns = int(turns_str)
 	if turns < 5 or turns > 36:
-		zobraz_systemove_hlaseni("Chyba", "Doba trvĂˇnĂ­ musĂ­ bĂ˝t 5-36 kol.")
+		zobraz_systemove_hlaseni("Chyba", "Doba trvĂ„â€šĂ‹â€ˇnĂ„â€šĂ‚Â­ musĂ„â€šĂ‚Â­ bĂ„â€šĂ‹ĹĄt 5-36 kol.")
 		return
 
 	var max_principal = _ziskej_max_principal_pro_rezim(player_tag, target)
 	if max_principal <= 0.0:
-		zobraz_systemove_hlaseni("Chyba", "DostupnĂ© funds pro tuto pĹŻjÄŤku jsou 0.")
+		zobraz_systemove_hlaseni("Chyba", "DostupnĂ„â€šĂ‚Â© funds pro tuto pĂ„Ä…ÄąÂ»jÄ‚â€žÄąÂ¤ku jsou 0.")
 		return
 	if principal > max_principal:
 		principal = max_principal
@@ -4518,7 +4589,7 @@ func _on_loan_confirmed(principal_str: String, interest_str: String, turns_str: 
 			else:
 				result = GameManager._vytvor_statni_pujcku(player_tag, target, principal, interest, turns)
 			if bool(result.get("ok", false)):
-				zobraz_systemove_hlaseni("PĹŻjÄŤka nabĂ­dnuta", "NabĂ­dnuto %.0f M za %.1f%% na %d kol stĂˇtu %s." % [principal, interest, turns, _ziskej_jmeno_statu_podle_tagu(target)])
+				zobraz_systemove_hlaseni("PĂ„Ä…ÄąÂ»jÄ‚â€žÄąÂ¤ka nabĂ„â€šĂ‚Â­dnuta", "NabĂ„â€šĂ‚Â­dnuto %.0f M za %.1f%% na %d kol stĂ„â€šĂ‹â€ˇtu %s." % [principal, interest, turns, _ziskej_jmeno_statu_podle_tagu(target)])
 				_loans_dialog.hide()
 			else:
 				zobraz_systemove_hlaseni("Chyba", str(result.get("reason", "Selhalo.")))
@@ -4530,7 +4601,7 @@ func _on_loan_confirmed(principal_str: String, interest_str: String, turns_str: 
 			else:
 				result = GameManager._vytvor_statni_pujcku(target, player_tag, principal, interest, turns)
 			if bool(result.get("ok", false)):
-				zobraz_systemove_hlaseni("PĹŻjÄŤka poĹľadovĂˇna", "PoĹľadovĂˇno %.0f M za %.1f%% na %d kol od stĂˇtu %s." % [principal, interest, turns, _ziskej_jmeno_statu_podle_tagu(target)])
+				zobraz_systemove_hlaseni("PĂ„Ä…ÄąÂ»jÄ‚â€žÄąÂ¤ka poĂ„Ä…Ă„ÄľadovĂ„â€šĂ‹â€ˇna", "PoĂ„Ä…Ă„ÄľadovĂ„â€šĂ‹â€ˇno %.0f M za %.1f%% na %d kol od stĂ„â€šĂ‹â€ˇtu %s." % [principal, interest, turns, _ziskej_jmeno_statu_podle_tagu(target)])
 				_loans_dialog.hide()
 			else:
 				zobraz_systemove_hlaseni("Chyba", str(result.get("reason", "Selhalo.")))
@@ -4605,7 +4676,7 @@ func _vytvor_alliance_dialog() -> void:
 	_aplikuj_ingame_tlacitko_styl(close_btn2, false)
 	bottom_row.add_child(close_btn2)
 
-# Builds required objects/UI nodes and wires essential defaults/signals.
+# Builds UI objects and default wiring.
 func _vytvor_alliance_create_popup() -> void:
 	_alliance_create_popup = PanelContainer.new()
 	_alliance_create_popup.name = "AllianceCreatePopup"
@@ -4699,7 +4770,7 @@ func _pozicuj_alliance_dialog() -> void:
 	var vp = get_viewport().get_visible_rect().size
 	_alliance_dialog.position = Vector2((vp.x - _alliance_dialog.custom_minimum_size.x) * 0.5, (vp.y - _alliance_dialog.custom_minimum_size.y) * 0.5)
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _pozicuj_alliance_create_popup() -> void:
 	if not _alliance_create_popup:
 		return
@@ -4815,7 +4886,7 @@ func _obnov_alliance_dialog_obsah(target_tag: String) -> void:
 			bilateral_label.text = "Bilateral status with %s: %s (relation: %.1f)" % [target_name, level_name, rel]
 			_alliance_dialog_list.add_child(bilateral_label)
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _pridej_alliance_kartu(alliance: Dictionary, target_tag: String, view_mode: String = "own") -> void:
 	var card = PanelContainer.new()
 	var card_style = StyleBoxFlat.new()
@@ -4926,15 +4997,15 @@ func _pridej_alliance_kartu(alliance: Dictionary, target_tag: String, view_mode:
 					cond_label.text = "  %s: AT WAR" % member_name
 					cond_label.add_theme_color_override("font_color", Color(0.95, 0.3, 0.3))
 				elif met:
-					cond_label.text = "  %s: %.1f / %.1f âś“" % [member_name, cond_rel, needed]
+					cond_label.text = "  %s: %.1f / %.1f Ä‚ËÄąâ€şĂ˘â‚¬Ĺ›" % [member_name, cond_rel, needed]
 					cond_label.add_theme_color_override("font_color", Color(0.5, 0.9, 0.5))
 				else:
-					cond_label.text = "  %s: %.1f / %.1f âś—" % [member_name, cond_rel, needed]
+					cond_label.text = "  %s: %.1f / %.1f Ä‚ËÄąâ€şĂ˘â‚¬â€ť" % [member_name, cond_rel, needed]
 					cond_label.add_theme_color_override("font_color", Color(0.95, 0.4, 0.4))
 				cond_label.add_theme_font_size_override("font_size", 12)
 				vbox.add_child(cond_label)
 
-	# Action buttons â€” differ by view mode
+	# Action buttons Ä‚ËĂ˘â€šÂ¬Ă˘â‚¬ĹĄ differ by view mode
 	var btn_row = HBoxContainer.new()
 	btn_row.add_theme_constant_override("separation", 6)
 	vbox.add_child(btn_row)
@@ -5344,7 +5415,7 @@ func _aktualizuj_hlaseni_mirove_konference() -> void:
 	_peace_notice_panel.show()
 	_pozicuj_hlaseni_mirove_konference()
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _potlac_hlaseni_miru_do_dalsi_konference() -> void:
 	if _peace_notice_panel == null:
 		return
@@ -5361,7 +5432,7 @@ func _on_peace_notice_open_pressed() -> void:
 func ma_otevrene_mirove_jednani() -> bool:
 	return _peace_dialog != null and _peace_dialog.visible
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _spust_vyber_miru_na_mape(show_error_popup: bool) -> bool:
 	if _active_peace_conference.is_empty():
 		return false
@@ -5389,7 +5460,7 @@ func _spust_vyber_miru_na_mape(show_error_popup: bool) -> bool:
 	_aktualizuj_mirovou_konferenci_preview()
 	return true
 
-# Recomputes and refreshes state from the latest game/UI data.
+# Refresh pass for current state.
 func _aktualizuj_mirovou_konferenci_preview() -> void:
 	if _active_peace_conference.is_empty():
 		return
@@ -5427,7 +5498,7 @@ func _ziskej_map_node_pro_mir() -> Node:
 		return get_tree().current_scene
 	return null
 
-# Signal/event callback that reacts to user actions or game events.
+# Callback for UI/game events.
 func _on_peace_pick_provinces_pressed() -> void:
 	if _active_peace_conference.is_empty():
 		return
@@ -5688,7 +5759,7 @@ func _vytvor_trade_dialog() -> void:
 	bottom.add_child(close_btn)
 	_trade_vytvor_province_picker_popup()
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _trade_close_dialog() -> void:
 	_trade_zrus_vyber_provincii_z_mapy(false)
 	_trade_zrus_vyber_valecneho_cile_z_mapy(false)
@@ -5696,11 +5767,11 @@ func _trade_close_dialog() -> void:
 	if _trade_dialog:
 		_trade_dialog.hide()
 
-# Returns whether required conditions are currently satisfied.
+# Condition check helper.
 func je_aktivni_vyber_trade_valky_na_mape() -> bool:
 	return _ceka_na_vyber_trade_war_cile
 
-# Returns whether required conditions are currently satisfied.
+# Returns true when conditions are met.
 func je_platny_trade_cil_statu_na_mape(owner_tag: String) -> bool:
 	if not _ceka_na_vyber_trade_war_cile:
 		return false
@@ -5716,7 +5787,7 @@ func je_platny_trade_cil_statu_na_mape(owner_tag: String) -> bool:
 func zrus_vyber_trade_valecneho_cile_ui() -> void:
 	_trade_zrus_vyber_valecneho_cile_z_mapy(false)
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _trade_otevri_join_alliance_picker(side: int) -> void:
 	_trade_zrus_vyber_provincii_z_mapy(false)
 	_trade_zrus_vyber_valecneho_cile_z_mapy(false)
@@ -5736,7 +5807,7 @@ func _trade_otevri_join_alliance_picker(side: int) -> void:
 		_trade_dialog.hide()
 	_otevri_alliance_dialog(provider_tag)
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _trade_zrus_vyber_aliance_z_menu(obnovit_hlavni_dialog: bool = true) -> void:
 	_ceka_na_vyber_trade_aliance = false
 	_trade_alliance_pick_side = -1
@@ -5787,7 +5858,7 @@ func obsluha_vyberu_trade_valky_z_mapy(data: Dictionary) -> bool:
 	_trade_refresh_dialog_ui()
 	return true
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _trade_vytvor_province_picker_popup() -> void:
 	if _trade_province_picker_popup != null:
 		return
@@ -5876,7 +5947,7 @@ func _trade_seznam_provincii_statu(state_tag: String) -> Array:
 	)
 	return out
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _trade_otevri_province_picker(side: int) -> void:
 	_trade_zrus_vyber_valecneho_cile_z_mapy(false)
 	_trade_zrus_vyber_aliance_z_menu(false)
@@ -5893,6 +5964,7 @@ func _trade_otevri_province_picker(side: int) -> void:
 		return
 
 	if _ceka_na_vyber_trade_provincie and _trade_map_pick_side == side:
+		# druhy klik na stejny picker funguje jako rychly cancel/toggle.
 		_trade_zrus_vyber_provincii_z_mapy()
 		return
 
@@ -5906,6 +5978,7 @@ func _trade_otevri_province_picker(side: int) -> void:
 		preselected = _trade_parse_selected_province_ids((editor["input_a"] as LineEdit).text)
 
 	var activation = map_node.aktivuj_rezim_vyberu_trade_provincie(source_tag, preselected)
+	# map node vraci validacni result; UI nic nepredpoklada naslepo.
 	if not bool((activation as Dictionary).get("ok", false)):
 		zobraz_systemove_hlaseni("Trade", str((activation as Dictionary).get("reason", "Failed to start map selection.")))
 		return
@@ -5968,7 +6041,7 @@ func _trade_zrus_vyber_valecneho_cile_z_mapy(obnovit_hlavni_dialog: bool = true)
 		_pozicuj_trade_dialog()
 	_trade_dialog_hidden_for_war_pick = false
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func obsluha_vyberu_trade_provincie_z_mapy(result: Dictionary, _province_id: int) -> void:
 	if not _ceka_na_vyber_trade_provincie:
 		return
@@ -5977,7 +6050,7 @@ func obsluha_vyberu_trade_provincie_z_mapy(result: Dictionary, _province_id: int
 	_trade_map_selected_ids = (result.get("selected", []) as Array).duplicate()
 	_trade_obnov_popup_vyberu_provincii_info()
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _trade_obnov_popup_vyberu_provincii_info() -> void:
 	if _trade_province_picker_info:
 		_trade_province_picker_info.text = "Source state: %s" % (_trade_map_pick_source_tag if _trade_map_pick_source_tag != "" else "-")
@@ -6011,7 +6084,7 @@ func _trade_pozicuj_province_picker_popup() -> void:
 	y = clampf(y, min_y, viewport_size.y - panel_size.y - margin)
 	_trade_province_picker_popup.position = Vector2(x, y)
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _trade_parse_selected_province_ids(raw_text: String) -> Array:
 	var text = raw_text.strip_edges().replace(";", ",").replace(" ", "")
 	if text == "":
@@ -6026,7 +6099,7 @@ func _trade_parse_selected_province_ids(raw_text: String) -> Array:
 			out.append(pid)
 	return out
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _trade_potvrd_vyber_provincii_z_mapy() -> void:
 	if not _ceka_na_vyber_trade_provincie:
 		return
@@ -6043,6 +6116,7 @@ func _trade_potvrd_vyber_provincii_z_mapy() -> void:
 		return
 
 	var ids = (result.get("selected", []) as Array).duplicate()
+	# sort zajisti stabilni serializaci textu i pozdejsi porovnani terms.
 	ids.sort()
 	var id_parts: Array = []
 	for raw_id in ids:
@@ -6068,7 +6142,7 @@ func _trade_potvrd_vyber_provincii_z_mapy() -> void:
 	_trade_set_selected_slot(side, "province")
 	_trade_refresh_dialog_ui()
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _trade_zrus_vyber_provincii_z_mapy(obnovit_hlavni_dialog: bool = true) -> void:
 	var map_node = _ziskej_map_node_pro_mir()
 	if map_node and map_node.has_method("zrus_rezim_vyberu_trade_provincie"):
@@ -6086,7 +6160,7 @@ func _trade_zrus_vyber_provincii_z_mapy(obnovit_hlavni_dialog: bool = true) -> v
 	_trade_dialog_hidden_for_map_pick = false
 	_trade_refresh_dialog_ui()
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _trade_vytvor_stranu(side: int) -> PanelContainer:
 	var panel = PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -6252,11 +6326,11 @@ func _trade_vytvor_stranu(side: int) -> PanelContainer:
 
 	return panel
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _trade_side_values(side: int) -> Dictionary:
 	return _trade_left_values if side == 0 else _trade_right_values
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _trade_side_editor(side: int) -> Dictionary:
 	return _trade_left_editor if side == 0 else _trade_right_editor
 
@@ -6318,13 +6392,14 @@ func _trade_on_slot_pressed(side: int, slot: String) -> void:
 			alliance_btn.text = "Finish alliance selection" if (_ceka_na_vyber_trade_aliance and _trade_alliance_pick_side == side) else "Select alliance"
 	_trade_refresh_dialog_ui()
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _trade_apply_side(side: int) -> void:
 	var slot = _trade_selected_slot(side)
 	if slot == "":
 		await zobraz_systemove_hlaseni("Trade", "Select an option first.")
 		return
 	if slot == "province":
+		# province/decalre-war/join-alliance sloty jsou map/menu driven, ne text input.
 		if not _trade_side_values(side).has("province"):
 			await zobraz_systemove_hlaseni("Trade", "Use map selection for provinces.")
 			return
@@ -6376,7 +6451,7 @@ func _trade_clear_side(side: int) -> void:
 		(editor["input_b"] as LineEdit).text = ""
 	_trade_refresh_dialog_ui()
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _trade_compact_value(entry: Dictionary) -> String:
 	var value_a = str(entry.get("a", "")).strip_edges()
 	var value_b = str(entry.get("b", "")).strip_edges()
@@ -6425,6 +6500,7 @@ func _trade_refresh_dialog_ui() -> void:
 		_trade_left_title_label.text = str(GameManager.hrac_stat)
 	if _trade_right_title_label:
 		_trade_right_title_label.text = _trade_target_tag if _trade_target_tag != "" else "Target state"
+	# obe strany refresheme vzdy spolu, at preview zustane konzistentni.
 	_trade_refresh_side_ui(0)
 	_trade_refresh_side_ui(1)
 
@@ -6543,7 +6619,7 @@ func _zobraz_pause_confirm(action: String, title: String, text: String) -> void:
 	_pause_confirm_dialog.dialog_text = text
 	_pause_confirm_dialog.popup_centered()
 
-# Builds required objects/UI nodes and wires essential defaults/signals.
+# Sets up nodes, defaults, and signals.
 func _vytvor_save_load_dialogy() -> void:
 	_save_dialog = PopupPanel.new()
 	_save_dialog.name = "SaveLoadDialog"
@@ -6628,7 +6704,7 @@ func _vytvor_save_load_dialogy() -> void:
 
 	_save_dialog.hide()
 
-# Builds required objects/UI nodes and wires essential defaults/signals.
+# Initialization for UI objects and hooks.
 func _vytvor_settings_dialog() -> void:
 	_settings_dialog = PopupPanel.new()
 	_settings_dialog.name = "SettingsDialog"
@@ -6951,7 +7027,7 @@ func _refresh_ingame_keybind_buttons() -> void:
 		else:
 			btn.text = ControlsConfig.get_binding_text(action, _settings_keybind_state)
 
-# Signal/event callback that reacts to user actions or game events.
+# Reacts to incoming events.
 func _on_ingame_keybind_button_pressed(action: String) -> void:
 	_settings_capture_action = action
 	_refresh_ingame_keybind_buttons()
@@ -6970,13 +7046,13 @@ func _capture_ingame_keybind(event: InputEventKey) -> bool:
 	_refresh_ingame_keybind_buttons()
 	return true
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func _pozicuj_settings_dialog() -> void:
 	if _settings_dialog:
 		var vp = get_viewport().get_visible_rect().size
 		_settings_dialog.position = Vector2((vp.x - _settings_dialog.size.x) * 0.5, (vp.y - _settings_dialog.size.y) * 0.5)
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _pozicuj_save_load_popupy() -> void:
 	if _save_dialog:
 		var vp = get_viewport().get_visible_rect().size
@@ -7025,7 +7101,7 @@ func _nacti_settings_do_ingame_ui() -> void:
 	_on_ingame_camera_speed_changed(_settings_camera_slider.value)
 	_on_ingame_zoom_speed_changed(_settings_zoom_slider.value)
 
-# Persists runtime/configuration data to storage.
+# Persistence write helper.
 func _uloz_a_aplikuj_ingame_settings() -> void:
 	var fullscreen = _settings_fullscreen_check.button_pressed
 	var vsync_enabled = _settings_vsync_check.button_pressed
@@ -7095,7 +7171,7 @@ func _on_ingame_volume_changed(value: float) -> void:
 	if _settings_volume_value:
 		_settings_volume_value.text = "%d%%" % int(round(value * 100.0))
 
-# Signal/event callback that reacts to user actions or game events.
+# Reacts to incoming events.
 func _on_ingame_camera_speed_changed(value: float) -> void:
 	if _settings_camera_value:
 		_settings_camera_value.text = "%d" % int(round(value))
@@ -7108,7 +7184,7 @@ func _on_ingame_settings_apply_pressed() -> void:
 	_uloz_a_aplikuj_ingame_settings()
 	_settings_dialog.hide()
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _vygeneruj_default_jmeno_save() -> String:
 	return "save_%s" % Time.get_datetime_string_from_system().replace("T", "_").replace(":", "-")
 
@@ -7162,7 +7238,7 @@ func _pridej_radek_load_slotu(slot_name: String, display_name: String) -> void:
 	_load_slot_row_buttons[slot_name] = select_btn
 
 	var delete_btn = Button.new()
-	delete_btn.text = "đź—‘"
+	delete_btn.text = "Ă„â€ÄąĹźĂ˘â‚¬â€ťĂ˘â‚¬Â"
 	delete_btn.custom_minimum_size = Vector2(34, 0)
 	delete_btn.focus_mode = Control.FOCUS_NONE
 	delete_btn.tooltip_text = "Delete save slot"
@@ -7170,7 +7246,7 @@ func _pridej_radek_load_slotu(slot_name: String, display_name: String) -> void:
 	delete_btn.pressed.connect(_on_load_slot_row_delete_pressed.bind(slot_name))
 	row.add_child(delete_btn)
 
-# Applies incoming values and synchronizes dependent state.
+# Updates state and keeps things in sync.
 func _nastav_vybrany_load_slot(slot_name: String) -> void:
 	_load_selected_slot_name = slot_name
 	for key_any in _load_slot_row_buttons.keys():
@@ -7181,11 +7257,11 @@ func _nastav_vybrany_load_slot(slot_name: String) -> void:
 	if _load_confirm_btn:
 		_load_confirm_btn.disabled = _load_selected_slot_name == ""
 
-# Signal/event callback that reacts to user actions or game events.
+# Triggered by a UI/game signal.
 func _on_load_slot_row_pressed(slot_name: String) -> void:
 	_nastav_vybrany_load_slot(slot_name)
 
-# Signal/event callback that reacts to user actions or game events.
+# Handles this signal callback.
 func _on_load_slot_row_delete_pressed(slot_name: String) -> void:
 	await _smaz_load_slot(slot_name)
 
@@ -7193,7 +7269,7 @@ func _on_load_slot_selected(_index: int) -> void:
 	# Deprecated path (ItemList was replaced by custom row list).
 	pass
 
-# Signal/event callback that reacts to user actions or game events.
+# Reacts to incoming events.
 func _on_save_dialog_confirm_pressed() -> void:
 	if not _save_name_input:
 		return
@@ -7233,7 +7309,7 @@ func _on_load_dialog_confirm_pressed() -> void:
 	else:
 		await zobraz_systemove_hlaseni("Load", "Load failed.")
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _smaz_load_slot(slot_name: String) -> void:
 	var ok = false
 	if slot_name == "__legacy__" and GameManager and GameManager.has_method("smaz_legacy_save"):
@@ -7247,11 +7323,11 @@ func _smaz_load_slot(slot_name: String) -> void:
 	else:
 		await zobraz_systemove_hlaseni("Load", "Failed to delete save slot.")
 
-# Signal/event callback that reacts to user actions or game events.
+# Callback for UI/game events.
 func _on_pause_resume_pressed() -> void:
 	_zavri_pause_menu()
 
-# Signal/event callback that reacts to user actions or game events.
+# Event handler for user or game actions.
 func _on_pause_options_pressed() -> void:
 	_zavri_pause_menu()
 	_nacti_settings_do_ingame_ui()
@@ -7260,7 +7336,7 @@ func _on_pause_options_pressed() -> void:
 		_settings_dialog.size = _settings_dialog.min_size
 		_settings_dialog.popup_centered(_settings_dialog.min_size)
 
-# Signal/event callback that reacts to user actions or game events.
+# Event handler for user or game actions.
 func _on_pause_surrender_pressed() -> void:
 	_zobraz_pause_confirm("surrender", "Surrender", "Do you really want to surrender as the current country?")
 
@@ -7289,7 +7365,7 @@ func _on_pause_confirm_canceled() -> void:
 		_pozicuj_pause_menu()
 		_pause_menu_panel.call_deferred("show")
 
-# Signal/event callback that reacts to user actions or game events.
+# Triggered by a UI/game signal.
 func _on_pause_confirmed() -> void:
 	var action = _pause_pending_action
 	_pause_pending_action = ""
@@ -7446,7 +7522,7 @@ func _napln_aliance_option():
 	# Legacy stub - alliance is now managed via popup dialog
 	pass
 
-# Recomputes and refreshes state from the latest game/UI data.
+# Refreshes cached/UI state.
 func _aktualizuj_zadost_ui(_target_tag: String):
 	_current_incoming_request = {}
 	if incoming_request_label:
@@ -7454,7 +7530,7 @@ func _aktualizuj_zadost_ui(_target_tag: String):
 	if respond_request_buttons:
 		respond_request_buttons.hide()
 
-# Builds required objects/UI nodes and wires essential defaults/signals.
+# Sets up nodes, defaults, and signals.
 func _vytvor_otisk_diplomaticke_fronty(queue: Array) -> String:
 	if queue.is_empty():
 		return ""
@@ -7469,7 +7545,7 @@ func _vytvor_otisk_diplomaticke_fronty(queue: Array) -> String:
 	parts.sort()
 	return "||".join(parts)
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Main runtime logic lives here.
 func _potlac_diplomatickou_frontu_do_zmeny() -> void:
 	if diplomacy_request_popup == null:
 		return
@@ -7487,7 +7563,7 @@ func _potlac_diplomatickou_frontu_do_zmeny() -> void:
 	_aktualizuj_panel_rozbalene_fronty([])
 	_aktualizuj_pozice_popupu()
 
-# Recomputes and refreshes state from the latest game/UI data.
+# Updates derived state and UI.
 func _aktualizuj_popup_diplomatickych_zadosti():
 	_popup_request_from_tag = ""
 	if not diplomacy_request_popup:
@@ -7554,7 +7630,7 @@ func _aktualizuj_popup_diplomatickych_zadosti():
 	_aktualizuj_panel_zprav()
 	_aktualizuj_pozice_popupu()
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _zajisti_rozbaleni_fronty_popupu() -> void:
 	if diplomacy_request_popup == null:
 		return
@@ -7698,7 +7774,7 @@ func _zajisti_panel_zprav() -> void:
 		_zpravy_groups_list.add_theme_constant_override("separation", 6)
 		_zpravy_scroll.add_child(_zpravy_groups_list)
 
-# Reads current runtime data and returns it to callers.
+# Reads values from active state.
 func _ziskej_aktivni_zpravy() -> Array:
 	if not GameManager:
 		return []
@@ -7741,7 +7817,7 @@ func _ziskej_historicke_zpravy() -> Array:
 			hist.append(entry)
 	return hist
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Feature logic entry point.
 func _odfiltruj_popup_kategorie(entries: Array) -> Array:
 	var filtered: Array = []
 	for entry in entries:
@@ -7771,7 +7847,7 @@ func _je_redundantni_titulek_zpravy(category_label: String, title: String) -> bo
 		_:
 			return false
 
-# Formats raw values into user-facing display text.
+# Formats values for display.
 func _format_zprava(entry: Dictionary) -> String:
 	var category = str(entry.get("category", "")).strip_edges().to_lower()
 	var title = str(entry.get("title", "Info")).strip_edges()
@@ -7784,6 +7860,7 @@ func _format_zprava(entry: Dictionary) -> String:
 		cat_tag = "[%s] " % category_label
 
 	if _je_redundantni_titulek_zpravy(category_label, title):
+		# redukce duplicit: kdyz title opakuje body, ukazeme jen jednu verzi textu.
 		return "%s%s" % [cat_tag, text]
 	return "%s%s: %s" % [cat_tag, title, text]
 
@@ -7833,9 +7910,10 @@ func _normalizuj_kategorii_zpravy(category: String, title: String = "", text: St
 		return "Negotiations"
 	return "Other"
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _sestav_skupiny_zprav(entries: Array) -> Dictionary:
 	var grouped: Dictionary = {}
+	# seskupeni podle normalizovane kategorie drzi filtr stabilni i u ruznych zdroju logu.
 	for item in entries:
 		var entry = item as Dictionary
 		var cat = _normalizuj_kategorii_zpravy(
@@ -7964,7 +8042,7 @@ func _vykresli_skupiny_zprav(current_entries: Array, history_entries: Array) -> 
 		empty_lbl2.text = "(no messages for current filter)"
 		_zpravy_groups_list.add_child(empty_lbl2)
 
-# Recomputes and refreshes state from the latest game/UI data.
+# Updates derived state and UI.
 func _aktualizuj_tlacitko_zprav() -> void:
 	if _zpravy_toggle_btn == null:
 		return
@@ -7974,7 +8052,7 @@ func _aktualizuj_tlacitko_zprav() -> void:
 	if _zpravy_anchor_control and is_instance_valid(_zpravy_anchor_control) and _zpravy_anchor_control is Button:
 		(_zpravy_anchor_control as Button).text = "Messages (%d)" % count
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _pozicuj_tlacitko_zprav() -> void:
 	if _zpravy_toggle_btn == null:
 		return
@@ -7989,7 +8067,7 @@ func _pozicuj_tlacitko_zprav() -> void:
 		y = next_btn.global_position.y + next_btn.size.y + 4.0
 	_zpravy_toggle_btn.position = Vector2(viewport_size.x - _zpravy_toggle_btn.size.x - 12.0, y)
 
-# Reads current runtime data and returns it to callers.
+# Read-only data accessor.
 func _ziskej_rect_anchoru_zprav() -> Rect2:
 	if _zpravy_anchor_control and is_instance_valid(_zpravy_anchor_control) and _zpravy_anchor_control.is_visible_in_tree():
 		return Rect2(_zpravy_anchor_control.global_position, _zpravy_anchor_control.size)
@@ -8060,7 +8138,7 @@ func _vyhledat_tagy_statu_podle_nazvu(text: String) -> Array:
 			tags.append(tag)
 	return tags
 
-# Returns whether required conditions are currently satisfied.
+# Eligibility/guard check.
 func _je_hranice_slova(text: String, idx: int) -> bool:
 	if idx < 0 or idx >= text.length():
 		return true
@@ -8140,7 +8218,7 @@ func _vytvor_zprava_text_chunk(text: String) -> Label:
 	lbl.text = text
 	return lbl
 
-# Builds required objects/UI nodes and wires essential defaults/signals.
+# Builds UI objects and default wiring.
 func _vytvor_zprava_flag_btn(tag: String):
 	var clean_tag = tag.strip_edges().to_upper()
 	if clean_tag == "":
@@ -8164,7 +8242,7 @@ func _vytvor_zprava_flag_btn(tag: String):
 	flag_btn.pressed.connect(_on_zprava_flag_pressed.bind(clean_tag))
 	return flag_btn
 
-# Reads current runtime data and returns it to callers.
+# Reads values from active state.
 func _ziskej_tagy_pro_zpravu(entry: Dictionary, fallback_line: String) -> Array:
 	var tags: Array = []
 	var seen: Dictionary = {}
@@ -8216,7 +8294,7 @@ func _odeber_nazvy_statu_z_textu(text: String, tags: Array) -> String:
 func _on_zprava_flag_pressed(state_tag: String) -> void:
 	_otevri_prehled_statu_podle_tagu(state_tag)
 
-# Recomputes and refreshes state from the latest game/UI data.
+# Refresh pass for current state.
 func _aktualizuj_panel_zprav() -> void:
 	_aktualizuj_tlacitko_zprav()
 	if _zpravy_panel == null or _zpravy_groups_list == null:
@@ -8240,15 +8318,16 @@ func _aktualizuj_panel_zprav() -> void:
 			_zpravy_historie_checkbox.button_pressed = false
 
 	var history_to_show: Array = hist_arr if _zpravy_historie_expanded else []
+	# render backend bere current + optional history, UI prepina jen jednim flagem.
 	_vykresli_skupiny_zprav(arr, history_to_show)
 	_zpravy_panel.show()
 	_aktualizuj_pozice_popupu()
 
-# Signal/event callback that reacts to user actions or game events.
+# Callback for UI/game events.
 func _on_zpravy_toggle_pressed() -> void:
 	_nastav_zpravy_panel_otevreny(not _zpravy_expanded)
 
-# Signal/event callback that reacts to user actions or game events.
+# Callback for UI/game events.
 func _on_zpravy_mode_local_pressed() -> void:
 	_zpravy_mode = 0
 	if _zpravy_mode_local_btn:
@@ -8257,7 +8336,7 @@ func _on_zpravy_mode_local_pressed() -> void:
 		_zpravy_mode_global_btn.button_pressed = false
 	_aktualizuj_panel_zprav()
 
-# Signal/event callback that reacts to user actions or game events.
+# Reacts to incoming events.
 func _on_zpravy_mode_global_pressed() -> void:
 	_zpravy_mode = 1
 	if _zpravy_mode_local_btn:
@@ -8271,14 +8350,14 @@ func _on_zpravy_category_toggle_pressed(category_name: String) -> void:
 	_zpravy_category_expanded[category_name] = not current
 	_aktualizuj_panel_zprav()
 
-# Signal/event callback that reacts to user actions or game events.
+# Reacts to incoming events.
 func _on_zpravy_historie_toggled(pressed: bool) -> void:
 	_zpravy_historie_expanded = pressed
 	if _zpravy_historie_checkbox:
 		_zpravy_historie_checkbox.button_pressed = _zpravy_historie_expanded
 	_aktualizuj_panel_zprav()
 
-# Recomputes and refreshes state from the latest game/UI data.
+# Refreshes cached/UI state.
 func _aktualizuj_text_rozbaleni_fronty(pending_count: int) -> void:
 	if _queue_preview_toggle_btn == null:
 		return
@@ -8291,7 +8370,7 @@ func _aktualizuj_text_rozbaleni_fronty(pending_count: int) -> void:
 	_queue_preview_toggle_btn.text = "Queue (%d)" % pending_count
 	_queue_preview_toggle_btn.disabled = false
 
-# Formats raw values into user-facing display text.
+# Converts raw values to UI text.
 func _formatuj_text_zadosti(req: Dictionary) -> String:
 	var req_type = str(req.get("type", ""))
 	if req_type == "alliance":
@@ -8369,7 +8448,7 @@ func _trade_formatuj_terms_pro_zadost(terms: Dictionary) -> Array:
 		out.append("%s: %s" % [slot_extra, value_extra])
 	return out
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Core flow for this feature.
 func _trade_label_slotu_pro_zadost(slot: String) -> String:
 	match slot:
 		"gold":
@@ -8495,7 +8574,7 @@ func _on_queue_preview_toggle_pressed() -> void:
 	if GameManager.has_method("ziskej_cekajici_diplomaticke_zadosti"):
 		_aktualizuj_panel_rozbalene_fronty(GameManager.ziskej_cekajici_diplomaticke_zadosti(GameManager.hrac_stat))
 
-# Signal/event callback that reacts to user actions or game events.
+# Triggered by a UI/game signal.
 func _on_queue_row_accept_pressed(from_tag: String) -> void:
 	if not GameManager.has_method("hrac_prijmi_diplomatickou_zadost"):
 		return
@@ -8503,6 +8582,7 @@ func _on_queue_row_accept_pressed(from_tag: String) -> void:
 	if GameManager.has_method("ziskej_cekajici_zadost_od_statu"):
 		req = GameManager.ziskej_cekajici_zadost_od_statu(GameManager.hrac_stat, from_tag)
 	var accepted = GameManager.hrac_prijmi_diplomatickou_zadost(GameManager.hrac_stat, from_tag)
+	# u loan requestu po acceptu hned synchronizujeme topbar finance hodnoty.
 	if accepted and str(req.get("type", "")) == "loan":
 		var topbar = get_tree().current_scene.find_child("TopBar", true, false)
 		if topbar and topbar.has_method("aktualizuj_ui"):
@@ -8515,7 +8595,7 @@ func _on_queue_row_accept_pressed(from_tag: String) -> void:
 	if current_viewed_tag == from_tag:
 		_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
 
-# Signal/event callback that reacts to user actions or game events.
+# Handles this signal callback.
 func _on_queue_row_decline_pressed(from_tag: String) -> void:
 	if not GameManager.has_method("hrac_odmitni_diplomatickou_zadost"):
 		return
@@ -8525,7 +8605,7 @@ func _on_queue_row_decline_pressed(from_tag: String) -> void:
 	if current_viewed_tag == from_tag:
 		_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
 
-# Signal/event callback that reacts to user actions or game events.
+# Triggered by a UI/game signal.
 func _on_queue_row_focus_country_pressed(from_tag: String) -> void:
 	_otevri_prehled_statu_podle_tagu(from_tag)
 
@@ -8558,7 +8638,7 @@ func _zajisti_vizual_fronty_diplomacii() -> void:
 		diplomacy_request_popup.move_child(card, 0)
 		_diplomacy_queue_preview_cards.append(card)
 
-# Executes module-specific gameplay/UI logic for the current context.
+# Handles this gameplay/UI path.
 func _rozmistit_vizual_fronty_diplomacii() -> void:
 	if diplomacy_request_popup == null:
 		return
@@ -8576,7 +8656,7 @@ func _rozmistit_vizual_fronty_diplomacii() -> void:
 		card.position = Vector2(inset_x, offset_y)
 		card.size = Vector2(max(220.0, base_size.x - inset_x * 2.0), base_size.y)
 
-# Recomputes and refreshes state from the latest game/UI data.
+# Refreshes cached/UI state.
 func _aktualizuj_vizual_fronty_diplomacii(pending_count: int) -> void:
 	if _diplomacy_queue_preview_cards.is_empty():
 		return
@@ -8621,9 +8701,9 @@ func _aktualizuj_aliance_ui(target_tag: String):
 		else:
 			level_name = "Level %d" % level
 		if alliance_count > 0:
-			alliance_btn.text = "Alliances (%d) â€” %s" % [alliance_count, level_name]
+			alliance_btn.text = "Alliances (%d) Ä‚ËĂ˘â€šÂ¬Ă˘â‚¬ĹĄ %s" % [alliance_count, level_name]
 		else:
-			alliance_btn.text = "Alliances â€” %s" % level_name
+			alliance_btn.text = "Alliances Ä‚ËĂ˘â€šÂ¬Ă˘â‚¬ĹĄ %s" % level_name
 		alliance_btn.disabled = false
 		alliance_btn.tooltip_text = "Open alliance management menu."
 	else:
@@ -8795,7 +8875,7 @@ func _aktualizuj_mirove_overview_statistiky(owner_tag: String, je_hracuv_stat: b
 		repar_text = "+%d / -%d" % [incoming, outgoing]
 	war_reparations_label.text = "War reparations: %s" % repar_text
 
-# Signal/event callback that reacts to user actions or game events.
+# Handles this signal callback.
 func _on_apply_ideology_pressed() -> void:
 	if current_viewed_tag == "" or current_viewed_tag != str(GameManager.hrac_stat).strip_edges().to_upper():
 		return
@@ -8810,6 +8890,7 @@ func _on_apply_ideology_pressed() -> void:
 
 	var selected_ideology = str(_ideology_option_values[idx])
 	var result = GameManager.zmen_ideologii_statu(GameManager.hrac_stat, selected_ideology)
+	# backend vraci relation_changes; z nich stavime lidsky summary popup.
 	if not bool(result.get("ok", false)):
 		await zobraz_systemove_hlaseni("Ideology", str(result.get("reason", "Ideology change failed.")))
 		return
@@ -8843,7 +8924,7 @@ func _on_apply_ideology_pressed() -> void:
 	)
 	_obnov_otevreny_prehled_statu()
 
-# Signal/event callback that reacts to user actions or game events.
+# Triggered by a UI/game signal.
 func _on_ideology_option_selected(index: int) -> void:
 	if _updating_ideology_ui:
 		return
@@ -8878,7 +8959,7 @@ func _formatuj_cislo(cislo: int) -> String:
 	return vysledek
 
 # --- DIPLOMACY ACTION ---
-# Signal/event callback that reacts to user actions or game events.
+# Event handler for user or game actions.
 func _on_declare_war_button_pressed():
 	if current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat:
 		return
@@ -8907,7 +8988,7 @@ func _on_non_aggression_button_pressed():
 		_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
 	_aktualizuj_panel_zprav()
 
-# Signal/event callback that reacts to user actions or game events.
+# Handles this signal callback.
 func _on_military_access_btn_pressed():
 	if current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat:
 		return
@@ -8971,7 +9052,7 @@ func _on_popup_decline_all_requests_pressed():
 	if current_viewed_tag != "":
 		_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
 
-# Signal/event callback that reacts to user actions or game events.
+# Reacts to incoming events.
 func _on_accept_request_pressed():
 	if current_viewed_tag == "" or _current_incoming_request.is_empty():
 		return
@@ -8990,7 +9071,7 @@ func _on_accept_request_pressed():
 	_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
 	_aktualizuj_popup_diplomatickych_zadosti()
 
-# Signal/event callback that reacts to user actions or game events.
+# Event handler for user or game actions.
 func _on_decline_request_pressed():
 	if current_viewed_tag == "" or _current_incoming_request.is_empty():
 		return
@@ -9088,7 +9169,7 @@ func _aktualizuj_vztah_ui(target_tag: String):
 	_aktualizuj_diplomacii_tlacitka(target_tag)
 	_aktualizuj_zadost_ui(target_tag)
 
-# Recomputes and refreshes state from the latest game/UI data.
+# Recomputes values from current data.
 func _aktualizuj_diplomacii_tlacitka(target_tag: String):
 	if not declare_war_btn or not propose_peace_btn:
 		return
@@ -9114,6 +9195,7 @@ func _aktualizuj_diplomacii_tlacitka(target_tag: String):
 		trade_btn.show()
 
 	if GameManager.jsou_ve_valce(GameManager.hrac_stat, target):
+		# war branch: peace button muze byt pending, war button je tvrdy lock.
 		declare_war_btn.text = "AT WAR"
 		declare_war_btn.disabled = true
 		declare_war_btn.modulate = Color(1, 0.5, 0.5)
@@ -9136,6 +9218,7 @@ func _aktualizuj_diplomacii_tlacitka(target_tag: String):
 		if _military_access_btn:
 			_military_access_btn.hide()
 	else:
+		# peace branch: declare war je blokovan alianci, NAP nebo peace cooldownem.
 		var alliance_level = 0
 		if GameManager.has_method("ziskej_uroven_aliance"):
 			alliance_level = int(GameManager.ziskej_uroven_aliance(GameManager.hrac_stat, target))
@@ -9187,10 +9270,10 @@ func _aktualizuj_diplomacii_tlacitka(target_tag: String):
 			if not has_access and GameManager.has_method("_ma_cekajici_zadost_vojenskeho_pristupu"):
 				pending = bool(GameManager._ma_cekajici_zadost_vojenskeho_pristupu(GameManager.hrac_stat, target))
 			if alliance_level > 0:
-				_military_access_btn.text = "Military access âś“ (alliance)"
+				_military_access_btn.text = "Military access Ä‚ËÄąâ€şĂ˘â‚¬Ĺ› (alliance)"
 				_military_access_btn.disabled = true
 			elif has_access:
-				_military_access_btn.text = "Military access âś“ (Revoke)"
+				_military_access_btn.text = "Military access Ä‚ËÄąâ€şĂ˘â‚¬Ĺ› (Revoke)"
 				_military_access_btn.disabled = false
 			elif pending:
 				_military_access_btn.text = "Military access (pending...)"
@@ -9199,5 +9282,4 @@ func _aktualizuj_diplomacii_tlacitka(target_tag: String):
 				_military_access_btn.text = "Request military access"
 				_military_access_btn.disabled = false
 			_military_access_btn.show()
-
 

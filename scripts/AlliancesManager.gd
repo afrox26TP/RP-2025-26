@@ -1,15 +1,15 @@
 ﻿# ==================================================================================================
-# ███╗   ███╗ █████╗ ██████╗ ███████╗    ██████╗ ██╗   ██╗    █████╗ ███████╗██████╗  ██████╗ ██╗  ██╗
-# ████╗ ████║██╔══██╗██╔══██╗██╔════╝    ██╔══██╗╚██╗ ██╔╝   ██╔══██╗██╔════╝██╔══██╗██╔═══██╗╚██╗██╔╝
-# ██╔████╔██║███████║██║  ██║█████╗      ██████╔╝ ╚████╔╝    ███████║█████╗  ██████╔╝██║   ██║ ╚███╔╝
-# ██║╚██╔╝██║██╔══██║██║  ██║██╔══╝      ██╔══██╗  ╚██╔╝     ██╔══██║██╔══╝  ██╔══██╗██║   ██║ ██╔██╗
-# ██║ ╚═╝ ██║██║  ██║██████╔╝███████╗    ██████╔╝   ██║      ██║  ██║██║     ██║  ██║╚██████╔╝██╔╝ ██╗
-# ╚═╝     ╚═╝╚═╝  ╚═╝╚═════╝ ╚══════╝    ╚═════╝    ╚═╝      ╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝
+# â–â–â–â•—   â–â–â–â•— â–â–â–â–â–â•— â–â–â–â–â–â–â•— â–â–â–â–â–â–â–â•—    â–â–â–â–â–â–â•— â–â–â•—   â–â–â•—    â–â–â–â–â–â•— â–â–â–â–â–â–â–â•—â–â–â–â–â–â–â•—  â–â–â–â–â–â–â•— â–â–â•—  â–â–â•—
+# â–â–â–â–â•— â–â–â–â–â•‘â–â–â•”â•â•â–â–â•—â–â–â•”â•â•â–â–â•—â–â–â•”â•â•â•â•â•ť    â–â–â•”â•â•â–â–â•—â•šâ–â–â•— â–â–â•”â•ť   â–â–â•”â•â•â–â–â•—â–â–â•”â•â•â•â•â•ťâ–â–â•”â•â•â–â–â•—â–â–â•”â•â•â•â–â–â•—â•šâ–â–â•—â–â–â•”â•ť
+# â–â–â•”â–â–â–â–â•”â–â–â•‘â–â–â–â–â–â–â–â•‘â–â–â•‘  â–â–â•‘â–â–â–â–â–â•—      â–â–â–â–â–â–â•”â•ť â•šâ–â–â–â–â•”â•ť    â–â–â–â–â–â–â–â•‘â–â–â–â–â–â•—  â–â–â–â–â–â–â•”â•ťâ–â–â•‘   â–â–â•‘ â•šâ–â–â–â•”â•ť
+# â–â–â•‘â•šâ–â–â•”â•ťâ–â–â•‘â–â–â•”â•â•â–â–â•‘â–â–â•‘  â–â–â•‘â–â–â•”â•â•â•ť      â–â–â•”â•â•â–â–â•—  â•šâ–â–â•”â•ť     â–â–â•”â•â•â–â–â•‘â–â–â•”â•â•â•ť  â–â–â•”â•â•â–â–â•—â–â–â•‘   â–â–â•‘ â–â–â•”â–â–â•—
+# â–â–â•‘ â•šâ•â•ť â–â–â•‘â–â–â•‘  â–â–â•‘â–â–â–â–â–â–â•”â•ťâ–â–â–â–â–â–â–â•—    â–â–â–â–â–â–â•”â•ť   â–â–â•‘      â–â–â•‘  â–â–â•‘â–â–â•‘     â–â–â•‘  â–â–â•‘â•šâ–â–â–â–â–â–â•”â•ťâ–â–â•”â•ť â–â–â•—
+# â•šâ•â•ť     â•šâ•â•ťâ•šâ•â•ť  â•šâ•â•ťâ•šâ•â•â•â•â•â•ť â•šâ•â•â•â•â•â•â•ť    â•šâ•â•â•â•â•â•ť    â•šâ•â•ť      â•šâ•â•ť  â•šâ•â•ťâ•šâ•â•ť     â•šâ•â•ť  â•šâ•â•ť â•šâ•â•â•â•â•â•ť â•šâ•â•ť  â•šâ•â•ť
 #
 #                                         Made By: Afrox26TP
 # ==================================================================================================
 extends Node
-# Brief: this script drives a specific gameplay/UI area and keeps related logic together.
+# this script drives a specific gameplay/UI area and keeps related logic together.
 
 # Small loader for alliance CSV data. Nothing fancy, just keeps parsed tables ready.
 # Aliances data
@@ -17,13 +17,13 @@ var alliances: Dictionary = {}  # alliance_id -> {name, color, founded_year, des
 var country_alliances: Dictionary = {}  # country_iso3 -> [alliance_ids]
 var alliance_members: Dictionary = {}  # alliance_id -> [country_iso3s]
 
-# Brief: Initializes references, connects signals, and prepares default runtime state.
+# Initializes references, connects signals, and prepares default runtime state.
 func _ready():
 	load_alliances()
 	load_country_alliance_membership()
 
 # Reads base alliance defs first, then membership is linked in second pass.
-# Brief: Loads data/resources and validates parsed results.
+# Load pass with basic validation.
 func load_alliances():
 	"""Load alliances from CSV file"""
 	var file_path = "res://map_data/Alliances.csv"
@@ -63,7 +63,7 @@ func load_alliances():
 	print("Loaded ", alliances.size(), " alliances")
 
 # Separate pass so missing alliance rows dont instantly break everything.
-# Brief: Loads data/resources and validates parsed results.
+# Loads resources and validates parsed data.
 func load_country_alliance_membership():
 	"""Load country-alliance membership mappings"""
 	var file_path = "res://map_data/CountryAllianceMembership.csv"
@@ -104,29 +104,29 @@ func load_country_alliance_membership():
 	
 	print("Loaded country-alliance memberships")
 
-# Brief: Reads current runtime data and returns it to callers.
+# Read-only data accessor.
 func get_country_alliances(country_iso3: String) -> Array:
 	"""Get list of alliances a country belongs to"""
 	return country_alliances.get(country_iso3, [])
 
-# Brief: Reads current runtime data and returns it to callers.
+# Read-only data accessor.
 func get_alliance_members(alliance_id: String) -> Array:
 	"""Get list of countries in an alliance"""
 	return alliance_members.get(alliance_id, [])
 
-# Brief: Reads current runtime data and returns it to callers.
+# Reads values from active state.
 func get_alliance_info(alliance_id: String) -> Dictionary:
 	"""Get alliance details"""
 	return alliances.get(alliance_id, {})
 
-# Brief: Reads current runtime data and returns it to callers.
+# Pulls current state data.
 func get_alliance_color(alliance_id: String) -> Color:
 	"""Get alliance color"""
 	if alliances.has(alliance_id):
 		return alliances[alliance_id]["color"]
 	return Color.WHITE
 
-# Brief: Reads current runtime data and returns it to callers.
+# Fetches data for callers.
 func get_country_primary_alliance(country_iso3: String) -> String:
 	"""Get the first (primary) alliance of a country"""
 	var alliances_list = get_country_alliances(country_iso3)
@@ -134,7 +134,7 @@ func get_country_primary_alliance(country_iso3: String) -> String:
 		return alliances_list[0]
 	return ""
 
-# Brief: Executes module-specific gameplay/UI logic for the current context.
+# Runs the local feature logic.
 func print_alliances_info():
 	"""Debug: Print all alliances and their members"""
 	for alliance_id in alliances:
@@ -143,4 +143,6 @@ func print_alliances_info():
 		print("Alliance: ", alliance_id, " (", alliance["name"], ")")
 		print("  Members: ", members)
 		print("  Color: ", alliance["color"])
+
+
 

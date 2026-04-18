@@ -1,4 +1,4 @@
-extends RefCounted
+﻿extends RefCounted
 
 const SETTINGS_FILE_PATH := "user://settings.cfg"
 const KEYBINDS_SECTION := "keybinds"
@@ -152,3 +152,4 @@ static func bindings_equal(a: Dictionary, b: Dictionary) -> bool:
 		if normalize_codes(a.get(action, [])) != normalize_codes(b.get(action, [])):
 			return false
 	return true
+
