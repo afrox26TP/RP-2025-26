@@ -11,6 +11,8 @@
 extends Camera2D
 # Brief: this script drives a specific gameplay/UI area and keeps related logic together.
 
+const ControlsConfig = preload("res://scripts/ControlsConfig.gd")
+
 # Camera script is intentionally simple: keyboard move, wheel zoom, RMB drag.
 signal zoom_zmenen(aktualni_zoom)
 
@@ -26,16 +28,17 @@ var invert_zoom_wheel: bool = false
 
 # Brief: Initializes references, connects signals, and prepares default runtime state.
 func _ready() -> void:
+	ControlsConfig.ensure_default_actions()
 	_nacti_ovladani_ze_settings()
 
 # Brief: Runs frame-by-frame updates while this node is active.
 func _process(delta):
 	# Handle keyboard movement
 	var input_dir = Vector2.ZERO
-	if Input.is_action_pressed("ui_right") or Input.is_key_pressed(KEY_D): input_dir.x += 1
-	if Input.is_action_pressed("ui_left") or Input.is_key_pressed(KEY_A): input_dir.x -= 1
-	if Input.is_action_pressed("ui_down") or Input.is_key_pressed(KEY_S): input_dir.y += 1
-	if Input.is_action_pressed("ui_up") or Input.is_key_pressed(KEY_W): input_dir.y -= 1
+	if Input.is_action_pressed(ControlsConfig.ACTION_CAMERA_RIGHT): input_dir.x += 1
+	if Input.is_action_pressed(ControlsConfig.ACTION_CAMERA_LEFT): input_dir.x -= 1
+	if Input.is_action_pressed(ControlsConfig.ACTION_CAMERA_DOWN): input_dir.y += 1
+	if Input.is_action_pressed(ControlsConfig.ACTION_CAMERA_UP): input_dir.y -= 1
 	if input_dir == Vector2.ZERO:
 		return
 
@@ -101,6 +104,7 @@ func _zoom_camera(factor):
 
 # Brief: Loads data/resources and validates parsed results.
 func _nacti_ovladani_ze_settings() -> void:
+	ControlsConfig.apply_bindings(ControlsConfig.load_bindings_from_config())
 	var cfg = ConfigFile.new()
 	if cfg.load(SETTINGS_FILE_PATH) != OK:
 		return

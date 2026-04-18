@@ -11,6 +11,8 @@
 extends Sprite2D
 # Brief: this script drives a specific gameplay/UI area and keeps related logic together.
 
+const ControlsConfig = preload("res://scripts/ControlsConfig.gd")
+
 # Processes map clicking, hover, and selection overlays on top of the shader map sprite.
 
 @export var logic_map: Texture2D
@@ -756,12 +758,12 @@ func _unhandled_input(event):
 				if root.has_method("nastav_mapovy_mod"):
 					root.nastav_mapovy_mod("alliances")
 			
-			elif event.keycode == KEY_C:
+			elif ControlsConfig.matches_action(event, ControlsConfig.ACTION_DEV_CONQUER):
 				var vybrana_provincie = material.get_shader_parameter("selected_id")
 				if vybrana_provincie != null and float(vybrana_provincie) >= 0.0:
 					dobyt_provincii(int(vybrana_provincie), GameManager.hrac_stat, true)
 					
-			elif event.keycode == KEY_SPACE:
+			elif ControlsConfig.matches_action(event, ControlsConfig.ACTION_END_TURN):
 				if GameManager.has_method("pozaduj_ukonceni_kola"):
 					GameManager.pozaduj_ukonceni_kola()
 				else:

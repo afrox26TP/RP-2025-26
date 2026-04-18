@@ -161,6 +161,8 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.694118, 0.831373, 1, 1)
 theme_override_font_sizes/font_size = 19
 text = "Selected country:"
+horizontal_alignment = 1
+autowrap_mode = 3
 
 [node name="MenuHint" type="Label" parent="CenterPanel/MarginContainer/VBoxContainer" unique_id=1834597637]
 visible = false
@@ -672,6 +674,8 @@ stretch_mode = 5
 layout_mode = 2
 theme_override_font_sizes/font_size = 30
 text = "-"
+autowrap_mode = 3
+max_lines_visible = 2
 
 [node name="DetailTag" type="Label" parent="CountryBrowserPanel/MarginContainer/RootVBox/Content/DetailPanel/DetailMargin/DetailVBox" unique_id=179100026]
 layout_mode = 2

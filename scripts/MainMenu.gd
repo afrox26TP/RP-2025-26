@@ -1,4 +1,4 @@
-﻿# ==================================================================================================
+# ==================================================================================================
 # ███╗   ███╗ █████╗ ██████╗ ███████╗    ██████╗ ██╗   ██╗    █████╗ ███████╗██████╗  ██████╗ ██╗  ██╗
 # ████╗ ████║██╔══██╗██╔══██╗██╔════╝    ██╔══██╗╚██╗ ██╔╝   ██╔══██╗██╔════╝██╔══██╗██╔═══██╗╚██╗██╔╝
 # ██╔████╔██║███████║██║  ██║█████╗      ██████╔╝ ╚████╔╝    ███████║█████╗  ██████╔╝██║   ██║ ╚███╔╝
@@ -11,6 +11,8 @@
 extends Control
 # Brief: this script drives a specific gameplay/UI area and keeps related logic together.
 
+const ControlsConfig = preload("res://scripts/ControlsConfig.gd")
+const CountryCustomization = preload("res://scripts/CountryCustomization.gd")
 const TooltipUtilsScript = preload("res://scripts/TooltipUtils.gd")
 
 @onready var selected_country_label: Label = $CenterPanel/MarginContainer/VBoxContainer/SelectedCountryLabel
@@ -83,6 +85,11 @@ var ai_debug_mode_check: CheckBox = null
 
 var _btn_apply_cache: Button = null
 var _btn_reset_cache: Button = null
+var _keybind_buttons: Dictionary = {}
+var _keybind_capture_action: String = ""
+var _keybind_state: Dictionary = {}
+var _keybind_grid: GridContainer = null
+var _center_panel_cache: PanelContainer = null
 
 # List of playable countries (Display Name : Tag)
 var hratelne_staty = {
@@ -251,16 +258,21 @@ var _browser_current_settings_vbox: VBoxContainer = null
 var _browser_potato_mode_check: CheckBox = null
 var _browser_ai_debug_mode_check: CheckBox = null
 var _browser_settings_country_separator: HSeparator = null
-var _selected_players_flag_list: VBoxContainer = null
+var _selected_players_flag_list: HFlowContainer = null
 var _selected_players_scroll: ScrollContainer = null
 const _PLAYER_ROW_H := 26
-const _PLAYER_ROW_MAX_H := 180
+const _PLAYER_ROW_MAX_H := 420
+const _PLAYER_CHIP_MIN_W := 210
+const _PLAYER_ACTIVE_EXTRA_W := 24
+const _PLAYER_ACTIVE_EXTRA_H := 8
 const BROWSER_CONFIRM_DEFAULT_TEXT := "Confirm selection"
 const BROWSER_CONFIRM_ADD_PLAYER_TEXT := "Add player"
 const BROWSER_CLOSE_DEFAULT_TEXT := "Close"
 const BROWSER_CLOSE_START_TEXT := "Start game"
-const COUNTRY_BROWSER_WIDTH := 1160.0
-const COUNTRY_BROWSER_HEIGHT := 520.0
+const COUNTRY_BROWSER_MIN_WIDTH := 980.0
+const COUNTRY_BROWSER_MAX_WIDTH := 1500.0
+const COUNTRY_BROWSER_MIN_HEIGHT := 640.0
+const COUNTRY_BROWSER_MAX_HEIGHT := 900.0
 
 # Brief: Loads data/resources and validates parsed results.
 func _load_texture_cached(path: String):
@@ -359,6 +371,7 @@ func _aktualizuj_clean_helpery() -> void:
 
 # Brief: Initializes references, connects signals, and prepares default runtime state.
 func _ready():
+	ControlsConfig.ensure_default_actions()
 	_nacti_nastaveni()
 	_nastav_texty_dialogu()
 	_nacti_data_statu_pro_browser()
@@ -372,6 +385,7 @@ func _ready():
 	_obnov_text_vyberu()
 	_nastav_stav_pokracovani()
 	_aktualizuj_browser_napovedu()
+	_apply_main_menu_window_size()
 	country_browser_panel.hide()
 	_ensure_potato_mode_checkbox()
 	_ensure_ai_debug_mode_checkbox()
@@ -409,11 +423,15 @@ func _ready():
 	_aplikuj_nastaveni_globalne()
 	_aktualizuj_settings_hodnoty()
 	_aktualizuj_texty_dle_jazyka()
+	_ensure_keybind_controls()
+	_refresh_keybind_buttons()
 	_vytvor_clean_helpery()
 	_nastav_tooltipy_ui()
 	_vytvor_load_dialog()
 	_styluj_mainmenu_popup_dialogy()
 	_show_settings_tab(0)  # Start with Controls tab
+	if get_viewport() and not get_viewport().size_changed.is_connected(_on_viewport_size_changed):
+		get_viewport().size_changed.connect(_on_viewport_size_changed)
 
 # Brief: Executes module-specific gameplay/UI logic for the current context.
 func _log_export_data_diagnostics() -> void:
@@ -472,16 +490,60 @@ func _show_export_diagnostics_if_missing_data() -> void:
 func _apply_country_browser_window_size() -> void:
 	if country_browser_panel == null:
 		return
+	var vp := get_viewport()
+	if vp == null:
+		return
+	var vp_size = vp.get_visible_rect().size
+	var browser_width = clampf(vp_size.x * 0.92, COUNTRY_BROWSER_MIN_WIDTH, COUNTRY_BROWSER_MAX_WIDTH)
+	var browser_height = clampf(vp_size.y * 0.84, COUNTRY_BROWSER_MIN_HEIGHT, COUNTRY_BROWSER_MAX_HEIGHT)
+	browser_width = minf(browser_width, maxf(320.0, vp_size.x - 24.0))
+	browser_height = minf(browser_height, maxf(360.0, vp_size.y - 24.0))
 
 	country_browser_panel.anchor_left = 0.5
 	country_browser_panel.anchor_top = 0.5
 	country_browser_panel.anchor_right = 0.5
 	country_browser_panel.anchor_bottom = 0.5
-	country_browser_panel.custom_minimum_size = Vector2(COUNTRY_BROWSER_WIDTH, COUNTRY_BROWSER_HEIGHT)
-	country_browser_panel.offset_left = -COUNTRY_BROWSER_WIDTH * 0.5
-	country_browser_panel.offset_top = -COUNTRY_BROWSER_HEIGHT * 0.5
-	country_browser_panel.offset_right = COUNTRY_BROWSER_WIDTH * 0.5
-	country_browser_panel.offset_bottom = COUNTRY_BROWSER_HEIGHT * 0.5
+	country_browser_panel.custom_minimum_size = Vector2(browser_width, browser_height)
+	country_browser_panel.offset_left = -browser_width * 0.5
+	country_browser_panel.offset_top = -browser_height * 0.5
+	country_browser_panel.offset_right = browser_width * 0.5
+	country_browser_panel.offset_bottom = browser_height * 0.5
+
+	var split = country_browser_panel.get_node_or_null("MarginContainer/RootVBox/Content") as HSplitContainer
+	if split:
+		split.split_offset = int(clampf(browser_width * 0.44, 380.0, browser_width - 360.0))
+
+	if detail_name:
+		detail_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		detail_name.custom_minimum_size = Vector2(0, 56)
+
+# Brief: Applies prepared settings/effects to runtime systems.
+func _apply_main_menu_window_size() -> void:
+	if _center_panel_cache == null:
+		_center_panel_cache = get_node_or_null("CenterPanel") as PanelContainer
+	if _center_panel_cache == null:
+		return
+	var vp := get_viewport()
+	if vp == null:
+		return
+	var vp_size = vp.get_visible_rect().size
+	var panel_width = clampf(vp_size.x * 0.72, 420.0, 820.0)
+	var panel_height = clampf(vp_size.y * 0.72, 420.0, 620.0)
+	_center_panel_cache.custom_minimum_size = Vector2(panel_width, panel_height)
+	_center_panel_cache.offset_left = -panel_width * 0.5
+	_center_panel_cache.offset_top = -panel_height * 0.5
+	_center_panel_cache.offset_right = panel_width * 0.5
+	_center_panel_cache.offset_bottom = panel_height * 0.5
+	if selected_country_label:
+		selected_country_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		selected_country_label.max_lines_visible = 2
+		selected_country_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+
+# Brief: Signal/event callback that reacts to user actions or game events.
+func _on_viewport_size_changed() -> void:
+	_apply_main_menu_window_size()
+	_apply_country_browser_window_size()
+	_styluj_mainmenu_popup_dialogy()
 
 # Brief: Executes module-specific gameplay/UI logic for the current context.
 func _default_ai_aggression_from_ideology(ideology_raw: String) -> float:
@@ -614,16 +676,18 @@ func _ensure_selected_players_flag_list() -> void:
 	_selected_players_scroll = ScrollContainer.new()
 	_selected_players_scroll.name = "SelectedPlayersScroll"
 	_selected_players_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_selected_players_scroll.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_selected_players_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_selected_players_scroll.custom_minimum_size = Vector2(0, 0)
 	_selected_players_scroll.clip_contents = true
 	parent_vbox.add_child(_selected_players_scroll)
 	parent_vbox.move_child(_selected_players_scroll, selected_players_list.get_index() + 1)
 
-	_selected_players_flag_list = VBoxContainer.new()
+	_selected_players_flag_list = HFlowContainer.new()
 	_selected_players_flag_list.name = "SelectedPlayersFlagList"
 	_selected_players_flag_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_selected_players_flag_list.add_theme_constant_override("separation", 4)
+	_selected_players_flag_list.alignment = FlowContainer.ALIGNMENT_BEGIN
+	_selected_players_flag_list.add_theme_constant_override("h_separation", 8)
+	_selected_players_flag_list.add_theme_constant_override("v_separation", 6)
 	_selected_players_scroll.add_child(_selected_players_flag_list)
 
 # Brief: Clears temporary data and resets transient runtime/UI state.
@@ -631,33 +695,98 @@ func _clear_selected_players_flag_rows() -> void:
 	if _selected_players_flag_list == null:
 		return
 	for child in _selected_players_flag_list.get_children():
-		_selected_players_flag_list.remove_child(child)
-		child.free()
+		child.queue_free()
 
 # Brief: Executes module-specific gameplay/UI logic for the current context.
-func _add_selected_player_row(row_text: String, tag: String, is_active: bool) -> void:
+func _add_selected_player_row(row_text: String, tag: String, is_active: bool, player_index: int = -1) -> void:
 	if _selected_players_flag_list == null:
 		return
 
-	var row = HBoxContainer.new()
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("separation", 8)
+	var row = PanelContainer.new()
+	var row_w = _PLAYER_CHIP_MIN_W + (_PLAYER_ACTIVE_EXTRA_W if is_active else 0)
+	var row_h = _PLAYER_ROW_H + (_PLAYER_ACTIVE_EXTRA_H if is_active else 0)
+	row.custom_minimum_size = Vector2(row_w, row_h)
+	var row_style = StyleBoxFlat.new()
+	row_style.bg_color = Color(0.16, 0.26, 0.40, 0.94) if is_active else Color(0.08, 0.12, 0.20, 0.82)
+	row_style.border_width_left = 1
+	row_style.border_width_top = 1
+	row_style.border_width_right = 1
+	row_style.border_width_bottom = 1
+	if is_active:
+		row_style.border_width_left = 2
+		row_style.border_width_top = 2
+		row_style.border_width_right = 2
+		row_style.border_width_bottom = 2
+	row_style.border_color = Color(0.82, 0.95, 1.0, 0.98) if is_active else Color(0.34, 0.48, 0.66, 0.72)
+	row_style.corner_radius_top_left = 6
+	row_style.corner_radius_top_right = 6
+	row_style.corner_radius_bottom_right = 6
+	row_style.corner_radius_bottom_left = 6
+	row.add_theme_stylebox_override("panel", row_style)
+
+	var row_inner = HBoxContainer.new()
+	row_inner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row_inner.add_theme_constant_override("separation", 8)
+
+	var row_margin = MarginContainer.new()
+	row_margin.add_theme_constant_override("margin_left", 8)
+	row_margin.add_theme_constant_override("margin_right", 8)
+	row_margin.add_theme_constant_override("margin_top", 4)
+	row_margin.add_theme_constant_override("margin_bottom", 4)
+	row.add_child(row_margin)
+	row_margin.add_child(row_inner)
 
 	var flag = TextureRect.new()
 	flag.custom_minimum_size = Vector2(28, 18)
 	flag.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	var flag_path = "res://map_data/Flags/%s.svg" % tag
-	flag.texture = _load_normalized_flag_texture(flag_path, 56, 36)
-	row.add_child(flag)
+	if tag.strip_edges() != "":
+		var flag_path = "res://map_data/Flags/%s.svg" % tag
+		flag.texture = _load_normalized_flag_texture(flag_path, 56, 36)
+	row_inner.add_child(flag)
 
 	var text_lbl = Label.new()
 	text_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
+	text_lbl.clip_text = true
 	text_lbl.text = row_text
 	if is_active:
+		text_lbl.add_theme_font_size_override("font_size", 15)
 		text_lbl.modulate = Color(0.95, 1.0, 0.85, 1.0)
-	row.add_child(text_lbl)
+	row_inner.add_child(text_lbl)
+
+	if new_game_browser_flow and player_index >= 0 and tag.strip_edges() != "":
+		row.mouse_filter = Control.MOUSE_FILTER_STOP
+		row.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		row.gui_input.connect(_on_selected_player_chip_gui_input.bind(player_index, tag))
 
 	_selected_players_flag_list.add_child(row)
+
+# Brief: Signal/event callback that reacts to user actions or game events.
+func _on_selected_player_chip_gui_input(event: InputEvent, player_index: int, tag: String) -> void:
+	if not (event is InputEventMouseButton):
+		return
+	var mouse_event := event as InputEventMouseButton
+	if not mouse_event.pressed or mouse_event.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if not new_game_browser_flow:
+		return
+	if player_index < 0 or player_index >= local_player_tags.size():
+		return
+	call_deferred("_select_setup_player_from_chip", player_index, tag)
+
+# Brief: Applies incoming values and synchronizes dependent state.
+func _select_setup_player_from_chip(player_index: int, tag: String) -> void:
+	if not new_game_browser_flow:
+		return
+	if player_index < 0 or player_index >= local_player_tags.size():
+		return
+
+	setup_active_player_index = player_index
+	selected_country_tag_in_browser = tag
+	_nastav_detail_statu(tag, true)
+	_obnov_texty_radku_statu()
+	_aktualizuj_panel_vyberu_hracu()
+	_aktualizuj_browser_napovedu()
 
 # Brief: Applies incoming values and synchronizes dependent state.
 func _set_ai_aggression_ui_for_tag(_tag: String) -> void:
@@ -885,6 +1014,7 @@ func _vytvor_vychozi_nastaveni() -> Dictionary:
 			"zoom_speed": 0.10,
 			"invert_zoom": false
 		},
+		"keybinds": ControlsConfig.get_default_bindings(),
 		"language": {
 			"code": SETTINGS_DEFAULT_LANGUAGE
 		},
@@ -902,11 +1032,15 @@ func _nacti_nastaveni() -> void:
 	nastaveni_data = _vytvor_vychozi_nastaveni()
 	var cfg = ConfigFile.new()
 	if cfg.load(SETTINGS_FILE_PATH) != OK:
+		_keybind_state = ControlsConfig.get_default_bindings()
+		ControlsConfig.apply_bindings(_keybind_state)
 		return
 
 	nastaveni_data["controls"]["camera_speed"] = float(cfg.get_value("controls", "camera_speed", nastaveni_data["controls"]["camera_speed"]))
 	nastaveni_data["controls"]["zoom_speed"] = float(cfg.get_value("controls", "zoom_speed", nastaveni_data["controls"]["zoom_speed"]))
 	nastaveni_data["controls"]["invert_zoom"] = bool(cfg.get_value("controls", "invert_zoom", nastaveni_data["controls"]["invert_zoom"]))
+	nastaveni_data["keybinds"] = ControlsConfig.load_bindings_from_config(cfg)
+	_keybind_state = (nastaveni_data["keybinds"] as Dictionary).duplicate(true)
 
 	var loaded_language = str(cfg.get_value("language", "code", nastaveni_data["language"]["code"]))
 	nastaveni_data["language"]["code"] = _normalizuj_jazyk(loaded_language)
@@ -917,6 +1051,7 @@ func _nacti_nastaveni() -> void:
 	# Always start with AI debug disabled, regardless of previously saved value.
 	nastaveni_data["other"]["ai_debug_mode"] = false
 	nastaveni_data["other"]["master_volume"] = float(cfg.get_value("other", "master_volume", nastaveni_data["other"]["master_volume"]))
+	ControlsConfig.apply_bindings(_keybind_state)
 
 # Brief: Persists runtime/configuration data to storage.
 func _uloz_nastaveni() -> void:
@@ -924,6 +1059,7 @@ func _uloz_nastaveni() -> void:
 	cfg.set_value("controls", "camera_speed", float(nastaveni_data["controls"]["camera_speed"]))
 	cfg.set_value("controls", "zoom_speed", float(nastaveni_data["controls"]["zoom_speed"]))
 	cfg.set_value("controls", "invert_zoom", bool(nastaveni_data["controls"]["invert_zoom"]))
+	ControlsConfig.save_bindings_to_config(cfg, nastaveni_data.get("keybinds", ControlsConfig.get_default_bindings()))
 
 	cfg.set_value("language", "code", str(nastaveni_data["language"]["code"]))
 
@@ -976,6 +1112,8 @@ func _nastav_settings_ui_z_dat() -> void:
 	camera_speed_slider.value = float(nastaveni_data["controls"]["camera_speed"])
 	zoom_speed_slider.value = float(nastaveni_data["controls"]["zoom_speed"])
 	invert_zoom_check.button_pressed = bool(nastaveni_data["controls"]["invert_zoom"])
+	_keybind_state = (nastaveni_data.get("keybinds", ControlsConfig.get_default_bindings()) as Dictionary).duplicate(true)
+	_refresh_keybind_buttons()
 
 	var jazyk = _aktualni_jazyk()
 	for i in range(language_option.item_count):
@@ -996,6 +1134,7 @@ func _uloz_settings_ui_do_dat() -> void:
 	nastaveni_data["controls"]["camera_speed"] = clamp(camera_speed_slider.value, 400.0, 2600.0)
 	nastaveni_data["controls"]["zoom_speed"] = clamp(zoom_speed_slider.value, 0.03, 0.35)
 	nastaveni_data["controls"]["invert_zoom"] = invert_zoom_check.button_pressed
+	nastaveni_data["keybinds"] = _keybind_state.duplicate(true)
 	nastaveni_data["language"]["code"] = _jazyk_z_option()
 	nastaveni_data["other"]["fullscreen"] = fullscreen_check.button_pressed
 	nastaveni_data["other"]["vsync"] = vsync_check.button_pressed
@@ -1009,8 +1148,81 @@ func _aktualizuj_settings_hodnoty(_v: float = 0.0) -> void:
 	zoom_speed_value.text = "%.2f" % zoom_speed_slider.value
 	master_volume_value.text = "%d%%" % int(round(master_volume_slider.value * 100.0))
 
+# Brief: Builds required objects/UI nodes and wires essential defaults/signals.
+func _ensure_keybind_controls() -> void:
+	if controls_content == null or _keybind_grid != null:
+		return
+
+	var separator = HSeparator.new()
+	separator.name = "KeybindsSeparator"
+	controls_content.add_child(separator)
+
+	var title = Label.new()
+	title.name = "KeybindsTitle"
+	title.text = "Custom keybinds"
+	title.add_theme_font_size_override("font_size", 16)
+	controls_content.add_child(title)
+
+	var hint = Label.new()
+	hint.name = "KeybindsHint"
+	hint.text = "Click a binding and press a new key. Escape cancels capture."
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	controls_content.add_child(hint)
+
+	_keybind_grid = GridContainer.new()
+	_keybind_grid.name = "KeybindsGrid"
+	_keybind_grid.columns = 2
+	_keybind_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_keybind_grid.add_theme_constant_override("h_separation", 12)
+	_keybind_grid.add_theme_constant_override("v_separation", 6)
+	controls_content.add_child(_keybind_grid)
+
+	for action_any in ControlsConfig.ACTIONS:
+		var action = str(action_any)
+		var label = Label.new()
+		label.text = str(ControlsConfig.ACTION_LABELS.get(action, action))
+		_keybind_grid.add_child(label)
+
+		var btn = Button.new()
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btn.text = ControlsConfig.get_binding_text(action, _keybind_state)
+		btn.pressed.connect(_on_keybind_button_pressed.bind(action))
+		_keybind_buttons[action] = btn
+		_keybind_grid.add_child(btn)
+
+# Brief: Refreshes existing content to reflect current runtime values.
+func _refresh_keybind_buttons() -> void:
+	for action_any in _keybind_buttons.keys():
+		var action = str(action_any)
+		var btn = _keybind_buttons[action_any] as Button
+		if btn == null:
+			continue
+		btn.text = "Press key..." if action == _keybind_capture_action else ControlsConfig.get_binding_text(action, _keybind_state)
+
+# Brief: Signal/event callback that reacts to user actions or game events.
+func _on_keybind_button_pressed(action: String) -> void:
+	_keybind_capture_action = action
+	_refresh_keybind_buttons()
+
+# Brief: Signal/event callback that reacts to user actions or game events.
+func _capture_menu_keybind(event: InputEventKey) -> bool:
+	if _keybind_capture_action == "":
+		return false
+	if not event.pressed or event.echo:
+		return true
+	if event.keycode == KEY_ESCAPE:
+		_keybind_capture_action = ""
+		_refresh_keybind_buttons()
+		return true
+	_keybind_state[_keybind_capture_action] = [int(event.keycode)]
+	_keybind_capture_action = ""
+	_refresh_keybind_buttons()
+	_refresh_apply_button_state()
+	return true
+
 # Brief: Applies prepared settings/effects to runtime systems.
 func _aplikuj_nastaveni_globalne() -> void:
+	ControlsConfig.apply_bindings(nastaveni_data.get("keybinds", ControlsConfig.get_default_bindings()))
 	var fullscreen = bool(nastaveni_data["other"]["fullscreen"])
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if fullscreen else DisplayServer.WINDOW_MODE_WINDOWED)
 
@@ -1057,7 +1269,14 @@ func _aktualizuj_texty_dle_jazyka() -> void:
 	zoom_speed_label.text = str(t["zoom_speed"])
 	invert_zoom_check.text = str(t["invert_zoom"])
 	controls_scheme_title.text = str(t["controls_static_title"])
-	controls_scheme_text.text = str(t["controls_static_text"])
+	controls_scheme_text.text = "Camera up: %s\nCamera down: %s\nCamera left: %s\nCamera right: %s\nEnd turn: %s\nDeveloper conquer: %s\n\nMap modes\n1 Political\n2 Population\n3 GDP\n4 Ideology\n5 Recruitable Population\n6 Relations\n7 Terrain\n8 Resources\n9 Alliances" % [
+		ControlsConfig.get_binding_text(ControlsConfig.ACTION_CAMERA_UP, _keybind_state),
+		ControlsConfig.get_binding_text(ControlsConfig.ACTION_CAMERA_DOWN, _keybind_state),
+		ControlsConfig.get_binding_text(ControlsConfig.ACTION_CAMERA_LEFT, _keybind_state),
+		ControlsConfig.get_binding_text(ControlsConfig.ACTION_CAMERA_RIGHT, _keybind_state),
+		ControlsConfig.get_binding_text(ControlsConfig.ACTION_END_TURN, _keybind_state),
+		ControlsConfig.get_binding_text(ControlsConfig.ACTION_DEV_CONQUER, _keybind_state)
+	]
 	language_label.text = str(t["language_label"])
 	language_hint.text = str(t["language_hint"])
 	fullscreen_check.text = str(t["fullscreen"])
@@ -1069,6 +1288,7 @@ func _aktualizuj_texty_dle_jazyka() -> void:
 	master_volume_label.text = str(t["master_volume"])
 	btn_settings_reset.text = str(t["reset"])
 	btn_settings_apply.text = str(t["apply"])
+	_refresh_keybind_buttons()
 	_aktualizuj_clean_helpery()
 
 # Brief: Recomputes and refreshes state from the latest game/UI data.
@@ -1087,6 +1307,7 @@ func _read_settings_from_ui() -> Dictionary:
 		"camera_speed": int(round(camera_speed_slider.value)),
 		"zoom_speed": snapped(zoom_speed_slider.value, 0.01),
 		"invert_zoom": invert_zoom_check.button_pressed,
+		"keybinds": _keybind_state.duplicate(true),
 		"language": _jazyk_z_option(),
 		"fullscreen": fullscreen_check.button_pressed,
 		"vsync": vsync_check.button_pressed,
@@ -1102,6 +1323,8 @@ func _settings_state_equals(a: Dictionary, b: Dictionary) -> bool:
 			return false
 		if a[key] != b[key]:
 			return false
+	if not ControlsConfig.bindings_equal(a.get("keybinds", {}), b.get("keybinds", {})):
+		return false
 	return true
 
 # Brief: Refreshes existing content to reflect current runtime values.
@@ -1346,8 +1569,8 @@ func _obnov_texty_radku_statu() -> void:
 			var je_aktivne_vybrany = selected_country_tag_in_browser == tag_txt
 
 			if je_obsazeno:
-				row_btn.disabled = true
-				row_btn.modulate = Color(0.62, 0.62, 0.66, 1.0)
+				row_btn.disabled = false
+				row_btn.modulate = Color(0.72, 0.72, 0.78, 1.0)
 			elif je_aktivne_vybrany:
 				row_btn.disabled = false
 				row_btn.modulate = Color(0.88, 0.95, 1.0, 1.0)
@@ -1374,11 +1597,9 @@ func _aktualizuj_panel_vyberu_hracu() -> void:
 			for i in range(local_player_tags.size()):
 				var tag = str(local_player_tags[i])
 				var prefix = "%d." % (i + 1)
-				if i == setup_active_player_index:
-					prefix = "%d. >" % (i + 1)
 				var row_text = "%s %s (%s)" % [prefix, _zobrazene_jmeno_statu(tag), tag]
 				lines.append(row_text)
-				_add_selected_player_row(row_text, tag, i == setup_active_player_index)
+				_add_selected_player_row(row_text, tag, i == setup_active_player_index, i)
 			selected_players_list.text = "\n".join(lines)
 			row_count = local_player_tags.size()
 	else:
@@ -1393,8 +1614,18 @@ func _aktualizuj_panel_vyberu_hracu() -> void:
 			row_count = 1
 
 	if _selected_players_scroll:
-		var needed_h = row_count * _PLAYER_ROW_H
-		_selected_players_scroll.custom_minimum_size = Vector2(0, min(needed_h, _PLAYER_ROW_MAX_H))
+		var flow_rows := row_count
+		var width_for_layout = maxf(200.0, _selected_players_scroll.size.x)
+		if width_for_layout <= 200.0 and _selected_players_scroll.custom_minimum_size.x > 0:
+			width_for_layout = _selected_players_scroll.custom_minimum_size.x
+		var chips_per_row = max(1, int(floor(width_for_layout / float(_PLAYER_CHIP_MIN_W + 8))))
+		flow_rows = int(ceil(float(max(1, row_count)) / float(chips_per_row)))
+		var needed_h = flow_rows * _PLAYER_ROW_H + max(0, flow_rows - 1) * 6 + 10
+		var vp := get_viewport()
+		var viewport_h = vp.get_visible_rect().size.y if vp != null else 720.0
+		var max_h = min(_PLAYER_ROW_MAX_H, int(maxf(135.0, viewport_h * 0.27)))
+		var target_h = clamp(needed_h, 128, max_h)
+		_selected_players_scroll.custom_minimum_size = Vector2(0, target_h)
 
 	# Deferred reset to prevent the panel from jumping when layout recalculates
 	call_deferred("_apply_country_browser_window_size")
@@ -1499,6 +1730,16 @@ func _vytvor_souhrn_statu(jmeno: String, s: Dictionary) -> String:
 # Brief: Signal/event callback that reacts to user actions or game events.
 func _on_country_row_pressed(tag: String):
 	if new_game_browser_flow:
+		var owner_idx = local_player_tags.find(tag)
+		if owner_idx != -1 and owner_idx != setup_active_player_index:
+			# Clicking an already selected country switches editing focus to that player.
+			setup_active_player_index = owner_idx
+			selected_country_tag_in_browser = tag
+			_nastav_detail_statu(tag, true)
+			_obnov_texty_radku_statu()
+			_aktualizuj_panel_vyberu_hracu()
+			_aktualizuj_browser_napovedu()
+			return
 		_prirad_stat_aktivnimu_hraci(tag)
 		return
 	_nastav_detail_statu(tag)
@@ -1652,7 +1893,7 @@ func _aktualizuj_browser_napovedu():
 
 	if new_game_browser_flow:
 		browser_subtitle.text = "Player 1 is added automatically. Click to assign a country to the active player."
-		list_hint.text = "Start game = solo or start with multiple players. Add player = next player."
+		list_hint.text = "Click a country chip in Selected Countries to pick player, then click a free country to change it."
 		if local_player_tags.is_empty():
 			browser_flow_hint.text = "Preparing player selection..."
 		else:
@@ -1936,24 +2177,40 @@ func _on_load_selected_pressed() -> void:
 	_spust_load_ze_slotu(slot_key)
 
 # Brief: Executes module-specific gameplay/UI logic for the current context.
-func _pockej_na_map_scenu(max_frames: int = 180) -> bool:
+func _pockej_na_map_scenu(tree: SceneTree, max_frames: int = 180) -> bool:
+	if tree == null:
+		return false
 	for _i in range(max_frames):
 		if GameManager and GameManager.has_method("_get_map_loader"):
 			var loader = GameManager._get_map_loader()
 			if loader != null:
-				return true
-		await get_tree().process_frame
+				if loader.has_method("je_pripraveno_pro_load"):
+					if bool(loader.je_pripraveno_pro_load()):
+						return true
+				else:
+					# Backward-compatible fallback for older loader implementations.
+					return true
+		await tree.process_frame
 	return false
 
 # Brief: Executes module-specific gameplay/UI logic for the current context.
 func _spust_load_ze_slotu(slot_key: String) -> void:
-	var err = get_tree().change_scene_to_file(MAP_SCENE_PATH)
+	if GameManager and GameManager.has_method("spust_load_ze_slotu_pres_scenu"):
+		GameManager.spust_load_ze_slotu_pres_scenu(slot_key, MAP_SCENE_PATH)
+		return
+
+	var tree := get_tree()
+	if tree == null:
+		push_warning("Load canceled: SceneTree is unavailable.")
+		return
+
+	var err = tree.change_scene_to_file(MAP_SCENE_PATH)
 	if err != OK:
 		push_warning("Failed to open map for Load. Error: %s" % str(err))
 		return
 
-	await get_tree().process_frame
-	if not await _pockej_na_map_scenu():
+	await tree.process_frame
+	if not await _pockej_na_map_scenu(tree):
 		push_warning("Load canceled: map scene did not initialize in time.")
 		return
 
@@ -1971,6 +2228,27 @@ func _spust_load_ze_slotu(slot_key: String) -> void:
 
 	if not loaded_ok:
 		push_warning("Load failed: save could not be loaded.")
+		return
+
+	# Defensive sync: ensure map loader and visuals use loaded state even if something
+	# reinitialized province data during scene transition.
+	await tree.process_frame
+	if GameManager and GameManager.has_method("_get_map_loader"):
+		var loader = GameManager._get_map_loader()
+		if loader != null and not GameManager.map_data.is_empty():
+			if "provinces" in loader:
+				loader.provinces = (GameManager.map_data as Dictionary).duplicate(true)
+				GameManager.map_data = loader.provinces
+			if loader.has_method("_rebuild_movement_topology_cache"):
+				loader._rebuild_movement_topology_cache()
+			if loader.has_method("_invalidate_naval_reachability_cache"):
+				loader._invalidate_naval_reachability_cache()
+			if loader.has_method("_aktualizuj_aktivni_mapovy_mod"):
+				loader._aktualizuj_aktivni_mapovy_mod()
+			if loader.has_method("aktualizuj_ikony_armad"):
+				loader.aktualizuj_ikony_armad()
+			if loader.has_method("aktualizuj_vlajky_hlavnich_mest"):
+				loader.aktualizuj_vlajky_hlavnich_mest()
 
 # Brief: Executes module-specific gameplay/UI logic for the current context.
 func _spust_hru_vyberem(player_tags: Array = []):
@@ -1984,6 +2262,9 @@ func _spust_hru_vyberem(player_tags: Array = []):
 	# Start a truly fresh session for New Game and avoid carrying previous run state.
 	if GameManager and GameManager.has_method("reset_pro_novou_hru"):
 		GameManager.reset_pro_novou_hru()
+
+	# Reset uploaded custom flags so each New Game starts with default flag assets.
+	CountryCustomization.clear_all_custom_flags()
 
 	# Save selected local players to GameManager.
 	if GameManager.has_method("nastav_lokalni_hrace"):
@@ -2030,6 +2311,7 @@ func _on_continue_pressed():
 
 # Brief: Signal/event callback that reacts to user actions or game events.
 func _on_settings_pressed():
+	_ensure_keybind_controls()
 	_nastav_settings_ui_z_dat()
 	_aktualizuj_settings_hodnoty()
 	_settings_original_ui_state = _read_settings_from_ui()
@@ -2145,6 +2427,14 @@ func _on_settings_value_changed(_value: float) -> void:
 func _on_settings_toggle_changed(_pressed: bool) -> void:
 	_refresh_apply_button_state()
 
+# Brief: Processes direct input events routed to this node.
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and settings_dialog and settings_dialog.visible and _keybind_capture_action != "":
+		if _capture_menu_keybind(event as InputEventKey):
+			var vp := get_viewport()
+			if vp:
+				vp.set_input_as_handled()
+
 # Brief: Signal/event callback that reacts to user actions or game events.
 func _on_credits_pressed():
 	_styluj_mainmenu_popup_dialogy()
@@ -2169,4 +2459,3 @@ func _formatuj_cislo(cislo: int) -> String:
 			vysledek += " "
 		vysledek += text_cisla[i]
 	return vysledek
-

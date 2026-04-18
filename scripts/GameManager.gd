@@ -165,6 +165,7 @@ const NON_AGGRESSION_DURATION_TURNS := 10
 const SAVEGAME_STATE_PATH := "user://savegame.dat"
 const SAVE_SLOTS_DIR := "user://saves"
 const SAVE_SLOT_EXT := ".dat"
+var _menu_load_in_progress: bool = false
 const MAX_LOG_ZPRAV := 500
 const NEXT_TURN_INPUT_COOLDOWN_MS := 0
 const TURN_PROFILE_ENABLED := false
@@ -1147,7 +1148,10 @@ func _aplikuj_save_state(state: Dictionary) -> bool:
 	statni_kasa = float(state.get("statni_kasa", statni_kasa))
 	celkovy_prijem = float(state.get("celkovy_prijem", celkovy_prijem))
 	aktualni_kolo = int(state.get("aktualni_kolo", aktualni_kolo))
-	map_data = (state.get("map_data", {}) as Dictionary).duplicate(true)
+	var loaded_map_any = state.get("map_data", state.get("provinces", {}))
+	if not (loaded_map_any is Dictionary):
+		loaded_map_any = {}
+	map_data = (loaded_map_any as Dictionary).duplicate(true)
 	provincie_cooldowny = (state.get("provincie_cooldowny", {}) as Dictionary).duplicate(true)
 	ai_kasy = (state.get("ai_kasy", {}) as Dictionary).duplicate(true)
 	_ai_profily = (state.get("ai_profily", {}) as Dictionary).duplicate(true)
@@ -1398,6 +1402,83 @@ func nacti_hru() -> bool:
 		return true
 	# Fallback to slot-based quicksave if legacy file is missing.
 	return nacti_hru_ze_slotu("quicksave")
+
+# Brief: Executes module-specific gameplay/UI logic for the current context.
+func spust_load_ze_slotu_pres_scenu(slot_key: String, scene_path: String) -> void:
+	if _menu_load_in_progress:
+		push_warning("Menu load is already in progress.")
+		return
+	_menu_load_in_progress = true
+	call_deferred("_dokoncit_load_ze_slotu_pres_scenu", slot_key, scene_path)
+
+# Brief: Executes module-specific gameplay/UI logic for the current context.
+func _pockej_na_map_loader_pripravenost(tree: SceneTree, max_frames: int = 300) -> bool:
+	if tree == null:
+		return false
+	for _i in range(max_frames):
+		var loader = _get_map_loader()
+		if loader != null:
+			if loader.has_method("je_pripraveno_pro_load"):
+				if bool(loader.je_pripraveno_pro_load()):
+					return true
+			else:
+				return true
+		await tree.process_frame
+	return false
+
+# Brief: Executes module-specific gameplay/UI logic for the current context.
+func _dokoncit_load_ze_slotu_pres_scenu(slot_key: String, scene_path: String) -> void:
+	var tree := get_tree()
+	if tree == null:
+		_menu_load_in_progress = false
+		push_warning("Load canceled: SceneTree is unavailable.")
+		return
+
+	var err = tree.change_scene_to_file(scene_path)
+	if err != OK:
+		_menu_load_in_progress = false
+		push_warning("Failed to open map for Load. Error: %s" % str(err))
+		return
+
+	await tree.process_frame
+	if not await _pockej_na_map_loader_pripravenost(tree):
+		_menu_load_in_progress = false
+		push_warning("Load canceled: map scene did not initialize in time.")
+		return
+
+	var loaded_ok := false
+	if slot_key == "__legacy__":
+		loaded_ok = nacti_hru()
+	else:
+		loaded_ok = nacti_hru_ze_slotu(slot_key)
+
+	if not loaded_ok:
+		loaded_ok = nacti_posledni_hru()
+
+	if not loaded_ok:
+		_menu_load_in_progress = false
+		push_warning("Load failed: save could not be loaded.")
+		return
+
+	# Defensive sync for visuals and runtime caches.
+	await tree.process_frame
+	var loader = _get_map_loader()
+	if loader != null and not map_data.is_empty():
+		if "provinces" in loader:
+			loader.provinces = map_data.duplicate(true)
+			map_data = loader.provinces
+		if loader.has_method("_rebuild_movement_topology_cache"):
+			loader._rebuild_movement_topology_cache()
+		if loader.has_method("_invalidate_naval_reachability_cache"):
+			loader._invalidate_naval_reachability_cache()
+		if loader.has_method("_aktualizuj_aktivni_mapovy_mod"):
+			loader._aktualizuj_aktivni_mapovy_mod()
+		if loader.has_method("aktualizuj_ikony_armad"):
+			loader.aktualizuj_ikony_armad()
+		if loader.has_method("aktualizuj_vlajky_hlavnich_mest"):
+			loader.aktualizuj_vlajky_hlavnich_mest()
+
+	_menu_load_in_progress = false
 
 # Safely get the map node
 # Brief: Reads current runtime data and returns it to callers.
