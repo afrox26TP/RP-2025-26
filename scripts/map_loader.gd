@@ -1,13 +1,11 @@
-﻿# ==================================================================================================
-# â–â–â–â•—   â–â–â–â•— â–â–â–â–â–â•— â–â–â–â–â–â–â•— â–â–â–â–â–â–â–â•—    â–â–â–â–â–â–â•— â–â–â•—   â–â–â•—    â–â–â–â–â–â•— â–â–â–â–â–â–â–â•—â–â–â–â–â–â–â•—  â–â–â–â–â–â–â•— â–â–â•—  â–â–â•—
-# â–â–â–â–â•— â–â–â–â–â•‘â–â–â•”â•â•â–â–â•—â–â–â•”â•â•â–â–â•—â–â–â•”â•â•â•â•â•ť    â–â–â•”â•â•â–â–â•—â•šâ–â–â•— â–â–â•”â•ť   â–â–â•”â•â•â–â–â•—â–â–â•”â•â•â•â•â•ťâ–â–â•”â•â•â–â–â•—â–â–â•”â•â•â•â–â–â•—â•šâ–â–â•—â–â–â•”â•ť
-# â–â–â•”â–â–â–â–â•”â–â–â•‘â–â–â–â–â–â–â–â•‘â–â–â•‘  â–â–â•‘â–â–â–â–â–â•—      â–â–â–â–â–â–â•”â•ť â•šâ–â–â–â–â•”â•ť    â–â–â–â–â–â–â–â•‘â–â–â–â–â–â•—  â–â–â–â–â–â–â•”â•ťâ–â–â•‘   â–â–â•‘ â•šâ–â–â–â•”â•ť
-# â–â–â•‘â•šâ–â–â•”â•ťâ–â–â•‘â–â–â•”â•â•â–â–â•‘â–â–â•‘  â–â–â•‘â–â–â•”â•â•â•ť      â–â–â•”â•â•â–â–â•—  â•šâ–â–â•”â•ť     â–â–â•”â•â•â–â–â•‘â–â–â•”â•â•â•ť  â–â–â•”â•â•â–â–â•—â–â–â•‘   â–â–â•‘ â–â–â•”â–â–â•—
-# â–â–â•‘ â•šâ•â•ť â–â–â•‘â–â–â•‘  â–â–â•‘â–â–â–â–â–â–â•”â•ťâ–â–â–â–â–â–â–â•—    â–â–â–â–â–â–â•”â•ť   â–â–â•‘      â–â–â•‘  â–â–â•‘â–â–â•‘     â–â–â•‘  â–â–â•‘â•šâ–â–â–â–â–â–â•”â•ťâ–â–â•”â•ť â–â–â•—
-# â•šâ•â•ť     â•šâ•â•ťâ•šâ•â•ť  â•šâ•â•ťâ•šâ•â•â•â•â•â•ť â•šâ•â•â•â•â•â•â•ť    â•šâ•â•â•â•â•â•ť    â•šâ•â•ť      â•šâ•â•ť  â•šâ•â•ťâ•šâ•â•ť     â•šâ•â•ť  â•šâ•â•ť â•šâ•â•â•â•â•â•ť â•šâ•â•ť  â•šâ•â•ť
-#
-#                                         Made By: Afrox26TP
 # ==================================================================================================
+#  __  __    _    ____  _____   ______   __     _    _____ ____   _____  __
+# |  \/  |  / \  |  _ \| ____| | __ ) \ / /    / \  |  ___|  _ \ / _ \ \/ /
+# | |\/| | / _ \ | | | |  _|   |  _ \\ V /    / _ \ | |_  | |_) | | | |\  /
+# | |  | |/ ___ \| |_| | |___  | |_) || |    / ___ \|  _| |  _ <| |_| /  \
+# |_|  |_/_/   \_\____/|_____| |____/ |_|   /_/   \_\_|   |_| \_\\___/_/\_\
+# ==================================================================================================
+
 extends Node2D
 # this script drives a specific gameplay/UI area and keeps related logic together.
 
@@ -908,12 +906,24 @@ func ziskej_nahled_bojovych_modifikatoru(from_id: int, to_id: int) -> Dictionary
 	}
 
 # Build a readable battle text block for system popup (numbers + quick context).
+func _ziskej_jmeno_statu_pro_zpravy(tag: String) -> String:
+	var clean = tag.strip_edges().to_upper()
+	if clean == "":
+		return ""
+	if GameManager and GameManager.has_method("_ziskej_jmeno_statu_podle_tagu"):
+		var resolved = str(GameManager._ziskej_jmeno_statu_podle_tagu(clean)).strip_edges()
+		if resolved != "":
+			return resolved
+	return clean
+
 func _format_battle_popup_text(attacker_tag: String, defender_tag: String, attacker_before: int, defender_before: int, attacker_after: int, defender_after: int, summary: String, province_name: String = "") -> String:
+	var attacker_name = _ziskej_jmeno_statu_pro_zpravy(attacker_tag)
+	var defender_name = _ziskej_jmeno_statu_pro_zpravy(defender_tag)
 	var winner = "No winner"
 	if attacker_after > 0 and defender_after <= 0:
-		winner = attacker_tag
+		winner = attacker_name
 	elif defender_after > 0 and attacker_after <= 0:
-		winner = defender_tag
+		winner = defender_name
 
 	var location_label = province_name.strip_edges()
 	if location_label == "":
@@ -926,15 +936,21 @@ func _format_battle_popup_text(attacker_tag: String, defender_tag: String, attac
 		location_label,
 		summary.strip_edges(),
 		winner,
-		attacker_tag,
+		attacker_name,
 		_formatuj_cislo(attacker_before),
 		_formatuj_cislo(attacker_after),
 		_formatuj_cislo(att_losses),
-		defender_tag,
+		defender_name,
 		_formatuj_cislo(defender_before),
 		_formatuj_cislo(defender_after),
 		_formatuj_cislo(def_losses)
 	]
+
+func _format_battle_popup_title(province_name: String, fallback: String = "Battle report") -> String:
+	var location_label = province_name.strip_edges()
+	if location_label == "":
+		return fallback
+	return "Attack on %s" % location_label
 
 # Prepare compact payload for UI battle panel (flags, winner, strength split).
 func _vytvor_bitevni_payload(attacker_tag: String, defender_tag: String, attacker_before: int, defender_before: int, attacker_after: int, defender_after: int, province_name: String = "") -> Dictionary:
@@ -3463,8 +3479,9 @@ func zpracuj_tah_armad():
 				utok1["amount"] = int(souboj_pole.get("attacker_survivors", 0))
 				utok2["amount"] = 0 # Wiped in this clash.
 				if hrac_zapojen:
+					var field_location_1 = str(provinces.get(int(utok1["to"]), {}).get("province_name", ""))
 					bitevni_udalosti.append({
-						"title": "Field battle",
+						"title": _format_battle_popup_title(field_location_1, "Field battle"),
 						"text": _format_battle_popup_text(
 							str(utok1["owner"]),
 							str(utok2["owner"]),
@@ -3473,7 +3490,7 @@ func zpracuj_tah_armad():
 							int(souboj_pole.get("attacker_survivors", 0)),
 							0,
 							"Moving armies clashed in the field.",
-							str(provinces.get(int(utok1["to"]), {}).get("province_name", ""))
+							field_location_1
 						),
 						"province_id": int(utok1["to"]),
 						"battle_data": _vytvor_bitevni_payload(
@@ -3483,15 +3500,16 @@ func zpracuj_tah_armad():
 							utok2_puvodni,
 							int(souboj_pole.get("attacker_survivors", 0)),
 							0,
-							str(provinces.get(int(utok1["to"]), {}).get("province_name", ""))
+							field_location_1
 						)
 					})
 			elif bool(souboj_pole.get("defender_won", false)):
 				utok2["amount"] = int(souboj_pole.get("defender_survivors", 0))
 				utok1["amount"] = 0 # Wiped in this clash.
 				if hrac_zapojen:
+					var field_location_2 = str(provinces.get(int(utok2["to"]), {}).get("province_name", ""))
 					bitevni_udalosti.append({
-						"title": "Field battle",
+						"title": _format_battle_popup_title(field_location_2, "Field battle"),
 						"text": _format_battle_popup_text(
 							str(utok2["owner"]),
 							str(utok1["owner"]),
@@ -3500,7 +3518,7 @@ func zpracuj_tah_armad():
 							int(souboj_pole.get("defender_survivors", 0)),
 							0,
 							"Moving armies clashed in the field.",
-							str(provinces.get(int(utok2["to"]), {}).get("province_name", ""))
+							field_location_2
 						),
 						"province_id": int(utok2["to"]),
 						"battle_data": _vytvor_bitevni_payload(
@@ -3510,7 +3528,7 @@ func zpracuj_tah_armad():
 							utok1_puvodni,
 							int(souboj_pole.get("defender_survivors", 0)),
 							0,
-							str(provinces.get(int(utok2["to"]), {}).get("province_name", ""))
+							field_location_2
 						)
 					})
 			else:
@@ -3518,8 +3536,9 @@ func zpracuj_tah_armad():
 				utok1["amount"] = 0
 				utok2["amount"] = 0
 				if hrac_zapojen:
+					var field_location_3 = str(provinces.get(int(utok1["to"]), {}).get("province_name", ""))
 					bitevni_udalosti.append({
-						"title": "Field battle",
+						"title": _format_battle_popup_title(field_location_3, "Field battle"),
 						"text": _format_battle_popup_text(
 							str(utok1["owner"]),
 							str(utok2["owner"]),
@@ -3528,7 +3547,7 @@ func zpracuj_tah_armad():
 							0,
 							0,
 							"Both moving armies annihilated each other.",
-							str(provinces.get(int(utok1["to"]), {}).get("province_name", ""))
+							field_location_3
 						),
 						"province_id": int(utok1["to"]),
 						"battle_data": _vytvor_bitevni_payload(
@@ -3538,7 +3557,7 @@ func zpracuj_tah_armad():
 							utok2_puvodni,
 							0,
 							0,
-							str(provinces.get(int(utok1["to"]), {}).get("province_name", ""))
+							field_location_3
 						)
 					})
 
@@ -3700,21 +3719,27 @@ func zpracuj_tah_armad():
 					GameManager.zaregistruj_obsazeni_hlavniho_mesta(capital_core_owner, attacker_tag, to_id)
 				if hrac_zapojen:
 					if attacker_tag == capital_core_owner:
+						var attacker_name = _ziskej_jmeno_statu_pro_zpravy(attacker_tag)
 						bitevni_udalosti.append({
-							"title": "Capital recaptured",
-							"text": "%s recaptured its capital." % attacker_tag,
-							"province_id": to_id
+							"title": _format_battle_popup_title(jmeno_provincie, "Capital recaptured"),
+							"text": "%s | CAPITAL RECAPTURED" % attacker_name,
+							"province_id": to_id,
+							"battle_data": _vytvor_bitevni_payload(attacker_tag, target_owner, utocnici, obranci, prezivsi, 0, jmeno_provincie)
 						})
 					else:
+						var occupied_defender = capital_core_owner if capital_core_owner != "" and capital_core_owner != "SEA" else target_owner
+						var attacker_name = _ziskej_jmeno_statu_pro_zpravy(attacker_tag)
+						var occupied_defender_name = _ziskej_jmeno_statu_pro_zpravy(occupied_defender)
 						bitevni_udalosti.append({
-							"title": "Capital occupied",
-							"text": "%s captured the capital of %s. Capitulation triggers only if it is held for a full turn." % [attacker_tag, capital_core_owner],
-							"province_id": to_id
+							"title": _format_battle_popup_title(jmeno_provincie, "Capital occupied"),
+							"text": "%s -> %s | CAPITAL OCCUPIED (HOLD 1 TURN FOR CAPITULATION)" % [attacker_name, occupied_defender_name],
+							"province_id": to_id,
+							"battle_data": _vytvor_bitevni_payload(attacker_tag, occupied_defender, utocnici, obranci, prezivsi, 0, jmeno_provincie)
 						})
 			
 			if hrac_zapojen and not was_capital:
 				bitevni_udalosti.append({
-					"title": "Frontline changed",
+					"title": _format_battle_popup_title(jmeno_provincie, "Frontline changed"),
 					"text": _format_battle_popup_text(
 						attacker_tag,
 						target_owner,
@@ -3737,7 +3762,7 @@ func zpracuj_tah_armad():
 			
 			if hrac_zapojen:
 				bitevni_udalosti.append({
-					"title": "Defense",
+					"title": _format_battle_popup_title(jmeno_provincie, "Defense"),
 					"text": _format_battle_popup_text(
 						attacker_tag,
 						target_owner,
@@ -4224,7 +4249,7 @@ func _zpracuj_automaticke_kapitulace(celkovy_report: String) -> String:
 					provinces = GameManager.map_data
 					_rebuild_movement_topology_cache()
 					if GameManager.je_lidsky_stat(winner_tag) or GameManager.je_lidsky_stat(target_owner):
-						celkovy_report += "Automatic capitulation: %s lost all non-occupied territory. Peace conference will determine war terms.\n\n" % target_owner
+						celkovy_report += "%s | AUTOMATIC CAPITULATION -> PEACE CONFERENCE STARTED\n\n" % _ziskej_jmeno_statu_pro_zpravy(target_owner)
 					continue
 
 		var vysledek = _kapituluj_stat_rozdelenim(target_owner, "")
@@ -4237,7 +4262,7 @@ func _zpracuj_automaticke_kapitulace(celkovy_report: String) -> String:
 		var okupanti: Dictionary = vysledek.get("okupanti", {})
 		var casti: Array = []
 		for okupant in okupanti.keys():
-			casti.append("%s: %d" % [okupant, int(okupanti[okupant])])
+			casti.append("%s: %d" % [_ziskej_jmeno_statu_pro_zpravy(str(okupant)), int(okupanti[okupant])])
 		var hrac_zapojen = GameManager.je_lidsky_stat(target_owner)
 		if not hrac_zapojen:
 			for okupant in okupanti.keys():
@@ -4245,11 +4270,11 @@ func _zpracuj_automaticke_kapitulace(celkovy_report: String) -> String:
 					hrac_zapojen = true
 					break
 		if hrac_zapojen:
-			celkovy_report += "Automatic capitulation: %s lost all non-occupied territory. Occupation split: %s.\n\n" % [target_owner, ", ".join(casti)]
+			celkovy_report += "%s | AUTOMATIC CAPITULATION | OCCUPATION SPLIT: %s\n\n" % [_ziskej_jmeno_statu_pro_zpravy(target_owner), ", ".join(casti)]
 		if GameManager.has_method("_zaloguj_globalni_zpravu"):
 			GameManager._zaloguj_globalni_zpravu(
 				"War",
-				"Automatic capitulation of %s. Occupation split: %s." % [target_owner, ", ".join(casti)],
+				"Automatic capitulation of %s. Occupation split: %s." % [_ziskej_jmeno_statu_pro_zpravy(target_owner), ", ".join(casti)],
 				"war"
 			)
 
@@ -4264,6 +4289,8 @@ func _zpracuj_odlozene_kapitulace(celkovy_report: String) -> String:
 	for zaznam in hotove_kapitulace:
 		var target_owner = str(zaznam.get("obrance", "")).strip_edges().to_upper()
 		var winner_tag = str(zaznam.get("utocnik", "")).strip_edges().to_upper()
+		var target_name = _ziskej_jmeno_statu_pro_zpravy(target_owner)
+		var winner_name = _ziskej_jmeno_statu_pro_zpravy(winner_tag)
 		if target_owner == "" or winner_tag == "" or target_owner == winner_tag:
 			continue
 
@@ -4274,7 +4301,7 @@ func _zpracuj_odlozene_kapitulace(celkovy_report: String) -> String:
 				provinces = GameManager.map_data
 				_rebuild_movement_topology_cache()
 				if GameManager.je_lidsky_stat(winner_tag) or GameManager.je_lidsky_stat(target_owner):
-					celkovy_report += "Capitulation: %s held the capital of %s. Peace conference will determine war terms.\n\n" % [winner_tag, target_owner]
+					celkovy_report += "%s -> %s | CAPITULATION TRIGGERED -> PEACE CONFERENCE\n\n" % [winner_name, target_name]
 				continue
 
 		# Fallback to legacy split when conference API is unavailable.
@@ -4289,12 +4316,12 @@ func _zpracuj_odlozene_kapitulace(celkovy_report: String) -> String:
 			var okupanti: Dictionary = vysledek.get("okupanti", {})
 			var casti: Array = []
 			for okupant in okupanti.keys():
-				casti.append("%s: %d" % [okupant, int(okupanti[okupant])])
-			celkovy_report += "Capitulation: %s held the capital of %s for one full turn. Occupation split: %s.\n\n" % [winner_tag, target_owner, ", ".join(casti)]
+				casti.append("%s: %d" % [_ziskej_jmeno_statu_pro_zpravy(str(okupant)), int(okupanti[okupant])])
+			celkovy_report += "%s -> %s | CAPITAL HELD 1 TURN | OCCUPATION SPLIT: %s\n\n" % [winner_name, target_name, ", ".join(casti)]
 			if GameManager.has_method("_zaloguj_globalni_zpravu"):
 				GameManager._zaloguj_globalni_zpravu(
 					"War",
-					"Capitulation of %s after capital hold. Occupation split: %s." % [target_owner, ", ".join(casti)],
+					"Capitulation of %s after capital hold. Occupation split: %s." % [target_name, ", ".join(casti)],
 					"war"
 				)
 
@@ -4371,7 +4398,7 @@ func _aktualizuj_indikatory_kapitulace():
 		lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1.0))
 		lbl.add_theme_constant_override("outline_size", 3)
 		lbl.add_theme_font_size_override("font_size", 12)
-		lbl.text = "%s holds capital (%s): %d turn" % [utocnik, obrance, max(1, remain)]
+		lbl.text = "%s -> %s | capital hold: %d turn" % [_ziskej_jmeno_statu_pro_zpravy(utocnik), _ziskej_jmeno_statu_pro_zpravy(obrance), max(1, remain)]
 		node.add_child(lbl)
 
 		container.add_child(node)

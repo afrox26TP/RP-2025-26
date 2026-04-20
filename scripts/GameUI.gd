@@ -1,13 +1,11 @@
-﻿# ==================================================================================================
-# Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť   Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť    Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť   Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť    Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ťÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť  Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť  Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť
-# Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ťÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ťÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„    Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ťÄ‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËÄąÄ„   Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ťÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ťÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ťÄ‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ťÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËÄąÄ„
-# Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬Â  Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť      Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËÄąÄ„ Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËÄąÄ„    Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť  Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËÄąÄ„Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬Â   Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬Â Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËÄąÄ„
-# Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËÄąÄ„Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬Â  Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„      Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť  Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËÄąÄ„     Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„  Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ťÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬Â   Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬Â Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť
-# Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬Â Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„ Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬Â  Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËÄąÄ„Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť    Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËÄąÄ„   Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬Â      Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬Â  Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬Â     Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬Â  Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ÂÄ‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËÄąÄ„Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬ĹĄÄ‚ËĂ˘â‚¬ËÄąÄ„ Ä‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬â€śĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ˘â‚¬â€ť
-# Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„     Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„  Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„ Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„    Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„    Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„      Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„  Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„     Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„  Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„ Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„ Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„  Ä‚ËĂ˘â‚¬ËÄąË‡Ä‚ËĂ˘â‚¬ËĂ‚ÂÄ‚ËĂ˘â‚¬ËÄąÄ„
-#
-#                                         Made By: Afrox26TP
 # ==================================================================================================
+#  __  __    _    ____  _____   ______   __     _    _____ ____   _____  __
+# |  \/  |  / \  |  _ \| ____| | __ ) \ / /    / \  |  ___|  _ \ / _ \ \/ /
+# | |\/| | / _ \ | | | |  _|   |  _ \\ V /    / _ \ | |_  | |_) | | | |\  /
+# | |  | |/ ___ \| |_| | |___  | |_) || |    / ___ \|  _| |  _ <| |_| /  \
+# |_|  |_/_/   \_\____/|_____| |____/ |_|   /_/   \_\_|   |_| \_\\___/_/\_\
+# ==================================================================================================
+
 extends CanvasLayer
 # this script drives a specific gameplay/UI area and keeps related logic together.
 
@@ -336,9 +334,18 @@ var _system_battle_left_flag: TextureRect = null
 var _system_battle_right_flag: TextureRect = null
 var _system_battle_left_name: Label = null
 var _system_battle_right_name: Label = null
+var _system_battle_left_losses_label: Label = null
+var _system_battle_right_losses_label: Label = null
+var _system_battle_left_strength_label: Label = null
+var _system_battle_right_strength_label: Label = null
 var _system_battle_winner_label: Label = null
 var _system_battle_adv_bar: ProgressBar = null
 var _system_battle_margin_label: Label = null
+var _system_message_compact_battle: bool = false
+var _system_message_meta_row: HBoxContainer = null
+var _system_message_meta_left_flag: TextureButton = null
+var _system_message_meta_right_flag: TextureButton = null
+var _system_message_meta_center_label: Label = null
 
 const POPUP_TOP_MARGIN := 6
 const POPUP_GAP := 6
@@ -350,8 +357,9 @@ const SETTINGS_FILE_PATH := "user://settings.cfg"
 const IDEOLOGY_UI_ORDER := ["demokracie", "kralovstvi", "autokracie", "komunismus", "nacismus", "fasismus"]
 const TURN_LOADING_FRAMES := ["Zpracovavam tah", "Zpracovavam tah.", "Zpracovavam tah..", "Zpracovavam tah..."]
 const SYSTEM_MESSAGE_TURN_AUTO_ACK_MS := 7000
-const SYSTEM_BATTLE_PANEL_HEIGHT := 78.0
+const SYSTEM_BATTLE_PANEL_HEIGHT := 118.0
 const SYSTEM_BATTLE_FLAG_SIZE := Vector2(46.0, 30.0)
+const SYSTEM_MESSAGE_META_ROW_HEIGHT := 24.0
 
 func _resolve_flag_texture(owner_tag: String, ideologie: String):
 	var cisty_tag = owner_tag.strip_edges().to_upper()
@@ -504,6 +512,21 @@ func _ready():
 		system_message_ok_btn.pressed.connect(_on_system_message_ok_pressed)
 	if system_message_ok_btn:
 		system_message_ok_btn.text = "OK [Space]"
+		_aplikuj_ingame_tlacitko_styl(system_message_ok_btn)
+		system_message_ok_btn.custom_minimum_size = Vector2(220, maxf(36.0, system_message_ok_btn.custom_minimum_size.y))
+		# Keep the button centered, avoids the old stretched/basic look.
+		system_message_ok_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	if system_message_popup:
+		# Make core report popup consistent with dark-blue UI language.
+		system_message_popup.add_theme_stylebox_override("panel", _vytvor_ingame_kartu_styl(Color(0.03, 0.07, 0.16, 0.97), Color(0.36, 0.57, 0.87, 0.82)))
+	if system_message_title:
+		system_message_title.add_theme_color_override("font_color", Color(0.94, 0.97, 1.0, 1.0))
+		system_message_title.add_theme_color_override("font_outline_color", Color(0.02, 0.04, 0.08, 0.95))
+		system_message_title.add_theme_constant_override("outline_size", 2)
+	if system_message_text:
+		system_message_text.add_theme_color_override("font_color", Color(0.86, 0.92, 1.0, 0.98))
+		system_message_text.add_theme_color_override("font_outline_color", Color(0.02, 0.04, 0.08, 0.85))
+		system_message_text.add_theme_constant_override("outline_size", 1)
 	if improve_rel_btn and not improve_rel_btn.pressed.is_connected(_on_improve_relationship_pressed):
 		improve_rel_btn.pressed.connect(_on_improve_relationship_pressed)
 	if worsen_rel_btn and not worsen_rel_btn.pressed.is_connected(_on_worsen_relationship_pressed):
@@ -548,6 +571,17 @@ func _ready():
 	if GameManager.has_signal("zpracovani_tahu_zmeneno") and not GameManager.zpracovani_tahu_zmeneno.is_connected(_on_zpracovani_tahu_zmeneno):
 		GameManager.zpracovani_tahu_zmeneno.connect(_on_zpracovani_tahu_zmeneno)
 	if diplomacy_request_popup:
+		_aplikuj_ingame_popup_styl(diplomacy_request_popup)
+		if popup_accept_btn:
+			_aplikuj_ingame_tlacitko_styl(popup_accept_btn)
+		if popup_decline_btn:
+			_aplikuj_ingame_tlacitko_styl(popup_decline_btn, true)
+		if popup_decline_all_btn:
+			_aplikuj_ingame_tlacitko_styl(popup_decline_all_btn, true)
+		if popup_request_text:
+			popup_request_text.add_theme_color_override("font_color", Color(0.88, 0.94, 1.0, 1.0))
+			popup_request_text.add_theme_color_override("font_outline_color", Color(0.02, 0.04, 0.08, 0.90))
+			popup_request_text.add_theme_constant_override("outline_size", 1)
 		diplomacy_request_popup.hide()
 		if popup_decline_all_btn:
 			popup_decline_all_btn.hide()
@@ -1019,6 +1053,50 @@ func _ziskej_map_loader_node() -> Node:
 			return by_name
 	return null
 
+func _ziskej_barvu_statu_pro_battle(tag: String) -> Color:
+	var clean = tag.strip_edges().to_upper()
+	if clean == "" or clean == "SEA":
+		return Color(0.62, 0.62, 0.66, 1.0)
+	var map_loader = _ziskej_map_loader_node()
+	if map_loader and map_loader.has_method("_ziskej_zakladni_barvu_statu"):
+		var base = map_loader._ziskej_zakladni_barvu_statu(clean)
+		if base is Color:
+			return (base as Color)
+	# Fallback: deterministic color from tag hash.
+	var hue = float(abs(clean.hash()) % 360) / 360.0
+	return Color.from_hsv(hue, 0.62, 0.86, 1.0)
+
+func _aplikuj_system_battle_barvy(left_tag: String, right_tag: String) -> void:
+	if _system_battle_adv_bar == null:
+		return
+	var left_col = _ziskej_barvu_statu_pro_battle(left_tag)
+	var right_col = _ziskej_barvu_statu_pro_battle(right_tag)
+	# Slightly brighten both colors for UI readability.
+	left_col = left_col.lerp(Color(1.0, 1.0, 1.0, 1.0), 0.15)
+	right_col = right_col.lerp(Color(1.0, 1.0, 1.0, 1.0), 0.10)
+
+	var fill_sb = StyleBoxFlat.new()
+	fill_sb.bg_color = Color(left_col.r, left_col.g, left_col.b, 0.98)
+	fill_sb.corner_radius_top_left = 2
+	fill_sb.corner_radius_bottom_left = 2
+	fill_sb.corner_radius_top_right = 2
+	fill_sb.corner_radius_bottom_right = 2
+
+	var bg_sb = StyleBoxFlat.new()
+	bg_sb.bg_color = Color(right_col.r, right_col.g, right_col.b, 0.92)
+	bg_sb.border_width_left = 1
+	bg_sb.border_width_top = 1
+	bg_sb.border_width_right = 1
+	bg_sb.border_width_bottom = 1
+	bg_sb.border_color = Color(0.02, 0.03, 0.05, 0.75)
+	bg_sb.corner_radius_top_left = 2
+	bg_sb.corner_radius_bottom_left = 2
+	bg_sb.corner_radius_top_right = 2
+	bg_sb.corner_radius_bottom_right = 2
+
+	_system_battle_adv_bar.add_theme_stylebox_override("fill", fill_sb)
+	_system_battle_adv_bar.add_theme_stylebox_override("background", bg_sb)
+
 func _otevri_prehled_statu_podle_tagu(tag: String) -> void:
 	var wanted = tag.strip_edges().to_upper()
 	if wanted == "" or wanted == "SEA":
@@ -1105,7 +1183,7 @@ func _ensure_system_battle_panel() -> void:
 	_system_battle_panel.visible = false
 	_system_battle_panel.custom_minimum_size = Vector2(0, SYSTEM_BATTLE_PANEL_HEIGHT)
 	_system_battle_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_system_battle_panel.add_theme_stylebox_override("panel", _vytvor_ingame_kartu_styl(Color(0.08, 0.12, 0.20, 0.94), Color(0.43, 0.60, 0.83, 0.62)))
+	_system_battle_panel.add_theme_stylebox_override("panel", _vytvor_ingame_kartu_styl(Color(0.05, 0.08, 0.16, 0.96), Color(0.71, 0.60, 0.22, 0.68)))
 	vbox.add_child(_system_battle_panel)
 	vbox.move_child(_system_battle_panel, system_message_text.get_index())
 
@@ -1116,9 +1194,34 @@ func _ensure_system_battle_panel() -> void:
 	margin.add_theme_constant_override("margin_bottom", 6)
 	_system_battle_panel.add_child(margin)
 
+	var root_col = VBoxContainer.new()
+	root_col.add_theme_constant_override("separation", 6)
+	margin.add_child(root_col)
+
+	var losses_row = HBoxContainer.new()
+	losses_row.add_theme_constant_override("separation", 6)
+	root_col.add_child(losses_row)
+
+	_system_battle_left_losses_label = Label.new()
+	_system_battle_left_losses_label.add_theme_font_size_override("font_size", 24)
+	_system_battle_left_losses_label.add_theme_color_override("font_color", Color(0.95, 0.22, 0.16, 1.0))
+	_system_battle_left_losses_label.text = "-0"
+	losses_row.add_child(_system_battle_left_losses_label)
+
+	var losses_spacer = Control.new()
+	losses_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	losses_row.add_child(losses_spacer)
+
+	_system_battle_right_losses_label = Label.new()
+	_system_battle_right_losses_label.add_theme_font_size_override("font_size", 24)
+	_system_battle_right_losses_label.add_theme_color_override("font_color", Color(0.95, 0.22, 0.16, 1.0))
+	_system_battle_right_losses_label.text = "-0"
+	_system_battle_right_losses_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	losses_row.add_child(_system_battle_right_losses_label)
+
 	var row = HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
-	margin.add_child(row)
+	root_col.add_child(row)
 
 	var left_box = VBoxContainer.new()
 	left_box.custom_minimum_size = Vector2(112, 0)
@@ -1137,6 +1240,12 @@ func _ensure_system_battle_panel() -> void:
 	_system_battle_left_name.add_theme_font_size_override("font_size", 14)
 	left_box.add_child(_system_battle_left_name)
 
+	_system_battle_left_strength_label = Label.new()
+	_system_battle_left_strength_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_system_battle_left_strength_label.add_theme_font_size_override("font_size", 22)
+	_system_battle_left_strength_label.add_theme_color_override("font_color", Color(0.95, 0.82, 0.25, 1.0))
+	left_box.add_child(_system_battle_left_strength_label)
+
 	var center_box = VBoxContainer.new()
 	center_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	center_box.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -1145,7 +1254,8 @@ func _ensure_system_battle_panel() -> void:
 
 	_system_battle_winner_label = Label.new()
 	_system_battle_winner_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_system_battle_winner_label.add_theme_font_size_override("font_size", 14)
+	_system_battle_winner_label.add_theme_font_size_override("font_size", 30)
+	_system_battle_winner_label.add_theme_color_override("font_color", Color(0.92, 0.95, 1.0, 0.98))
 	center_box.add_child(_system_battle_winner_label)
 
 	_system_battle_adv_bar = ProgressBar.new()
@@ -1153,13 +1263,13 @@ func _ensure_system_battle_panel() -> void:
 	_system_battle_adv_bar.min_value = 0
 	_system_battle_adv_bar.max_value = 100
 	_system_battle_adv_bar.value = 50
-	_system_battle_adv_bar.custom_minimum_size = Vector2(190, 12)
+	_system_battle_adv_bar.custom_minimum_size = Vector2(190, 16)
 	_system_battle_adv_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	center_box.add_child(_system_battle_adv_bar)
 
 	_system_battle_margin_label = Label.new()
 	_system_battle_margin_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_system_battle_margin_label.modulate = Color(0.80, 0.89, 1.0, 0.95)
+	_system_battle_margin_label.modulate = Color(0.84, 0.90, 1.0, 0.95)
 	_system_battle_margin_label.add_theme_font_size_override("font_size", 12)
 	center_box.add_child(_system_battle_margin_label)
 
@@ -1179,6 +1289,191 @@ func _ensure_system_battle_panel() -> void:
 	_system_battle_right_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_system_battle_right_name.add_theme_font_size_override("font_size", 14)
 	right_box.add_child(_system_battle_right_name)
+
+	_system_battle_right_strength_label = Label.new()
+	_system_battle_right_strength_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_system_battle_right_strength_label.add_theme_font_size_override("font_size", 22)
+	_system_battle_right_strength_label.add_theme_color_override("font_color", Color(0.95, 0.82, 0.25, 1.0))
+	right_box.add_child(_system_battle_right_strength_label)
+
+func _ensure_system_message_meta_row() -> void:
+	if _system_message_meta_row != null:
+		return
+	if system_message_text == null or system_message_text.get_parent() == null:
+		return
+
+	var vbox = system_message_text.get_parent() as VBoxContainer
+	if vbox == null:
+		return
+
+	_system_message_meta_row = HBoxContainer.new()
+	_system_message_meta_row.name = "MessageMetaRow"
+	_system_message_meta_row.visible = false
+	_system_message_meta_row.custom_minimum_size = Vector2(0.0, SYSTEM_MESSAGE_META_ROW_HEIGHT)
+	_system_message_meta_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_system_message_meta_row.add_theme_constant_override("separation", 8)
+	vbox.add_child(_system_message_meta_row)
+	if system_message_title:
+		vbox.move_child(_system_message_meta_row, system_message_title.get_index() + 1)
+
+	_system_message_meta_left_flag = TextureButton.new()
+	_system_message_meta_left_flag.custom_minimum_size = Vector2(30, 20)
+	_system_message_meta_left_flag.ignore_texture_size = true
+	_system_message_meta_left_flag.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+	_system_message_meta_left_flag.focus_mode = Control.FOCUS_NONE
+	_system_message_meta_left_flag.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_system_message_meta_left_flag.pressed.connect(_on_system_message_meta_flag_pressed.bind(true))
+	_system_message_meta_row.add_child(_system_message_meta_left_flag)
+
+	_system_message_meta_center_label = Label.new()
+	_system_message_meta_center_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_system_message_meta_center_label.add_theme_font_size_override("font_size", 13)
+	_system_message_meta_center_label.add_theme_color_override("font_color", Color(0.84, 0.91, 1.0, 0.97))
+	_system_message_meta_center_label.add_theme_color_override("font_outline_color", Color(0.02, 0.05, 0.10, 0.85))
+	_system_message_meta_center_label.add_theme_constant_override("outline_size", 1)
+	_system_message_meta_center_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_system_message_meta_row.add_child(_system_message_meta_center_label)
+
+	_system_message_meta_right_flag = TextureButton.new()
+	_system_message_meta_right_flag.custom_minimum_size = Vector2(30, 20)
+	_system_message_meta_right_flag.ignore_texture_size = true
+	_system_message_meta_right_flag.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+	_system_message_meta_right_flag.focus_mode = Control.FOCUS_NONE
+	_system_message_meta_right_flag.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_system_message_meta_right_flag.pressed.connect(_on_system_message_meta_flag_pressed.bind(false))
+	_system_message_meta_row.add_child(_system_message_meta_right_flag)
+
+func _ziskej_tagy_systemove_zpravy(title_raw: String, text_raw: String, battle_payload: Dictionary) -> Array:
+	var tags: Array = []
+	var seen: Dictionary = {}
+
+	if not battle_payload.is_empty():
+		var bt_left = str(battle_payload.get("left_tag", "")).strip_edges().to_upper()
+		if bt_left != "" and bt_left != "SEA" and not seen.has(bt_left):
+			seen[bt_left] = true
+			tags.append(bt_left)
+		var bt_right = str(battle_payload.get("right_tag", "")).strip_edges().to_upper()
+		if bt_right != "" and bt_right != "SEA" and not seen.has(bt_right):
+			seen[bt_right] = true
+			tags.append(bt_right)
+
+	var merged_raw = (title_raw + " " + text_raw).strip_edges()
+	for t_any in _vyhledat_tagy_statu_v_textu(merged_raw):
+		var tag = str(t_any).strip_edges().to_upper()
+		if tag == "" or tag == "SEA" or seen.has(tag):
+			continue
+		seen[tag] = true
+		tags.append(tag)
+	if tags.size() < 2:
+		for t_any in _vyhledat_tagy_statu_podle_nazvu(merged_raw):
+			var tag2 = str(t_any).strip_edges().to_upper()
+			if tag2 == "" or tag2 == "SEA" or seen.has(tag2):
+				continue
+			seen[tag2] = true
+			tags.append(tag2)
+
+	if tags.size() > 2:
+		return [str(tags[0]), str(tags[1])]
+	return tags
+
+func _nastav_system_message_meta_row(tags: Array) -> void:
+	_ensure_system_message_meta_row()
+	if _system_message_meta_row == null:
+		return
+
+	if tags.is_empty() or _system_message_compact_battle:
+		_system_message_meta_row.hide()
+		return
+
+	var left_tag = str(tags[0]).strip_edges().to_upper()
+	var right_tag = str(tags[1]).strip_edges().to_upper() if tags.size() >= 2 else ""
+	var left_name = _ziskej_jmeno_statu_podle_tagu(left_tag)
+	var right_name = _ziskej_jmeno_statu_podle_tagu(right_tag)
+
+	var left_tex = _resolve_flag_texture(left_tag, _ziskej_aktualni_ideologii_statu(left_tag)) if left_tag != "" else null
+	var right_tex = _resolve_flag_texture(right_tag, _ziskej_aktualni_ideologii_statu(right_tag)) if right_tag != "" else null
+
+	if _system_message_meta_left_flag:
+		_system_message_meta_left_flag.texture_normal = left_tex
+		_system_message_meta_left_flag.texture_hover = left_tex
+		_system_message_meta_left_flag.texture_pressed = left_tex
+		_system_message_meta_left_flag.visible = left_tex != null
+		_system_message_meta_left_flag.set_meta("state_tag", left_tag)
+		_system_message_meta_left_flag.tooltip_text = left_name
+
+	if _system_message_meta_right_flag:
+		_system_message_meta_right_flag.texture_normal = right_tex
+		_system_message_meta_right_flag.texture_hover = right_tex
+		_system_message_meta_right_flag.texture_pressed = right_tex
+		_system_message_meta_right_flag.visible = right_tex != null
+		_system_message_meta_right_flag.set_meta("state_tag", right_tag)
+		_system_message_meta_right_flag.tooltip_text = right_name
+
+	if _system_message_meta_center_label:
+		if right_tag != "":
+			_system_message_meta_center_label.text = "%s  vs  %s" % [left_name, right_name]
+		else:
+			_system_message_meta_center_label.text = left_name
+
+	var has_any_flag = (left_tex != null) or (right_tex != null)
+	_system_message_meta_row.visible = has_any_flag
+
+func _on_system_message_meta_flag_pressed(is_left: bool) -> void:
+	var target: TextureButton = _system_message_meta_left_flag if is_left else _system_message_meta_right_flag
+	if target == null:
+		return
+	var state_tag = str(target.get_meta("state_tag", "")).strip_edges().to_upper()
+	if state_tag == "":
+		return
+	_posun_kameru_na_stat(state_tag, true)
+
+func _zpolish_system_message_title(title: String) -> String:
+	var t = title.strip_edges()
+	if t == "":
+		return t
+	if t == "WAR":
+		return "War"
+	if t == "ALLIANCE WAR":
+		return "Alliance War"
+	if t == "LOANS":
+		return "Loans"
+	return t
+
+func _zpolish_system_message_text(text: String) -> String:
+	var t = text.strip_edges()
+	if t == "":
+		return t
+
+	if t.find(" | ") != -1 and t.find("\n") == -1:
+		var parts = t.split(" | ", false, 1)
+		if parts.size() == 2:
+			var sides = parts[0].strip_edges()
+			var event = parts[1].strip_edges()
+			if event == "DECLARED WAR":
+				var ab = sides.split(" -> ")
+				if ab.size() == 2:
+					return "%s declared war on %s." % [ab[0].strip_edges(), ab[1].strip_edges()]
+			if event == "PEACE PROPOSAL":
+				var ab2 = sides.split(" -> ")
+				if ab2.size() == 2:
+					return "%s sent a peace proposal to %s." % [ab2[0].strip_edges(), ab2[1].strip_edges()]
+			if event == "NON-AGGRESSION PACT":
+				var ab3 = sides.split(" <-> ")
+				if ab3.size() == 2:
+					return "%s and %s signed a non-aggression pact." % [ab3[0].strip_edges(), ab3[1].strip_edges()]
+			if event.begins_with("CAPITAL OCCUPIED"):
+				var ab4 = sides.split(" -> ")
+				if ab4.size() == 2:
+					return "%s occupied %s's capital. Hold it for one turn to trigger capitulation." % [ab4[0].strip_edges(), ab4[1].strip_edges()]
+			if event == "CAPITAL RECAPTURED":
+				return "%s recaptured the capital." % sides
+			if event == "CAPITULATION TRIGGERED -> PEACE CONFERENCE":
+				var ab5 = sides.split(" -> ")
+				if ab5.size() == 2:
+					return "%s capitulated to %s. The peace conference has started." % [ab5[1].strip_edges(), ab5[0].strip_edges()]
+			return "%s\n%s" % [sides, event]
+
+	return t
 
 # Fill battle summary panel from payload and keep it hidden when payload is empty.
 func _nastav_system_battle_panel(payload: Dictionary) -> void:
@@ -1201,6 +1496,7 @@ func _nastav_system_battle_panel(payload: Dictionary) -> void:
 	var right_name = _ziskej_jmeno_statu_podle_tagu(right_tag)
 	var left_ideology = _ziskej_aktualni_ideologii_statu(left_tag)
 	var right_ideology = _ziskej_aktualni_ideologii_statu(right_tag)
+	_aplikuj_system_battle_barvy(left_tag, right_tag)
 
 	if _system_battle_left_name:
 		_system_battle_left_name.text = left_name
@@ -1215,27 +1511,46 @@ func _nastav_system_battle_panel(payload: Dictionary) -> void:
 	if winner_tag != "":
 		winner_name = _ziskej_jmeno_statu_podle_tagu(winner_tag)
 	if _system_battle_winner_label:
-		_system_battle_winner_label.text = "Winner: %s" % winner_name
+		if winner_tag == "":
+			_system_battle_winner_label.text = "Battle ended in a draw"
+		else:
+			_system_battle_winner_label.text = "%s is Victorious!" % winner_name
 		_system_battle_winner_label.modulate = Color(0.95, 0.97, 1.0, 1.0)
 
-	var left_strength = max(0, left_after)
-	var right_strength = max(0, right_after)
-	var total = max(1, left_strength + right_strength)
-	var left_share = float(left_strength) / float(total)
+	# Advantage bar should show force ratio at battle start, not only survivors.
+	var bar_left_strength = max(0, left_before)
+	var bar_right_strength = max(0, right_before)
+	if bar_left_strength <= 0 and bar_right_strength <= 0:
+		bar_left_strength = max(0, left_after)
+		bar_right_strength = max(0, right_after)
+	var total = max(1, bar_left_strength + bar_right_strength)
+	var left_share = float(bar_left_strength) / float(total)
 	var bar_value = int(round(left_share * 100.0))
+	if bar_left_strength > 0 and bar_right_strength > 0:
+		# Keep a visible segment for both sides when both entered the battle.
+		bar_value = clampi(bar_value, 5, 95)
 	if _system_battle_adv_bar:
 		_system_battle_adv_bar.value = bar_value
 
 	var left_losses = max(0, left_before - left_after)
 	var right_losses = max(0, right_before - right_after)
+	if _system_battle_left_losses_label:
+		_system_battle_left_losses_label.text = "-%s" % _formatuj_cislo(left_losses)
+	if _system_battle_right_losses_label:
+		_system_battle_right_losses_label.text = "-%s" % _formatuj_cislo(right_losses)
+	if _system_battle_left_strength_label:
+		_system_battle_left_strength_label.text = _formatuj_cislo(left_after)
+	if _system_battle_right_strength_label:
+		_system_battle_right_strength_label.text = _formatuj_cislo(right_after)
+
 	var margin = abs(left_losses - right_losses)
 	if _system_battle_margin_label:
 		if winner_tag == "":
-			_system_battle_margin_label.text = "Even fight"
+			_system_battle_margin_label.text = "Losses were equal"
 		elif winner_tag == left_tag:
-			_system_battle_margin_label.text = "%s advantage: +%s" % [left_name, _formatuj_cislo(margin)]
+			_system_battle_margin_label.text = "%s inflicted +%s more losses" % [left_name, _formatuj_cislo(margin)]
 		else:
-			_system_battle_margin_label.text = "%s advantage: +%s" % [right_name, _formatuj_cislo(margin)]
+			_system_battle_margin_label.text = "%s inflicted +%s more losses" % [right_name, _formatuj_cislo(margin)]
 
 	_system_battle_panel.show()
 
@@ -7451,7 +7766,7 @@ func _aktualizuj_pozice_popupu():
 		var msg_w = clamp(viewport_size.x * 0.38, 420.0, 680.0)
 		var text_len = 0
 		var explicit_lines = 1
-		if system_message_text:
+		if system_message_text and not _system_message_compact_battle:
 			text_len = system_message_text.text.length()
 			explicit_lines = max(1, system_message_text.text.split("\n").size())
 			system_message_text.clip_text = false
@@ -7460,6 +7775,9 @@ func _aktualizuj_pozice_popupu():
 		var extra_battle_h = 0.0
 		if _system_battle_panel and _system_battle_panel.visible:
 			extra_battle_h = SYSTEM_BATTLE_PANEL_HEIGHT + 6.0
+		var extra_meta_h = 0.0
+		if _system_message_meta_row and _system_message_meta_row.visible:
+			extra_meta_h = SYSTEM_MESSAGE_META_ROW_HEIGHT
 		var msg_y = top_y
 		if diplomacy_request_popup and diplomacy_request_popup.visible:
 			msg_y += diplomacy_request_popup.size.y + POPUP_GAP
@@ -7470,13 +7788,20 @@ func _aktualizuj_pozice_popupu():
 		if _zpravy_panel and _zpravy_panel.visible:
 			msg_y += _zpravy_panel.size.y + POPUP_GAP
 		var max_msg_h = max(110.0, viewport_size.y - msg_y - 12.0)
-		var msg_h = clamp(90.0 + float(approx_lines) * 17.0 + extra_battle_h, 108.0, max_msg_h)
+		var msg_h = 0.0
+		if _system_message_compact_battle:
+			msg_h = clamp(90.0 + extra_battle_h + extra_meta_h, 108.0, max_msg_h)
+		else:
+			msg_h = clamp(90.0 + float(approx_lines) * 17.0 + extra_battle_h + extra_meta_h, 108.0, max_msg_h)
 		msg_y = clamp(msg_y, top_y, max(top_y, viewport_size.y - msg_h - 8.0))
 		system_message_popup.position = Vector2((viewport_size.x - msg_w) * 0.5, msg_y)
 		system_message_popup.size = Vector2(msg_w, msg_h)
 		if system_message_text:
-			var text_area_h = max(34.0, msg_h - 62.0 - extra_battle_h)
-			system_message_text.custom_minimum_size = Vector2(0.0, text_area_h)
+			if _system_message_compact_battle:
+				system_message_text.custom_minimum_size = Vector2(0.0, 0.0)
+			else:
+				var text_area_h = max(34.0, msg_h - 62.0 - extra_battle_h - extra_meta_h)
+				system_message_text.custom_minimum_size = Vector2(0.0, text_area_h)
 
 	if _alliance_dialog and _alliance_dialog.visible:
 		_pozicuj_alliance_dialog()
@@ -7486,13 +7811,22 @@ func _aktualizuj_pozice_popupu():
 func zobraz_systemove_hlaseni(titulek: String, text: String, allow_auto_ack_during_turn: bool = true, battle_payload: Dictionary = {}) -> void:
 	if not system_message_popup:
 		return
+	_system_message_compact_battle = not battle_payload.is_empty()
+	var final_title = _zpolish_system_message_title(_nahrad_tagy_nazvy_ve_zprave(titulek))
+	var final_text = _zpolish_system_message_text(_nahrad_tagy_nazvy_ve_zprave(text))
+	_nastav_system_message_meta_row(_ziskej_tagy_systemove_zpravy(titulek, text, battle_payload))
 	var puvodni_pozastaveni_overlay = _turn_loading_suppressed
 	nastav_pozastaveni_turn_overlay(true)
 	if system_message_title:
-		system_message_title.text = titulek if titulek.strip_edges() != "" else "Report"
+		system_message_title.text = final_title if final_title.strip_edges() != "" else "Report"
 	_nastav_system_battle_panel(battle_payload)
 	if system_message_text:
-		system_message_text.text = text
+		if _system_message_compact_battle:
+			system_message_text.text = ""
+			system_message_text.hide()
+		else:
+			system_message_text.show()
+			system_message_text.text = final_text
 
 	_system_message_ack = false
 	_aktualizuj_pozice_popupu()
@@ -7517,6 +7851,7 @@ func zobraz_systemove_hlaseni(titulek: String, text: String, allow_auto_ack_duri
 		await tree.process_frame
 
 	nastav_pozastaveni_turn_overlay(puvodni_pozastaveni_overlay)
+	_system_message_compact_battle = false
 
 func _napln_aliance_option():
 	# Legacy stub - alliance is now managed via popup dialog
@@ -7847,6 +8182,105 @@ func _je_redundantni_titulek_zpravy(category_label: String, title: String) -> bo
 		_:
 			return false
 
+func _ziskej_prvni_dva_tagy_zpravy(title: String, text: String) -> Array:
+	var merged = (title + " " + text).strip_edges()
+	if merged == "":
+		return []
+	var tags = _vyhledat_tagy_statu_v_textu(merged)
+	if tags.size() < 2:
+		for tag_any in _vyhledat_tagy_statu_podle_nazvu(merged):
+			var tag = str(tag_any).strip_edges().to_upper()
+			if tag == "" or tags.has(tag):
+				continue
+			tags.append(tag)
+			if tags.size() >= 2:
+				break
+	if tags.size() >= 2:
+		return [str(tags[0]), str(tags[1])]
+	if tags.size() == 1:
+		return [str(tags[0])]
+	return []
+
+func _nahrad_tagy_nazvy_ve_zprave(text: String) -> String:
+	var out = text
+	if out.strip_edges() == "":
+		return out
+	for raw_tag in _vyhledat_tagy_statu_v_textu(out):
+		var tag = str(raw_tag).strip_edges().to_upper()
+		if tag == "":
+			continue
+		var state_name = _ziskej_jmeno_statu_podle_tagu(tag)
+		if state_name == "" or state_name == tag:
+			continue
+		var rx = RegEx.new()
+		if rx.compile("\\b" + tag + "\\b") != OK:
+			continue
+		out = rx.sub(out, state_name, true)
+	return out
+
+func _zformatuj_diplomatickou_zpravu(category_label: String, title: String, text: String) -> String:
+	var lower = (title + " " + text).to_lower()
+	var tags = _ziskej_prvni_dva_tagy_zpravy(title, text)
+	var a = str(tags[0]) if tags.size() >= 1 else ""
+	var b = str(tags[1]) if tags.size() >= 2 else ""
+	var a_name = _ziskej_jmeno_statu_podle_tagu(a) if a != "" else ""
+	var b_name = _ziskej_jmeno_statu_podle_tagu(b) if b != "" else ""
+
+	if lower.findn("declared war") != -1 or lower.findn("vyhlasil valku") != -1:
+		if a != "" and b != "":
+			return "%s -> %s | DECLARED WAR" % [a_name, b_name]
+
+	if lower.findn("sent peace proposal") != -1 or lower.findn("peace proposal") != -1:
+		if a != "" and b != "":
+			return "%s -> %s | PEACE PROPOSAL" % [a_name, b_name]
+
+	if lower.findn("non-aggression pact") != -1 or lower.findn("neagres") != -1:
+		if a != "" and b != "":
+			return "%s <-> %s | NON-AGGRESSION PACT" % [a_name, b_name]
+
+	if lower.findn("alliance between") != -1:
+		if a != "" and b != "":
+			var level = ""
+			var colon_idx = text.find(":")
+			if colon_idx != -1 and colon_idx + 1 < text.length():
+				level = text.substr(colon_idx + 1, text.length() - colon_idx - 1).strip_edges().trim_suffix(".")
+			if level != "":
+				return "%s <-> %s | ALLIANCE: %s" % [a_name, b_name, level]
+			return "%s <-> %s | ALLIANCE UPDATE" % [a_name, b_name]
+
+	if lower.findn("founded alliance") != -1:
+		if a != "":
+			return "%s | FOUNDED ALLIANCE" % a_name
+
+	if lower.findn("joined alliance") != -1:
+		if a != "":
+			return "%s | JOINED ALLIANCE" % a_name
+
+	if lower.findn("left alliance") != -1:
+		if a != "":
+			return "%s | LEFT ALLIANCE" % a_name
+
+	if lower.findn("alliance '") != -1 and lower.findn("disband") != -1:
+		return "ALLIANCE | DISBANDED"
+
+	if lower.findn("military access") != -1 and lower.findn("requested") != -1:
+		if a != "" and b != "":
+			return "%s -> %s | MILITARY ACCESS REQUEST" % [a_name, b_name]
+
+	if lower.findn("military access") != -1 and lower.findn("granted") != -1:
+		if a != "" and b != "":
+			return "%s -> %s | MILITARY ACCESS GRANTED" % [a_name, b_name]
+
+	if lower.findn("military access") != -1 and lower.findn("revoked") != -1:
+		if a != "" and b != "":
+			return "%s -> %s | MILITARY ACCESS REVOKED" % [a_name, b_name]
+		return "MILITARY ACCESS | REVOKED"
+
+	if category_label == "War" and a != "" and b != "":
+		return "%s vs %s | WAR EVENT" % [a_name, b_name]
+
+	return ""
+
 # Formats values for display.
 func _format_zprava(entry: Dictionary) -> String:
 	var category = str(entry.get("category", "")).strip_edges().to_lower()
@@ -7858,6 +8292,10 @@ func _format_zprava(entry: Dictionary) -> String:
 	var cat_tag = ""
 	if category_label != "":
 		cat_tag = "[%s] " % category_label
+
+	var styled_diplomacy = _zformatuj_diplomatickou_zpravu(category_label, title, text)
+	if styled_diplomacy != "":
+		return "%s%s" % [cat_tag, styled_diplomacy]
 
 	if _je_redundantni_titulek_zpravy(category_label, title):
 		# redukce duplicit: kdyz title opakuje body, ukazeme jen jednu verzi textu.

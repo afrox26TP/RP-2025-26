@@ -1,13 +1,11 @@
-﻿# ==================================================================================================
-# â–â–â–â•—   â–â–â–â•— â–â–â–â–â–â•— â–â–â–â–â–â–â•— â–â–â–â–â–â–â–â•—    â–â–â–â–â–â–â•— â–â–â•—   â–â–â•—    â–â–â–â–â–â•— â–â–â–â–â–â–â–â•—â–â–â–â–â–â–â•—  â–â–â–â–â–â–â•— â–â–â•—  â–â–â•—
-# â–â–â–â–â•— â–â–â–â–â•‘â–â–â•”â•â•â–â–â•—â–â–â•”â•â•â–â–â•—â–â–â•”â•â•â•â•â•ť    â–â–â•”â•â•â–â–â•—â•šâ–â–â•— â–â–â•”â•ť   â–â–â•”â•â•â–â–â•—â–â–â•”â•â•â•â•â•ťâ–â–â•”â•â•â–â–â•—â–â–â•”â•â•â•â–â–â•—â•šâ–â–â•—â–â–â•”â•ť
-# â–â–â•”â–â–â–â–â•”â–â–â•‘â–â–â–â–â–â–â–â•‘â–â–â•‘  â–â–â•‘â–â–â–â–â–â•—      â–â–â–â–â–â–â•”â•ť â•šâ–â–â–â–â•”â•ť    â–â–â–â–â–â–â–â•‘â–â–â–â–â–â•—  â–â–â–â–â–â–â•”â•ťâ–â–â•‘   â–â–â•‘ â•šâ–â–â–â•”â•ť
-# â–â–â•‘â•šâ–â–â•”â•ťâ–â–â•‘â–â–â•”â•â•â–â–â•‘â–â–â•‘  â–â–â•‘â–â–â•”â•â•â•ť      â–â–â•”â•â•â–â–â•—  â•šâ–â–â•”â•ť     â–â–â•”â•â•â–â–â•‘â–â–â•”â•â•â•ť  â–â–â•”â•â•â–â–â•—â–â–â•‘   â–â–â•‘ â–â–â•”â–â–â•—
-# â–â–â•‘ â•šâ•â•ť â–â–â•‘â–â–â•‘  â–â–â•‘â–â–â–â–â–â–â•”â•ťâ–â–â–â–â–â–â–â•—    â–â–â–â–â–â–â•”â•ť   â–â–â•‘      â–â–â•‘  â–â–â•‘â–â–â•‘     â–â–â•‘  â–â–â•‘â•šâ–â–â–â–â–â–â•”â•ťâ–â–â•”â•ť â–â–â•—
-# â•šâ•â•ť     â•šâ•â•ťâ•šâ•â•ť  â•šâ•â•ťâ•šâ•â•â•â•â•â•ť â•šâ•â•â•â•â•â•â•ť    â•šâ•â•â•â•â•â•ť    â•šâ•â•ť      â•šâ•â•ť  â•šâ•â•ťâ•šâ•â•ť     â•šâ•â•ť  â•šâ•â•ť â•šâ•â•â•â•â•â•ť â•šâ•â•ť  â•šâ•â•ť
-#
-#                                         Made By: Afrox26TP
 # ==================================================================================================
+#  __  __    _    ____  _____   ______   __     _    _____ ____   _____  __
+# |  \/  |  / \  |  _ \| ____| | __ ) \ / /    / \  |  ___|  _ \ / _ \ \/ /
+# | |\/| | / _ \ | | | |  _|   |  _ \\ V /    / _ \ | |_  | |_) | | | |\  /
+# | |  | |/ ___ \| |_| | |___  | |_) || |    / ___ \|  _| |  _ <| |_| /  \
+# |_|  |_/_/   \_\____/|_____| |____/ |_|   /_/   \_\_|   |_| \_\\___/_/\_\
+# ==================================================================================================
+
 extends Node
 # this script drives a specific gameplay/UI area and keeps related logic together.
 
@@ -6078,22 +6076,33 @@ func _vyhlasit_valku_par(utocnik: String, obrance: String, headline: String, det
 		return false
 	if jsou_ve_valce(a, b):
 		return false
+	var a_name = _ziskej_jmeno_statu_podle_tagu(a)
+	var b_name = _ziskej_jmeno_statu_podle_tagu(b)
 
 	var klic = _klic_valky(a, b)
 	if klic == "":
 		return false
 	valky[klic] = true
 
-	var msg = "%s\n\n%s" % [headline, details]
+	var popup_title = "WAR"
+	var popup_text = details
+	var head_clean = headline.strip_edges().to_upper()
+	if head_clean == "WAR":
+		popup_title = "WAR"
+		popup_text = "%s -> %s | DECLARED WAR" % [a_name, b_name]
+	elif head_clean.find("ALLIANCE") != -1:
+		popup_title = "ALLIANCE WAR"
+		popup_text = details
+	var msg = "%s | %s" % [popup_title, popup_text]
 	if TURN_LOG_ENABLED:
-		print(msg.replace("\n\n", " "))
-	_zaloguj_globalni_zpravu("War", "%s declared war on %s." % [a, b], "war")
+		print(msg)
+	_zaloguj_globalni_zpravu("War", "%s declared war on %s." % [a_name, b_name], "war")
 	if je_lidsky_stat(a):
-		_zaloguj_zpravu_hraci(a, "War", "You declared war on %s." % b, "war")
+		_zaloguj_zpravu_hraci(a, "War", "You declared war on %s." % b_name, "war")
 	if je_lidsky_stat(b):
-		_zaloguj_zpravu_hraci(b, "War", "%s declared war on you." % a, "war")
+		_zaloguj_zpravu_hraci(b, "War", "%s declared war on you." % a_name, "war")
 	if je_lidsky_stat(a) or je_lidsky_stat(b):
-		_pridej_popup_zucastnenym_hracum(a, b, "DIPLOMACY", msg)
+		_pridej_popup_zucastnenym_hracum(a, b, popup_title, popup_text)
 	var old_suppress_logs = _suppress_relation_global_logs
 	_suppress_relation_global_logs = _suppress_relation_global_logs or _ai_phase_cache_active
 	_aplikuj_diplomatickou_reakci_na_agresi(a, b)
@@ -6237,19 +6246,19 @@ func vyhlasit_valku(utocnik: String, obrance: String):
 	var zbyva_povalecny_cooldown = zbyva_kol_do_dalsi_valky(a, b)
 	if zbyva_povalecny_cooldown > 0:
 		if je_lidsky_stat(a):
-			_pridej_popup_hraci(a, "Diplomacy", "After peace, you must wait %d more turns before declaring war on %s again." % [zbyva_povalecny_cooldown, b])
+			_pridej_popup_hraci(a, "Diplomacy", "After peace, you must wait %d more turns before declaring war on %s again." % [zbyva_povalecny_cooldown, _ziskej_jmeno_statu_podle_tagu(b)])
 		_end_ai_cache_batch()
 		return false
 	if ma_neagresivni_smlouvu(a, b):
 		if je_lidsky_stat(a):
 			var zbyva = zbyva_kol_neagresivni_smlouvy(a, b)
-			_pridej_popup_hraci(a, "Diplomacy", "Cannot declare war while non-aggression pact with %s is active (%d turns)." % [b, zbyva])
+			_pridej_popup_hraci(a, "Diplomacy", "Cannot declare war while non-aggression pact with %s is active (%d turns)." % [_ziskej_jmeno_statu_podle_tagu(b), zbyva])
 		_end_ai_cache_batch()
 		return false
 
 	if ziskej_uroven_aliance(a, b) > ALLIANCE_NONE:
 		if je_lidsky_stat(a):
-			_pridej_popup_hraci(a, "Diplomacy", "Cannot declare war on ally (%s). Cancel the alliance first." % b)
+			_pridej_popup_hraci(a, "Diplomacy", "Cannot declare war on ally (%s). Cancel the alliance first." % _ziskej_jmeno_statu_podle_tagu(b))
 		_end_ai_cache_batch()
 		return false
 
@@ -6257,7 +6266,7 @@ func vyhlasit_valku(utocnik: String, obrance: String):
 		a,
 		b,
 		"WAR",
-		"%s has declared war on %s!" % [a, b]
+		"%s has declared war on %s!" % [_ziskej_jmeno_statu_podle_tagu(a), _ziskej_jmeno_statu_podle_tagu(b)]
 	)
 	if not created:
 		_end_ai_cache_batch()
@@ -8097,11 +8106,11 @@ func _zobraz_hlaseni_neagresivnich_smluv_hrace(zmeny: Array) -> void:
 		if je_lidsky_stat(a):
 			if not lines_by_target.has(a):
 				lines_by_target[a] = []
-			(lines_by_target[a] as Array).append("Non-aggression pact with %s (%d turns)." % [b, NON_AGGRESSION_DURATION_TURNS])
+			(lines_by_target[a] as Array).append("Non-aggression pact with %s (%d turns)." % [_ziskej_jmeno_statu_podle_tagu(b), NON_AGGRESSION_DURATION_TURNS])
 		if je_lidsky_stat(b):
 			if not lines_by_target.has(b):
 				lines_by_target[b] = []
-			(lines_by_target[b] as Array).append("Non-aggression pact with %s (%d turns)." % [a, NON_AGGRESSION_DURATION_TURNS])
+			(lines_by_target[b] as Array).append("Non-aggression pact with %s (%d turns)." % [_ziskej_jmeno_statu_podle_tagu(a), NON_AGGRESSION_DURATION_TURNS])
 
 	for target_tag in lines_by_target.keys():
 		var lines = lines_by_target[target_tag] as Array
