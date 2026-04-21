@@ -94,9 +94,11 @@ var _ai_debug_filter_row: HBoxContainer
 var _ai_debug_filter_all_btn: Button
 var _ai_debug_filter_mine_btn: Button
 var _ai_debug_filter_other_btn: Button
+var _ai_debug_mode_option: OptionButton
 var _ai_debug_collapsed: bool = false
 var _ai_debug_expanded: bool = false
 var _ai_debug_filter_mode: int = 0
+var _ai_debug_section_mode: int = 0
 
 # --- NEW: Action nodes ---
 @onready var action_separator = $OverviewPanel/VBoxContainer/ActionSeparator
@@ -159,6 +161,10 @@ var _showing_loan_notes: bool = false
 var _pause_menu_panel: PopupPanel
 var _pause_confirm_dialog: ConfirmationDialog
 var _pause_pending_action: String = ""
+var _pause_spectate_btn: Button = null
+var _spectate_mode_enabled: bool = false
+var _spectate_auto_turn_cooldown: float = 0.0
+var _spectate_focus_index: int = 0
 var _overview_metric_rows: Dictionary = {}
 var _overview_metric_deltas: Dictionary = {}
 var _overview_metric_delta_holders: Dictionary = {}
@@ -320,14 +326,18 @@ var _zpravy_historie_expanded: bool = false
 var _diplomacy_popup_dismissed_signature: String = ""
 var _turn_loading_overlay: ColorRect
 var _turn_loading_label: Label
+var _turn_loading_tip_label: Label
 var _turn_loading_anim_time: float = 0.0
 var _turn_loading_anim_step: int = 0
 var _turn_loading_active: bool = false
 var _turn_loading_suppressed: bool = false
+var _turn_loading_tip_anim_time: float = 0.0
+var _turn_loading_tip_step: int = 0
 var _debug_turn_start_ms: int = -1
 var _debug_last_turn_ms: int = -1
 var _debug_turn_total_ms: int = 0
 var _debug_turn_samples: int = 0
+var _debug_turn_recent_ms: Array = []
 var _country_overview_stats_cache: Dictionary = {}
 var _system_battle_panel: PanelContainer = null
 var _system_battle_left_flag: TextureRect = null
@@ -356,10 +366,26 @@ const MAIN_MENU_SCENE_PATH := "res://scenes/MainMenu.tscn"
 const SETTINGS_FILE_PATH := "user://settings.cfg"
 const IDEOLOGY_UI_ORDER := ["demokracie", "kralovstvi", "autokracie", "komunismus", "nacismus", "fasismus"]
 const TURN_LOADING_FRAMES := ["Zpracovavam tah", "Zpracovavam tah.", "Zpracovavam tah..", "Zpracovavam tah..."]
+const TURN_LOADING_TIPS := [
+	"Pripravuji ekonomicky prehled statu...",
+	"Synchronizuji diplomacii a valecne vztahy...",
+	"Aktualizuji armady, laboratore a produkci...",
+	"Cistim fronty udalosti a zpravy pro dalsi tah..."
+]
+const TURN_LOADING_TIP_STEP_SEC := 1.8
 const SYSTEM_MESSAGE_TURN_AUTO_ACK_MS := 7000
+const TURN_DEBUG_RECENT_LIMIT := 24
+const TURN_DEBUG_SLOW_THRESHOLD_MS := 900
+const SPECTATE_AUTO_NEXT_TURN_SEC := 0.45
 const SYSTEM_BATTLE_PANEL_HEIGHT := 118.0
 const SYSTEM_BATTLE_FLAG_SIZE := Vector2(46.0, 30.0)
 const SYSTEM_MESSAGE_META_ROW_HEIGHT := 24.0
+const AI_DEBUG_SECTION_ALL := 0
+const AI_DEBUG_SECTION_AI := 1
+const AI_DEBUG_SECTION_LATENCY := 2
+const AI_DEBUG_SECTION_ECONOMY := 3
+const AI_DEBUG_SECTION_DIPLOMACY := 4
+const AI_DEBUG_SECTION_TURN_PIPELINE := 5
 
 func _resolve_flag_texture(owner_tag: String, ideologie: String):
 	var cisty_tag = owner_tag.strip_edges().to_upper()
@@ -619,16 +645,30 @@ func _ready():
 
 # Per-frame runtime logic.
 func _process(_delta: float) -> void:
+	if _spectate_mode_enabled and not _turn_loading_active and GameManager and not bool(GameManager.zpracovava_se_tah):
+		_spectate_auto_turn_cooldown -= _delta
+		if _spectate_auto_turn_cooldown <= 0.0 and _lze_automaticky_ukoncit_tah_ve_spectate():
+			_spectate_auto_turn_cooldown = SPECTATE_AUTO_NEXT_TURN_SEC
+			if GameManager.has_method("pozaduj_ukonceni_kola"):
+				GameManager.pozaduj_ukonceni_kola()
+			elif GameManager.has_method("ukonci_kolo"):
+				GameManager.ukonci_kolo()
+
 	if _research_dialog and _research_dialog.visible:
 		if panel == null or not panel.visible or research_btn == null or not research_btn.visible:
 			_zavri_vyzkum_dialog()
 
 	if _turn_loading_active:
 		_turn_loading_anim_time += _delta
+		_turn_loading_tip_anim_time += _delta
 		if _turn_loading_anim_time >= 0.2 and _turn_loading_label:
 			_turn_loading_anim_time = 0.0
 			_turn_loading_anim_step = (_turn_loading_anim_step + 1) % TURN_LOADING_FRAMES.size()
 			_turn_loading_label.text = TURN_LOADING_FRAMES[_turn_loading_anim_step]
+		if _turn_loading_tip_anim_time >= TURN_LOADING_TIP_STEP_SEC and _turn_loading_tip_label:
+			_turn_loading_tip_anim_time = 0.0
+			_turn_loading_tip_step = (_turn_loading_tip_step + 1) % TURN_LOADING_TIPS.size()
+			_turn_loading_tip_label.text = TURN_LOADING_TIPS[_turn_loading_tip_step]
 
 	if not _ideology_dropdown_open:
 		if not _turn_loading_active:
@@ -669,6 +709,19 @@ func _vytvor_turn_loading_overlay() -> void:
 	_turn_loading_label.add_theme_color_override("font_color", Color(0.95, 0.98, 1.0, 0.95))
 	_turn_loading_overlay.add_child(_turn_loading_label)
 
+	_turn_loading_tip_label = Label.new()
+	_turn_loading_tip_label.name = "TurnLoadingTipLabel"
+	_turn_loading_tip_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_turn_loading_tip_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_turn_loading_tip_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	_turn_loading_tip_label.offset_top = 28.0
+	_turn_loading_tip_label.offset_bottom = 58.0
+	_turn_loading_tip_label.custom_minimum_size = Vector2(720.0, 24.0)
+	_turn_loading_tip_label.text = TURN_LOADING_TIPS[0]
+	_turn_loading_tip_label.add_theme_font_size_override("font_size", 15)
+	_turn_loading_tip_label.add_theme_color_override("font_color", Color(0.78, 0.86, 0.96, 0.95))
+	_turn_loading_overlay.add_child(_turn_loading_tip_label)
+
 # Triggered by a UI/game signal.
 func _on_zpracovani_tahu_zmeneno(aktivni: bool) -> void:
 	var now_ms := Time.get_ticks_msec()
@@ -678,19 +731,107 @@ func _on_zpracovani_tahu_zmeneno(aktivni: bool) -> void:
 		_debug_last_turn_ms = max(0, now_ms - _debug_turn_start_ms)
 		_debug_turn_total_ms += _debug_last_turn_ms
 		_debug_turn_samples += 1
+		_debug_turn_recent_ms.append(_debug_last_turn_ms)
+		if _debug_turn_recent_ms.size() > TURN_DEBUG_RECENT_LIMIT:
+			_debug_turn_recent_ms.pop_front()
+		if _debug_last_turn_ms >= TURN_DEBUG_SLOW_THRESHOLD_MS:
+			print("[TurnDebug] Slow turn detected: ", _debug_last_turn_ms, " ms (threshold ", TURN_DEBUG_SLOW_THRESHOLD_MS, " ms)")
 		_debug_turn_start_ms = -1
 
 	_turn_loading_active = aktivni
 	_turn_loading_anim_time = 0.0
 	_turn_loading_anim_step = 0
+	_turn_loading_tip_anim_time = 0.0
+	_turn_loading_tip_step = 0
 	if _turn_loading_overlay:
 		_turn_loading_overlay.visible = aktivni and not _turn_loading_suppressed
 	if _turn_loading_label:
 		_turn_loading_label.text = TURN_LOADING_FRAMES[0]
+	if _turn_loading_tip_label:
+		_turn_loading_tip_label.text = TURN_LOADING_TIPS[0]
 	if not aktivni and not _pending_loan_notes.is_empty():
 		call_deferred("_zobraz_pending_loan_notes")
+	if not aktivni and _je_spectate_observer_mode():
+		call_deferred("_spectate_focus_next_ai_state")
 	if aktivni:
 		set_process(true)
+
+func _lze_automaticky_ukoncit_tah_ve_spectate() -> bool:
+	if _settings_dialog and _settings_dialog.visible:
+		return false
+	if _save_dialog and _save_dialog.visible:
+		return false
+	if _load_dialog and _load_dialog.visible:
+		return false
+	if _trade_dialog and _trade_dialog.visible:
+		return false
+	if _peace_dialog and _peace_dialog.visible:
+		return false
+	if diplomacy_request_popup and diplomacy_request_popup.visible:
+		return false
+	if system_message_popup and system_message_popup.visible:
+		return false
+	if _pause_menu_panel and _pause_menu_panel.visible:
+		return false
+	return true
+
+func _je_spectate_observer_mode() -> bool:
+	return _spectate_mode_enabled
+
+func _ziskej_spectate_ai_staty() -> Array:
+	var out: Array = []
+	if not GameManager:
+		return out
+	var human_set: Dictionary = {}
+	for tag_any in (GameManager.lokalni_hraci_staty as Array):
+		var ht = str(tag_any).strip_edges().to_upper()
+		if ht != "":
+			human_set[ht] = true
+	if human_set.is_empty():
+		var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
+		if player_tag != "":
+			human_set[player_tag] = true
+	for p_id in GameManager.map_data:
+		var d = GameManager.map_data[p_id] as Dictionary
+		var owner = str(d.get("owner", "")).strip_edges().to_upper()
+		if owner == "" or owner == "SEA":
+			continue
+		if human_set.has(owner):
+			continue
+		if not out.has(owner):
+			out.append(owner)
+	out.sort()
+	return out
+
+func _spectate_focus_next_ai_state() -> void:
+	if not _je_spectate_observer_mode():
+		return
+	var ai_states = _ziskej_spectate_ai_staty()
+	if ai_states.is_empty():
+		return
+	_spectate_focus_index = _spectate_focus_index % ai_states.size()
+	var target_tag = str(ai_states[_spectate_focus_index])
+	_spectate_focus_index = (_spectate_focus_index + 1) % ai_states.size()
+	_otevri_prehled_statu_podle_tagu(target_tag)
+
+func _spocitej_turn_debug_statistiky(samples: Array) -> Dictionary:
+	if samples.is_empty():
+		return {"avg": 0, "min": 0, "max": 0, "p95": 0}
+	var sorted: Array = []
+	var total := 0.0
+	for val_any in samples:
+		var ms = int(val_any)
+		sorted.append(ms)
+		total += float(ms)
+	sorted.sort()
+	var idx95 = int(ceil(float(sorted.size()) * 0.95)) - 1
+	idx95 = clampi(idx95, 0, sorted.size() - 1)
+	return {
+		"avg": int(round(total / float(sorted.size()))),
+		"min": int(sorted[0]),
+		"max": int(sorted[sorted.size() - 1]),
+		"p95": int(sorted[idx95])
+	}
 
 # Updates what the player sees.
 func _zobraz_pending_loan_notes() -> void:
@@ -2205,6 +2346,13 @@ func _zajisti_ai_debug_overview_labely() -> void:
 			_ai_debug_filter_other_btn.pressed.connect(_on_ai_debug_filter_other_pressed)
 		_ai_debug_filter_row.add_child(_ai_debug_filter_other_btn)
 
+		_ai_debug_mode_option = OptionButton.new()
+		_ai_debug_mode_option.name = "ModeOption"
+		_ai_debug_mode_option.custom_minimum_size = Vector2(170, 0)
+		_ai_debug_mode_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_ai_debug_filter_row.add_child(_ai_debug_mode_option)
+		_zajisti_ai_debug_mode_dropdown()
+
 		var margin := MarginContainer.new()
 		margin.name = "BodyMargin"
 		margin.add_theme_constant_override("margin_left", 12)
@@ -2237,6 +2385,8 @@ func _zajisti_ai_debug_overview_labely() -> void:
 		_ai_debug_filter_all_btn = ai_debug_panel.get_node_or_null("RootVBox/FilterRow/FilterAllButton") as Button
 		_ai_debug_filter_mine_btn = ai_debug_panel.get_node_or_null("RootVBox/FilterRow/FilterMineButton") as Button
 		_ai_debug_filter_other_btn = ai_debug_panel.get_node_or_null("RootVBox/FilterRow/FilterOtherButton") as Button
+		_ai_debug_mode_option = ai_debug_panel.get_node_or_null("RootVBox/FilterRow/ModeOption") as OptionButton
+		_zajisti_ai_debug_mode_dropdown()
 
 	_pozicuj_ai_debug_panel()
 	_aktualizuj_ai_debug_filter_tlacitka()
@@ -2269,7 +2419,7 @@ func _pozicuj_ai_debug_panel() -> void:
 		_ai_debug_max_btn.text = "[]" if not _ai_debug_expanded else "<>"
 	if ai_debug_label:
 		ai_debug_label.visible = not _ai_debug_collapsed
-		ai_debug_label.custom_minimum_size = Vector2(0, max(240.0, height - 56.0))
+		ai_debug_label.custom_minimum_size = Vector2(0, max(220.0, height - 92.0))
 	ai_debug_panel.offset_left = -width - side_margin
 	ai_debug_panel.offset_top = y_pos
 	ai_debug_panel.offset_right = -side_margin
@@ -2294,6 +2444,237 @@ func _nastav_ai_debug_filter_mode(mode: int) -> void:
 		_aktualizuj_ai_debug_overview(target_tag, _je_hracuv_tag(target_tag))
 	else:
 		ai_debug_panel.hide()
+
+func _zajisti_ai_debug_mode_dropdown() -> void:
+	if _ai_debug_filter_row == null:
+		return
+	if _ai_debug_mode_option == null:
+		_ai_debug_mode_option = _ai_debug_filter_row.get_node_or_null("ModeOption") as OptionButton
+	if _ai_debug_mode_option == null:
+		_ai_debug_mode_option = OptionButton.new()
+		_ai_debug_mode_option.name = "ModeOption"
+		_ai_debug_mode_option.custom_minimum_size = Vector2(170, 0)
+		_ai_debug_mode_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_ai_debug_filter_row.add_child(_ai_debug_mode_option)
+	_ai_debug_mode_option.clear()
+	_ai_debug_mode_option.add_item("All", AI_DEBUG_SECTION_ALL)
+	_ai_debug_mode_option.add_item("AI", AI_DEBUG_SECTION_AI)
+	_ai_debug_mode_option.add_item("Latency", AI_DEBUG_SECTION_LATENCY)
+	_ai_debug_mode_option.add_item("Economy", AI_DEBUG_SECTION_ECONOMY)
+	_ai_debug_mode_option.add_item("Diplomacy", AI_DEBUG_SECTION_DIPLOMACY)
+	_ai_debug_mode_option.add_item("Turn pipeline", AI_DEBUG_SECTION_TURN_PIPELINE)
+	var selected_idx := 0
+	for i in range(_ai_debug_mode_option.item_count):
+		if _ai_debug_mode_option.get_item_id(i) == _ai_debug_section_mode:
+			selected_idx = i
+			break
+	_ai_debug_mode_option.select(selected_idx)
+	if not _ai_debug_mode_option.item_selected.is_connected(_on_ai_debug_mode_selected):
+		_ai_debug_mode_option.item_selected.connect(_on_ai_debug_mode_selected)
+
+func _on_ai_debug_mode_selected(index: int) -> void:
+	if _ai_debug_mode_option == null:
+		return
+	_nastav_ai_debug_sekci_mode(_ai_debug_mode_option.get_item_id(index))
+
+func _nastav_ai_debug_sekci_mode(mode: int) -> void:
+	_ai_debug_section_mode = clampi(mode, AI_DEBUG_SECTION_ALL, AI_DEBUG_SECTION_TURN_PIPELINE)
+	if _ai_debug_mode_option:
+		for i in range(_ai_debug_mode_option.item_count):
+			if _ai_debug_mode_option.get_item_id(i) == _ai_debug_section_mode:
+				_ai_debug_mode_option.select(i)
+				break
+	var target_tag = _vyres_debug_panel_tag(current_viewed_tag)
+	if target_tag != "":
+		_aktualizuj_ai_debug_overview(target_tag, _je_hracuv_tag(target_tag))
+
+func _ziskej_ai_debug_nazev_sekce(mode: int) -> String:
+	match mode:
+		AI_DEBUG_SECTION_AI:
+			return "AI"
+		AI_DEBUG_SECTION_LATENCY:
+			return "Latency"
+		AI_DEBUG_SECTION_ECONOMY:
+			return "Economy"
+		AI_DEBUG_SECTION_DIPLOMACY:
+			return "Diplomacy"
+		AI_DEBUG_SECTION_TURN_PIPELINE:
+			return "Turn pipeline"
+		_:
+			return "All"
+
+func _ziskej_ai_debug_nazev_filtru() -> String:
+	match _ai_debug_filter_mode:
+		1:
+			return "Moje"
+		2:
+			return "Ostatni"
+		_:
+			return "Vse"
+
+func _debug_append_ai_lines(lines: Array[String], snap: Dictionary, enemies_text: String, goal_target_text: String, plan_target_text: String, recruit_targets: Array) -> void:
+	var enemies = snap.get("enemies", []) as Array
+	lines.append("[b]AI diagnostics[/b]")
+	lines.append("Treasury: %s | Net income: %s/turn" % [
+		_format_money_auto(float(snap.get("treasury", 0.0)), 2),
+		_format_money_auto(float(snap.get("net_income", 0.0)), 2)
+	])
+	lines.append("Pressure: %.1f | Exhaustion: %.0f%% | Provinces: %d" % [
+		float(snap.get("pressure", 0.0)),
+		float(snap.get("exhaustion", 0.0)) * 100.0,
+		int(snap.get("owned_provinces", 0))
+	])
+	lines.append("At war: %s | Enemies (%d): %s" % [
+		"yes" if bool(snap.get("at_war", false)) else "no",
+		enemies.size(),
+		enemies_text
+	])
+	lines.append("Goal: %s -> %s" % [str(snap.get("goal_type", "none")), goal_target_text])
+	lines.append("Plan: %s -> %s" % [str(snap.get("plan_phase", "staging")), plan_target_text])
+	lines.append("Profile: aggr %.2f | atk %.2f | def %.2f | recruit targets %d" % [
+		float(snap.get("aggression", 0.5)),
+		float(snap.get("attack_bias", 0.5)),
+		float(snap.get("defense_bias", 0.5)),
+		recruit_targets.size()
+	])
+
+func _debug_append_latency_lines(lines: Array[String], turn_last_text: String, turn_avg_text: String, turn_recent_text: String, turn_history: Array) -> void:
+	lines.append("[b]Latency diagnostics[/b]")
+	lines.append("Turn state: %s | loading overlay: %s" % [
+		"processing" if _turn_loading_active else "idle",
+		"visible" if (_turn_loading_overlay and _turn_loading_overlay.visible) else "hidden"
+	])
+	lines.append("Turn response: last %s | avg %s | samples %d" % [turn_last_text, turn_avg_text, _debug_turn_samples])
+	lines.append("Turn response (recent %d): %s" % [_debug_turn_recent_ms.size(), turn_recent_text])
+	if turn_history.is_empty():
+		lines.append("No completed turn profiles yet.")
+		return
+	var totals: Array = []
+	for entry_any in turn_history:
+		var entry = entry_any as Dictionary
+		totals.append(int(entry.get("total_ms", 0)))
+	var totals_stats = _spocitej_turn_debug_statistiky(totals)
+	lines.append("History totals (%d): avg %d | min %d | max %d | p95 %d ms" % [
+		totals.size(),
+		int(totals_stats.get("avg", 0)),
+		int(totals_stats.get("min", 0)),
+		int(totals_stats.get("max", 0)),
+		int(totals_stats.get("p95", 0))
+	])
+
+func _debug_append_economy_lines(lines: Array[String], snap: Dictionary, turn_history: Array) -> void:
+	lines.append("[b]Economy diagnostics[/b]")
+	lines.append("Treasury: %s | Profit income: %s/turn" % [
+		_format_money_auto(float(snap.get("treasury", 0.0)), 2),
+		_format_money_auto(float(snap.get("profit_income", 0.0)), 2)
+	])
+	lines.append("Spend: recruit %s | lab %s | build %s | other %s | total %s" % [
+		_format_money_auto(float(snap.get("spend_recruit", 0.0)), 2),
+		_format_money_auto(float(snap.get("spend_lab", 0.0)), 2),
+		_format_money_auto(float(snap.get("spend_build", 0.0)), 2),
+		_format_money_auto(float(snap.get("spend_other", 0.0)), 2),
+		_format_money_auto(float(snap.get("spend_total", 0.0)), 2)
+	])
+	if turn_history.is_empty():
+		lines.append("No turn history available for economy events.")
+		return
+	var last_entry = turn_history[turn_history.size() - 1] as Dictionary
+	var last_events = last_entry.get("events", []) as Array
+	var shown := 0
+	for event_any in last_events:
+		var event_text = str(event_any).strip_edges()
+		if event_text == "":
+			continue
+		if not (event_text.contains("income_event") or event_text.contains("expense ") or event_text.contains("delta=")):
+			continue
+		if shown == 0:
+			lines.append("Recent money events (last turn):")
+		lines.append("  - %s" % event_text)
+		shown += 1
+		if shown >= 10:
+			break
+	if shown == 0:
+		lines.append("Recent money events (last turn): none")
+
+func _debug_append_diplomacy_lines(lines: Array[String], resolved_tag: String, pair_war_text: String) -> void:
+	lines.append("[b]Diplomacy diagnostics[/b]")
+	lines.append("Player vs viewed country at war: %s" % pair_war_text)
+	var active_wars := 0
+	if GameManager and GameManager.has_method("jsou_ve_valce"):
+		var seen_war: Dictionary = {}
+		for p_id in GameManager.map_data:
+			var d = GameManager.map_data[p_id] as Dictionary
+			var other = str(d.get("owner", "")).strip_edges().to_upper()
+			if other == "" or other == "SEA" or other == resolved_tag:
+				continue
+			if seen_war.has(other):
+				continue
+			seen_war[other] = true
+			if bool(GameManager.jsou_ve_valce(resolved_tag, other)):
+				active_wars += 1
+	lines.append("Viewed country active wars: %d" % active_wars)
+	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper() if GameManager else ""
+	var queued_count := 0
+	var queued_requests: Array = []
+	if GameManager and player_tag != "" and GameManager.has_method("ziskej_pocet_cekajicich_diplomatickych_zadosti"):
+		queued_count = int(GameManager.ziskej_pocet_cekajicich_diplomatickych_zadosti(player_tag))
+	if GameManager and player_tag != "" and GameManager.has_method("ziskej_cekajici_diplomaticke_zadosti"):
+		queued_requests = GameManager.ziskej_cekajici_diplomaticke_zadosti(player_tag) as Array
+	lines.append("Pending diplomatic requests (player): %d" % queued_count)
+	lines.append("Popup queue cards: %d | queue panel rows: %d" % [_diplomacy_queue_preview_cards.size(), _queue_preview_rows])
+	lines.append("Request popup visible: %s" % ("yes" if (diplomacy_request_popup and diplomacy_request_popup.visible) else "no"))
+	if not queued_requests.is_empty():
+		lines.append("Top queued requests:")
+		var to_show = min(5, queued_requests.size())
+		for i in range(to_show):
+			var req = queued_requests[i] as Dictionary
+			var from_tag = str(req.get("from", "")).strip_edges().to_upper()
+			var req_type = str(req.get("type", "unknown"))
+			lines.append("  - %s -> %s" % [_ziskej_jmeno_statu_podle_tagu(from_tag), req_type])
+
+func _debug_append_turn_pipeline_lines(lines: Array[String], turn_history: Array, snap: Dictionary) -> void:
+	lines.append("[b]Turn pipeline[/b]")
+	lines.append("Processing now: %s" % ("yes" if (GameManager and bool(GameManager.zpracovava_se_tah)) else "no"))
+	if GameManager and "_queued_end_turn_requests" in GameManager:
+		lines.append("Queued end-turn requests: %d" % int(GameManager._queued_end_turn_requests))
+	if turn_history.is_empty():
+		lines.append("No turn history yet.")
+		return
+	var latest = turn_history[turn_history.size() - 1] as Dictionary
+	var phases = latest.get("phases", {}) as Dictionary
+	lines.append("Latest turn %d total %d ms" % [int(latest.get("turn", -1)), int(latest.get("total_ms", 0))])
+	lines.append("switch %d | armies %d | finance %d | growth %d | ai %d | popups %d | ui %d" % [
+		int(phases.get("switch_player", 0)),
+		int(phases.get("armies", 0)),
+		int(phases.get("finance", 0)),
+		int(phases.get("growth", 0)),
+		int(phases.get("ai", 0)),
+		int(phases.get("popups", 0)),
+		int(phases.get("ui", 0))
+	])
+	var slow_phase := "none"
+	var slow_ms := -1
+	for key_any in phases.keys():
+		var phase_key = str(key_any)
+		var phase_ms = int(phases.get(phase_key, 0))
+		if phase_ms > slow_ms:
+			slow_ms = phase_ms
+			slow_phase = phase_key
+	lines.append("Slowest phase: %s (%d ms)" % [slow_phase, max(0, slow_ms)])
+	var latest_events = latest.get("events", []) as Array
+	if latest_events.is_empty():
+		lines.append("Turn events: none")
+	else:
+		lines.append("Turn events (%d):" % latest_events.size())
+		var cap = min(12, latest_events.size())
+		for i in range(cap):
+			lines.append("  - %s" % str(latest_events[i]))
+	var profile = snap.get("turn_profile", {}) as Dictionary
+	if not profile.is_empty():
+		lines.append("Profile snapshot turn %d total %d ms" % [
+			int(profile.get("turn", -1)),
+			int(profile.get("total_ms", 0))
+		])
 
 # Refreshes cached/UI state.
 func _aktualizuj_ai_debug_filter_tlacitka() -> void:
@@ -2422,79 +2803,48 @@ func _aktualizuj_ai_debug_overview(owner_tag: String, je_hracuv_stat: bool) -> v
 	var turn_state = "processing" if _turn_loading_active else "idle"
 	var turn_last_text = "n/a" if _debug_last_turn_ms < 0 else "%d ms" % _debug_last_turn_ms
 	var turn_avg_text = "n/a"
+	var turn_recent_text = "n/a"
+	var turn_history = snap.get("turn_history", []) as Array
 	var viewed_name = _ziskej_jmeno_statu_podle_tagu(str(snap.get("state", owner_tag)))
 	if _ai_debug_title_label:
-		_ai_debug_title_label.text = "Debug: %s" % viewed_name
+		_ai_debug_title_label.text = "Debug: %s [%s]" % [viewed_name, _ziskej_ai_debug_nazev_sekce(_ai_debug_section_mode)]
 	if _debug_turn_samples > 0:
 		turn_avg_text = "%d ms" % int(round(float(_debug_turn_total_ms) / float(_debug_turn_samples)))
+	if not _debug_turn_recent_ms.is_empty():
+		var t_stats = _spocitej_turn_debug_statistiky(_debug_turn_recent_ms)
+		turn_recent_text = "avg %d | min %d | max %d | p95 %d ms" % [
+			int(t_stats.get("avg", 0)),
+			int(t_stats.get("min", 0)),
+			int(t_stats.get("max", 0)),
+			int(t_stats.get("p95", 0))
+		]
 
 	lines.append("[b]Debug mode[/b]  %s (%s)" % [viewed_name, str(snap.get("state", owner_tag))])
+	lines.append("Section: %s | Filter: %s" % [_ziskej_ai_debug_nazev_sekce(_ai_debug_section_mode), _ziskej_ai_debug_nazev_filtru()])
 	lines.append("FPS: %d | Turn state: %s" % [fps_now, turn_state])
-	lines.append("Player vs viewed country at war: %s" % pair_war_text)
-	lines.append("Turn response: last %s | avg %s | samples %d" % [
-		turn_last_text,
-		turn_avg_text,
-		_debug_turn_samples
-	])
 	lines.append("------------------------------")
-	lines.append("[b]AI diagnostics[/b]")
-	lines.append("Treasury: %s | Net income: %s/turn" % [
-		_format_money_auto(float(snap.get("treasury", 0.0)), 2),
-		_format_money_auto(float(snap.get("net_income", 0.0)), 2)
-	])
-	lines.append("Pressure: %.1f | Exhaustion: %.0f%% | Provinces: %d" % [
-		float(snap.get("pressure", 0.0)),
-		float(snap.get("exhaustion", 0.0)) * 100.0,
-		int(snap.get("owned_provinces", 0))
-	])
-	lines.append("At war: %s | Enemies (%d): %s" % [
-		"yes" if bool(snap.get("at_war", false)) else "no",
-		enemies.size(),
-		enemies_text
-	])
-	lines.append("Goal: %s -> %s" % [str(snap.get("goal_type", "none")), goal_target_text])
-	lines.append("Plan: %s -> %s" % [str(snap.get("plan_phase", "staging")), plan_target_text])
-	lines.append("Profile: aggr %.2f | atk %.2f | def %.2f | recruit targets %d" % [
-		float(snap.get("aggression", 0.5)),
-		float(snap.get("attack_bias", 0.5)),
-		float(snap.get("defense_bias", 0.5)),
-		recruit_targets.size()
-	])
-	lines.append("Spend: recruit %s | lab %s | build %s | other %s | total %s" % [
-		_format_money_auto(float(snap.get("spend_recruit", 0.0)), 2),
-		_format_money_auto(float(snap.get("spend_lab", 0.0)), 2),
-		_format_money_auto(float(snap.get("spend_build", 0.0)), 2),
-		_format_money_auto(float(snap.get("spend_other", 0.0)), 2),
-		_format_money_auto(float(snap.get("spend_total", 0.0)), 2)
-	])
 
-	var turn_history = snap.get("turn_history", []) as Array
-	if not turn_history.is_empty():
-		lines.append("------------------------------")
-		lines.append("[b]Turn history[/b]")
-		for entry_any in turn_history:
-			var entry = entry_any as Dictionary
-			var phases = entry.get("phases", {}) as Dictionary
-			lines.append("Turn %d | total %d ms | switch %d | armies %d | finance %d | growth %d | ai %d | popups %d | ui %d" % [
-				int(entry.get("turn", -1)),
-				int(entry.get("total_ms", 0)),
-				int(phases.get("switch_player", 0)),
-				int(phases.get("armies", 0)),
-				int(phases.get("finance", 0)),
-				int(phases.get("growth", 0)),
-				int(phases.get("ai", 0)),
-				int(phases.get("popups", 0)),
-				int(phases.get("ui", 0))
-			])
-			var events = entry.get("events", []) as Array
-			if events.is_empty():
-				lines.append("  no debug events")
-				continue
-			for event_any in events:
-				var event_text = str(event_any).strip_edges()
-				if event_text == "":
-					continue
-				lines.append("  - %s" % event_text)
+	match _ai_debug_section_mode:
+		AI_DEBUG_SECTION_AI:
+			_debug_append_ai_lines(lines, snap, enemies_text, goal_target_text, plan_target_text, recruit_targets)
+		AI_DEBUG_SECTION_LATENCY:
+			_debug_append_latency_lines(lines, turn_last_text, turn_avg_text, turn_recent_text, turn_history)
+		AI_DEBUG_SECTION_ECONOMY:
+			_debug_append_economy_lines(lines, snap, turn_history)
+		AI_DEBUG_SECTION_DIPLOMACY:
+			_debug_append_diplomacy_lines(lines, resolved_tag, pair_war_text)
+		AI_DEBUG_SECTION_TURN_PIPELINE:
+			_debug_append_turn_pipeline_lines(lines, turn_history, snap)
+		_:
+			_debug_append_ai_lines(lines, snap, enemies_text, goal_target_text, plan_target_text, recruit_targets)
+			lines.append("------------------------------")
+			_debug_append_latency_lines(lines, turn_last_text, turn_avg_text, turn_recent_text, turn_history)
+			lines.append("------------------------------")
+			_debug_append_economy_lines(lines, snap, turn_history)
+			lines.append("------------------------------")
+			_debug_append_diplomacy_lines(lines, resolved_tag, pair_war_text)
+			lines.append("------------------------------")
+			_debug_append_turn_pipeline_lines(lines, turn_history, snap)
 
 	ai_debug_label.text = "\n".join(lines)
 	ai_debug_label.scroll_to_line(0)
@@ -2725,9 +3075,9 @@ func _vytvor_vyzkum_dialog() -> void:
 
 	var trash_icon = Label.new()
 	trash_icon.name = "TrashIcon"
-	trash_icon.text = "Ă„â€ÄąĹźĂ˘â‚¬â€ťĂ˘â‚¬Â"
+	trash_icon.text = "BIN"
 	trash_icon.add_theme_color_override("font_color", Color(1.0, 0.89, 0.89, 1.0))
-	trash_icon.add_theme_font_size_override("font_size", 24)
+	trash_icon.add_theme_font_size_override("font_size", 16)
 	trash_icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	trash_icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	trash_icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -4383,8 +4733,8 @@ func _vytvor_pause_menu() -> void:
 	_pause_menu_panel.name = "PauseMenu"
 	_pause_menu_panel.wrap_controls = false
 	_pause_menu_panel.unresizable = true
-	_pause_menu_panel.min_size = Vector2i(340, 358)
-	_pause_menu_panel.size = Vector2(340, 358)
+	_pause_menu_panel.min_size = Vector2i(360, 410)
+	_pause_menu_panel.size = Vector2(360, 410)
 	add_child(_pause_menu_panel)
 
 	var panel_style = StyleBoxFlat.new()
@@ -4436,6 +4786,13 @@ func _vytvor_pause_menu() -> void:
 		_b.custom_minimum_size = Vector2(0, 44)
 		_b.pressed.connect(_bd[1])
 		vbox.add_child(_b)
+
+	_pause_spectate_btn = Button.new()
+	_pause_spectate_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_pause_spectate_btn.custom_minimum_size = Vector2(0, 40)
+	_pause_spectate_btn.pressed.connect(_on_pause_toggle_spectate_pressed)
+	vbox.add_child(_pause_spectate_btn)
+	_obnov_text_spectate_tlacitka()
 
 	_pause_confirm_dialog = ConfirmationDialog.new()
 	_pause_confirm_dialog.wrap_controls = false
@@ -6919,6 +7276,7 @@ func _prepni_pause_menu() -> void:
 	if _pause_menu_panel.visible:
 		_pause_menu_panel.hide()
 	else:
+		_obnov_text_spectate_tlacitka()
 		_pozicuj_pause_menu()
 		_pause_menu_panel.show()
 
@@ -7553,7 +7911,7 @@ func _pridej_radek_load_slotu(slot_name: String, display_name: String) -> void:
 	_load_slot_row_buttons[slot_name] = select_btn
 
 	var delete_btn = Button.new()
-	delete_btn.text = "Ă„â€ÄąĹźĂ˘â‚¬â€ťĂ˘â‚¬Â"
+	delete_btn.text = "X"
 	delete_btn.custom_minimum_size = Vector2(34, 0)
 	delete_btn.focus_mode = Control.FOCUS_NONE
 	delete_btn.tooltip_text = "Delete save slot"
@@ -7642,6 +8000,17 @@ func _smaz_load_slot(slot_name: String) -> void:
 func _on_pause_resume_pressed() -> void:
 	_zavri_pause_menu()
 
+func _obnov_text_spectate_tlacitka() -> void:
+	if _pause_spectate_btn == null:
+		return
+	_pause_spectate_btn.text = "Spectate mode: ON" if _spectate_mode_enabled else "Spectate mode: OFF"
+	_pause_spectate_btn.tooltip_text = "Automatically ends turns when no popup blocks gameplay."
+
+func _on_pause_toggle_spectate_pressed() -> void:
+	_spectate_mode_enabled = not _spectate_mode_enabled
+	_spectate_auto_turn_cooldown = 0.0
+	_obnov_text_spectate_tlacitka()
+
 # Event handler for user or game actions.
 func _on_pause_options_pressed() -> void:
 	_zavri_pause_menu()
@@ -7718,19 +8087,22 @@ func _aktualizuj_pozice_popupu():
 	_pozicuj_tlacitko_zprav()
 
 	if diplomacy_request_popup:
-		var req_w = clamp(viewport_size.x * 0.50, 500.0, 820.0)
+		var req_w = clamp(viewport_size.x * 0.50, 420.0, 820.0)
 		var req_text_len = 0
 		if popup_request_text:
 			req_text_len = popup_request_text.text.length()
-			popup_request_text.clip_text = false
+			popup_request_text.clip_text = true
+			popup_request_text.autowrap_mode = TextServer.AUTOWRAP_OFF
 		var req_lines = max(1, int(ceil(float(req_text_len) / max(24.0, req_w / 10.0))))
-		var req_h = clamp(34.0 + float(req_lines) * 14.0, 48.0, 78.0)
+		var req_h = clamp(34.0 + float(req_lines) * 14.0, 48.0, 72.0)
+		req_h = min(req_h, max(48.0, viewport_size.y * 0.18))
 		diplomacy_request_popup.position = Vector2((viewport_size.x - req_w) * 0.5, top_y)
 		diplomacy_request_popup.size = Vector2(req_w, req_h)
 		_rozmistit_vizual_fronty_diplomacii()
 		if _queue_preview_panel:
 			var rows = max(1, _queue_preview_rows)
-			var panel_h = clamp(56.0 + float(rows) * 36.0, 160.0, 520.0)
+			var panel_h = clamp(56.0 + float(rows) * 36.0, 120.0, 520.0)
+			panel_h = min(panel_h, max(120.0, viewport_size.y - top_y - req_h - 28.0))
 			var panel_w = req_w
 			_queue_preview_panel.position = Vector2((viewport_size.x - panel_w) * 0.5, top_y + req_h + 6.0)
 			_queue_preview_panel.size = Vector2(panel_w, panel_h)
@@ -7937,9 +8309,18 @@ func _aktualizuj_popup_diplomatickych_zadosti():
 		popup_request_flag.texture = _resolve_flag_texture(from_tag, "")
 	if popup_request_text:
 		var first_summary = _formatuj_text_zadosti(first_req)
-		if first_summary.length() > 170:
-			first_summary = first_summary.substr(0, 167) + "..."
-		popup_request_text.text = "%s | %s (%d)" % [_ziskej_jmeno_statu_podle_tagu(from_tag), first_summary, pending_count]
+		if first_summary.length() > 92:
+			first_summary = first_summary.substr(0, 89) + "..."
+		var war_count := 0
+		for req_any in queue:
+			var req_d = req_any as Dictionary
+			var req_t = str(req_d.get("type", "")).to_lower()
+			if req_t.find("war") != -1:
+				war_count += 1
+		var suffix = ""
+		if war_count > 0:
+			suffix = " | war: %d" % war_count
+		popup_request_text.text = "%d offers%s | %s: %s" % [pending_count, suffix, _ziskej_jmeno_statu_podle_tagu(from_tag), first_summary]
 
 	if popup_accept_btn:
 		popup_accept_btn.text = "Accept all"
@@ -9399,6 +9780,8 @@ func _formatuj_cislo(cislo: int) -> String:
 # --- DIPLOMACY ACTION ---
 # Event handler for user or game actions.
 func _on_declare_war_button_pressed():
+	if _je_spectate_observer_mode():
+		return
 	if current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat:
 		return
 		
@@ -9408,6 +9791,8 @@ func _on_declare_war_button_pressed():
 	_aktualizuj_panel_zprav()
 
 func _on_propose_peace_button_pressed():
+	if _je_spectate_observer_mode():
+		return
 	if current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat:
 		return
 
@@ -9416,6 +9801,8 @@ func _on_propose_peace_button_pressed():
 	_aktualizuj_panel_zprav()
 
 func _on_non_aggression_button_pressed():
+	if _je_spectate_observer_mode():
+		return
 	if current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat:
 		return
 	if not GameManager.has_method("uzavrit_neagresivni_smlouvu"):
@@ -9428,6 +9815,8 @@ func _on_non_aggression_button_pressed():
 
 # Handles this signal callback.
 func _on_military_access_btn_pressed():
+	if _je_spectate_observer_mode():
+		return
 	if current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat:
 		return
 	if not GameManager.has_method("pozadej_vojensky_pristup"):
@@ -9492,6 +9881,8 @@ func _on_popup_decline_all_requests_pressed():
 
 # Reacts to incoming events.
 func _on_accept_request_pressed():
+	if _je_spectate_observer_mode():
+		return
 	if current_viewed_tag == "" or _current_incoming_request.is_empty():
 		return
 	if not GameManager.has_method("hrac_prijmi_diplomatickou_zadost"):
@@ -9511,6 +9902,8 @@ func _on_accept_request_pressed():
 
 # Event handler for user or game actions.
 func _on_decline_request_pressed():
+	if _je_spectate_observer_mode():
+		return
 	if current_viewed_tag == "" or _current_incoming_request.is_empty():
 		return
 	if not GameManager.has_method("hrac_odmitni_diplomatickou_zadost"):
@@ -9521,6 +9914,8 @@ func _on_decline_request_pressed():
 	_aktualizuj_popup_diplomatickych_zadosti()
 
 func _on_improve_relationship_pressed():
+	if _je_spectate_observer_mode():
+		return
 	if current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat:
 		return
 	if GameManager.has_method("zlepsi_vztah_statu"):
@@ -9528,6 +9923,8 @@ func _on_improve_relationship_pressed():
 	_aktualizuj_vztah_ui(current_viewed_tag)
 
 func _on_worsen_relationship_pressed():
+	if _je_spectate_observer_mode():
+		return
 	if current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat:
 		return
 	if GameManager.has_method("zhorsi_vztah_statu"):
@@ -9540,6 +9937,8 @@ func _on_alliance_level_selected(_index: int):
 	pass
 
 func _on_alliance_button_pressed():
+	if _je_spectate_observer_mode():
+		return
 	if current_viewed_tag == "":
 		return
 	_alliance_dialog_target_tag = current_viewed_tag
@@ -9610,6 +10009,30 @@ func _aktualizuj_vztah_ui(target_tag: String):
 # Recomputes values from current data.
 func _aktualizuj_diplomacii_tlacitka(target_tag: String):
 	if not declare_war_btn or not propose_peace_btn:
+		return
+	if _je_spectate_observer_mode():
+		declare_war_btn.text = "Spectate mode"
+		declare_war_btn.disabled = true
+		declare_war_btn.show()
+		propose_peace_btn.hide()
+		if improve_rel_btn:
+			improve_rel_btn.disabled = true
+		if worsen_rel_btn:
+			worsen_rel_btn.disabled = true
+		if gift_money_btn:
+			gift_money_btn.hide()
+		if trade_btn:
+			trade_btn.hide()
+		if non_aggression_btn:
+			non_aggression_btn.hide()
+		if give_loan_btn:
+			give_loan_btn.hide()
+		if take_loan_btn:
+			take_loan_btn.hide()
+		if alliance_btn:
+			alliance_btn.disabled = true
+		if _military_access_btn:
+			_military_access_btn.hide()
 		return
 
 	var target = target_tag.strip_edges().to_upper()

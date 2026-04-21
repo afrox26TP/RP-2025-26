@@ -173,14 +173,19 @@ const AI_PROFILE_WARN_MS := 500
 const AI_MOVEMENT_PROFILE_ENABLED := false
 const AI_DECISION_DEBUG_ENABLED := false
 const AI_DEBUG_MAX_LINES_PER_TURN := 150
+const AI_FASTMODE_ENABLED := true
+const AI_STATES_PER_TURN_CAP := 8
+const AI_STATES_PER_TURN_CAP_POTATO := 4
+const AI_FASTMODE_WINDOW_TURNS := 3
 const DEBUG_TURN_HISTORY_MAX := 16
 const TURN_STUCK_WATCHDOG_MS := 15000
 const TURN_LOG_ENABLED := false
 const TURN_FRAME_SLICE_ENABLED := true
 # Larger slices reduce end-turn latency by yielding less often, while still keeping UI responsive.
-const TURN_FRAME_SLICE_PROVINCES := 220
-const TURN_FRAME_SLICE_AI := 130
-const TURN_FRAME_SLICE_AI_STATES := 2
+const TURN_FRAME_SLICE_PROVINCES := 1200
+const TURN_FRAME_SLICE_AI := 800
+const TURN_FRAME_SLICE_AI_STATES := 16
+const POPUP_BATCH_MAX_ITEMS := 12
 const ARM_LAB_GRID_W := 3
 const ARM_LAB_GRID_H := 3
 const ARM_LAB_GRID_MAX_W := 6
@@ -355,6 +360,7 @@ var _debug_last_turn_profile: Dictionary = {}
 var _finance_projection_cash_overrides: Dictionary = {}
 var _sim_cache: Dictionary = {}
 var _sim_cache_validni: bool = false
+var _runtime_caches_warmed: bool = false
 var _global_ai_aggression_level: float = 0.5
 var _ai_randomized_ideologies_applied: bool = false
 var _suppress_relation_global_logs: bool = false
@@ -362,6 +368,9 @@ var _map_loader_cache: Node = null
 var _map_loader_cache_scene: Node = null
 var _potato_mode_enabled: bool = false
 var _ai_debug_mode_enabled: bool = false
+var _ai_turn_state_cursor: int = 0
+var _ai_fastmode_cached_subset: Array = []
+var _ai_fastmode_cached_turn_marker: int = -1000000
 
 const AI_MIN_PROVINCE_SOLDIERS_FOR_PLANNING := 450
 const AI_MAX_ARMY_ORDERS_PER_STATE := 25
@@ -870,13 +879,18 @@ func _zobraz_cekajici_popupy_aktivniho_hrace() -> void:
 	fronta.clear()
 	if kopie_fronty.size() > 1:
 		var bloky: Array = []
-		for item_any in kopie_fronty:
+		var shown = min(kopie_fronty.size(), POPUP_BATCH_MAX_ITEMS)
+		for i in range(shown):
+			var item_any = kopie_fronty[i]
 			var item = item_any as Dictionary
 			var t = str(item.get("title", "Report")).strip_edges()
 			var msg = str(item.get("text", "")).strip_edges()
 			if msg == "":
 				continue
 			bloky.append("[%s]\n%s" % [t if t != "" else "Report", msg])
+		var remaining = kopie_fronty.size() - shown
+		if remaining > 0:
+			bloky.append("[System]\n+%d additional reports were queued this turn." % remaining)
 		if not bloky.is_empty():
 			await map_loader._ukaz_bitevni_popup("Reports", "\n\n".join(bloky))
 		return
@@ -1037,6 +1051,18 @@ func _synchronizuj_jmeno_a_ideologii_hrace() -> void:
 			hrac_jmeno = str(d.get("country_name", hrac_stat))
 			hrac_ideologie = str(d.get("ideology", ""))
 			return
+
+func _oznac_runtime_cache_jako_studene() -> void:
+	_runtime_caches_warmed = false
+
+func _prewarm_runtime_cache_if_needed() -> void:
+	if _runtime_caches_warmed:
+		return
+	if map_data.is_empty():
+		return
+	_nacti_vztahy_statu()
+	_rebuild_turn_cache()
+	_runtime_caches_warmed = true
 
 # State/mode switch with visual update.
 func _prepni_na_hrace(index: int) -> void:
@@ -1213,6 +1239,7 @@ func _aplikuj_save_state(state: Dictionary) -> bool:
 	if not (loaded_map_any is Dictionary):
 		loaded_map_any = {}
 	map_data = (loaded_map_any as Dictionary).duplicate(true)
+	_oznac_runtime_cache_jako_studene()
 	provincie_cooldowny = _normalizuj_provincie_cooldowny(state.get("provincie_cooldowny", {}))
 	ai_kasy = (state.get("ai_kasy", {}) as Dictionary).duplicate(true)
 	_ai_profily = (state.get("ai_profily", {}) as Dictionary).duplicate(true)
@@ -1276,6 +1303,7 @@ func _aplikuj_save_state(state: Dictionary) -> bool:
 			map_loader.aktualizuj_ikony_armad()
 
 	_synchronizuj_jmeno_a_ideologii_hrace()
+	_prewarm_runtime_cache_if_needed()
 	kolo_zmeneno.emit()
 	return true
 
@@ -1289,6 +1317,7 @@ func reset_pro_novou_hru() -> void:
 	aktualni_kolo = 1
 
 	map_data.clear()
+	_oznac_runtime_cache_jako_studene()
 	provincie_cooldowny.clear()
 	ai_kasy.clear()
 	_ai_profily.clear()
@@ -8443,6 +8472,7 @@ func pridej_startovni_pristavy(all_provinces: Dictionary):
 # Computes derived values from current inputs and game state.
 func spocitej_prijem(all_provinces: Dictionary, emit_ui_signal: bool = true):
 	map_data = all_provinces
+	_prewarm_runtime_cache_if_needed()
 	_synchronizuj_jmeno_a_ideologii_hrace()
 	var celkove_hdp = 0.0
 	var hrac_clean = _normalizuj_tag(hrac_stat)
@@ -8714,7 +8744,8 @@ func _money_debug_log_delta(stage: String, before: Dictionary) -> void:
 
 # Main runtime logic lives here.
 func _turn_slice_wait(counter: int, chunk: int) -> int:
-	if not TURN_FRAME_SLICE_ENABLED:
+	# Keep slicing only for low-end potato mode to maximize turn throughput on normal PCs.
+	if not TURN_FRAME_SLICE_ENABLED or not _potato_mode_enabled:
 		return counter
 	# mikro-yield drzi frame plynulejsi pri dlouhych turn fazich.
 	var next_counter = counter + 1
@@ -8730,7 +8761,7 @@ func ukonci_kolo():
 	if zpracovava_se_tah:
 		return
 	_nastav_stav_zpracovani_tahu(true)
-	await get_tree().process_frame
+	# Start processing immediately to avoid a guaranteed extra frame delay each turn.
 	_sim_cache_validni = false
 	_sjednot_financni_toky_cache()
 	if _ai_debug_mode_enabled:
@@ -10688,8 +10719,11 @@ func zpracuj_tah_ai():
 	_ai_border_cache.clear()
 	_ai_mindset_cache.clear()
 	_rebuild_turn_cache()
-	var ai_staty = _ziskej_ai_staty()
-	_ai_randomizuj_ideologie_a_profily(ai_staty)
+	var ai_staty_all = _ziskej_ai_staty()
+	_ai_randomizuj_ideologie_a_profily(ai_staty_all)
+	var ai_staty = _vyber_ai_staty_pro_tah(ai_staty_all)
+	if _ai_debug_mode_enabled and ai_staty.size() < ai_staty_all.size():
+		_append_debug_turn_event("ai fastmode subset=%d/%d" % [ai_staty.size(), ai_staty_all.size()])
 	var occupied_core_by_state: Dictionary = {}
 	for p_id_any in map_data:
 		var d_core = map_data[p_id_any]
@@ -11314,7 +11348,7 @@ func zpracuj_tah_ai():
 	# 1) Non-attacking moves inside own provinces.
 	# 2) Reinforce core provinces (capital + capital state).
 	# 3) Offensive attacks.
-	await _naplanuj_ai_presuny(map_loader)
+	await _naplanuj_ai_presuny(map_loader, ai_staty)
 	ai_phases["movement"] = Time.get_ticks_msec() - ai_phase_ms
 	ai_phase_ms = Time.get_ticks_msec()
 	# Disable runtime caches after movement and clean up temp maps.
@@ -11408,8 +11442,8 @@ func _ai_zvaz_presun_hlavniho_mesta(state_tag: String) -> void:
 			print("[AI] %s moved the capital to province %d for %.2f bn USD." % [state, candidate_id, cost])
 
 # Runs the local feature logic.
-func _naplanuj_ai_presuny(map_loader):
-	var ai_staty = _ziskej_ai_staty()
+func _naplanuj_ai_presuny(map_loader, ai_staty_override: Array = []):
+	var ai_staty = ai_staty_override if not ai_staty_override.is_empty() else _ziskej_ai_staty()
 	var movement_profile = AI_MOVEMENT_PROFILE_ENABLED
 	var movement_start_ms = 0
 	var movement_non_attack_ms = 0
@@ -11708,6 +11742,73 @@ func _naplanuj_ai_presuny(map_loader):
 			ai_staty.size(),
 			movement_registered
 		])
+
+func _vyber_ai_staty_pro_tah(ai_staty_all: Array) -> Array:
+	if not AI_FASTMODE_ENABLED:
+		return ai_staty_all
+	var total = ai_staty_all.size()
+	if total <= 1:
+		return ai_staty_all
+	var cap = AI_STATES_PER_TURN_CAP_POTATO if _potato_mode_enabled else AI_STATES_PER_TURN_CAP
+	cap = clampi(cap, 1, total)
+	if total <= cap:
+		_ai_turn_state_cursor = 0
+		_ai_fastmode_cached_subset = ai_staty_all.duplicate(true)
+		_ai_fastmode_cached_turn_marker = aktualni_kolo
+		return ai_staty_all
+
+	var forced_include: Array = []
+	for raw_tag in ai_staty_all:
+		var clean = _normalizuj_tag(str(raw_tag))
+		if clean == "":
+			continue
+		if not (_ai_ziskej_nepratele_statu(clean) as Array).is_empty():
+			forced_include.append(clean)
+	if forced_include.size() > cap:
+		forced_include.resize(cap)
+
+	var use_cached = (aktualni_kolo - _ai_fastmode_cached_turn_marker) < AI_FASTMODE_WINDOW_TURNS and not _ai_fastmode_cached_subset.is_empty()
+	var dynamic_subset: Array = []
+	if use_cached:
+		for cached_any in _ai_fastmode_cached_subset:
+			var cached_tag = _normalizuj_tag(str(cached_any))
+			if cached_tag == "" or not ai_staty_all.has(cached_tag):
+				continue
+			if not dynamic_subset.has(cached_tag):
+				dynamic_subset.append(cached_tag)
+	else:
+		var rotation_pool: Array = []
+		for raw_tag in ai_staty_all:
+			var clean = _normalizuj_tag(str(raw_tag))
+			if clean == "" or forced_include.has(clean):
+				continue
+			rotation_pool.append(clean)
+		var pool_total = rotation_pool.size()
+		if pool_total > 0:
+			var take = min(cap, pool_total)
+			var start = posmod(_ai_turn_state_cursor, pool_total)
+			for i in range(take):
+				var idx = (start + i) % pool_total
+				dynamic_subset.append(rotation_pool[idx])
+			_ai_turn_state_cursor = (start + take) % pool_total
+
+	var out: Array = []
+	for tag_any in forced_include:
+		if out.size() >= cap:
+			break
+		if not out.has(tag_any):
+			out.append(tag_any)
+	for tag_any in dynamic_subset:
+		if out.size() >= cap:
+			break
+		if not out.has(tag_any):
+			out.append(tag_any)
+	if out.is_empty():
+		out.append(ai_staty_all[0])
+
+	_ai_fastmode_cached_subset = out.duplicate(true)
+	_ai_fastmode_cached_turn_marker = aktualni_kolo
+	return out
 
 # Main runtime logic lives here.
 func _seradene_ai_provincie(state_tag: String) -> Array:

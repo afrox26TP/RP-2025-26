@@ -298,6 +298,8 @@ const STATS_COLOR_GROWTH_GDP := Color(1.00, 0.89, 0.44, 1.0)
 const STATS_COLOR_GROWTH_POP := Color(0.62, 0.90, 1.00, 1.0)
 const STATS_PANEL_BG := Color(0.06, 0.10, 0.15, 0.96)
 const STATS_PANEL_BORDER := Color(0.27, 0.42, 0.60, 0.95)
+const STATS_POPUP_BASE_SIZE := Vector2i(1620, 1140)
+const STATS_POPUP_MIN_SIZE := Vector2i(760, 520)
 const MAP_MODE_BUTTON_HEIGHT := 38
 const MAP_MODE_BUTTON_SELECTED_HEIGHT := 45
 const MAP_MODE_BUTTON_WIDTH := 50
@@ -655,6 +657,29 @@ func _aktualizuj_sirku_panelu_hrace() -> void:
 
 	player_turn_panel.custom_minimum_size.x = desired_width
 	player_turn_panel.offset_left = player_turn_panel.offset_right - desired_width
+	_aktualizuj_statistics_popup_layout()
+
+func _ziskej_statistics_popup_target_size() -> Vector2i:
+	var viewport = get_viewport()
+	if viewport == null:
+		return STATS_POPUP_BASE_SIZE
+	var vp = viewport.get_visible_rect().size
+	var w = int(round(clampf(vp.x * 0.94, float(STATS_POPUP_MIN_SIZE.x), float(STATS_POPUP_BASE_SIZE.x))))
+	var h = int(round(clampf(vp.y * 0.92, float(STATS_POPUP_MIN_SIZE.y), float(STATS_POPUP_BASE_SIZE.y))))
+	return Vector2i(w, h)
+
+func _aktualizuj_statistics_popup_layout() -> void:
+	if _stats_popup == null:
+		return
+	var target = _ziskej_statistics_popup_target_size()
+	_stats_popup.min_size = STATS_POPUP_MIN_SIZE
+	_stats_popup.size = target
+	var chart_h = clampf(float(target.y) * 0.22, 130.0, 260.0)
+	for chart in [_stats_chart_growth, _stats_chart_gdp, _stats_chart_population, _stats_chart_recruits_army, _stats_chart_finance]:
+		if chart:
+			(chart as StatsLineChart).custom_minimum_size = Vector2(0.0, chart_h)
+	if _stats_compare_chart:
+		_stats_compare_chart.custom_minimum_size = Vector2(0.0, clampf(float(target.y) * 0.42, 240.0, 520.0))
 
 # Updates derived state and UI.
 func _aktualizuj_responzivni_topbar(vp_width: float) -> void:
@@ -1091,7 +1116,7 @@ func _vytvor_statistics_popup() -> void:
 
 	_stats_popup = PopupPanel.new()
 	_stats_popup.name = "StatisticsPopup"
-	_stats_popup.size = Vector2i(1620, 1140)
+	_stats_popup.size = STATS_POPUP_BASE_SIZE
 	_stats_popup.unresizable = false
 	var popup_style := StyleBoxFlat.new()
 	popup_style.bg_color = STATS_PANEL_BG
@@ -1145,7 +1170,14 @@ func _vytvor_statistics_popup() -> void:
 	subtitle_lbl.modulate = Color(0.82, 0.88, 0.96, 0.92)
 	header_box.add_child(subtitle_lbl)
 
-	var controls_row := HBoxContainer.new()
+	var legend_lbl := Label.new()
+	legend_lbl.text = "Legend: GDP=gold, Population=cyan, Army=red, Income=green, Expenses=orange | Tip: hover charts for exact turn/value"
+	legend_lbl.add_theme_font_size_override("font_size", 12)
+	legend_lbl.modulate = Color(0.78, 0.86, 0.95, 0.9)
+	legend_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	header_box.add_child(legend_lbl)
+
+	var controls_row := HFlowContainer.new()
 	controls_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	controls_row.add_theme_constant_override("separation", 10)
 	frame.add_child(controls_row)
@@ -1206,6 +1238,7 @@ func _vytvor_statistics_popup() -> void:
 	_stats_scroll = ScrollContainer.new()
 	_stats_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_stats_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_stats_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	frame.add_child(_stats_scroll)
 
 	_stats_content = VBoxContainer.new()
@@ -1247,7 +1280,7 @@ func _vytvor_statistics_popup() -> void:
 	_stats_content.add_child(_stats_tabs)
 
 	_stats_overview_tab = VBoxContainer.new()
-	_stats_overview_tab.name = "Overview"
+	_stats_overview_tab.name = "Summary"
 	_stats_overview_tab.add_theme_constant_override("separation", 8)
 	_stats_tabs.add_child(_stats_overview_tab)
 
@@ -1260,12 +1293,12 @@ func _vytvor_statistics_popup() -> void:
 	_stats_overview_tab.add_child(_stats_report)
 
 	_stats_charts_tab = VBoxContainer.new()
-	_stats_charts_tab.name = "My Country"
+	_stats_charts_tab.name = "My Trends"
 	_stats_charts_tab.add_theme_constant_override("separation", 10)
 	_stats_tabs.add_child(_stats_charts_tab)
 
 	_stats_finance_tab = VBoxContainer.new()
-	_stats_finance_tab.name = "All Countries"
+	_stats_finance_tab.name = "Compare Countries"
 	_stats_finance_tab.add_theme_constant_override("separation", 10)
 	_stats_tabs.add_child(_stats_finance_tab)
 
@@ -1291,6 +1324,7 @@ func _vytvor_statistics_popup() -> void:
 	_stats_compare_chart.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_stats_compare_chart.value_suffix = ""
 	_stats_compare_chart.value_decimals = 2
+	_stats_compare_chart.tooltip_text = "Hover or click points to inspect exact values on selected turns."
 	if not _stats_compare_chart.chart_point_hovered.is_connected(_on_statistics_chart_point_hovered):
 		_stats_compare_chart.chart_point_hovered.connect(_on_statistics_chart_point_hovered)
 	compare_box.add_child(_stats_compare_chart)
@@ -1374,6 +1408,7 @@ func _vytvor_statistics_popup() -> void:
 	split.add_child(_stats_expense_breakdown)
 
 	add_child(_stats_popup)
+	_aktualizuj_statistics_popup_layout()
 
 # Creates required nodes and connects signals.
 func _vytvor_statistics_chart_blok(parent: Node, title: String) -> StatsLineChart:
@@ -1403,6 +1438,7 @@ func _vytvor_stats_kpi_card(key: String, title: String, accent: Color) -> void:
 		return
 	var card := PanelContainer.new()
 	card.custom_minimum_size = Vector2(0, 92)
+	card.tooltip_text = "%s in selected country and time window." % title
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.12, 0.19, 0.28, 0.92)
 	style.border_width_left = 1
@@ -1452,7 +1488,8 @@ func _on_statistics_pressed() -> void:
 	_obnov_statistics_state_options()
 	_aktualizuj_statistics_report()
 	if _stats_popup:
-		_stats_popup.popup_centered(Vector2i(1620, 1140))
+		_aktualizuj_statistics_popup_layout()
+		_stats_popup.popup_centered(_ziskej_statistics_popup_target_size())
 
 # Handles this signal callback.
 func _on_statistics_close_pressed() -> void:

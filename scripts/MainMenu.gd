@@ -25,12 +25,18 @@ const TooltipUtilsScript = preload("res://scripts/TooltipUtils.gd")
 @onready var btn_exit: Button = $CenterPanel/MarginContainer/VBoxContainer/ExitButton
 
 @onready var country_browser_panel: PanelContainer = $CountryBrowserPanel
+@onready var country_browser_margin: MarginContainer = $CountryBrowserPanel/MarginContainer
+@onready var country_browser_root_vbox: VBoxContainer = $CountryBrowserPanel/MarginContainer/RootVBox
 @onready var btn_close_corner: Button = $CountryBrowserPanel/MarginContainer/RootVBox/HeaderRow/CloseHeaderButton
+@onready var browser_title: Label = $CountryBrowserPanel/MarginContainer/RootVBox/HeaderRow/BrowserTitle
 @onready var browser_subtitle: Label = $CountryBrowserPanel/MarginContainer/RootVBox/BrowserSubtitle
 @onready var browser_flow_hint: Label = $CountryBrowserPanel/MarginContainer/RootVBox/BrowserFlowHint
+@onready var selected_players_panel: PanelContainer = $CountryBrowserPanel/MarginContainer/RootVBox/SelectedPlayersPanel
+@onready var selected_players_margin: MarginContainer = $CountryBrowserPanel/MarginContainer/RootVBox/SelectedPlayersPanel/SelectedPlayersMargin
 @onready var selected_players_title: Label = $CountryBrowserPanel/MarginContainer/RootVBox/SelectedPlayersPanel/SelectedPlayersMargin/SelectedPlayersVBox/SelectedPlayersTitle
 @onready var selected_players_list: Label = $CountryBrowserPanel/MarginContainer/RootVBox/SelectedPlayersPanel/SelectedPlayersMargin/SelectedPlayersVBox/SelectedPlayersList
 @onready var list_hint: Label = $CountryBrowserPanel/MarginContainer/RootVBox/Content/ListPanel/ListMargin/ListVBox/ListHint
+@onready var country_list_scroll: ScrollContainer = $CountryBrowserPanel/MarginContainer/RootVBox/Content/ListPanel/ListMargin/ListVBox/CountryListScroll
 @onready var country_list: VBoxContainer = $CountryBrowserPanel/MarginContainer/RootVBox/Content/ListPanel/ListMargin/ListVBox/CountryListScroll/CountryList
 @onready var detail_flag: TextureRect = $CountryBrowserPanel/MarginContainer/RootVBox/Content/DetailPanel/DetailMargin/DetailVBox/DetailFlag
 @onready var detail_name: Label = $CountryBrowserPanel/MarginContainer/RootVBox/Content/DetailPanel/DetailMargin/DetailVBox/DetailName
@@ -44,6 +50,7 @@ const TooltipUtilsScript = preload("res://scripts/TooltipUtils.gd")
 @onready var detail_info: RichTextLabel = $CountryBrowserPanel/MarginContainer/RootVBox/Content/DetailPanel/DetailMargin/DetailVBox/DetailInfo
 @onready var btn_confirm_country: Button = $CountryBrowserPanel/MarginContainer/RootVBox/BrowserButtons/ConfirmCountryButton
 @onready var btn_close_browser: Button = $CountryBrowserPanel/MarginContainer/RootVBox/BrowserButtons/CloseBrowserButton
+@onready var browser_buttons_row: HBoxContainer = $CountryBrowserPanel/MarginContainer/RootVBox/BrowserButtons
 
 @onready var settings_dialog: AcceptDialog = $Dialogs/SettingsDialog
 @onready var credits_dialog: AcceptDialog = $Dialogs/CreditsDialog
@@ -258,6 +265,11 @@ var _browser_ai_debug_mode_check: CheckBox = null
 var _browser_settings_country_separator: HSeparator = null
 var _selected_players_flag_list: HFlowContainer = null
 var _selected_players_scroll: ScrollContainer = null
+var _settings_controls_scroll: ScrollContainer = null
+var _settings_options_scroll: ScrollContainer = null
+var _browser_root_scroll: ScrollContainer = null
+var _browser_compact_mode: bool = false
+var _browser_tiny_mode: bool = false
 const _PLAYER_ROW_H := 26
 const _PLAYER_ROW_MAX_H := 420
 const _PLAYER_CHIP_MIN_W := 210
@@ -267,10 +279,29 @@ const BROWSER_CONFIRM_DEFAULT_TEXT := "Confirm selection"
 const BROWSER_CONFIRM_ADD_PLAYER_TEXT := "Add player"
 const BROWSER_CLOSE_DEFAULT_TEXT := "Close"
 const BROWSER_CLOSE_START_TEXT := "Start game"
-const COUNTRY_BROWSER_MIN_WIDTH := 980.0
+const COUNTRY_BROWSER_MIN_WIDTH := 640.0
 const COUNTRY_BROWSER_MAX_WIDTH := 1500.0
-const COUNTRY_BROWSER_MIN_HEIGHT := 640.0
+const COUNTRY_BROWSER_MIN_HEIGHT := 360.0
 const COUNTRY_BROWSER_MAX_HEIGHT := 900.0
+const COUNTRY_BROWSER_LIST_MIN_W := 280.0
+const COUNTRY_BROWSER_DETAIL_MIN_W := 360.0
+const COUNTRY_BROWSER_VIEWPORT_MARGIN := 16.0
+const COUNTRY_BROWSER_SAFE_MIN_W := 280.0
+const COUNTRY_BROWSER_SAFE_MIN_H := 180.0
+const COUNTRY_BROWSER_BUTTON_H_DEFAULT := 44.0
+const COUNTRY_BROWSER_BUTTON_H_COMPACT := 30.0
+const COUNTRY_BROWSER_BUTTON_H_TINY := 28.0
+const COUNTRY_BROWSER_ROW_H_DEFAULT := 74.0
+const COUNTRY_BROWSER_ROW_H_COMPACT := 44.0
+const COUNTRY_BROWSER_ROW_H_TINY := 38.0
+const SETTINGS_DIALOG_BASE_SIZE := Vector2i(960, 840)
+const SETTINGS_DIALOG_MIN_SIZE := Vector2i(560, 440)
+const COUNTRY_BROWSER_COMPACT_H := 1078.0
+const COUNTRY_BROWSER_TINY_H := 1078.0
+const COUNTRY_BROWSER_COMPACT_W := 1997.0
+const COUNTRY_BROWSER_TINY_W := 1997.0
+const COUNTRY_BROWSER_VIEWPORT_FIT_H := 930.0
+const COUNTRY_BROWSER_VIEWPORT_FIT_W := 1320.0
 
 # Resource loading with validation.
 func _load_texture_cached(path: String):
@@ -375,6 +406,7 @@ func _ready():
 	_nacti_data_statu_pro_browser()
 	_log_export_data_diagnostics()
 	_show_export_diagnostics_if_missing_data()
+	_restore_country_browser_root_layout()
 	_naplni_browser_seznam()
 	_apply_country_browser_window_size()
 	_ensure_ai_aggression_control()
@@ -492,28 +524,170 @@ func _apply_country_browser_window_size() -> void:
 	if vp == null:
 		return
 	var vp_size = vp.get_visible_rect().size
+	var viewport_fit = vp_size.y < COUNTRY_BROWSER_VIEWPORT_FIT_H or vp_size.x < COUNTRY_BROWSER_VIEWPORT_FIT_W
 	var browser_width = clampf(vp_size.x * 0.92, COUNTRY_BROWSER_MIN_WIDTH, COUNTRY_BROWSER_MAX_WIDTH)
-	var browser_height = clampf(vp_size.y * 0.84, COUNTRY_BROWSER_MIN_HEIGHT, COUNTRY_BROWSER_MAX_HEIGHT)
-	browser_width = minf(browser_width, maxf(320.0, vp_size.x - 24.0))
-	browser_height = minf(browser_height, maxf(360.0, vp_size.y - 24.0))
+	var tiny_layout = vp_size.y < COUNTRY_BROWSER_TINY_H or vp_size.x < COUNTRY_BROWSER_TINY_W
+	var compact_height = tiny_layout or vp_size.y < COUNTRY_BROWSER_COMPACT_H or vp_size.x < COUNTRY_BROWSER_COMPACT_W
+	var height_ratio = 0.58 if tiny_layout else (0.66 if compact_height else 0.84)
+	var browser_height = clampf(vp_size.y * height_ratio, COUNTRY_BROWSER_MIN_HEIGHT, COUNTRY_BROWSER_MAX_HEIGHT)
+	var edge = 8.0 if tiny_layout else (12.0 if compact_height else COUNTRY_BROWSER_VIEWPORT_MARGIN)
+	browser_width = minf(browser_width, maxf(COUNTRY_BROWSER_SAFE_MIN_W, vp_size.x - edge * 2.0))
+	browser_height = minf(browser_height, maxf(COUNTRY_BROWSER_SAFE_MIN_H, vp_size.y - edge * 2.0))
+	_apply_country_browser_compact_mode(vp_size)
 
-	country_browser_panel.anchor_left = 0.5
-	country_browser_panel.anchor_top = 0.5
-	country_browser_panel.anchor_right = 0.5
-	country_browser_panel.anchor_bottom = 0.5
-	country_browser_panel.custom_minimum_size = Vector2(browser_width, browser_height)
-	country_browser_panel.offset_left = -browser_width * 0.5
-	country_browser_panel.offset_top = -browser_height * 0.5
-	country_browser_panel.offset_right = browser_width * 0.5
-	country_browser_panel.offset_bottom = browser_height * 0.5
+	if viewport_fit:
+		country_browser_panel.anchor_left = 0.0
+		country_browser_panel.anchor_top = 0.0
+		country_browser_panel.anchor_right = 1.0
+		country_browser_panel.anchor_bottom = 1.0
+		country_browser_panel.custom_minimum_size = Vector2(0, 0)
+		country_browser_panel.offset_left = edge
+		country_browser_panel.offset_top = edge
+		country_browser_panel.offset_right = -edge
+		country_browser_panel.offset_bottom = -edge
+		browser_width = maxf(COUNTRY_BROWSER_SAFE_MIN_W, vp_size.x - edge * 2.0)
+		browser_height = maxf(COUNTRY_BROWSER_SAFE_MIN_H, vp_size.y - edge * 2.0)
+	else:
+		country_browser_panel.anchor_left = 0.5
+		country_browser_panel.anchor_top = 0.5
+		country_browser_panel.anchor_right = 0.5
+		country_browser_panel.anchor_bottom = 0.5
+		country_browser_panel.custom_minimum_size = Vector2(browser_width, browser_height)
+		country_browser_panel.offset_left = -browser_width * 0.5
+		country_browser_panel.offset_top = -browser_height * 0.5
+		country_browser_panel.offset_right = browser_width * 0.5
+		country_browser_panel.offset_bottom = browser_height * 0.5
 
-	var split = country_browser_panel.get_node_or_null("MarginContainer/RootVBox/Content") as HSplitContainer
+	var split = _get_country_browser_content_split()
 	if split:
-		split.split_offset = int(clampf(browser_width * 0.44, 380.0, browser_width - 360.0))
+		split.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		split.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		var list_panel = split.get_node_or_null("ListPanel") as PanelContainer
+		if list_panel:
+			list_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			list_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+			list_panel.custom_minimum_size.x = COUNTRY_BROWSER_LIST_MIN_W
+		var detail_panel = split.get_node_or_null("DetailPanel") as PanelContainer
+		if detail_panel:
+			detail_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			detail_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+			detail_panel.custom_minimum_size.x = COUNTRY_BROWSER_DETAIL_MIN_W
+		var available_w = maxf(0.0, browser_width - float(split.get_theme_constant("separation")))
+		var list_min = 170.0 if tiny_layout else (220.0 if compact_height else COUNTRY_BROWSER_LIST_MIN_W)
+		var detail_min = 220.0 if tiny_layout else (280.0 if compact_height else COUNTRY_BROWSER_DETAIL_MIN_W)
+		if available_w < (list_min + detail_min):
+			var half = maxf(120.0, available_w * 0.5)
+			list_min = minf(list_min, half)
+			detail_min = minf(detail_min, available_w - list_min)
+		var ratio = 0.36 if tiny_layout else (0.41 if compact_height else 0.40)
+		var target_left_w = clampf(available_w * ratio, list_min, maxf(list_min, available_w - detail_min))
+		# SplitContainer offset is relative to center, not absolute left width.
+		split.split_offset = int(round(target_left_w - (available_w * 0.5)))
 
 	if detail_name:
 		detail_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		detail_name.custom_minimum_size = Vector2(0, 56)
+		detail_name.custom_minimum_size = Vector2(0, 32 if tiny_layout else (44 if compact_height else 56))
+
+func _restore_country_browser_root_layout() -> void:
+	if country_browser_panel == null:
+		return
+	var margin = country_browser_panel.get_node_or_null("MarginContainer") as MarginContainer
+	if margin == null:
+		return
+	var root = margin.get_node_or_null("RootVBox") as VBoxContainer
+	if root == null:
+		var wrapped = margin.get_node_or_null("BrowserRootScroll") as ScrollContainer
+		if wrapped:
+			root = wrapped.get_node_or_null("RootVBox") as VBoxContainer
+			if root:
+				wrapped.remove_child(root)
+				margin.add_child(root)
+				margin.move_child(root, 0)
+			wrapped.queue_free()
+			_browser_root_scroll = null
+	if root:
+		root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		root.size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+func _get_country_browser_root_vbox() -> VBoxContainer:
+	if country_browser_panel == null:
+		return null
+	var root = country_browser_panel.get_node_or_null("MarginContainer/RootVBox") as VBoxContainer
+	if root:
+		return root
+	return country_browser_panel.get_node_or_null("MarginContainer/BrowserRootScroll/RootVBox") as VBoxContainer
+
+func _get_country_browser_content_split() -> HSplitContainer:
+	var root = _get_country_browser_root_vbox()
+	if root == null:
+		return null
+	return root.get_node_or_null("Content") as HSplitContainer
+
+func _apply_country_browser_compact_mode(vp_size: Vector2) -> void:
+	var tiny = vp_size.y < COUNTRY_BROWSER_TINY_H or vp_size.x < COUNTRY_BROWSER_TINY_W
+	var compact = tiny or vp_size.y < COUNTRY_BROWSER_COMPACT_H or vp_size.x < COUNTRY_BROWSER_COMPACT_W
+	_browser_compact_mode = compact
+	_browser_tiny_mode = tiny
+	if country_browser_margin:
+		var edge = 8 if tiny else (12 if compact else 18)
+		country_browser_margin.add_theme_constant_override("margin_left", edge)
+		country_browser_margin.add_theme_constant_override("margin_top", edge)
+		country_browser_margin.add_theme_constant_override("margin_right", edge)
+		country_browser_margin.add_theme_constant_override("margin_bottom", edge)
+	if country_browser_root_vbox:
+		country_browser_root_vbox.add_theme_constant_override("separation", 6 if tiny else (8 if compact else 10))
+	if _browser_current_settings_panel:
+		_browser_current_settings_panel.visible = true
+	if _browser_settings_country_separator:
+		_browser_settings_country_separator.visible = true
+	if browser_subtitle:
+		browser_subtitle.visible = not compact
+	if browser_flow_hint:
+		browser_flow_hint.visible = not compact
+	if list_hint:
+		list_hint.visible = not compact
+	if selected_players_panel:
+		selected_players_panel.visible = true
+	if selected_players_margin:
+		var selected_margin = 4 if tiny else (6 if compact else 8)
+		selected_players_margin.add_theme_constant_override("margin_top", selected_margin)
+		selected_players_margin.add_theme_constant_override("margin_bottom", selected_margin)
+		selected_players_margin.add_theme_constant_override("margin_left", 8 if compact else 10)
+		selected_players_margin.add_theme_constant_override("margin_right", 8 if compact else 10)
+	if browser_title:
+		browser_title.add_theme_font_size_override("font_size", 20 if tiny else (24 if compact else 30))
+	if detail_flag:
+		detail_flag.custom_minimum_size = Vector2(130, 56) if tiny else (Vector2(160, 72) if compact else Vector2(220, 100))
+	if detail_info:
+		detail_info.custom_minimum_size = Vector2(0, 16) if tiny else (Vector2(0, 30) if compact else Vector2(0, 70))
+		detail_info.fit_content = false
+		detail_info.scroll_active = true
+	if selected_players_title:
+		selected_players_title.add_theme_font_size_override("font_size", 13 if tiny else (14 if compact else 16))
+	if _browser_potato_mode_check:
+		_browser_potato_mode_check.add_theme_font_size_override("font_size", 12 if tiny else (13 if compact else 14))
+	if _browser_ai_debug_mode_check:
+		_browser_ai_debug_mode_check.add_theme_font_size_override("font_size", 12 if tiny else (13 if compact else 14))
+	if country_list_scroll:
+		country_list_scroll.custom_minimum_size.y = 84 if tiny else (120 if compact else 260)
+	if browser_buttons_row:
+		browser_buttons_row.add_theme_constant_override("separation", 6 if tiny else (8 if compact else 10))
+		browser_buttons_row.vertical = tiny
+	if btn_confirm_country:
+		btn_confirm_country.custom_minimum_size.y = COUNTRY_BROWSER_BUTTON_H_TINY if tiny else (COUNTRY_BROWSER_BUTTON_H_COMPACT if compact else COUNTRY_BROWSER_BUTTON_H_DEFAULT)
+		btn_confirm_country.add_theme_font_size_override("font_size", 12 if tiny else (14 if compact else 16))
+		btn_confirm_country.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if btn_close_browser:
+		btn_close_browser.custom_minimum_size.y = COUNTRY_BROWSER_BUTTON_H_TINY if tiny else (COUNTRY_BROWSER_BUTTON_H_COMPACT if compact else COUNTRY_BROWSER_BUTTON_H_DEFAULT)
+		btn_close_browser.add_theme_font_size_override("font_size", 12 if tiny else (14 if compact else 16))
+		btn_close_browser.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var row_h = COUNTRY_BROWSER_ROW_H_TINY if tiny else (COUNTRY_BROWSER_ROW_H_COMPACT if compact else COUNTRY_BROWSER_ROW_H_DEFAULT)
+	for row_key in country_rows.keys():
+		var row_btn = country_rows[row_key] as Button
+		if row_btn:
+			row_btn.custom_minimum_size.y = row_h
+			row_btn.autowrap_mode = TextServer.AUTOWRAP_OFF if tiny else TextServer.AUTOWRAP_WORD_SMART
+	_obnov_texty_radku_statu()
 
 # Applies prepared settings/effects to runtime systems.
 func _apply_main_menu_window_size() -> void:
@@ -525,8 +699,8 @@ func _apply_main_menu_window_size() -> void:
 	if vp == null:
 		return
 	var vp_size = vp.get_visible_rect().size
-	var panel_width = clampf(vp_size.x * 0.72, 420.0, 820.0)
-	var panel_height = clampf(vp_size.y * 0.72, 420.0, 620.0)
+	var panel_width = clampf(vp_size.x * 0.74, 360.0, 820.0)
+	var panel_height = clampf(vp_size.y * 0.78, 360.0, 620.0)
 	_center_panel_cache.custom_minimum_size = Vector2(panel_width, panel_height)
 	_center_panel_cache.offset_left = -panel_width * 0.5
 	_center_panel_cache.offset_top = -panel_height * 0.5
@@ -575,7 +749,7 @@ func _ensure_ai_aggression_control() -> void:
 		return
 	if country_browser_panel == null:
 		return
-	var root_vbox = country_browser_panel.get_node_or_null("MarginContainer/RootVBox") as VBoxContainer
+	var root_vbox = _get_country_browser_root_vbox()
 	if root_vbox == null:
 		return
 
@@ -998,11 +1172,68 @@ func _aplikuj_spolecny_popup_styl(dialog: Window, target_size: Vector2i) -> void
 
 # Core flow for this feature.
 func _styluj_mainmenu_popup_dialogy() -> void:
-	_aplikuj_spolecny_popup_styl(settings_dialog, Vector2i(960, 840))
-	_aplikuj_spolecny_popup_styl(credits_dialog, Vector2i(680, 360))
-	_aplikuj_spolecny_popup_styl(exit_dialog, Vector2i(560, 240))
+	_apply_settings_dialog_window_size()
+	_aplikuj_spolecny_popup_styl(credits_dialog, _calc_dialog_target_size(Vector2i(680, 360), Vector2i(420, 260), 0.72))
+	_aplikuj_spolecny_popup_styl(exit_dialog, _calc_dialog_target_size(Vector2i(560, 240), Vector2i(380, 210), 0.62))
 	if _load_dialog != null:
-		_aplikuj_spolecny_popup_styl(_load_dialog, Vector2i(720, 560))
+		_aplikuj_spolecny_popup_styl(_load_dialog, _calc_dialog_target_size(Vector2i(720, 560), Vector2i(500, 360), 0.78))
+	if settings_dialog and settings_dialog.visible:
+		settings_dialog.popup_centered(settings_dialog.size)
+	if credits_dialog and credits_dialog.visible:
+		credits_dialog.popup_centered(credits_dialog.size)
+	if exit_dialog and exit_dialog.visible:
+		exit_dialog.popup_centered(exit_dialog.size)
+	if _load_dialog and _load_dialog.visible:
+		_load_dialog.popup_centered(_load_dialog.size)
+
+func _calc_dialog_target_size(base_size: Vector2i, min_size: Vector2i, viewport_ratio: float) -> Vector2i:
+	var vp := get_viewport()
+	if vp == null:
+		return base_size
+	var vp_size = vp.get_visible_rect().size
+	var w = int(round(clampf(vp_size.x * viewport_ratio, float(min_size.x), float(base_size.x))))
+	var h = int(round(clampf(vp_size.y * viewport_ratio, float(min_size.y), float(base_size.y))))
+	return Vector2i(w, h)
+
+func _ensure_settings_panel_scroll(panel: PanelContainer, pad_node_name: String) -> ScrollContainer:
+	if panel == null:
+		return null
+	var existing = panel.get_node_or_null("ResponsiveScroll") as ScrollContainer
+	if existing:
+		return existing
+	var pad = panel.get_node_or_null(pad_node_name) as MarginContainer
+	if pad == null:
+		return null
+	panel.remove_child(pad)
+	var scroll := ScrollContainer.new()
+	scroll.name = "ResponsiveScroll"
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.follow_focus = true
+	panel.add_child(scroll)
+	scroll.add_child(pad)
+	return scroll
+
+func _apply_settings_dialog_window_size() -> void:
+	if settings_dialog == null:
+		return
+	var target = _calc_dialog_target_size(SETTINGS_DIALOG_BASE_SIZE, SETTINGS_DIALOG_MIN_SIZE, 0.90)
+	_aplikuj_spolecny_popup_styl(settings_dialog, target)
+	settings_dialog.wrap_controls = true
+	settings_dialog.unresizable = false
+	settings_dialog.min_size = SETTINGS_DIALOG_MIN_SIZE
+
+	_settings_controls_scroll = _ensure_settings_panel_scroll(controls_panel, "ControlsPad")
+	_settings_options_scroll = _ensure_settings_panel_scroll(settings_panel, "SettingsPad")
+
+	var slider_w = clampf(float(target.x) * 0.50, 260.0, 500.0)
+	if camera_speed_slider:
+		camera_speed_slider.custom_minimum_size.x = slider_w
+	if zoom_speed_slider:
+		zoom_speed_slider.custom_minimum_size.x = slider_w
+	if master_volume_slider:
+		master_volume_slider.custom_minimum_size.x = slider_w
 
 # Creates required nodes and connects signals.
 func _vytvor_vychozi_nastaveni() -> Dictionary:
@@ -1507,7 +1738,7 @@ func _naplni_browser_seznam():
 func _vytvor_radek_statu(tag: String) -> Button:
 	var stats = country_stats[tag]
 	var row_btn = Button.new()
-	row_btn.custom_minimum_size = Vector2(0, 74)
+	row_btn.custom_minimum_size = Vector2(0, COUNTRY_BROWSER_ROW_H_COMPACT if _browser_compact_mode else COUNTRY_BROWSER_ROW_H_DEFAULT)
 	row_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	row_btn.flat = false
@@ -1547,6 +1778,19 @@ func _sestav_text_radku_statu(tag: String) -> String:
 	var prefix = ""
 	if not badges.is_empty():
 		prefix = "[%s] " % " | ".join(badges)
+	if _browser_tiny_mode:
+		var status = ""
+		if selected_country_tag_in_browser == tag:
+			status = " [S]"
+		elif local_player_tags.find(tag) != -1:
+			status = " [T]"
+		return "%s (%s)%s | Pop: %s | GDP: %.1f" % [
+			_zobrazene_jmeno_statu(tag),
+			tag,
+			status,
+			_formatuj_cislo(int(stats["population"])),
+			float(stats["gdp"])
+		]
 
 	return "%s%s (%s)\nPop: %s  |  GDP: %.1f" % [
 		prefix,
@@ -1621,8 +1865,9 @@ func _aktualizuj_panel_vyberu_hracu() -> void:
 		var needed_h = flow_rows * _PLAYER_ROW_H + max(0, flow_rows - 1) * 6 + 10
 		var vp := get_viewport()
 		var viewport_h = vp.get_visible_rect().size.y if vp != null else 720.0
-		var max_h = min(_PLAYER_ROW_MAX_H, int(maxf(135.0, viewport_h * 0.27)))
-		var target_h = clamp(needed_h, 128, max_h)
+		var compact_rows = viewport_h < COUNTRY_BROWSER_COMPACT_H
+		var max_h = min(_PLAYER_ROW_MAX_H, int(maxf(92.0, viewport_h * (0.19 if compact_rows else 0.27))))
+		var target_h = clamp(needed_h, 82 if compact_rows else 128, max_h)
 		_selected_players_scroll.custom_minimum_size = Vector2(0, target_h)
 
 	# Deferred reset to prevent the panel from jumping when layout recalculates
@@ -1658,7 +1903,7 @@ func _nastav_detail_statu(tag: String, update_aggression_ui: bool = true):
 	detail_recruits.text = "Recruits: %s" % _formatuj_cislo(int(s["recruitable_population"]))
 	detail_soldiers.text = "Soldiers: %s" % _formatuj_cislo(int(s["soldiers"]))
 	detail_provinces.text = "Provinces: %d" % int(s["province_count"])
-	detail_info.text = _vytvor_souhrn_statu(jmeno, s)
+	detail_info.text = _vytvor_souhrn_statu(jmeno, s, _browser_tiny_mode or _browser_compact_mode)
 	if update_aggression_ui:
 		_set_ai_aggression_ui_for_tag(tag)
 
@@ -1666,7 +1911,7 @@ func _nastav_detail_statu(tag: String, update_aggression_ui: bool = true):
 	detail_flag.texture = flag_tex
 
 # Creates required nodes and connects signals.
-func _vytvor_souhrn_statu(jmeno: String, s: Dictionary) -> String:
+func _vytvor_souhrn_statu(jmeno: String, s: Dictionary, compact_summary: bool = false) -> String:
 	var populace = max(1, int(s.get("population", 0)))
 	var hdp = float(s.get("gdp", 0.0))
 	var provincie = int(s.get("province_count", 0))
@@ -1722,6 +1967,8 @@ func _vytvor_souhrn_statu(jmeno: String, s: Dictionary) -> String:
 
 	var silne_text = ", ".join(silne) if not silne.is_empty() else "flexible start without major extremes"
 	var slabiny_text = ", ".join(slabiny) if not slabiny.is_empty() else "no critical weakness at game start"
+	if compact_summary:
+		return "%s: %s economy, %s military. + %s. - %s." % [jmeno, vyspelost, vojenska_sila, silne_text, slabiny_text]
 
 	return "%s is a %s country with a %s base and %s military readiness. Strengths: %s. Risks: %s." % [jmeno, velikost, vyspelost, vojenska_sila, silne_text, slabiny_text]
 
@@ -2315,48 +2562,23 @@ func _on_settings_pressed():
 	_settings_original_ui_state = _read_settings_from_ui()
 	_show_settings_tab(0)  # Show Controls tab
 	_styluj_mainmenu_popup_dialogy()
-	
-	# FIX: Reduce ControlsPanel's expand flag so buttons stay visible
-	var controls_panel = settings_dialog.find_child("ControlsPanel", true, false)
-	if controls_panel:
-		controls_panel.size_flags_vertical = Control.SIZE_FILL  # Changed from EXPAND+FILL  to just FILL
-		print("ControlsPanel size_flags set")
-	
-	var settings_panel = settings_dialog.find_child("SettingsPanel", true, false)
-	if settings_panel:
-		settings_panel.size_flags_vertical = Control.SIZE_FILL
-		print("SettingsPanel size_flags set")
-	
-	# Ensure button signals are connected
 	_ensure_settings_buttons_connected()
-	
-	# Ensure buttons are ready before showing dialog
+	_apply_settings_dialog_window_size()
+
 	var apply_btn = _get_settings_button_apply()
 	var reset_btn = _get_settings_button_reset()
 	
 	if apply_btn:
 		apply_btn.visible = true
-		apply_btn.disabled = false
-		# Ensure parent container is visible
 		if apply_btn.get_parent():
 			apply_btn.get_parent().visible = true
 	
 	if reset_btn:
 		reset_btn.visible = true
-		reset_btn.disabled = false
-		# Ensure parent container is visible
 		if reset_btn.get_parent():
 			reset_btn.get_parent().visible = true
 	
-	settings_dialog.popup_centered(settings_dialog.min_size)
-	
-	# Verify buttons are visible after popup
-	if apply_btn:
-		print("Apply button visible: ", apply_btn.visible, " size: ", apply_btn.size)
-	if reset_btn:
-		print("Reset button visible: ", reset_btn.visible, " size: ", reset_btn.size)
-	
-	# Refresh button state after dialog is shown
+	settings_dialog.popup_centered(settings_dialog.size)
 	call_deferred("_refresh_apply_button_state")
 
 # Display update for visible data.
