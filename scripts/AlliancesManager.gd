@@ -9,6 +9,10 @@
 extends Node
 # this script drives a specific gameplay/UI area and keeps related logic together.
 
+# Alliance data storage used by diplomacy and UI lookups.
+# `alliances` keeps alliance metadata, `country_alliances` is reverse mapping by country,
+# and `alliance_members` is a fast members list by alliance id.
+
 # Small loader for alliance CSV data. Nothing fancy, just keeps parsed tables ready.
 # Aliances data
 var alliances: Dictionary = {}  # alliance_id -> {name, color, founded_year, description}
@@ -24,6 +28,8 @@ func _ready():
 # Load pass with basic validation.
 func load_alliances():
 	"""Load alliances from CSV file"""
+	# First pass: create alliance definitions only.
+	# Membership is linked in the second pass to keep parsing resilient.
 	var file_path = "res://map_data/Alliances.csv"
 	var file = FileAccess.open(file_path, FileAccess.READ)
 	
@@ -39,6 +45,7 @@ func load_alliances():
 			continue
 		
 		var parts = line.split(";")
+		# Ignore malformed rows instead of aborting whole file load.
 		if parts.size() < 5:
 			continue
 		
@@ -64,6 +71,7 @@ func load_alliances():
 # Loads resources and validates parsed data.
 func load_country_alliance_membership():
 	"""Load country-alliance membership mappings"""
+	# Second pass: connect countries to alliances and sync all lookup dictionaries.
 	var file_path = "res://map_data/CountryAllianceMembership.csv"
 	var file = FileAccess.open(file_path, FileAccess.READ)
 	
@@ -92,6 +100,7 @@ func load_country_alliance_membership():
 		
 		# Add alliance member to alliance
 		if alliance_members.has(alliance_id):
+			# Duplicate guard is important because csv can contain repeated mappings.
 			if not alliance_members[alliance_id].has(country_iso3):
 				alliance_members[alliance_id].append(country_iso3)
 		

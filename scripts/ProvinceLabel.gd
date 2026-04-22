@@ -9,6 +9,11 @@
 extends Node2D
 # this script drives a specific gameplay/UI area and keeps related logic together.
 
+# Visual behavior for one province label node.
+# Simple part: show/hide label text.
+# Hard part: visibility depends on zoom, capital status and troop presence,
+# so army icon can stay visible even when city text is hidden.
+
 @onready var hbox = $HBoxContainer # Reference to the container holding text/flag
 @onready var label = $HBoxContainer/Label
 @onready var flag = $HBoxContainer/Flag
@@ -31,6 +36,7 @@ func _ready():
 # Fetches data for callers.
 func get_spravny_scale() -> Vector2:
 	if is_zoomed_out and is_capital:
+		# Capitals keep visual priority when zoomed out so player can orient quickly.
 		var zvetseni = clamp(1.0 / aktualni_zoom, 1.0, 4.0) 
 		return Vector2(zvetseni, zvetseni)
 	else:
@@ -90,6 +96,7 @@ func reset_stav():
 	
 	if is_zoomed_out:
 		if is_capital:
+			# In zoomed-out view only capitals keep text UI to reduce clutter.
 			ukaz_ui = true
 			label.visible = false 
 	else:

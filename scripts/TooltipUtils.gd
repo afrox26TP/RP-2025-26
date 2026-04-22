@@ -10,6 +10,10 @@ class_name TooltipUtils
 extends RefCounted
 # this script drives a specific gameplay/UI area and keeps related logic together.
 
+# Shared tooltip helpers for menu and in-game UI.
+# It can auto-generate fallback tooltips and fix controls with IGNORE mouse filter
+# so hover hints still work reliably.
+
 # Builds UI objects and default wiring.
 static func create_help_button(tooltip_text: String) -> Button:
 	var button := Button.new()
@@ -109,6 +113,7 @@ static func show_help_dropdown(owner: Node, anchor: Control, text: String) -> vo
 	popup.size = popup_size
 	
 	var pos: Vector2 = anchor_global + Vector2(0.0, anchor.size.y + 8.0)
+	# Clamp to viewport and flip above anchor when there is not enough space below.
 	pos.x = clampf(pos.x, 8.0, viewport_size.x - 340.0 - 8.0)
 	
 	if pos.y + float(popup_size.y) > viewport_size.y - 8.0:
@@ -138,6 +143,7 @@ static func _apply_recursive(node: Node) -> void:
 			control.mouse_filter = Control.MOUSE_FILTER_PASS
 
 	for child in node.get_children():
+		# Recursive walk lets us apply defaults to whole UI trees with one call.
 		_apply_recursive(child)
 
 # Main runtime logic lives here.

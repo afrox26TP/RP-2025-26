@@ -8,9 +8,13 @@
 
 extends RefCounted
 
+# Utilities for user-provided country flags stored in `user://custom_flags`.
+# Functions here are intentionally static so UI scripts can call them directly.
+
 const CUSTOM_FLAGS_DIR := "user://custom_flags"
 
 static func get_custom_flag_path(state_tag: String) -> String:
+	# SEA/empty are ignored because they are not editable playable states.
 	var clean = str(state_tag).strip_edges().to_upper()
 	if clean == "" or clean == "SEA":
 		return ""
@@ -29,6 +33,7 @@ static func ensure_custom_flags_dir() -> bool:
 	return root_dir.make_dir_recursive("custom_flags") == OK
 
 static func load_custom_flag_texture(state_tag: String, cache: Dictionary = {}):
+	# Uses optional cache to avoid reloading image files every UI refresh.
 	var path = get_custom_flag_path(state_tag)
 	if path == "" or not FileAccess.file_exists(path):
 		return null
@@ -57,6 +62,7 @@ static func save_custom_flag_from_source(state_tag: String, source_path: String)
 	if image == null or image.is_empty():
 		return {"ok": false, "reason": "Selected image could not be loaded."}
 
+	# Always save as png to keep one predictable format for runtime loading.
 	var save_err = image.save_png(ProjectSettings.globalize_path(path))
 	if save_err != OK:
 		return {"ok": false, "reason": "Flag could not be saved.", "error": save_err}
@@ -75,6 +81,7 @@ static func clear_custom_flag(state_tag: String) -> bool:
 	return dir.remove(path.get_file()) == OK
 
 static func clear_custom_flags_for_tags(tags: Array) -> void:
+	# Bulk cleanup helper used on new game / reset flows.
 	for raw_tag in tags:
 		clear_custom_flag(str(raw_tag))
 
@@ -90,6 +97,7 @@ static func clear_all_custom_flags() -> void:
 		if dir.current_is_dir():
 			continue
 		var lower = name.to_lower()
+		# Keep deletion constrained to image extensions to avoid nuking unrelated files.
 		if lower.ends_with(".png") or lower.ends_with(".jpg") or lower.ends_with(".jpeg") or lower.ends_with(".webp") or lower.ends_with(".bmp"):
 			dir.remove(name)
 	dir.list_dir_end()

@@ -9,6 +9,10 @@
 extends Camera2D
 # this script drives a specific gameplay/UI area and keeps related logic together.
 
+# Camera input layer (keyboard move, wheel zoom, RMB drag).
+# Hard part: camera must ignore input when cursor is over HUD controls,
+# otherwise map movement fights with UI interactions.
+
 const ControlsConfig = preload("res://scripts/ControlsConfig.gd")
 
 # Camera script is intentionally simple: keyboard move, wheel zoom, RMB drag.
@@ -41,6 +45,7 @@ func _process(delta):
 		return
 
 	if input_dir.x != 0.0 and input_dir.y != 0.0:
+		# Normalize diagonal movement so it is not faster than straight movement.
 		input_dir = input_dir.normalized()
 
 	position += input_dir * speed * delta * (1.0 / zoom.x)
@@ -69,6 +74,7 @@ func _input(event):
 
 	if event is InputEventMouseMotion and dragging:
 		var drag_current = get_viewport().get_mouse_position()
+		# Scale by zoom so drag feels consistent regardless of current zoom level.
 		var diff = (drag_start - drag_current) * (1.0 / zoom.x)
 		position += diff
 		drag_start = drag_current

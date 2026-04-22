@@ -12,6 +12,9 @@ extends Sprite2D
 const ControlsConfig = preload("res://scripts/ControlsConfig.gd")
 
 # Processes map clicking, hover, and selection overlays on top of the shader map sprite.
+# Simple part: convert click to province id and notify UI.
+# Hard part: keeps multiple overlay textures in sync (selection, occupation, capital focus)
+# and caches label/map lookups to avoid heavy per-frame work.
 
 @export var logic_map: Texture2D
 var map_image: Image
@@ -244,6 +247,8 @@ func _ensure_labels_cache() -> void:
 		_labels_cache_dirty = false
 		return
 	if not _labels_cache_dirty and _labels_by_province_id.size() == labels.get_child_count():
+		# Fast path: skip rebuild when structure did not change.
+		# Pro male dite: kdyz se nic nezmenilo, nic zbytecne nepocitame.
 		return
 	_labels_by_province_id.clear()
 	for lbl in labels.get_children():
@@ -276,6 +281,8 @@ func _clear_selection_label_states() -> void:
 func _apply_selection_label_states(target_id: int, neighbor_ids: Array) -> void:
 	var next_states: Dictionary = {}
 	next_states[target_id] = 2
+	# State map: 2 = selected province, 1 = neighboring province highlight.
+	# Pro male dite: vybrana provincie sviti vic, sousedi sviti min.
 	for raw_neighbor_id in neighbor_ids:
 		var neighbor_id = int(raw_neighbor_id)
 		if neighbor_id == target_id:
@@ -307,6 +314,7 @@ func nastav_nahled_hlavniho_mesta(owned_ids: Array, valid_ids: Array) -> void:
 	capital_focus_valid_image.fill(Color(0, 0, 0, 0))
 
 	for raw_id in owned_ids:
+		# Owned = can be shown; valid = actually selectable as new capital target.
 		var pid = int(raw_id)
 		if pid < 0 or pid >= total_provinces:
 			continue
@@ -458,6 +466,8 @@ func _show_capital_target_tooltip(province_id: int, _data: Dictionary, root: Nod
 
 	var txt = ""
 	if GameManager.has_method("muze_presunout_hlavni_mesto"):
+		# Tooltip shows relocation price only for valid target provinces.
+		# Pro male dite: kdyz sem muzes presunout hlavni mesto, ukazeme cenu.
 		var check = GameManager.muze_presunout_hlavni_mesto(state_tag, province_id)
 		if bool(check.get("ok", false)):
 			var price = float(check.get("cost", 0.0))

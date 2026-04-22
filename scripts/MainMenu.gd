@@ -9,6 +9,10 @@
 extends Control
 # this script drives a specific gameplay/UI area and keeps related logic together.
 
+# Main menu flow controller: new game, load, settings and country selection.
+# Hard part: this scene also prepares per-player setup and persistent settings,
+# so it acts as bridge before map scene boot.
+
 const ControlsConfig = preload("res://scripts/ControlsConfig.gd")
 const CountryCustomization = preload("res://scripts/CountryCustomization.gd")
 const TooltipUtilsScript = preload("res://scripts/TooltipUtils.gd")
@@ -190,6 +194,7 @@ const UI_TEXTS := {
 		"vsync": "VSync",
 		"potato_mode": "Potato mode (low-end PC)",
 		"ai_debug_mode": "Debug mode",
+		"spectate_mode": "Spectate mode (AI only)",
 		"master_volume": "Master volume",
 		"reset": "Reset defaults",
 		"apply": "Apply",
@@ -227,6 +232,7 @@ const UI_TEXTS := {
 		"vsync": "VSync",
 		"potato_mode": "Potato mode (slabe PC)",
 		"ai_debug_mode": "Debug mode",
+		"spectate_mode": "Spectate mode (pouze AI)",
 		"master_volume": "Hlavni hlasitost",
 		"reset": "Obnovit vychozi",
 		"apply": "Pouzit",
@@ -262,6 +268,7 @@ var _browser_current_settings_panel: PanelContainer = null
 var _browser_current_settings_vbox: VBoxContainer = null
 var _browser_potato_mode_check: CheckBox = null
 var _browser_ai_debug_mode_check: CheckBox = null
+var _browser_spectate_mode_check: CheckBox = null
 var _browser_settings_country_separator: HSeparator = null
 var _selected_players_flag_list: HFlowContainer = null
 var _selected_players_scroll: ScrollContainer = null
@@ -400,6 +407,8 @@ func _aktualizuj_clean_helpery() -> void:
 
 # Initializes references, connects signals, and prepares default runtime state.
 func _ready():
+	# Startup order matters: load settings/data first, then build UI from that state.
+	# Pro male dite: tady se pri zapnuti hry pripravi uplne vse, aby tlacitka fungovala hned.
 	ControlsConfig.ensure_default_actions()
 	_nacti_nastaveni()
 	_nastav_texty_dialogu()
@@ -668,6 +677,8 @@ func _apply_country_browser_compact_mode(vp_size: Vector2) -> void:
 		_browser_potato_mode_check.add_theme_font_size_override("font_size", 12 if tiny else (13 if compact else 14))
 	if _browser_ai_debug_mode_check:
 		_browser_ai_debug_mode_check.add_theme_font_size_override("font_size", 12 if tiny else (13 if compact else 14))
+	if _browser_spectate_mode_check:
+		_browser_spectate_mode_check.add_theme_font_size_override("font_size", 12 if tiny else (13 if compact else 14))
 	if country_list_scroll:
 		country_list_scroll.custom_minimum_size.y = 84 if tiny else (120 if compact else 260)
 	if browser_buttons_row:
@@ -814,6 +825,13 @@ func _ensure_ai_aggression_control() -> void:
 	_browser_ai_debug_mode_check.button_pressed = bool(nastaveni_data.get("other", {}).get("ai_debug_mode", false))
 	_browser_ai_debug_mode_check.toggled.connect(_on_browser_ai_debug_mode_toggled)
 	_browser_current_settings_vbox.add_child(_browser_ai_debug_mode_check)
+
+	_browser_spectate_mode_check = CheckBox.new()
+	_browser_spectate_mode_check.name = "BrowserSpectateModeCheck"
+	_browser_spectate_mode_check.text = "Spectate mode (AI only)"
+	_browser_spectate_mode_check.button_pressed = false
+	_browser_spectate_mode_check.toggled.connect(_on_browser_spectate_mode_toggled)
+	_browser_current_settings_vbox.add_child(_browser_spectate_mode_check)
 
 	var insert_index := root_vbox.get_child_count()
 	if selected_players_title and selected_players_title.get_parent() and selected_players_title.get_parent().get_parent() and selected_players_title.get_parent().get_parent().get_parent():
@@ -995,6 +1013,54 @@ func _on_browser_ai_debug_mode_toggled(enabled: bool) -> void:
 		ai_debug_mode_check.button_pressed = enabled
 		ai_debug_mode_check.set_block_signals(false)
 
+func _on_browser_spectate_mode_toggled(enabled: bool) -> void:
+	if not new_game_browser_flow:
+		if _browser_spectate_mode_check:
+			_browser_spectate_mode_check.set_block_signals(true)
+			_browser_spectate_mode_check.button_pressed = false
+			_browser_spectate_mode_check.set_block_signals(false)
+		enabled = false
+	_aktualizuj_spectate_stav_v_new_game(enabled)
+
+func _aktualizuj_spectate_stav_v_new_game(enabled: bool) -> void:
+	if enabled:
+		local_player_tags.clear()
+		setup_active_player_index = 0
+	_aktualizuj_stav_blokace_vyberu_statu()
+	_aktualizuj_panel_vyberu_hracu()
+	_aktualizuj_browser_napovedu()
+	_obnov_texty_radku_statu()
+
+func _je_spectate_new_game_aktivni() -> bool:
+	return new_game_browser_flow and _browser_spectate_mode_check != null and _browser_spectate_mode_check.button_pressed
+
+func _aktualizuj_stav_blokace_vyberu_statu() -> void:
+	var lock_selection = _je_spectate_new_game_aktivni()
+	if country_list_scroll:
+		country_list_scroll.modulate = Color(0.58, 0.58, 0.62, 0.9) if lock_selection else Color(1, 1, 1, 1)
+	if detail_flag:
+		detail_flag.modulate = Color(0.6, 0.6, 0.62, 0.92) if lock_selection else Color(1, 1, 1, 1)
+	if detail_name:
+		detail_name.modulate = Color(0.72, 0.72, 0.78, 1.0) if lock_selection else Color(1, 1, 1, 1)
+	if detail_tag:
+		detail_tag.modulate = Color(0.72, 0.72, 0.78, 1.0) if lock_selection else Color(1, 1, 1, 1)
+	if detail_ideology:
+		detail_ideology.modulate = Color(0.72, 0.72, 0.78, 1.0) if lock_selection else Color(1, 1, 1, 1)
+	if detail_population:
+		detail_population.modulate = Color(0.72, 0.72, 0.78, 1.0) if lock_selection else Color(1, 1, 1, 1)
+	if detail_gdp:
+		detail_gdp.modulate = Color(0.72, 0.72, 0.78, 1.0) if lock_selection else Color(1, 1, 1, 1)
+	if detail_recruits:
+		detail_recruits.modulate = Color(0.72, 0.72, 0.78, 1.0) if lock_selection else Color(1, 1, 1, 1)
+	if detail_soldiers:
+		detail_soldiers.modulate = Color(0.72, 0.72, 0.78, 1.0) if lock_selection else Color(1, 1, 1, 1)
+	if detail_provinces:
+		detail_provinces.modulate = Color(0.72, 0.72, 0.78, 1.0) if lock_selection else Color(1, 1, 1, 1)
+	if detail_info:
+		detail_info.modulate = Color(0.72, 0.72, 0.78, 1.0) if lock_selection else Color(1, 1, 1, 1)
+	if btn_confirm_country:
+		btn_confirm_country.disabled = lock_selection
+
 # Applies prepared settings/effects to runtime systems.
 func _apply_ai_aggression_overrides(_local_tags: Array) -> void:
 	if not GameManager or not GameManager.has_method("nastav_globalni_ai_agresi"):
@@ -1032,6 +1098,8 @@ func _nastav_tooltipy_ui() -> void:
 		_browser_potato_mode_check.tooltip_text = "Quick toggle for potato mode in current game setup."
 	if _browser_ai_debug_mode_check:
 		_browser_ai_debug_mode_check.tooltip_text = "Shows debug panel and detailed diagnostics in output."
+	if _browser_spectate_mode_check:
+		_browser_spectate_mode_check.tooltip_text = "Observer start. Country selection and offers are disabled."
 	if _browser_settings_country_separator:
 		_browser_settings_country_separator.tooltip_text = "Visual separator between setup settings and country selection."
 	if potato_mode_check:
@@ -1483,6 +1551,8 @@ func _aktualizuj_texty_dle_jazyka() -> void:
 	title_label.text = str(t["title"])
 	subtitle_label.text = str(t["subtitle"])
 	btn_new_game.text = str(t["new_game"])
+	if _browser_spectate_mode_check:
+		_browser_spectate_mode_check.text = str(t["spectate_mode"])
 	btn_settings.text = str(t["settings"])
 	btn_credits.text = str(t["credits"])
 	btn_exit.text = str(t["quit"])
@@ -1802,6 +1872,8 @@ func _sestav_text_radku_statu(tag: String) -> String:
 
 # Refreshes existing content to reflect current runtime values.
 func _obnov_texty_radku_statu() -> void:
+	var spectate_lock = _je_spectate_new_game_aktivni()
+	# Pro male dite: projdeme vsechny radky statu a nastavime jim spravny vzhled.
 	for tag in country_rows.keys():
 		var row_btn = country_rows[tag]
 		if row_btn:
@@ -1809,6 +1881,12 @@ func _obnov_texty_radku_statu() -> void:
 			row_btn.text = _sestav_text_radku_statu(tag_txt)
 			var je_obsazeno = new_game_browser_flow and local_player_tags.has(tag_txt)
 			var je_aktivne_vybrany = selected_country_tag_in_browser == tag_txt
+
+			if spectate_lock:
+				# Spectate setup intentionally disables state picking for all rows.
+				row_btn.disabled = true
+				row_btn.modulate = Color(0.56, 0.56, 0.62, 0.92)
+				continue
 
 			if je_obsazeno:
 				row_btn.disabled = false
@@ -1826,6 +1904,14 @@ func _aktualizuj_panel_vyberu_hracu() -> void:
 		return
 	_ensure_selected_players_flag_list()
 	_clear_selected_players_flag_rows()
+	if _je_spectate_new_game_aktivni():
+		selected_players_title.text = "Spectate mode"
+		selected_players_list.text = "No human players. AI observer start."
+		_add_selected_player_row("Observer only (AI vs AI)", "", true)
+		if _selected_players_scroll:
+			_selected_players_scroll.custom_minimum_size = Vector2(0, 92)
+		call_deferred("_apply_country_browser_window_size")
+		return
 
 	var row_count := 0
 	if new_game_browser_flow:
@@ -1974,6 +2060,8 @@ func _vytvor_souhrn_statu(jmeno: String, s: Dictionary, compact_summary: bool = 
 
 # Callback for UI/game events.
 func _on_country_row_pressed(tag: String):
+	if _je_spectate_new_game_aktivni():
+		return
 	if new_game_browser_flow:
 		var owner_idx = local_player_tags.find(tag)
 		if owner_idx != -1 and owner_idx != setup_active_player_index:
@@ -2014,6 +2102,8 @@ func _najdi_prvni_volny_tag() -> String:
 
 # Feature logic entry point.
 func _prirad_stat_aktivnimu_hraci(tag: String) -> void:
+	if _je_spectate_new_game_aktivni():
+		return
 	if local_player_tags.is_empty():
 		return
 
@@ -2037,6 +2127,8 @@ func _prirad_stat_aktivnimu_hraci(tag: String) -> void:
 
 # Runs the local feature logic.
 func _pridej_dalsiho_hrace_do_setupu() -> void:
+	if _je_spectate_new_game_aktivni():
+		return
 	var novy_tag = _najdi_prvni_volny_tag()
 	if novy_tag == "":
 		if browser_flow_hint:
@@ -2056,11 +2148,14 @@ func _otevri_browser_statu():
 	_apply_country_browser_window_size()
 	if selected_country_tag != "" and country_stats.has(selected_country_tag):
 		_nastav_detail_statu(selected_country_tag, false)
+	_aktualizuj_stav_blokace_vyberu_statu()
 	_aktualizuj_browser_napovedu()
 	country_browser_panel.show()
 
 # Triggered by a UI/game signal.
 func _on_confirm_country_pressed():
+	if _je_spectate_new_game_aktivni():
+		return
 	if new_game_browser_flow:
 		_pridej_dalsiho_hrace_do_setupu()
 		return
@@ -2075,6 +2170,24 @@ func _on_confirm_country_pressed():
 # Callback for UI/game events.
 func _on_close_browser_pressed():
 	if new_game_browser_flow:
+		# In spectate flow, closing browser means immediate AI-vs-AI start.
+		# Pro male dite: kdyz je spectate, zavreni okna = hned spustit hru bez hrace.
+		if _je_spectate_new_game_aktivni():
+			setup_active_player_index = 0
+			new_game_browser_flow = false
+			btn_confirm_country.text = BROWSER_CONFIRM_DEFAULT_TEXT
+			btn_close_browser.text = BROWSER_CLOSE_DEFAULT_TEXT
+			if _browser_spectate_mode_check:
+				_browser_spectate_mode_check.set_block_signals(true)
+				_browser_spectate_mode_check.button_pressed = false
+				_browser_spectate_mode_check.set_block_signals(false)
+			_aktualizuj_stav_blokace_vyberu_statu()
+			_obnov_texty_radku_statu()
+			_aktualizuj_panel_vyberu_hracu()
+			_aktualizuj_browser_napovedu()
+			country_browser_panel.hide()
+			_spust_hru_vyberem([], true)
+			return
 		if local_player_tags.is_empty() and selected_country_tag != "":
 			local_player_tags.append(selected_country_tag)
 		selected_country_tag = str(local_player_tags[0]) if not local_player_tags.is_empty() else selected_country_tag
@@ -2101,6 +2214,11 @@ func _on_close_browser_pressed():
 func _on_close_browser_corner_pressed():
 	new_game_browser_flow = false
 	setup_active_player_index = 0
+	if _browser_spectate_mode_check:
+		_browser_spectate_mode_check.set_block_signals(true)
+		_browser_spectate_mode_check.button_pressed = false
+		_browser_spectate_mode_check.set_block_signals(false)
+	_aktualizuj_stav_blokace_vyberu_statu()
 	btn_confirm_country.text = BROWSER_CONFIRM_DEFAULT_TEXT
 	btn_close_browser.text = BROWSER_CLOSE_DEFAULT_TEXT
 	local_player_tags.clear()
@@ -2137,6 +2255,12 @@ func _aktualizuj_browser_napovedu():
 		return
 
 	if new_game_browser_flow:
+		if _je_spectate_new_game_aktivni():
+			browser_subtitle.text = "Observer setup. Human country selection is disabled."
+			list_hint.text = "Spectate mode is ON: country offer and selection are disabled."
+			browser_flow_hint.text = "Press Start game to launch AI vs AI observer session."
+			_aktualizuj_clean_helpery()
+			return
 		browser_subtitle.text = "Player 1 is added automatically. Click to assign a country to the active player."
 		list_hint.text = "Click a country chip in Selected Countries to pick player, then click a free country to change it."
 		if local_player_tags.is_empty():
@@ -2496,13 +2620,16 @@ func _spust_load_ze_slotu(slot_key: String) -> void:
 				loader.aktualizuj_vlajky_hlavnich_mest()
 
 # Main runtime logic lives here.
-func _spust_hru_vyberem(player_tags: Array = []):
+func _spust_hru_vyberem(player_tags: Array = [], spectate_mode: bool = false):
+	# One entry point for both normal player start and observer/spectate start.
+	# Pro male dite: tohle je hlavni cudlik v kodu, co opravdu pusti mapu.
 	var final_tags = player_tags.duplicate()
-	if final_tags.is_empty() and selected_country_tag != "":
+	if not spectate_mode and final_tags.is_empty() and selected_country_tag != "":
 		final_tags = [selected_country_tag]
-	if final_tags.is_empty():
+	if not spectate_mode and final_tags.is_empty():
 		return
-	selected_country_tag = str(final_tags[0])
+	if not spectate_mode:
+		selected_country_tag = str(final_tags[0])
 
 	# Start a truly fresh session for New Game and avoid carrying previous run state.
 	if GameManager and GameManager.has_method("reset_pro_novou_hru"):
@@ -2510,11 +2637,13 @@ func _spust_hru_vyberem(player_tags: Array = []):
 
 	# Reset uploaded custom flags so each New Game starts with default flag assets.
 	CountryCustomization.clear_all_custom_flags()
+	if GameManager.has_method("nastav_spectate_mode"):
+		GameManager.nastav_spectate_mode(spectate_mode)
 
 	# Save selected local players to GameManager.
 	if GameManager.has_method("nastav_lokalni_hrace"):
 		GameManager.nastav_lokalni_hrace(final_tags)
-	else:
+	elif not spectate_mode:
 		GameManager.hrac_stat = selected_country_tag
 
 	_apply_ai_aggression_overrides(final_tags)
@@ -2526,9 +2655,15 @@ func _spust_hru_vyberem(player_tags: Array = []):
 
 # Reacts to incoming events.
 func _on_new_game_pressed():
+	# Reset setup state so previous browser/session choices cannot leak into new game.
+	# Pro male dite: zmacknu New Game -> vse stare se vycisti a zacina se od nuly.
 	local_player_tags.clear()
 	new_game_browser_flow = true
 	setup_active_player_index = 0
+	if _browser_spectate_mode_check:
+		_browser_spectate_mode_check.set_block_signals(true)
+		_browser_spectate_mode_check.button_pressed = false
+		_browser_spectate_mode_check.set_block_signals(false)
 
 	var vychozi_tag = selected_country_tag.strip_edges().to_upper()
 	if vychozi_tag == "" or not country_stats.has(vychozi_tag):
@@ -2546,6 +2681,7 @@ func _on_new_game_pressed():
 	btn_close_browser.text = BROWSER_CLOSE_START_TEXT
 	_obnov_text_vyberu()
 	_obnov_texty_radku_statu()
+	_aktualizuj_stav_blokace_vyberu_statu()
 	_aktualizuj_panel_vyberu_hracu()
 	_aktualizuj_browser_napovedu()
 	_otevri_browser_statu()

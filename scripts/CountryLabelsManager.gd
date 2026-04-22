@@ -9,6 +9,10 @@
 extends Node2D
 # this script drives a specific gameplay/UI area and keeps related logic together.
 
+# Builds one strategic label per state from province label positions.
+# Hard part: center is computed from all owned province points so labels stay readable
+# even for fragmented countries.
+
 @export var label_scene: PackedScene = preload("res://scenes/CountryLabel.tscn")
 @export var min_velikost_pro_text: float = 85.0 
 
@@ -28,6 +32,7 @@ func nastav_potato_mode(enabled: bool) -> void:
 
 # Updates derived state and UI.
 func aktualizuj_labely_statu(all_provinces: Dictionary, prov_labels_node: Node2D):
+	# Rebuild visible state labels each refresh and remove dead entries.
 	if potato_mode_enabled:
 		return
 
@@ -74,6 +79,7 @@ func aktualizuj_labely_statu(all_provinces: Dictionary, prov_labels_node: Node2D
 		_vykresli_label(owner_tag, staty_data[owner_tag]["jmeno"], stred, velikost_statu, staty_data[owner_tag]["ideologie"])
 		
 	var znicene_staty = []
+	# Remove labels for states that no longer own any province this refresh.
 	for owner_tag in aktivni_labely.keys():
 		if not owner_tag in existujici_vlastnici:
 			aktivni_labely[owner_tag].queue_free()
@@ -86,6 +92,7 @@ func aktualizuj_labely_statu(all_provinces: Dictionary, prov_labels_node: Node2D
 func _vykresli_label(tag: String, jmeno: String, pozice: Vector2, velikost: float, _ideologie: String):
 	var inst
 	if not aktivni_labely.has(tag):
+		# Reuse existing label nodes when possible to avoid allocation churn.
 		inst = label_scene.instantiate()
 		add_child(inst)
 		aktivni_labely[tag] = inst

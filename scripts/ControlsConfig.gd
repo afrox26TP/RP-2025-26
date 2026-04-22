@@ -8,6 +8,9 @@
 
 extends RefCounted
 
+# Central keybind helper shared by menu and gameplay scripts.
+# It normalizes key codes, loads/saves config values, and applies them to InputMap.
+
 const SETTINGS_FILE_PATH := "user://settings.cfg"
 const KEYBINDS_SECTION := "keybinds"
 
@@ -46,6 +49,7 @@ const DEFAULT_BINDINGS := {
 }
 
 static func ensure_default_actions() -> void:
+	# Guarantees actions exist even on a fresh install with empty settings.
 	for action_any in ACTIONS:
 		var action = StringName(str(action_any))
 		if not InputMap.has_action(action):
@@ -61,6 +65,7 @@ static func get_default_bindings() -> Dictionary:
 	return out
 
 static func normalize_codes(raw_value) -> Array:
+	# Accepts single value or array, removes invalid/duplicate key codes.
 	var out: Array = []
 	if raw_value is Array:
 		for code_any in raw_value:
@@ -83,6 +88,7 @@ static func load_bindings_from_config(cfg: ConfigFile = null) -> Dictionary:
 	for action_any in ACTIONS:
 		var action = str(action_any)
 		var fallback = out.get(action, [])
+		# Missing key or legacy format both fall back to sane defaults.
 		var stored = local_cfg.get_value(KEYBINDS_SECTION, action, fallback)
 		var codes = normalize_codes(stored)
 		if codes.is_empty():
@@ -98,6 +104,7 @@ static func save_bindings_to_config(cfg: ConfigFile, bindings: Dictionary) -> vo
 		cfg.set_value(KEYBINDS_SECTION, action, normalize_codes(bindings.get(action, DEFAULT_BINDINGS.get(action, []))))
 
 static func apply_bindings(bindings: Dictionary) -> void:
+	# Hard reset + rebuild prevents stale events from old bindings.
 	ensure_default_actions()
 	for action_any in ACTIONS:
 		var action = str(action_any)
@@ -110,6 +117,7 @@ static func set_action_keycodes(action: String, codes: Array) -> void:
 	var action_name = StringName(action)
 	if not InputMap.has_action(action_name):
 		InputMap.add_action(action_name)
+	# Full erase avoids mixed old/new keybind states after rebinding.
 	InputMap.action_erase_events(action_name)
 	for code_any in normalize_codes(codes):
 		var event := InputEventKey.new()
@@ -147,6 +155,7 @@ static func matches_action(event: InputEvent, action: String) -> bool:
 	if not (event is InputEventKey):
 		return false
 	var key_event := event as InputEventKey
+	# Ignore key release and autorepeat so gameplay reacts only once per press.
 	if not key_event.pressed or key_event.echo:
 		return false
 	for code_any in get_action_keycodes(action):

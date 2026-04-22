@@ -9,6 +9,11 @@
 extends CanvasLayer
 # this script drives a specific gameplay/UI area and keeps related logic together.
 
+# Province detail + local action panel.
+# Simple part: shows current province numbers.
+# Hard part: movement/recruit/liquidation popups must stay synced with selected province
+# and with GameManager economy modifiers.
+
 
 @onready var id_label = $PanelContainer/VBoxContainer/IDLabel
 @onready var owner_label = $PanelContainer/VBoxContainer/OwnerLabel
@@ -194,6 +199,8 @@ func _sestav_building_tooltip(building_id: String, bdef: Dictionary) -> String:
 	return "\n".join(lines)
 
 func _obnov_stavba_popup_polozky() -> void:
+	# Rebuild menu from live building defs so costs/effects always match current rules.
+	# Pro male dite: znovu naplnime seznam budov, aby ukazoval spravne ceny.
 	var popup_stavba = btn_stavet.get_popup()
 	_stavba_popup = popup_stavba
 	_stavba_menu_build_ids.clear()
@@ -222,6 +229,7 @@ func _limit_verbovani_v_okupaci(requested: int, prov_data: Dictionary) -> int:
 	if not je_okupace:
 		return max(0, requested)
 	# Occupation allows only limited local recruitment each action.
+	# This prevents unrealistic instant manpower from freshly occupied territory.
 	return int(max(0, floor(float(requested) * 0.2)))
 
 # Initializes references, connects signals, and prepares default runtime state.
@@ -303,6 +311,8 @@ func _ziskej_safe_bottom_inset() -> float:
 
 # Refreshes cached/UI state.
 func _aktualizuj_responzivni_layout() -> void:
+	# Keep province panel and action panel pinned to bottom edge across resolutions.
+	# Pro male dite: i kdyz zmenis velikost okna, panely zustanou pekne dole.
 	if info_panel == null or action_menu == null:
 		return
 	var viewport = get_viewport()
@@ -498,6 +508,8 @@ func _set_metric_delta(key: String, text: String, color: Color) -> void:
 	var lbl = _metric_deltas[key] as Label
 	var clean = text.strip_edges()
 	if clean == "":
+		# Empty delta means hide preview suffix and keep row visually clean.
+		# Pro male dite: kdyz neni zmena, schovame barevne +/-, at to neplete.
 		lbl.visible = false
 		lbl.text = ""
 		return

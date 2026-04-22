@@ -9,6 +9,10 @@
 extends CanvasLayer
 # this script drives a specific gameplay/UI area and keeps related logic together.
 
+# Top HUD controller (money/date/turn controls/map modes/stats).
+# Hard part: keeps turn-state UI responsive while turn processing may run in slices,
+# and updates map-mode controls consistently with current scene state.
+
 class StatsLineChart:
 	extends Control
 	signal chart_point_selected(info: Dictionary)
@@ -121,6 +125,8 @@ class StatsLineChart:
 
 		var min_v = INF
 		var max_v = -INF
+		# Compute global Y range across all series so lines share one comparable scale.
+		# Pro male dite: najdeme nejmensi a nejvetsi cislo, aby se graf vesel do ramecku.
 		for s_any in valid_series:
 			var vals = (s_any as Dictionary).get("values", []) as Array
 			for v_any in vals:
@@ -141,6 +147,7 @@ class StatsLineChart:
 			var pts: PackedVector2Array = []
 			var count = vals.size()
 			for j in range(count):
+				# Convert index/value pair to screen coordinates inside plot rectangle.
 				var x_t = float(j) / float(max(1, count - 1))
 				var x = plot.position.x + (plot.size.x * x_t)
 				var v = float(vals[j])
@@ -182,6 +189,8 @@ class StatsLineChart:
 
 		var best_dist = INF
 		var best: Dictionary = {}
+		# Pick nearest rendered point across all series for stable tooltip behavior.
+		# Pro male dite: najdeme nejblizsi tecku pod mysi a ukazeme jeji hodnotu.
 		for s_any in valid_series:
 			var s = s_any as Dictionary
 			var vals = s.get("values", []) as Array

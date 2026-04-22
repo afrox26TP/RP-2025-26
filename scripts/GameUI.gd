@@ -9,6 +9,11 @@
 extends CanvasLayer
 # this script drives a specific gameplay/UI area and keeps related logic together.
 
+# Main in-game UI controller.
+# Handles diplomacy panels, economy actions, research widgets, and popups.
+# Hard part: this file coordinates many modal states (trade/peace/loan/pause),
+# so flags below track which interaction currently owns user input.
+
 const ControlsConfig = preload("res://scripts/ControlsConfig.gd")
 const CountryCustomization = preload("res://scripts/CountryCustomization.gd")
 const TooltipUtilsScript = preload("res://scripts/TooltipUtils.gd")
@@ -162,9 +167,14 @@ var _pause_menu_panel: PopupPanel
 var _pause_confirm_dialog: ConfirmationDialog
 var _pause_pending_action: String = ""
 var _pause_spectate_btn: Button = null
+var _pause_spectate_pick_row: HBoxContainer = null
+var _pause_spectate_pick_label: Label = null
+var _pause_spectate_pick_option: OptionButton = null
 var _spectate_mode_enabled: bool = false
 var _spectate_auto_turn_cooldown: float = 0.0
 var _spectate_focus_index: int = 0
+var _spectate_hud_panel: PanelContainer = null
+var _spectate_hud_label: Label = null
 var _overview_metric_rows: Dictionary = {}
 var _overview_metric_deltas: Dictionary = {}
 var _overview_metric_delta_holders: Dictionary = {}
@@ -490,6 +500,8 @@ func _ziskej_jmeno_statu_podle_tagu(tag: String) -> String:
 	return cisty
 
 func _ready():
+	# Build/prepare all major UI subsystems before any popup can open.
+	# Pro male dite: tady se sklada cele herni menu, aby se nic nerozbilo po prvnim kliknuti.
 	ControlsConfig.ensure_default_actions()
 	panel.hide()
 	_setup_overview_inline_deltas()
@@ -510,6 +522,14 @@ func _ready():
 	_vytvor_alliance_dialog()
 	_vytvor_alliance_create_popup()
 	_vytvor_trade_dialog()
+	if GameManager and GameManager.has_method("je_spectate_mode_aktivni"):
+		# Restore spectate state after load so pause/HUD stay in sync with GameManager.
+		_spectate_mode_enabled = bool(GameManager.je_spectate_mode_aktivni())
+		if _spectate_mode_enabled:
+			_spectate_auto_turn_cooldown = 0.05
+			_spectate_focus_index = 0
+	_ensure_spectate_hud_indicator()
+	_obnov_spectate_hud_indicator()
 	
 	# Automatically connect the button signal if it exists
 	if declare_war_btn and not declare_war_btn.pressed.is_connected(_on_declare_war_button_pressed):
@@ -2538,7 +2558,7 @@ func _debug_append_ai_lines(lines: Array[String], snap: Dictionary, enemies_text
 		recruit_targets.size()
 	])
 
-func _debug_append_latency_lines(lines: Array[String], turn_last_text: String, turn_avg_text: String, turn_recent_text: String, turn_history: Array) -> void:
+func _debug_append_latency_lines(lines: Array[String], turn_last_text: String, turn_avg_text: String, turn_recent_text: String, turn_history: Array, snap: Dictionary) -> void:
 	lines.append("[b]Latency diagnostics[/b]")
 	lines.append("Turn state: %s | loading overlay: %s" % [
 		"processing" if _turn_loading_active else "idle",
@@ -2561,6 +2581,84 @@ func _debug_append_latency_lines(lines: Array[String], turn_last_text: String, t
 		int(totals_stats.get("max", 0)),
 		int(totals_stats.get("p95", 0))
 	])
+	var ai_profile = snap.get("ai_profile", {}) as Dictionary
+	if ai_profile.is_empty():
+		lines.append("AI latency profile: no AI turn data yet.")
+		return
+	var ai_phases = ai_profile.get("phases", {}) as Dictionary
+	lines.append("AI total: %d ms | setup %d | dip %d | econ %d | move %d | clean %d" % [
+		int(ai_profile.get("total_ms", 0)),
+		int(ai_phases.get("setup", 0)),
+		int(ai_phases.get("diplomacy", 0)),
+		int(ai_phases.get("economy_recruit", 0)),
+		int(ai_phases.get("movement", 0)),
+		int(ai_phases.get("cleanup", 0))
+	])
+	lines.append("AI states: processed %d/%d | passive tick %d" % [
+		int(ai_profile.get("states_processed", 0)),
+		int(ai_profile.get("states_total", 0)),
+		int(ai_profile.get("states_passive", 0))
+	])
+	var dip = ai_profile.get("diplomacy", {}) as Dictionary
+	if not dip.is_empty():
+		lines.append("AI diplomacy ms: peace %d | non-agg %d | relation %d | leave alliance %d | alliance %d | potato_skip=%s" % [
+			int(dip.get("peace_eval_ms", 0)),
+			int(dip.get("non_aggression_ms", 0)),
+			int(dip.get("relation_ms", 0)),
+			int(dip.get("leave_alliance_ms", 0)),
+			int(dip.get("alliance_ms", 0)),
+			"yes" if bool(dip.get("skipped_potato", false)) else "no"
+		])
+	var econ = ai_profile.get("economy", {}) as Dictionary
+	if not econ.is_empty():
+		lines.append("AI economy ms: income %d | prep %d | recruit %d | post %d | war-light %d" % [
+			int(econ.get("income_ms", 0)),
+			int(econ.get("prep_ms", 0)),
+			int(econ.get("recruit_ms", 0)),
+			int(econ.get("post_ms", 0)),
+			int(econ.get("war_light_states", 0))
+		])
+		var econ_states = econ.get("top_states", []) as Array
+		if not econ_states.is_empty():
+			lines.append("Slowest AI states in economy:")
+			var econ_cap = min(5, econ_states.size())
+			for i in range(econ_cap):
+				var row = econ_states[i] as Dictionary
+				lines.append("  - %s total %d ms (income %d | prep %d | recruit %d | post %d)" % [
+					str(row.get("state", "?")),
+					int(row.get("total_ms", 0)),
+					int(row.get("income_ms", 0)),
+					int(row.get("prep_ms", 0)),
+					int(row.get("recruit_ms", 0)),
+					int(row.get("post_ms", 0))
+				])
+	var move = ai_profile.get("movement", {}) as Dictionary
+	if not move.is_empty():
+		lines.append("AI movement ms: total %d | non-attack %d | core defense %d | offense %d | war-eval %d (%d) | declare %d (%d) | moves %d" % [
+			int(move.get("total_ms", 0)),
+			int(move.get("non_attack_ms", 0)),
+			int(move.get("core_defense_ms", 0)),
+			int(move.get("offense_ms", 0)),
+			int(move.get("war_eval_ms", 0)),
+			int(move.get("war_eval_count", 0)),
+			int(move.get("war_declare_ms", 0)),
+			int(move.get("war_declare_count", 0)),
+			int(move.get("moves_registered", 0))
+		])
+		var move_states = move.get("state_rows", []) as Array
+		if not move_states.is_empty():
+			lines.append("Slowest AI states in movement:")
+			var move_cap = min(5, move_states.size())
+			for i in range(move_cap):
+				var row = move_states[i] as Dictionary
+				lines.append("  - %s total %d ms (orders %d | offense %d | phase %s | target %s)" % [
+					str(row.get("state", "?")),
+					int(row.get("total_ms", 0)),
+					int(row.get("orders", 0)),
+					int(row.get("offense_orders", 0)),
+					str(row.get("phase", "-")),
+					str(row.get("target", "-"))
+				])
 
 func _debug_append_economy_lines(lines: Array[String], snap: Dictionary, turn_history: Array) -> void:
 	lines.append("[b]Economy diagnostics[/b]")
@@ -2752,6 +2850,8 @@ func _on_ai_debug_filter_other_pressed() -> void:
 
 # Refresh pass for current state.
 func _aktualizuj_ai_debug_overview(owner_tag: String, je_hracuv_stat: bool) -> void:
+	# Collects a snapshot and formats one combined debug report for the right panel.
+	# Pro male dite: tady se seberou cisla o AI a napisi se do debug okna.
 	if ai_debug_label == null or ai_debug_panel == null:
 		return
 	if not GameManager or not GameManager.has_method("je_ai_debug_mode_zapnuty"):
@@ -2828,7 +2928,7 @@ func _aktualizuj_ai_debug_overview(owner_tag: String, je_hracuv_stat: bool) -> v
 		AI_DEBUG_SECTION_AI:
 			_debug_append_ai_lines(lines, snap, enemies_text, goal_target_text, plan_target_text, recruit_targets)
 		AI_DEBUG_SECTION_LATENCY:
-			_debug_append_latency_lines(lines, turn_last_text, turn_avg_text, turn_recent_text, turn_history)
+			_debug_append_latency_lines(lines, turn_last_text, turn_avg_text, turn_recent_text, turn_history, snap)
 		AI_DEBUG_SECTION_ECONOMY:
 			_debug_append_economy_lines(lines, snap, turn_history)
 		AI_DEBUG_SECTION_DIPLOMACY:
@@ -2838,7 +2938,7 @@ func _aktualizuj_ai_debug_overview(owner_tag: String, je_hracuv_stat: bool) -> v
 		_:
 			_debug_append_ai_lines(lines, snap, enemies_text, goal_target_text, plan_target_text, recruit_targets)
 			lines.append("------------------------------")
-			_debug_append_latency_lines(lines, turn_last_text, turn_avg_text, turn_recent_text, turn_history)
+			_debug_append_latency_lines(lines, turn_last_text, turn_avg_text, turn_recent_text, turn_history, snap)
 			lines.append("------------------------------")
 			_debug_append_economy_lines(lines, snap, turn_history)
 			lines.append("------------------------------")
@@ -4619,6 +4719,7 @@ func _on_viewport_resized():
 	_aktualizuj_overview_panel_layout()
 	_pozicuj_ai_debug_panel()
 	_aktualizuj_pozice_popupu()
+	_pozicuj_spectate_hud_indicator()
 	if _rename_country_dialog and _rename_country_dialog.visible:
 		_vynutit_velikost_prejmenovani_dialogu(false)
 	_pozicuj_pause_menu()
@@ -4733,8 +4834,8 @@ func _vytvor_pause_menu() -> void:
 	_pause_menu_panel.name = "PauseMenu"
 	_pause_menu_panel.wrap_controls = false
 	_pause_menu_panel.unresizable = true
-	_pause_menu_panel.min_size = Vector2i(360, 410)
-	_pause_menu_panel.size = Vector2(360, 410)
+	_pause_menu_panel.min_size = Vector2i(380, 470)
+	_pause_menu_panel.size = Vector2(380, 470)
 	add_child(_pause_menu_panel)
 
 	var panel_style = StyleBoxFlat.new()
@@ -4792,6 +4893,23 @@ func _vytvor_pause_menu() -> void:
 	_pause_spectate_btn.custom_minimum_size = Vector2(0, 40)
 	_pause_spectate_btn.pressed.connect(_on_pause_toggle_spectate_pressed)
 	vbox.add_child(_pause_spectate_btn)
+
+	_pause_spectate_pick_row = HBoxContainer.new()
+	_pause_spectate_pick_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_pause_spectate_pick_row.add_theme_constant_override("separation", 8)
+	vbox.add_child(_pause_spectate_pick_row)
+
+	_pause_spectate_pick_label = Label.new()
+	_pause_spectate_pick_label.text = "Take control as:"
+	_pause_spectate_pick_label.custom_minimum_size = Vector2(108, 0)
+	_pause_spectate_pick_row.add_child(_pause_spectate_pick_label)
+
+	_pause_spectate_pick_option = OptionButton.new()
+	_pause_spectate_pick_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_pause_spectate_pick_option.custom_minimum_size = Vector2(0, 34)
+	_pause_spectate_pick_row.add_child(_pause_spectate_pick_option)
+
+	_obnov_pause_spectate_vyber_hrace()
 	_obnov_text_spectate_tlacitka()
 
 	_pause_confirm_dialog = ConfirmationDialog.new()
@@ -7276,6 +7394,7 @@ func _prepni_pause_menu() -> void:
 	if _pause_menu_panel.visible:
 		_pause_menu_panel.hide()
 	else:
+		_obnov_pause_spectate_vyber_hrace()
 		_obnov_text_spectate_tlacitka()
 		_pozicuj_pause_menu()
 		_pause_menu_panel.show()
@@ -8003,13 +8122,159 @@ func _on_pause_resume_pressed() -> void:
 func _obnov_text_spectate_tlacitka() -> void:
 	if _pause_spectate_btn == null:
 		return
-	_pause_spectate_btn.text = "Spectate mode: ON" if _spectate_mode_enabled else "Spectate mode: OFF"
-	_pause_spectate_btn.tooltip_text = "Automatically ends turns when no popup blocks gameplay."
+	if _spectate_mode_enabled:
+		_pause_spectate_btn.text = "Spectate mode: ON"
+		_pause_spectate_btn.tooltip_text = "Turns are auto-ended. Pick a state below, then click to take control."
+	else:
+		_pause_spectate_btn.text = "Spectate mode: OFF"
+		_pause_spectate_btn.tooltip_text = "Enable observer mode with automatic turn advance."
+	if _pause_spectate_pick_row:
+		_pause_spectate_pick_row.visible = _spectate_mode_enabled
+	_obnov_spectate_hud_indicator()
 
 func _on_pause_toggle_spectate_pressed() -> void:
-	_spectate_mode_enabled = not _spectate_mode_enabled
+	# Same button handles both entering spectate and taking control back.
+	# Pro male dite: stejne tlacitko umi prepnout na divani i zpet na hrani.
+	if _spectate_mode_enabled:
+		var selected_tag = _ziskej_pause_selected_hrac_tag()
+		if selected_tag == "":
+			await zobraz_systemove_hlaseni("Spectate", "No playable state is available to take control.")
+			return
+		if GameManager and GameManager.has_method("nastav_lokalni_hrace"):
+			GameManager.nastav_lokalni_hrace([selected_tag])
+		if GameManager and GameManager.has_method("nastav_spectate_mode"):
+			GameManager.nastav_spectate_mode(false)
+		_spectate_mode_enabled = false
+		_spectate_auto_turn_cooldown = 0.0
+		_obnov_pause_spectate_vyber_hrace()
+		_obnov_text_spectate_tlacitka()
+		_otevri_prehled_statu_podle_tagu(selected_tag)
+		await zobraz_systemove_hlaseni("Spectate", "You now control %s." % _ziskej_jmeno_statu_podle_tagu(selected_tag))
+		return
+
+	_spectate_mode_enabled = true
 	_spectate_auto_turn_cooldown = 0.0
+	_obnov_pause_spectate_vyber_hrace()
+	if GameManager and GameManager.has_method("nastav_spectate_mode"):
+		GameManager.nastav_spectate_mode(true)
 	_obnov_text_spectate_tlacitka()
+
+func _ziskej_pause_volitelne_hrace() -> Array:
+	var out: Array = []
+	if not GameManager:
+		return out
+	var seen: Dictionary = {}
+	for p_id in GameManager.map_data:
+		var d = GameManager.map_data[p_id] as Dictionary
+		var owner = str(d.get("owner", "")).strip_edges().to_upper()
+		if owner == "" or owner == "SEA":
+			continue
+		if seen.has(owner):
+			continue
+		seen[owner] = true
+		out.append(owner)
+	out.sort_custom(func(a, b): return _ziskej_jmeno_statu_podle_tagu(str(a)) < _ziskej_jmeno_statu_podle_tagu(str(b)))
+	return out
+
+func _ziskej_pause_selected_hrac_tag() -> String:
+	if _pause_spectate_pick_option == null:
+		return ""
+	if _pause_spectate_pick_option.item_count <= 0:
+		return ""
+	var idx = _pause_spectate_pick_option.selected
+	if idx < 0:
+		idx = 0
+	var meta = _pause_spectate_pick_option.get_item_metadata(idx)
+	if meta == null:
+		return ""
+	return str(meta).strip_edges().to_upper()
+
+func _obnov_pause_spectate_vyber_hrace() -> void:
+	if _pause_spectate_pick_option == null:
+		return
+	var previous = _ziskej_pause_selected_hrac_tag()
+	_pause_spectate_pick_option.clear()
+	var states = _ziskej_pause_volitelne_hrace()
+	for tag_any in states:
+		var tag = str(tag_any)
+		var name = _ziskej_jmeno_statu_podle_tagu(tag)
+		var item = "%s (%s)" % [name, tag]
+		_pause_spectate_pick_option.add_item(item)
+		_pause_spectate_pick_option.set_item_metadata(_pause_spectate_pick_option.item_count - 1, tag)
+	if _pause_spectate_pick_option.item_count <= 0:
+		_pause_spectate_pick_option.add_item("No playable state")
+		_pause_spectate_pick_option.set_item_disabled(0, true)
+		return
+	var select_idx = 0
+	if previous != "":
+		for i in range(_pause_spectate_pick_option.item_count):
+			if str(_pause_spectate_pick_option.get_item_metadata(i)).strip_edges().to_upper() == previous:
+				select_idx = i
+				break
+	_pause_spectate_pick_option.select(select_idx)
+
+func _ensure_spectate_hud_indicator() -> void:
+	# Lightweight always-visible indicator to avoid confusion during auto-turn spectate.
+	# Pro male dite: mala cedulka na obrazovce rika, ze jen koukas a nehrajes.
+	if _spectate_hud_panel != null:
+		return
+	_spectate_hud_panel = PanelContainer.new()
+	_spectate_hud_panel.name = "SpectateHudIndicator"
+	_spectate_hud_panel.visible = false
+	_spectate_hud_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_spectate_hud_panel.size = Vector2(252.0, 34.0)
+
+	var panel_style := StyleBoxFlat.new()
+	panel_style.bg_color = Color(0.08, 0.14, 0.24, 0.93)
+	panel_style.border_color = Color(0.58, 0.74, 0.94, 0.86)
+	panel_style.border_width_left = 1
+	panel_style.border_width_top = 1
+	panel_style.border_width_right = 1
+	panel_style.border_width_bottom = 1
+	panel_style.corner_radius_top_left = 7
+	panel_style.corner_radius_top_right = 7
+	panel_style.corner_radius_bottom_left = 7
+	panel_style.corner_radius_bottom_right = 7
+	_spectate_hud_panel.add_theme_stylebox_override("panel", panel_style)
+	add_child(_spectate_hud_panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_top", 5)
+	margin.add_theme_constant_override("margin_bottom", 5)
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_spectate_hud_panel.add_child(margin)
+
+	_spectate_hud_label = Label.new()
+	_spectate_hud_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_spectate_hud_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_spectate_hud_label.text = "SPECTATE MODE ACTIVE"
+	_spectate_hud_label.add_theme_font_size_override("font_size", 13)
+	_spectate_hud_label.add_theme_color_override("font_color", Color(0.92, 0.97, 1.0, 1.0))
+	margin.add_child(_spectate_hud_label)
+
+	_pozicuj_spectate_hud_indicator()
+
+func _pozicuj_spectate_hud_indicator() -> void:
+	if _spectate_hud_panel == null:
+		return
+	var viewport_size = get_viewport().get_visible_rect().size
+	var panel_w = clamp(viewport_size.x * 0.24, 220.0, 320.0)
+	var panel_h = 34.0
+	var top_y = _topbar_bottom_y() + 8.0
+	var x = maxf(10.0, viewport_size.x - panel_w - 12.0)
+	_spectate_hud_panel.size = Vector2(panel_w, panel_h)
+	_spectate_hud_panel.position = Vector2(x, top_y)
+
+func _obnov_spectate_hud_indicator() -> void:
+	_ensure_spectate_hud_indicator()
+	if _spectate_hud_panel == null:
+		return
+	if _spectate_hud_label:
+		_spectate_hud_label.text = "SPECTATE MODE ACTIVE" if _spectate_mode_enabled else ""
+	_spectate_hud_panel.visible = _spectate_mode_enabled
+	_pozicuj_spectate_hud_indicator()
 
 # Event handler for user or game actions.
 func _on_pause_options_pressed() -> void:
@@ -8084,6 +8349,7 @@ func _topbar_bottom_y() -> float:
 func _aktualizuj_pozice_popupu():
 	var viewport_size = get_viewport().get_visible_rect().size
 	var top_y = _topbar_bottom_y() + POPUP_TOP_MARGIN
+	_pozicuj_spectate_hud_indicator()
 	_pozicuj_tlacitko_zprav()
 
 	if diplomacy_request_popup:

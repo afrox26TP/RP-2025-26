@@ -12,6 +12,9 @@ extends Node2D
 const CountryCustomization = preload("res://scripts/CountryCustomization.gd")
 
 # Loads province data, switches map modes and resolves army movement on the actual map.
+# This is the world-side orchestrator for province data, map visuals and unit markers.
+# Hard part: it mixes data loading, path helpers and turn-time army animations,
+# so caches and guard checks are critical for performance.
 signal mapovy_mod_zmenen(mod: String)
 
 @export var label_scene = preload("res://scenes/ProvinceLabel.tscn")
@@ -181,6 +184,7 @@ func _je_potato_mode_ze_settings() -> bool:
 # Potato mode turns off some heavier visuals for weaker notebooks/PCs.
 func nastav_potato_mode(enabled: bool) -> void:
 	_potato_mode_enabled = enabled
+	# Lower FPS + low-processor mode keep laptops responsive during large turn updates.
 	Engine.max_fps = 45 if enabled else 0
 	OS.low_processor_usage_mode = enabled
 	OS.low_processor_usage_mode_sleep_usec = 12000 if enabled else 6900
@@ -264,6 +268,8 @@ func _skryj_loading_overlay() -> void:
 
 # Map mode switch updates shader colors and visibility of army/port markers.
 func nastav_mapovy_mod(mod: String):
+	# Mode switch is centralized so shader + markers stay visually consistent.
+	# Pro male dite: prepneme mapu na jiny rezim (politika/populace/atd.).
 	aktualni_mapovy_mod = mod
 	_aktualizuj_aktivni_mapovy_mod()
 	_aplikuj_viditelnost_ukazatelu_jednotek()
@@ -329,6 +335,8 @@ func _ziskej_lokalni_pozici_provincie(prov_id: int) -> Vector2:
 	var x = float(d.get("x", 0.0))
 	var y = float(d.get("y", 0.0))
 	var data_pos = Vector2(x, y)
+	# Happy path: use direct coordinates from source data when valid.
+	# Pro male dite: kdyz uz mame spravne souradnice, rovnou je pouzijeme.
 	if _je_validni_lokalni_pozice(data_pos):
 		return data_pos
 
@@ -340,6 +348,7 @@ func _ziskej_lokalni_pozici_provincie(prov_id: int) -> Vector2:
 		return mask_pos
 
 	if not _je_more_provincie(prov_id):
+		# Land province with bad coords: return raw value (debug visibility) instead of zeroing.
 		return data_pos
 
 	# Sea provinces usually do not have explicit x/y in data, so use mask centroid first.
@@ -381,6 +390,8 @@ func _ziskej_lokalni_pozici_provincie(prov_id: int) -> Vector2:
 				queue.append(neighbor_id)
 
 	if samples.is_empty():
+		# Cache miss as ZERO to avoid repeating expensive BFS on hopeless province ids.
+		# Pro male dite: kdyz pozici nenajdeme, zapamatujeme si to a priste to neresime znovu.
 		_sea_position_cache[prov_id] = Vector2.ZERO
 		return Vector2.ZERO
 
@@ -426,6 +437,7 @@ func _ziskej_lokalni_pozici_z_masky_provincie(prov_id: int) -> Vector2:
 	var sample_budget = 220000
 	var step = 1
 	if pixel_count > sample_budget:
+		# Dynamic sampling keeps centroid search bounded on high-res masks.
 		step = int(ceil(sqrt(float(pixel_count) / float(sample_budget))))
 		step = max(1, step)
 
@@ -442,6 +454,7 @@ func _ziskej_lokalni_pozici_z_masky_provincie(prov_id: int) -> Vector2:
 				cnt += 1
 
 	if cnt <= 0:
+		# No matching pixels means id/color mismatch or invalid source texture.
 		return Vector2.ZERO
 
 	var center = sum / float(cnt)
