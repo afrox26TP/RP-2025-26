@@ -58,6 +58,7 @@ var _labels_cache_dirty: bool = true
 var _selection_label_states: Dictionary = {}
 var _last_cursor_shape: int = -1
 var _potato_mode_enabled: bool = false
+var _peace_use_core_ownership_preview: bool = false
 const MODE_HOVER_OFFSET := Vector2(16, 18)
 const MODE_HOVER_DEBUG_LOG := false
 
@@ -667,6 +668,12 @@ func vycisti_nahled_mirovych_cilu() -> void:
 		return
 	material.set_shader_parameter("peace_target_visual_mode", false)
 
+func nastav_peace_ownership_preview(enabled: bool) -> void:
+	_peace_use_core_ownership_preview = enabled
+	var root = _get_root()
+	if root and ("provinces" in root):
+		aktualizuj_mapovy_mod(_aktualni_mapovy_mod_local, root.provinces)
+
 # Fallback input handler.
 func _unhandled_input(event):
 	if event is InputEventMouseMotion:
@@ -775,6 +782,9 @@ func _unhandled_input(event):
 					dobyt_provincii(int(vybrana_provincie), GameManager.hrac_stat, true)
 					
 			elif ControlsConfig.matches_action(event, ControlsConfig.ACTION_END_TURN):
+				var game_ui_for_turn = _get_game_ui()
+				if game_ui_for_turn and game_ui_for_turn.has_method("blokuje_hotkey_ukonceni_tahu") and bool(game_ui_for_turn.blokuje_hotkey_ukonceni_tahu()):
+					return
 				if GameManager.has_method("pozaduj_ukonceni_kola"):
 					GameManager.pozaduj_ukonceni_kola()
 				else:
@@ -1283,13 +1293,19 @@ func aktualizuj_mapovy_mod(mod: String, province_db: Dictionary):
 		var barva = Color.TRANSPARENT
 		var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
 		var core_owner = str(d.get("core_owner", owner_tag)).strip_edges().to_upper()
-		var je_okupace = (core_owner != "" and owner_tag != core_owner)
+		var display_owner_tag = owner_tag
+		if _peace_use_core_ownership_preview and core_owner != "" and core_owner != "SEA":
+			display_owner_tag = core_owner
+		var je_okupace = (core_owner != "" and owner_tag != core_owner and not _peace_use_core_ownership_preview)
 		occupation_image.set_pixel(prov_id, 0, Color(1, 1, 1, 1) if je_okupace else Color(0, 0, 0, 0))
 		
-		if owner_tag != "SEA" and str(d.get("type", "")) != "sea":
+		if display_owner_tag != "SEA" and str(d.get("type", "")) != "sea":
 			match mod:
 				"political":
-					barva = _barva_politickeho_vlastnictvi(d)
+					if _peace_use_core_ownership_preview:
+						barva = _ziskej_barvu_statu(display_owner_tag)
+					else:
+						barva = _barva_politickeho_vlastnictvi(d)
 				"population":
 					var s = clamp(float(d.get("population", 0)) / 3000000.0, 0.0, 1.0)
 					barva = Color(s, 0.2, 0.2, 1.0)

@@ -168,7 +168,7 @@ const SAVE_SLOTS_DIR := "user://saves"
 const SAVE_SLOT_EXT := ".dat"
 var _menu_load_in_progress: bool = false
 const MAX_LOG_ZPRAV := 500
-const NEXT_TURN_INPUT_COOLDOWN_MS := 0
+const NEXT_TURN_INPUT_COOLDOWN_MS := 300
 const TURN_PROFILE_ENABLED := false
 const TURN_PROFILE_WARN_MS := 1200
 const AI_PROFILE_ENABLED := false
@@ -270,6 +270,7 @@ var cekajici_kapitulace: Array = []
 var cekajici_mirove_nabidky: Array = []
 var cekajici_mirove_konference: Dictionary = {}
 var mirove_konference_seq: int = 0
+var mirove_body_peak_dle_smeru: Dictionary = {}
 var vazalske_vztahy: Dictionary = {}
 var vazalske_odvody: Dictionary = {}
 var vazalske_odvody_posledni_zmena_kolo: Dictionary = {}
@@ -532,7 +533,7 @@ func nastav_lokalni_hrace(staty: Array) -> void:
 	_synchronizuj_jmeno_a_ideologii_hrace()
 
 # Main runtime logic lives here.
-func _pridej_popup_hraci(tag: String, titulek: String, text: String, force_popup: bool = false) -> void:
+func _pridej_popup_hraci(tag: String, titulek: String, text: String, force_popup: bool = false, state_tags: Array = []) -> void:
 	var cisty_tag = _normalizuj_tag(tag)
 	if cisty_tag == "" or not je_lidsky_stat(cisty_tag):
 		return
@@ -543,9 +544,18 @@ func _pridej_popup_hraci(tag: String, titulek: String, text: String, force_popup
 		return
 	if not cekajici_popupy_hracu.has(cisty_tag):
 		cekajici_popupy_hracu[cisty_tag] = []
+	var normalized_tags: Array = []
+	var seen_tags: Dictionary = {}
+	for raw_tag in state_tags:
+		var clean = _normalizuj_tag(str(raw_tag))
+		if clean == "" or clean == "SEA" or seen_tags.has(clean):
+			continue
+		seen_tags[clean] = true
+		normalized_tags.append(clean)
 	(cekajici_popupy_hracu[cisty_tag] as Array).append({
 		"title": titulek,
-		"text": text
+		"text": text,
+		"state_tags": normalized_tags
 	})
 
 # Core flow for this feature.
@@ -881,12 +891,17 @@ func ziskej_relevantni_zpravy_statu(state_tag: String, limit: int = 160, jen_akt
 func _pridej_popup_zucastnenym_hracum(tag_a: String, tag_b: String, titulek: String, text: String) -> void:
 	var a = _normalizuj_tag(tag_a)
 	var b = _normalizuj_tag(tag_b)
+	var popup_tags: Array = []
+	if a != "" and a != "SEA":
+		popup_tags.append(a)
+	if b != "" and b != "SEA" and b != a:
+		popup_tags.append(b)
 	var pridane: Dictionary = {}
 	for t in [a, b]:
 		if t == "" or pridane.has(t):
 			continue
 		if je_lidsky_stat(t):
-			_pridej_popup_hraci(t, titulek, text)
+			_pridej_popup_hraci(t, titulek, text, false, popup_tags)
 			pridane[t] = true
 
 # Display update for visible data.
@@ -906,9 +921,8 @@ func _zobraz_cekajici_popupy_aktivniho_hrace() -> void:
 		return
 
 	var kopie_fronty = fronta.duplicate(true)
-	fronta.clear()
 	if kopie_fronty.size() > 1:
-		var bloky: Array = []
+		var batch_items: Array = []
 		var shown = min(kopie_fronty.size(), POPUP_BATCH_MAX_ITEMS)
 		for i in range(shown):
 			var item_any = kopie_fronty[i]
@@ -917,20 +931,29 @@ func _zobraz_cekajici_popupy_aktivniho_hrace() -> void:
 			var msg = str(item.get("text", "")).strip_edges()
 			if msg == "":
 				continue
-			bloky.append("[%s]\n%s" % [t if t != "" else "Report", msg])
+			batch_items.append({"title": t if t != "" else "Report", "text": msg, "state_tags": item.get("state_tags", []) as Array})
 		var remaining = kopie_fronty.size() - shown
 		if remaining > 0:
-			bloky.append("[System]\n+%d additional reports were queued this turn." % remaining)
-		if not bloky.is_empty():
-			await map_loader._ukaz_bitevni_popup("Reports", "\n\n".join(bloky))
+			batch_items.append({"title": "System", "text": "+%d additional reports were queued this turn." % remaining, "state_tags": []})
+		if not batch_items.is_empty():
+			if map_loader.has_method("_ukaz_batch_popup"):
+				await map_loader._ukaz_batch_popup(batch_items)
+			else:
+				var bloky: Array = []
+				for bi in batch_items:
+					bloky.append("[%s]\n%s" % [str(bi.get("title", "Report")), str(bi.get("text", ""))])
+				await map_loader._ukaz_bitevni_popup("Reports", "\n\n".join(bloky))
+		fronta.clear()
 		return
 
 	for item in kopie_fronty:
 		var t = str(item.get("title", "Report"))
 		var msg = str(item.get("text", ""))
+		var msg_tags = item.get("state_tags", []) as Array
 		if msg.strip_edges() == "":
 			continue
-		await map_loader._ukaz_bitevni_popup(t, msg)
+		await map_loader._ukaz_bitevni_popup(t, msg, {}, msg_tags)
+	fronta.clear()
 
 # Eligibility/guard check.
 func je_lidsky_stat(tag: String) -> bool:
@@ -1177,12 +1200,15 @@ func _vytvor_save_state() -> Dictionary:
 	# Multiplayer keeps per-player finance caches; persist active player first.
 	if lokalni_hraci_staty.size() > 1:
 		_uloz_finance_aktivniho_hrace()
+	# Keep runtime map_data bound to live map dictionary; only snapshot is deep-copied.
+	var live_map = _ziskej_data_mapy_pro_ulozeni()
+	if live_map != map_data:
+		map_data = live_map
 	# Save always uses a deep-copied map snapshot so runtime refs cannot mutate saved data.
-	var map_snapshot = _ziskej_data_mapy_pro_ulozeni().duplicate(true)
+	var map_snapshot = live_map.duplicate(true)
 	if map_snapshot.is_empty():
 		return {}
 
-	map_data = map_snapshot
 	return {
 		"hrac_stat": hrac_stat,
 		"spectate_mode_active": _spectate_mode_active,
@@ -1212,6 +1238,7 @@ func _vytvor_save_state() -> Dictionary:
 		"cekajici_mirove_nabidky": cekajici_mirove_nabidky.duplicate(true),
 		"cekajici_mirove_konference": cekajici_mirove_konference.duplicate(true),
 		"mirove_konference_seq": mirove_konference_seq,
+		"mirove_body_peak_dle_smeru": mirove_body_peak_dle_smeru.duplicate(true),
 		"vazalske_vztahy": vazalske_vztahy.duplicate(true),
 		"vazalske_odvody": vazalske_odvody.duplicate(true),
 		"vazalske_odvody_posledni_zmena_kolo": vazalske_odvody_posledni_zmena_kolo.duplicate(true),
@@ -1264,7 +1291,7 @@ func _aplikuj_save_state(state: Dictionary) -> bool:
 
 	# Core identity/state fields must be loaded first because later branches depend on them.
 	hrac_stat = str(state.get("hrac_stat", hrac_stat)).strip_edges().to_upper()
-	_spectate_mode_active = bool(state.get("spectate_mode_active", false))
+	_spectate_mode_active = false
 	hrac_jmeno = str(state.get("hrac_jmeno", ""))
 	hrac_ideologie = str(state.get("hrac_ideologie", ""))
 	statni_kasa = float(state.get("statni_kasa", statni_kasa))
@@ -1284,12 +1311,14 @@ func _aplikuj_save_state(state: Dictionary) -> bool:
 	_ai_goal_cache.clear()
 	_ai_operation_plan_cache.clear()
 	lokalni_hraci_staty = (state.get("lokalni_hraci_staty", []) as Array).duplicate(true)
-	# Guard bad/old saves: spectate and local players cannot be active at the same time.
-	if _spectate_mode_active and not lokalni_hraci_staty.is_empty():
-		_spectate_mode_active = false
-	if not _spectate_mode_active and lokalni_hraci_staty.is_empty():
+	# Spectate mode is temporarily disabled: normalize legacy saves to normal player flow.
+	if lokalni_hraci_staty.is_empty():
 		var loaded_player_tag = _normalizuj_tag(hrac_stat)
-		_spectate_mode_active = loaded_player_tag == "" or loaded_player_tag == "SPECTATE"
+		if loaded_player_tag == "" or loaded_player_tag == "SPECTATE":
+			loaded_player_tag = "ALB"
+		lokalni_hraci_staty = [loaded_player_tag]
+	if _normalizuj_tag(hrac_stat) == "" or _normalizuj_tag(hrac_stat) == "SPECTATE":
+		hrac_stat = str(lokalni_hraci_staty[0])
 	aktivni_hrac_index = int(state.get("aktivni_hrac_index", 0))
 	hrac_kasy = (state.get("hrac_kasy", {}) as Dictionary).duplicate(true)
 	hrac_prijmy = (state.get("hrac_prijmy", {}) as Dictionary).duplicate(true)
@@ -1305,6 +1334,7 @@ func _aplikuj_save_state(state: Dictionary) -> bool:
 	cekajici_mirove_nabidky = (state.get("cekajici_mirove_nabidky", []) as Array).duplicate(true)
 	cekajici_mirove_konference = (state.get("cekajici_mirove_konference", {}) as Dictionary).duplicate(true)
 	mirove_konference_seq = int(state.get("mirove_konference_seq", 0))
+	mirove_body_peak_dle_smeru = (state.get("mirove_body_peak_dle_smeru", {}) as Dictionary).duplicate(true)
 	vazalske_vztahy = (state.get("vazalske_vztahy", {}) as Dictionary).duplicate(true)
 	vazalske_odvody = (state.get("vazalske_odvody", {}) as Dictionary).duplicate(true)
 	vazalske_odvody_posledni_zmena_kolo = (state.get("vazalske_odvody_posledni_zmena_kolo", {}) as Dictionary).duplicate(true)
@@ -1386,6 +1416,7 @@ func reset_pro_novou_hru() -> void:
 	cekajici_mirove_nabidky.clear()
 	cekajici_mirove_konference.clear()
 	mirove_konference_seq = 0
+	mirove_body_peak_dle_smeru.clear()
 	vazalske_vztahy.clear()
 	vazalske_odvody.clear()
 	vazalske_odvody_posledni_zmena_kolo.clear()
@@ -6442,6 +6473,8 @@ func _uzavri_mir_mezi(tag1: String, tag2: String, prepis_okupace: bool = true):
 	_ai_border_cache.erase(pair_key)
 	_ai_war_pair_eval_cache.erase("%s>%s" % [cisty_tag1, cisty_tag2])
 	_ai_war_pair_eval_cache.erase("%s>%s" % [cisty_tag2, cisty_tag1])
+	mirove_body_peak_dle_smeru.erase(_klic_mirovych_bodu(cisty_tag1, cisty_tag2))
+	mirove_body_peak_dle_smeru.erase(_klic_mirovych_bodu(cisty_tag2, cisty_tag1))
 	_ai_state_enemies_cache.erase(cisty_tag1)
 	_ai_state_enemies_cache.erase(cisty_tag2)
 	_ai_war_exhaustion_cache.erase(cisty_tag1)
@@ -6588,7 +6621,14 @@ func _ziskej_potencialni_mirove_provincie_dle_losera(porazeny_tag: String) -> Ar
 	return out
 
 # Computes derived values from current inputs and game state.
-func _spocitej_body_mirove_konference(vitez_tag: String, porazeny_tag: String, reason: String = "") -> int:
+func _klic_mirovych_bodu(vitez_tag: String, porazeny_tag: String) -> String:
+	var vitez = _normalizuj_tag(vitez_tag)
+	var porazeny = _normalizuj_tag(porazeny_tag)
+	if vitez == "" or porazeny == "" or vitez == porazeny:
+		return ""
+	return "%s>%s" % [vitez, porazeny]
+
+func _spocitej_aktualni_body_mirove_konference(vitez_tag: String, porazeny_tag: String, reason: String = "") -> int:
 	var vitez = _normalizuj_tag(vitez_tag)
 	var porazeny = _normalizuj_tag(porazeny_tag)
 	if vitez == "" or porazeny == "" or vitez == porazeny:
@@ -6619,6 +6659,39 @@ func _spocitej_body_mirove_konference(vitez_tag: String, porazeny_tag: String, r
 		body += min(25, int(round(float(v_total - p_total) / 1200.0)))
 
 	return max(12, body)
+
+func _ziskej_peak_mirovych_bodu(vitez_tag: String, porazeny_tag: String) -> int:
+	var key = _klic_mirovych_bodu(vitez_tag, porazeny_tag)
+	if key == "":
+		return 0
+	return int(mirove_body_peak_dle_smeru.get(key, 0))
+
+func _uloz_peak_mirovych_bodu(vitez_tag: String, porazeny_tag: String, body: int) -> void:
+	var key = _klic_mirovych_bodu(vitez_tag, porazeny_tag)
+	if key == "":
+		return
+	var safe_body = max(0, int(body))
+	if safe_body <= int(mirove_body_peak_dle_smeru.get(key, 0)):
+		return
+	mirove_body_peak_dle_smeru[key] = safe_body
+
+func _aktualizuj_peak_mirovych_bodu_pro_dvojici(tag_a: String, tag_b: String) -> void:
+	var a = _normalizuj_tag(tag_a)
+	var b = _normalizuj_tag(tag_b)
+	if a == "" or b == "" or a == b:
+		return
+	if not jsou_ve_valce(a, b):
+		return
+	_uloz_peak_mirovych_bodu(a, b, _spocitej_aktualni_body_mirove_konference(a, b))
+	_uloz_peak_mirovych_bodu(b, a, _spocitej_aktualni_body_mirove_konference(b, a))
+
+func zaznamenej_okupacni_zmenu_pro_mir(tag_a: String, tag_b: String) -> void:
+	_aktualizuj_peak_mirovych_bodu_pro_dvojici(tag_a, tag_b)
+
+func _spocitej_body_mirove_konference(vitez_tag: String, porazeny_tag: String, reason: String = "") -> int:
+	var aktualni = _spocitej_aktualni_body_mirove_konference(vitez_tag, porazeny_tag, reason)
+	var peak = _ziskej_peak_mirovych_bodu(vitez_tag, porazeny_tag)
+	return max(aktualni, peak)
 
 # Computes derived values from current inputs and game state.
 func _spocitej_cenu_mirovych_pozadavku(porazeny_tag: String, provinces_to_take: int, annex_all: bool, make_vassal: bool, reparations_turns: int) -> int:
@@ -7347,6 +7420,7 @@ func _vytvor_mirovou_konferenci(vitez_tag: String, porazeny_tag: String, reason:
 		return {}
 
 	mirove_konference_seq += 1
+	_aktualizuj_peak_mirovych_bodu_pro_dvojici(winner, loser)
 	var points = _spocitej_body_mirove_konference(winner, loser, reason)
 	var loser_provinces = _ziskej_mirove_provincie_porazeneho(winner, loser)
 	return {
@@ -8647,10 +8721,13 @@ func muze_ukoncit_kolo() -> bool:
 # Core flow for this feature.
 func pozaduj_ukonceni_kola() -> bool:
 	if zpracovava_se_tah:
-		_queued_end_turn_requests += 1
-		return true
+		# Ignore repeated input while a turn is already processing.
+		# Queueing here caused "runaway" extra turns after key spam or UI interactions.
+		_queued_end_turn_requests = 0
+		return false
 	if not muze_ukoncit_kolo():
 		return false
+	_queued_end_turn_requests = 0
 	_last_end_turn_request_ms = Time.get_ticks_msec()
 	ukonci_kolo()
 	return true
@@ -8671,8 +8748,7 @@ func _dokoncit_ukonceni_kola(turn_start_ms: int, turn_phases: Dictionary) -> voi
 	_zrus_turn_watchdog()
 	_nastav_stav_zpracovani_tahu(false)
 	_log_turn_profile(Time.get_ticks_msec() - turn_start_ms, turn_phases)
-	if _queued_end_turn_requests > 0:
-		call_deferred("_spust_dalsi_pozadovane_kolo")
+	_queued_end_turn_requests = 0
 
 # Feature logic entry point.
 func _append_debug_turn_event(message: String) -> void:
@@ -13190,19 +13266,15 @@ func nastav_potato_mode(enabled: bool) -> void:
 	_potato_mode_enabled = enabled
 
 func nastav_spectate_mode(enabled: bool) -> void:
-	_spectate_mode_active = enabled
-	if enabled:
-		lokalni_hraci_staty.clear()
-		aktivni_hrac_index = 0
-		hrac_stat = "SPECTATE"
-		hrac_jmeno = ""
-		hrac_ideologie = ""
-		return
+	_spectate_mode_active = false
 	if _normalizuj_tag(hrac_stat) == "" or _normalizuj_tag(hrac_stat) == "SPECTATE":
 		hrac_stat = "ALB"
+	if lokalni_hraci_staty.is_empty():
+		lokalni_hraci_staty = [_normalizuj_tag(hrac_stat)]
+	aktivni_hrac_index = clampi(aktivni_hrac_index, 0, max(0, lokalni_hraci_staty.size() - 1))
 
 func je_spectate_mode_aktivni() -> bool:
-	return _spectate_mode_active
+	return false
 
 # Sync update for linked values.
 func nastav_ai_debug_mode(enabled: bool) -> void:

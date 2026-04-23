@@ -457,6 +457,10 @@ func _ready():
 	_inicializuj_startovni_datum_hry()
 	if next_btn and not next_btn.pressed.is_connected(_on_next_turn_pressed):
 		next_btn.pressed.connect(_on_next_turn_pressed)
+	if next_btn:
+		# Prevent accidental Space/Enter activation via retained keyboard focus.
+		next_btn.focus_mode = Control.FOCUS_NONE
+		next_btn.toggle_mode = false
 	if zpravy_btn and not zpravy_btn.pressed.is_connected(_on_zpravy_pressed):
 		zpravy_btn.pressed.connect(_on_zpravy_pressed)
 	if zpravy_btn:

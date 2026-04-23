@@ -86,6 +86,7 @@ var _loading_label: Label = null
 var _loading_bar: ProgressBar = null
 var _inicializace_hotova: bool = false
 var _potato_mode_enabled: bool = false
+var _skip_battle_reports_enabled: bool = false
 var _turn_indicator_suppress_locks: int = 0
 const PORT_ICON_PATH := "res://map_data/port_icon.svg"
 const PORT_ICON_FALLBACK_PATH := "res://map_data/ArmyIcons/ArmyIconTemplate.svg"
@@ -181,6 +182,12 @@ func _je_potato_mode_ze_settings() -> bool:
 	var other_mode = bool(cfg.get_value("other", "potato_mode", display_mode))
 	return display_mode or other_mode
 
+func _je_skip_battle_reportu_ze_settings() -> bool:
+	var cfg = ConfigFile.new()
+	if cfg.load(SETTINGS_FILE_PATH) != OK:
+		return false
+	return bool(cfg.get_value("other", "skip_battle_reports", false))
+
 # Potato mode turns off some heavier visuals for weaker notebooks/PCs.
 func nastav_potato_mode(enabled: bool) -> void:
 	_potato_mode_enabled = enabled
@@ -202,6 +209,9 @@ func nastav_potato_mode(enabled: bool) -> void:
 		labels_manager.nastav_potato_mode(enabled)
 	elif labels_manager:
 		labels_manager.visible = not enabled
+
+func nastav_skip_battle_reportu(enabled: bool) -> void:
+	_skip_battle_reports_enabled = enabled
 
 # Sets up nodes, defaults, and signals.
 func _vytvor_loading_overlay() -> void:
@@ -841,6 +851,20 @@ func _ziskej_nasobic_sily_statu(state_tag: String) -> float:
 	var bonus_pct = max(0.0, float(info.get("bonus_pct", 0.0)))
 	return max(1.0, 1.0 + bonus_pct)
 
+# Returns only the laboratory percentage multiplier (without flat bonus distribution).
+func _ziskej_lab_nasobic_statu(state_tag: String) -> float:
+	var cisty = state_tag.strip_edges().to_upper()
+	if cisty == "" or cisty == "SEA":
+		return 1.0
+	if GameManager == null or not GameManager.has_method("ziskej_silu_armady_statu"):
+		return 1.0
+
+	var info = GameManager.ziskej_silu_armady_statu(cisty) as Dictionary
+	if not bool(info.get("ok", false)):
+		return 1.0
+	var bonus_pct = max(0.0, float(info.get("bonus_pct", 0.0)))
+	return max(1.0, 1.0 + bonus_pct)
+
 # turn logic
 func _ziskej_terenni_obranny_bonus_pct(prov_id: int) -> float:
 	if not provinces.has(prov_id):
@@ -966,7 +990,7 @@ func _format_battle_popup_title(province_name: String, fallback: String = "Battl
 	return "Attack on %s" % location_label
 
 # Prepare compact payload for UI battle panel (flags, winner, strength split).
-func _vytvor_bitevni_payload(attacker_tag: String, defender_tag: String, attacker_before: int, defender_before: int, attacker_after: int, defender_after: int, province_name: String = "") -> Dictionary:
+func _vytvor_bitevni_payload(attacker_tag: String, defender_tag: String, attacker_before: int, defender_before: int, attacker_after: int, defender_after: int, province_name: String = "", attacker_power: float = -1.0, defender_power: float = -1.0, attacker_total_mult: float = -1.0, defender_total_mult: float = -1.0) -> Dictionary:
 	var winner_tag = ""
 	if attacker_after > 0 and defender_after <= 0:
 		winner_tag = attacker_tag
@@ -980,6 +1004,12 @@ func _vytvor_bitevni_payload(attacker_tag: String, defender_tag: String, attacke
 	var right_before = defender_before
 	var left_after = attacker_after
 	var right_after = defender_after
+	var left_power = attacker_power
+	var right_power = defender_power
+	var left_total_mult = attacker_total_mult
+	var right_total_mult = defender_total_mult
+	var left_lab_mult = _ziskej_lab_nasobic_statu(attacker_tag)
+	var right_lab_mult = _ziskej_lab_nasobic_statu(defender_tag)
 
 	# Keep the human player on the left whenever possible; feels more natural in UI.
 	if player_tag != "" and player_tag == defender_tag and player_tag != attacker_tag:
@@ -989,6 +1019,12 @@ func _vytvor_bitevni_payload(attacker_tag: String, defender_tag: String, attacke
 		right_before = attacker_before
 		left_after = defender_after
 		right_after = attacker_after
+		left_power = defender_power
+		right_power = attacker_power
+		left_total_mult = defender_total_mult
+		right_total_mult = attacker_total_mult
+		left_lab_mult = _ziskej_lab_nasobic_statu(defender_tag)
+		right_lab_mult = _ziskej_lab_nasobic_statu(attacker_tag)
 
 	return {
 		"left_tag": left_tag,
@@ -998,6 +1034,12 @@ func _vytvor_bitevni_payload(attacker_tag: String, defender_tag: String, attacke
 		"right_before": right_before,
 		"left_after": left_after,
 		"right_after": right_after,
+		"left_power": left_power,
+		"right_power": right_power,
+		"left_total_mult": left_total_mult,
+		"right_total_mult": right_total_mult,
+		"left_lab_mult": left_lab_mult,
+		"right_lab_mult": right_lab_mult,
 		"province_name": province_name.strip_edges()
 	}
 
@@ -1081,6 +1123,7 @@ func _ready():
 		print("Chyba: Kamera nenalezena!")
 
 	nastav_potato_mode(_je_potato_mode_ze_settings())
+	nastav_skip_battle_reportu(_je_skip_battle_reportu_ze_settings())
 
 	var sprite = $Sprite2D
 	if sprite and sprite.has_method("aktualizuj_mapovy_mod"):
@@ -1622,10 +1665,14 @@ func je_platna_provincie_pro_hromadny_vyber(prov_id: int) -> bool:
 		return false
 
 	var d = provinces[prov_id]
-	var owner_tag = _ziskej_vlastnika_armady_v_provincii(prov_id)
-	if owner_tag != GameManager.hrac_stat:
-		return false
-	return int(d.get("soldiers", 0)) > 0
+	var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
+	var je_more = (owner_tag == "SEA" or owner_tag == "")
+	# Player-owned land is always valid for box-select (even with no army - allows bulk recruit/build).
+	if not je_more and owner_tag == GameManager.hrac_stat:
+		return true
+	# Foreign / sea provinces are valid only when the player's army is present.
+	var army_owner = _ziskej_vlastnika_armady_v_provincii(prov_id)
+	return army_owner == GameManager.hrac_stat and int(d.get("soldiers", 0)) > 0
 
 func aktivuj_rezim_hromadneho_presunu(from_ids: Array) -> bool:
 	hromadny_presun_zdroje.clear()
@@ -2584,6 +2631,8 @@ func zrus_rezim_vyberu_miru() -> void:
 		sprite.vycisti_nahled_hlavniho_mesta()
 	if sprite and sprite.has_method("vycisti_nahled_mirovych_cilu"):
 		sprite.vycisti_nahled_mirovych_cilu()
+	if sprite and sprite.has_method("nastav_peace_ownership_preview"):
+		sprite.nastav_peace_ownership_preview(false)
 	if sprite and sprite.has_method("_aktualizuj_hromadny_selection_texture"):
 		sprite._aktualizuj_hromadny_selection_texture([])
 
@@ -2623,6 +2672,8 @@ func aktivuj_rezim_vyberu_miru(vitez_tag: String, porazeny_tag: String, preselec
 		sprite.nastav_nahled_hlavniho_mesta(participants, dostupne_cile_miru)
 	if sprite and sprite.has_method("vycisti_nahled_mirovych_cilu"):
 		sprite.vycisti_nahled_mirovych_cilu()
+	if sprite and sprite.has_method("nastav_peace_ownership_preview"):
+		sprite.nastav_peace_ownership_preview(true)
 	if sprite and sprite.has_method("_aktualizuj_hromadny_selection_texture"):
 		sprite._aktualizuj_hromadny_selection_texture(vybrane_cile_miru)
 
@@ -3138,16 +3189,15 @@ func _vykresli_indikaci_cekajicich_presunu():
 		var owner_tag = str(move.get("owner", "")).strip_edges().to_upper()
 		if owner_tag == "":
 			continue
-		if not GameManager.je_lidsky_stat(owner_tag):
-			continue
 
 		var from_id = int(move.get("from", -1))
 		var to_id = int(move.get("to", -1))
 		if not provinces.has(from_id) or not provinces.has(to_id):
 			continue
 
-		var amount = max(0, int(move.get("amount", 0)))
 		var target_owner_tag = _ziskej_braniciho_vlastnika_v_provincii(to_id)
+
+		var amount = max(0, int(move.get("amount", 0)))
 		var is_attack = (target_owner_tag != "" and owner_tag != target_owner_tag and target_owner_tag != "SEA")
 
 		var zbyvajici_path = _ziskej_zbyvajici_cestu_presunu(move)
@@ -3261,6 +3311,61 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int, vykreslit_
 		return
 	var is_human_owner = GameManager.je_lidsky_stat(owner_tag)
 
+	# Human reroute UX: when there are no free soldiers left in the source,
+	# reinterpret the new order as a route change and reclaim queued soldiers.
+	if is_human_owner and not _pozastavit_aktualizaci_ikon:
+		var available_now = int(provinces[from_id].get("soldiers", 0))
+		var queue_changed := false
+
+		# If player changes route mid-way, remove the old in-progress continuation
+		# from the same source province so only the new route remains visible.
+		for i in range(cekajici_presuny.size() - 1, -1, -1):
+			var q_inflight = cekajici_presuny[i] as Dictionary
+			if q_inflight == null:
+				continue
+			if int(q_inflight.get("from", -1)) != from_id:
+				continue
+			if str(q_inflight.get("owner", "")).strip_edges().to_upper() != owner_tag:
+				continue
+			if not bool(q_inflight.get("deduct_on_resolve", false)):
+				continue
+			cekajici_presuny.remove_at(i)
+			queue_changed = true
+
+		if available_now < amount:
+			for i in range(cekajici_presuny.size() - 1, -1, -1):
+				if available_now >= amount:
+					break
+				var q = cekajici_presuny[i] as Dictionary
+				if q == null:
+					continue
+				if int(q.get("from", -1)) != from_id:
+					continue
+				if str(q.get("owner", "")).strip_edges().to_upper() != owner_tag:
+					continue
+				if bool(q.get("deduct_on_resolve", false)):
+					continue
+				available_now += max(0, int(q.get("amount", 0)))
+				cekajici_presuny.remove_at(i)
+				queue_changed = true
+			provinces[from_id]["soldiers"] = max(0, available_now)
+			if available_now > 0:
+				provinces[from_id]["army_owner"] = owner_tag
+
+		if queue_changed:
+			_vykresli_indikaci_cekajicich_presunu()
+
+	var available_soldiers = int(provinces[from_id].get("soldiers", 0))
+	if amount > available_soldiers:
+		if owner_tag == GameManager.hrac_stat:
+			_ukaz_bitevni_popup("INVALID MOVE", "Not enough soldiers available for this move.")
+		ceka_na_cil_presunu = false
+		vycisti_nahled_presunu()
+		var invalid_amount_root = get_parent()
+		if "ceka_na_cil_presunu" in invalid_amount_root:
+			invalid_amount_root.ceka_na_cil_presunu = false
+		return
+
 	# Human players can intentionally split one province army into multiple queued moves.
 	# Keep replacement behavior only for non-human owners.
 	# AI batch planning guarantees one outgoing move per source in the same phase,
@@ -3287,7 +3392,13 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int, vykreslit_
 	if target_owner_tag != "" and owner_tag != target_owner_tag and target_owner_tag != "SEA":
 		if not ma_pristup and not GameManager.jsou_ve_valce(owner_tag, target_owner_tag):
 			if owner_tag == GameManager.hrac_stat:
-				_ukaz_bitevni_popup("ATTACK NOT ALLOWED", "You cannot attack yet. First declare war on %s via State Overview." % target_owner_tag)
+				var defender_name = _ziskej_jmeno_statu_pro_zpravy(target_owner_tag)
+				var land_owner_name = _ziskej_jmeno_statu_pro_zpravy(target_land_owner_tag)
+				var popup_text = "You cannot attack yet. First declare war on %s via State Overview." % defender_name
+				if target_land_owner_tag != "" and target_land_owner_tag != target_owner_tag:
+					# Clarify occupied provinces: clicked land owner can differ from active defender.
+					popup_text = "This province belongs to %s but is currently defended by %s. First declare war on %s via State Overview." % [land_owner_name, defender_name, defender_name]
+				_ukaz_bitevni_popup("ATTACK NOT ALLOWED", popup_text)
 			
 			ceka_na_cil_presunu = false
 			vycisti_nahled_presunu()
@@ -3341,8 +3452,6 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int, vykreslit_
 			_zobraz_minimalni_presun_po_ceste(move_path, owner_tag, is_attack_player, amount, 1)
 		else:
 			_zobraz_minimalni_presun(from_id, to_id, owner_tag, is_attack_player, amount, 1)
-	else:
-		_vymaz_minimalni_ai_presuny()
 	
 	cekajici_presuny.append({
 		"from": from_id,
@@ -3513,7 +3622,11 @@ func zpracuj_tah_armad():
 							utok2_puvodni,
 							int(souboj_pole.get("attacker_survivors", 0)),
 							0,
-							field_location_1
+							field_location_1,
+							float(souboj_pole.get("attacker_power", -1.0)),
+							float(souboj_pole.get("defender_power", -1.0)),
+							float(souboj_pole.get("attacker_power", 0.0)) / max(1.0, float(utok1_puvodni)),
+							float(souboj_pole.get("defender_power", 0.0)) / max(1.0, float(utok2_puvodni))
 						)
 					})
 			elif bool(souboj_pole.get("defender_won", false)):
@@ -3541,7 +3654,11 @@ func zpracuj_tah_armad():
 							utok1_puvodni,
 							int(souboj_pole.get("defender_survivors", 0)),
 							0,
-							field_location_2
+							field_location_2,
+							float(souboj_pole.get("defender_power", -1.0)),
+							float(souboj_pole.get("attacker_power", -1.0)),
+							float(souboj_pole.get("defender_power", 0.0)) / max(1.0, float(utok2_puvodni)),
+							float(souboj_pole.get("attacker_power", 0.0)) / max(1.0, float(utok1_puvodni))
 						)
 					})
 			else:
@@ -3570,7 +3687,11 @@ func zpracuj_tah_armad():
 							utok2_puvodni,
 							0,
 							0,
-							field_location_3
+							field_location_3,
+							float(souboj_pole.get("attacker_power", -1.0)),
+							float(souboj_pole.get("defender_power", -1.0)),
+							float(souboj_pole.get("attacker_power", 0.0)) / max(1.0, float(utok1_puvodni)),
+							float(souboj_pole.get("defender_power", 0.0)) / max(1.0, float(utok2_puvodni))
 						)
 					})
 
@@ -3720,6 +3841,9 @@ func zpracuj_tah_armad():
 			provinces[to_id]["country_name"] = str(profil_utocnika.get("country_name", attacker_tag))
 			provinces[to_id]["ideology"] = str(profil_utocnika.get("ideology", ""))
 			provinces[to_id]["army_owner"] = attacker_tag
+			if GameManager.has_method("zaznamenej_okupacni_zmenu_pro_mir"):
+				var peace_defender = capital_core_owner if capital_core_owner != "" and capital_core_owner != "SEA" else target_owner
+				GameManager.zaznamenej_okupacni_zmenu_pro_mir(attacker_tag, peace_defender)
 			
 			var sprite = $Sprite2D
 			if sprite and sprite.has_method("dobyt_provincii"):
@@ -3737,7 +3861,19 @@ func zpracuj_tah_armad():
 							"title": _format_battle_popup_title(jmeno_provincie, "Capital recaptured"),
 							"text": "%s | CAPITAL RECAPTURED" % attacker_name,
 							"province_id": to_id,
-							"battle_data": _vytvor_bitevni_payload(attacker_tag, target_owner, utocnici, obranci, prezivsi, 0, jmeno_provincie)
+							"battle_data": _vytvor_bitevni_payload(
+								attacker_tag,
+								target_owner,
+								utocnici,
+								obranci,
+								prezivsi,
+								0,
+								jmeno_provincie,
+								float(souboj_provincie.get("attacker_power", -1.0)),
+								float(souboj_provincie.get("defender_power", -1.0)),
+								float(souboj_provincie.get("attacker_power", 0.0)) / max(1.0, float(utocnici)),
+								float(souboj_provincie.get("defender_power", 0.0)) / max(1.0, float(obranci))
+							)
 						})
 					else:
 						var occupied_defender = capital_core_owner if capital_core_owner != "" and capital_core_owner != "SEA" else target_owner
@@ -3747,7 +3883,19 @@ func zpracuj_tah_armad():
 							"title": _format_battle_popup_title(jmeno_provincie, "Capital occupied"),
 							"text": "%s -> %s | CAPITAL OCCUPIED (HOLD 1 TURN FOR CAPITULATION)" % [attacker_name, occupied_defender_name],
 							"province_id": to_id,
-							"battle_data": _vytvor_bitevni_payload(attacker_tag, occupied_defender, utocnici, obranci, prezivsi, 0, jmeno_provincie)
+							"battle_data": _vytvor_bitevni_payload(
+								attacker_tag,
+								occupied_defender,
+								utocnici,
+								obranci,
+								prezivsi,
+								0,
+								jmeno_provincie,
+								float(souboj_provincie.get("attacker_power", -1.0)),
+								float(souboj_provincie.get("defender_power", -1.0)),
+								float(souboj_provincie.get("attacker_power", 0.0)) / max(1.0, float(utocnici)),
+								float(souboj_provincie.get("defender_power", 0.0)) / max(1.0, float(obranci))
+							)
 						})
 			
 			if hrac_zapojen and not was_capital:
@@ -3764,7 +3912,19 @@ func zpracuj_tah_armad():
 						jmeno_provincie
 					),
 					"province_id": to_id,
-					"battle_data": _vytvor_bitevni_payload(attacker_tag, target_owner, utocnici, obranci, prezivsi, 0, jmeno_provincie)
+					"battle_data": _vytvor_bitevni_payload(
+						attacker_tag,
+						target_owner,
+						utocnici,
+						obranci,
+						prezivsi,
+						0,
+						jmeno_provincie,
+						float(souboj_provincie.get("attacker_power", -1.0)),
+						float(souboj_provincie.get("defender_power", -1.0)),
+						float(souboj_provincie.get("attacker_power", 0.0)) / max(1.0, float(utocnici)),
+						float(souboj_provincie.get("defender_power", 0.0)) / max(1.0, float(obranci))
+					)
 				})
 					
 		else:
@@ -3787,7 +3947,19 @@ func zpracuj_tah_armad():
 						jmeno_provincie
 					),
 					"province_id": to_id,
-					"battle_data": _vytvor_bitevni_payload(attacker_tag, target_owner, utocnici, obranci, 0, prezivsi, jmeno_provincie)
+					"battle_data": _vytvor_bitevni_payload(
+						attacker_tag,
+						target_owner,
+						utocnici,
+						obranci,
+						0,
+						prezivsi,
+						jmeno_provincie,
+						float(souboj_provincie.get("attacker_power", -1.0)),
+						float(souboj_provincie.get("defender_power", -1.0)),
+						float(souboj_provincie.get("attacker_power", 0.0)) / max(1.0, float(utocnici)),
+						float(souboj_provincie.get("defender_power", 0.0)) / max(1.0, float(obranci))
+					)
 				})
 
 		if ma_dalsi_krok and moved_survivors > 0:
@@ -3813,16 +3985,17 @@ func zpracuj_tah_armad():
 			sprite.aktualizuj_mapovy_mod(str(aktualni_mapovy_mod), provinces)
 
 	var je_rychle_tahove_zpracovani = _ma_rychle_zpracovani_tahu() and _potato_mode_enabled
+	var skip_battle_reports = _skip_battle_reports_enabled
 	var bude_zobrazen_bitevni_popup = false
-	if not bitevni_udalosti.is_empty():
+	if not skip_battle_reports and not bitevni_udalosti.is_empty():
 		if not je_rychle_tahove_zpracovani or FAST_TURN_SHOW_BATTLE_SUMMARY:
 			bude_zobrazen_bitevni_popup = true
-	if celkovy_report != "" and not je_rychle_tahove_zpracovani:
+	if not skip_battle_reports and celkovy_report != "" and not je_rychle_tahove_zpracovani:
 		bude_zobrazen_bitevni_popup = true
 	if bude_zobrazen_bitevni_popup:
 		_ziskej_turn_indicator_suppression_lock()
 
-	if not bitevni_udalosti.is_empty():
+	if not skip_battle_reports and not bitevni_udalosti.is_empty():
 		if je_rychle_tahove_zpracovani:
 			if FAST_TURN_SHOW_BATTLE_SUMMARY:
 				await _ukaz_souhrn_bitevnich_udalosti(bitevni_udalosti)
@@ -3839,7 +4012,7 @@ func zpracuj_tah_armad():
 			await _obnov_bitevni_kameru()
 	
 	if celkovy_report != "":
-		if je_rychle_tahove_zpracovani:
+		if je_rychle_tahove_zpracovani or skip_battle_reports:
 			if GameManager.has_method("_zaloguj_globalni_zpravu"):
 				GameManager._zaloguj_globalni_zpravu("War", celkovy_report.strip_edges(), "war")
 		else:
@@ -3907,14 +4080,14 @@ func _ukaz_souhrn_bitevnich_udalosti(udalosti: Array) -> void:
 
 	await _ukaz_bitevni_popup("Frontline Report", "\n".join(lines))
 
-func _ukaz_bitevni_popup(titulek: String, text: String, battle_payload: Dictionary = {}):
+func _ukaz_bitevni_popup(titulek: String, text: String, battle_payload: Dictionary = {}, state_tags: Array = []):
 	# UI lock
 	# lock je ref-count, aby se pri vice po sobe jdoucich popupech neblikalo zap/vyp indikatoru.
 	_ziskej_turn_indicator_suppression_lock()
 	var game_ui = get_tree().current_scene.find_child("GameUI", true, false)
 	if game_ui and game_ui.has_method("zobraz_systemove_hlaseni"):
 		# Preferred path
-		await game_ui.zobraz_systemove_hlaseni(titulek, text, false, battle_payload)
+		await game_ui.zobraz_systemove_hlaseni(titulek, text, false, battle_payload, state_tags)
 		_uvolni_turn_indicator_suppression_lock()
 		return
 
@@ -3951,6 +4124,20 @@ func _ukaz_bitevni_popup(titulek: String, text: String, battle_payload: Dictiona
 		
 	if is_instance_valid(dialog):
 		dialog.queue_free()
+	_uvolni_turn_indicator_suppression_lock()
+
+func _ukaz_batch_popup(items: Array):
+	_ziskej_turn_indicator_suppression_lock()
+	var game_ui = get_tree().current_scene.find_child("GameUI", true, false)
+	if game_ui and game_ui.has_method("zobraz_batched_hlaseni"):
+		await game_ui.zobraz_batched_hlaseni(items)
+		_uvolni_turn_indicator_suppression_lock()
+		return
+	var bloky: Array = []
+	for item_any in items:
+		var item = item_any as Dictionary
+		bloky.append("[%s]\n%s" % [str(item.get("title", "Report")), str(item.get("text", ""))])
+	await _ukaz_bitevni_popup("Reports", "\n\n".join(bloky))
 	_uvolni_turn_indicator_suppression_lock()
 
 # Returns current runtime data.

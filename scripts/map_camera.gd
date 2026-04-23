@@ -27,6 +27,7 @@ const SETTINGS_FILE_PATH := "user://settings.cfg"
 var drag_start = Vector2.ZERO
 var dragging = false
 var invert_zoom_wheel: bool = false
+var _game_ui_cache: Node = null
 
 # Initializes references, connects signals, and prepares default runtime state.
 func _ready() -> void:
@@ -35,6 +36,9 @@ func _ready() -> void:
 
 # Per-frame runtime logic.
 func _process(delta):
+	if _blokuje_kamerovy_pohyb_klavesami():
+		return
+
 	# Handle keyboard movement
 	var input_dir = Vector2.ZERO
 	if Input.is_action_pressed(ControlsConfig.ACTION_CAMERA_RIGHT): input_dir.x += 1
@@ -49,6 +53,31 @@ func _process(delta):
 		input_dir = input_dir.normalized()
 
 	position += input_dir * speed * delta * (1.0 / zoom.x)
+
+
+func _blokuje_kamerovy_pohyb_klavesami() -> bool:
+	# If keyboard focus is inside CanvasLayer UI, do not move camera.
+	var focused = get_viewport().gui_get_focus_owner()
+	if focused and _is_canvas_layer_ui_control(focused):
+		return true
+
+	# Also block when cursor is over UI controls that should own interaction.
+	if _is_hovering_any_ui_blocking_camera():
+		return true
+
+	var game_ui = _ziskej_game_ui_node()
+	if game_ui and game_ui.has_method("blokuje_hotkey_ukonceni_tahu"):
+		return bool(game_ui.blokuje_hotkey_ukonceni_tahu())
+	return false
+
+
+func _ziskej_game_ui_node() -> Node:
+	if _game_ui_cache != null and is_instance_valid(_game_ui_cache):
+		return _game_ui_cache
+	var root = get_parent()
+	if root:
+		_game_ui_cache = root.get_node_or_null("GameUI")
+	return _game_ui_cache
 
 # Input event handler for this node.
 func _input(event):
@@ -108,7 +137,7 @@ func _zoom_camera(factor):
 
 # Pulls data and verifies parse output.
 func _nacti_ovladani_ze_settings() -> void:
-	ControlsConfig.apply_bindings(ControlsConfig.load_bindings_from_config())
+	ControlsConfig.apply_bindings(ControlsConfig.get_default_bindings())
 	var cfg = ConfigFile.new()
 	if cfg.load(SETTINGS_FILE_PATH) != OK:
 		return

@@ -25,6 +25,9 @@ const OVERVIEW_MIN_HEIGHT := 560.0
 const OVERVIEW_SCREEN_MARGIN := 10.0
 const OVERVIEW_INLINE_DELTA_WIDTH := 124.0
 const RENAME_DIALOG_SIZE := Vector2i(500, 230)
+const SETTINGS_DIALOG_DEFAULT_SIZE := Vector2i(620, 560)
+const SETTINGS_DIALOG_MIN_SIZE := Vector2i(320, 300)
+const SETTINGS_DIALOG_SCREEN_MARGIN := 28.0
 
 class ArmyOfferCard:
 	extends PanelContainer
@@ -194,6 +197,7 @@ var _settings_fullscreen_check: CheckBox
 var _settings_vsync_check: CheckBox
 var _settings_potato_mode_check: CheckBox
 var _settings_ai_debug_mode_check: CheckBox
+var _settings_skip_battle_reports_check: CheckBox
 var _settings_volume_slider: HSlider
 var _settings_volume_value: Label
 var _settings_camera_slider: HSlider
@@ -366,6 +370,8 @@ var _system_message_meta_row: HBoxContainer = null
 var _system_message_meta_left_flag: TextureButton = null
 var _system_message_meta_right_flag: TextureButton = null
 var _system_message_meta_center_label: Label = null
+var _system_batch_panel: ScrollContainer = null
+var _system_batch_list: VBoxContainer = null
 
 const POPUP_TOP_MARGIN := 6
 const POPUP_GAP := 6
@@ -390,6 +396,8 @@ const SPECTATE_AUTO_NEXT_TURN_SEC := 0.45
 const SYSTEM_BATTLE_PANEL_HEIGHT := 118.0
 const SYSTEM_BATTLE_FLAG_SIZE := Vector2(46.0, 30.0)
 const SYSTEM_MESSAGE_META_ROW_HEIGHT := 24.0
+const SYSTEM_BATCH_FLAG_SIZE := Vector2(36.0, 22.0)
+const SYSTEM_BATCH_MAX_VISIBLE_HEIGHT := 280.0
 const AI_DEBUG_SECTION_ALL := 0
 const AI_DEBUG_SECTION_AI := 1
 const AI_DEBUG_SECTION_LATENCY := 2
@@ -794,6 +802,40 @@ func _lze_automaticky_ukoncit_tah_ve_spectate() -> bool:
 	if _pause_menu_panel and _pause_menu_panel.visible:
 		return false
 	return true
+
+# Prevent Space end-turn from leaking through while any major popup/dialog is open.
+func blokuje_hotkey_ukonceni_tahu() -> bool:
+	if _settings_dialog and _settings_dialog.visible:
+		return true
+	if _save_dialog and _save_dialog.visible:
+		return true
+	if _load_dialog and _load_dialog.visible:
+		return true
+	if _trade_dialog and _trade_dialog.visible:
+		return true
+	if _trade_province_picker_popup and _trade_province_picker_popup.visible:
+		return true
+	if _peace_dialog and _peace_dialog.visible:
+		return true
+	if diplomacy_request_popup and diplomacy_request_popup.visible:
+		return true
+	if system_message_popup and system_message_popup.visible:
+		return true
+	if _pause_menu_panel and _pause_menu_panel.visible:
+		return true
+	if _gift_dialog and _gift_dialog.visible:
+		return true
+	if _research_dialog and _research_dialog.visible:
+		return true
+	if _vassals_dialog and _vassals_dialog.visible:
+		return true
+	if _loans_dialog and _loans_dialog.visible:
+		return true
+	if _alliance_dialog and _alliance_dialog.visible:
+		return true
+	if _alliance_create_popup and _alliance_create_popup.visible:
+		return true
+	return false
 
 func _je_spectate_observer_mode() -> bool:
 	return _spectate_mode_enabled
@@ -1504,9 +1546,116 @@ func _ensure_system_message_meta_row() -> void:
 	_system_message_meta_right_flag.pressed.connect(_on_system_message_meta_flag_pressed.bind(false))
 	_system_message_meta_row.add_child(_system_message_meta_right_flag)
 
-func _ziskej_tagy_systemove_zpravy(title_raw: String, text_raw: String, battle_payload: Dictionary) -> Array:
+func _ensure_system_batch_panel() -> void:
+	if _system_batch_panel != null:
+		return
+	if system_message_text == null or system_message_text.get_parent() == null:
+		return
+	var vbox = system_message_text.get_parent() as VBoxContainer
+	if vbox == null:
+		return
+	_system_batch_panel = ScrollContainer.new()
+	_system_batch_panel.name = "BatchReportPanel"
+	_system_batch_panel.visible = false
+	_system_batch_panel.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_system_batch_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_child(_system_batch_panel)
+	vbox.move_child(_system_batch_panel, system_message_text.get_index())
+	_system_batch_list = VBoxContainer.new()
+	_system_batch_list.name = "BatchReportList"
+	_system_batch_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_system_batch_list.add_theme_constant_override("separation", 0)
+	_system_batch_panel.add_child(_system_batch_list)
+
+func _nastav_system_batch_items(items: Array) -> void:
+	_ensure_system_batch_panel()
+	if _system_batch_panel == null or _system_batch_list == null:
+		return
+	for ch in _system_batch_list.get_children():
+		ch.queue_free()
+	if items.is_empty():
+		_system_batch_panel.hide()
+		return
+	var row_count := 0
+	for item_any in items:
+		var item = item_any as Dictionary
+		var t = str(item.get("title", "Report")).strip_edges()
+		var msg = str(item.get("text", "")).strip_edges()
+		var item_tags = item.get("state_tags", []) as Array
+		var tags = _ziskej_tagy_systemove_zpravy(t, msg, {}, item_tags)
+		var left_tag = str(tags[0]).strip_edges().to_upper() if tags.size() >= 1 else ""
+		var right_tag = str(tags[1]).strip_edges().to_upper() if tags.size() >= 2 else ""
+		if right_tag == left_tag:
+			right_tag = ""
+		var polished_text = _zpolish_system_message_text(_nahrad_tagy_nazvy_ve_zprave(msg))
+		var polished_title = _zpolish_system_message_title(_nahrad_tagy_nazvy_ve_zprave(t))
+		var display_text = polished_text if polished_text.strip_edges() != "" else polished_title
+		if row_count > 0:
+			var sep = HSeparator.new()
+			sep.modulate = Color(1.0, 1.0, 1.0, 0.10)
+			_system_batch_list.add_child(sep)
+		row_count += 1
+		var row = HBoxContainer.new()
+		row.add_theme_constant_override("separation", 4)
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_system_batch_list.add_child(row)
+		var lf_btn = TextureButton.new()
+		lf_btn.custom_minimum_size = SYSTEM_BATCH_FLAG_SIZE
+		lf_btn.ignore_texture_size = true
+		lf_btn.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+		lf_btn.focus_mode = Control.FOCUS_NONE
+		if left_tag != "":
+			lf_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+			var ltex = _resolve_flag_texture(left_tag, _ziskej_aktualni_ideologii_statu(left_tag))
+			lf_btn.texture_normal = ltex
+			lf_btn.texture_hover = ltex
+			lf_btn.texture_pressed = ltex
+			lf_btn.tooltip_text = _ziskej_jmeno_statu_podle_tagu(left_tag)
+			lf_btn.pressed.connect(_posun_kameru_na_stat.bind(left_tag, true))
+		else:
+			lf_btn.modulate.a = 0.0
+		row.add_child(lf_btn)
+		var center_lbl = Label.new()
+		center_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		center_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		center_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		center_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		center_lbl.add_theme_font_size_override("font_size", 13)
+		center_lbl.add_theme_color_override("font_color", Color(0.86, 0.92, 1.0, 0.98))
+		center_lbl.add_theme_color_override("font_outline_color", Color(0.02, 0.04, 0.08, 0.85))
+		center_lbl.add_theme_constant_override("outline_size", 1)
+		center_lbl.text = display_text
+		row.add_child(center_lbl)
+		var rf_btn = TextureButton.new()
+		rf_btn.custom_minimum_size = SYSTEM_BATCH_FLAG_SIZE
+		rf_btn.ignore_texture_size = true
+		rf_btn.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+		rf_btn.focus_mode = Control.FOCUS_NONE
+		if right_tag != "":
+			rf_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+			var rtex = _resolve_flag_texture(right_tag, _ziskej_aktualni_ideologii_statu(right_tag))
+			rf_btn.texture_normal = rtex
+			rf_btn.texture_hover = rtex
+			rf_btn.texture_pressed = rtex
+			rf_btn.tooltip_text = _ziskej_jmeno_statu_podle_tagu(right_tag)
+			rf_btn.pressed.connect(_posun_kameru_na_stat.bind(right_tag, true))
+		else:
+			rf_btn.modulate.a = 0.0
+		row.add_child(rf_btn)
+	var panel_h = clampf(float(items.size()) * 34.0 + 4.0, 34.0, SYSTEM_BATCH_MAX_VISIBLE_HEIGHT)
+	_system_batch_panel.custom_minimum_size = Vector2(0.0, panel_h)
+	_system_batch_panel.show()
+
+func _ziskej_tagy_systemove_zpravy(title_raw: String, text_raw: String, battle_payload: Dictionary, explicit_tags: Array = []) -> Array:
 	var tags: Array = []
 	var seen: Dictionary = {}
+
+	for raw_tag in explicit_tags:
+		var explicit_tag = str(raw_tag).strip_edges().to_upper()
+		if explicit_tag == "" or explicit_tag == "SEA" or seen.has(explicit_tag):
+			continue
+		seen[explicit_tag] = true
+		tags.append(explicit_tag)
 
 	if not battle_payload.is_empty():
 		var bt_left = str(battle_payload.get("left_tag", "")).strip_edges().to_upper()
@@ -1652,6 +1801,12 @@ func _nastav_system_battle_panel(payload: Dictionary) -> void:
 	var left_after = int(payload.get("left_after", 0))
 	var right_before = int(payload.get("right_before", 0))
 	var right_after = int(payload.get("right_after", 0))
+	var left_power = float(payload.get("left_power", -1.0))
+	var right_power = float(payload.get("right_power", -1.0))
+	var left_total_mult = float(payload.get("left_total_mult", -1.0))
+	var right_total_mult = float(payload.get("right_total_mult", -1.0))
+	var left_lab_mult = float(payload.get("left_lab_mult", -1.0))
+	var right_lab_mult = float(payload.get("right_lab_mult", -1.0))
 
 	var left_name = _ziskej_jmeno_statu_podle_tagu(left_tag)
 	var right_name = _ziskej_jmeno_statu_podle_tagu(right_tag)
@@ -1706,12 +1861,25 @@ func _nastav_system_battle_panel(payload: Dictionary) -> void:
 
 	var margin = abs(left_losses - right_losses)
 	if _system_battle_margin_label:
+		var ratio_suffix = ""
+		if left_power > 0.0 and right_power > 0.0:
+			var min_power = max(0.0001, min(left_power, right_power))
+			var left_ratio = left_power / min_power
+			var right_ratio = right_power / min_power
+			var mult_text = ""
+			if left_lab_mult > 0.0 and right_lab_mult > 0.0:
+				mult_text = " | lab x%.2f vs x%.2f" % [left_lab_mult, right_lab_mult]
+				if left_total_mult > 0.0 and right_total_mult > 0.0:
+					mult_text += " (eff x%.2f vs x%.2f)" % [left_total_mult, right_total_mult]
+			elif left_total_mult > 0.0 and right_total_mult > 0.0:
+				mult_text = " | eff x%.2f vs x%.2f" % [left_total_mult, right_total_mult]
+			ratio_suffix = " | power %.2f:%.2f%s" % [left_ratio, right_ratio, mult_text]
 		if winner_tag == "":
-			_system_battle_margin_label.text = "Losses were equal"
+			_system_battle_margin_label.text = "Losses were equal%s" % ratio_suffix
 		elif winner_tag == left_tag:
-			_system_battle_margin_label.text = "%s inflicted +%s more losses" % [left_name, _formatuj_cislo(margin)]
+			_system_battle_margin_label.text = "%s inflicted +%s more losses%s" % [left_name, _formatuj_cislo(margin), ratio_suffix]
 		else:
-			_system_battle_margin_label.text = "%s inflicted +%s more losses" % [right_name, _formatuj_cislo(margin)]
+			_system_battle_margin_label.text = "%s inflicted +%s more losses%s" % [right_name, _formatuj_cislo(margin), ratio_suffix]
 
 	_system_battle_panel.show()
 
@@ -3088,7 +3256,7 @@ func _vytvor_vyzkum_dialog() -> void:
 
 	_research_dialog = PanelContainer.new()
 	_research_dialog.name = "ResearchDialog"
-	_research_dialog.size = Vector2(640, 620)
+	_research_dialog.size = Vector2(820, 780)
 	_research_dialog.top_level = true
 	add_child(_research_dialog)
 	_aplikuj_ingame_popup_styl(_research_dialog)
@@ -3249,13 +3417,19 @@ func _pozicuj_vyzkum_dialog() -> void:
 	var left_x := 0.0
 	if panel:
 		left_x = max(0.0, panel.offset_right)
-	var margin := 10.0
-	var top_offset := 62.0
+	var margin := 8.0
+	var top_offset := 18.0
 	var avail_w = max(280.0, vp.x - left_x - margin * 2.0)
 	var avail_h = max(300.0, vp.y - top_offset - margin)
+	var grid_columns = max(3, _army_research_view_w)
+	var grid_rows = max(3, _army_research_view_h)
+	var desired_grid_w = float(grid_columns * 120) + float(max(0, grid_columns - 1) * 6)
+	var desired_grid_h = float(grid_rows * 52) + float(max(0, grid_rows - 1) * 6)
+	var desired_w = max(760.0, desired_grid_w + 120.0)
+	var desired_h = max(860.0, desired_grid_h + 500.0)
 
-	var w = min(640.0, avail_w)
-	var h = min(720.0, avail_h)
+	var w = min(desired_w, avail_w)
+	var h = min(desired_h, avail_h)
 	_research_dialog.size = Vector2(w, h)
 	_research_dialog.position = Vector2(clamp(left_x + margin, 0.0, max(0.0, vp.x - w)), clamp(top_offset, 0.0, max(0.0, vp.y - h)))
 
@@ -3488,6 +3662,9 @@ func _aktualizuj_vyzkum_dialog(state_tag: String) -> void:
 		if treasury < cost:
 			card.modulate = Color(1, 1, 1, 0.65)
 		card.tooltip_text = "Buying works only via drag and drop into the grid."
+
+	if _research_dialog and _research_dialog.visible:
+		_pozicuj_vyzkum_dialog()
 
 func _vytvor_army_drag_preview(w: int, h: int, _level: int = 1) -> Control:
 	var iw = max(1, w)
@@ -5724,6 +5901,8 @@ func _pridej_alliance_kartu(alliance: Dictionary, target_tag: String, view_mode:
 	title_lbl.text = "%s (%s)" % [alliance_name, level_name]
 	title_lbl.add_theme_font_size_override("font_size", 15)
 	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_lbl.clip_text = true
+	title_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title_row.add_child(title_lbl)
 
 	# Color swatch
@@ -5745,6 +5924,7 @@ func _pridej_alliance_kartu(alliance: Dictionary, target_tag: String, view_mode:
 	var members_lbl = Label.new()
 	members_lbl.text = members_text
 	members_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	members_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	members_lbl.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9))
 	vbox.add_child(members_lbl)
 
@@ -5787,15 +5967,16 @@ func _pridej_alliance_kartu(alliance: Dictionary, target_tag: String, view_mode:
 					cond_label.text = "  %s: AT WAR" % member_name
 					cond_label.add_theme_color_override("font_color", Color(0.95, 0.3, 0.3))
 				elif met:
-					cond_label.text = "  %s: %.1f / %.1f Ä‚ËÄąâ€şĂ˘â‚¬Ĺ›" % [member_name, cond_rel, needed]
+					cond_label.text = "  %s: %.1f / %.1f [OK]" % [member_name, cond_rel, needed]
 					cond_label.add_theme_color_override("font_color", Color(0.5, 0.9, 0.5))
 				else:
-					cond_label.text = "  %s: %.1f / %.1f Ä‚ËÄąâ€şĂ˘â‚¬â€ť" % [member_name, cond_rel, needed]
+					cond_label.text = "  %s: %.1f / %.1f [MISSING]" % [member_name, cond_rel, needed]
 					cond_label.add_theme_color_override("font_color", Color(0.95, 0.4, 0.4))
 				cond_label.add_theme_font_size_override("font_size", 12)
+				cond_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 				vbox.add_child(cond_label)
 
-	# Action buttons Ä‚ËĂ˘â€šÂ¬Ă˘â‚¬ĹĄ differ by view mode
+	# Action buttons differ by view mode.
 	var btn_row = HBoxContainer.new()
 	btn_row.add_theme_constant_override("separation", 6)
 	vbox.add_child(btn_row)
@@ -5928,7 +6109,9 @@ func _on_alliance_invite_pressed(alliance_id: String, target_tag: String) -> voi
 		if not sent:
 			zobraz_systemove_hlaseni("Alliance", "Alliance request could not be sent.")
 		else:
-			zobraz_systemove_hlaseni("Alliance", "%s received an alliance request and can accept or decline it." % _ziskej_jmeno_statu_podle_tagu(target_clean))
+			var sender_name = _ziskej_jmeno_statu_podle_tagu(str(GameManager.hrac_stat).strip_edges().to_upper())
+			var target_name = _ziskej_jmeno_statu_podle_tagu(target_clean)
+			zobraz_systemove_hlaseni("Alliance", "Alliance request sent: %s -> %s. %s can accept or decline it." % [sender_name, target_name, target_name])
 	else:
 		var ignoruj = target_is_human
 		var result = GameManager.pridej_clena_do_aliance(alliance_id, target_clean, ignoruj)
@@ -7502,8 +7685,8 @@ func _vytvor_settings_dialog() -> void:
 	_settings_dialog.name = "SettingsDialog"
 	_settings_dialog.wrap_controls = false
 	_settings_dialog.unresizable = true
-	_settings_dialog.min_size = Vector2i(620, 560)
-	_settings_dialog.size = Vector2i(620, 560)
+	_settings_dialog.min_size = SETTINGS_DIALOG_MIN_SIZE
+	_settings_dialog.size = SETTINGS_DIALOG_DEFAULT_SIZE
 	add_child(_settings_dialog)
 	_aplikuj_ingame_popup_styl(_settings_dialog)
 
@@ -7566,13 +7749,20 @@ func _vytvor_settings_dialog() -> void:
 	_settings_options_panel.add_theme_stylebox_override("panel", panel_style)
 	root.add_child(_settings_options_panel)
 
+	var controls_scroll = ScrollContainer.new()
+	controls_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	controls_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	controls_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_settings_controls_panel.add_child(controls_scroll)
+
 	var controls_margin = MarginContainer.new()
-	controls_margin.offset_left = 12
-	controls_margin.offset_top = 10
-	controls_margin.offset_right = -12
-	controls_margin.offset_bottom = -10
-	controls_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_settings_controls_panel.add_child(controls_margin)
+	controls_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	controls_margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	controls_margin.add_theme_constant_override("margin_left", 12)
+	controls_margin.add_theme_constant_override("margin_top", 10)
+	controls_margin.add_theme_constant_override("margin_right", 12)
+	controls_margin.add_theme_constant_override("margin_bottom", 10)
+	controls_scroll.add_child(controls_margin)
 
 	var controls_content = VBoxContainer.new()
 	controls_content.add_theme_constant_override("separation", 8)
@@ -7592,7 +7782,7 @@ func _vytvor_settings_dialog() -> void:
 	controls_content.add_child(controls_info)
 
 	var keybind_hint = Label.new()
-	keybind_hint.text = "Click a binding below, then press a new key. Escape cancels capture."
+	keybind_hint.text = "Keybinds are currently fixed to default values."
 	keybind_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	controls_content.add_child(keybind_hint)
 
@@ -7602,7 +7792,7 @@ func _vytvor_settings_dialog() -> void:
 	_settings_keybind_grid.add_theme_constant_override("h_separation", 12)
 	_settings_keybind_grid.add_theme_constant_override("v_separation", 6)
 	controls_content.add_child(_settings_keybind_grid)
-	_settings_keybind_state = ControlsConfig.load_bindings_from_config()
+	_settings_keybind_state = ControlsConfig.get_default_bindings()
 	_build_ingame_keybind_rows()
 
 	controls_content.add_child(HSeparator.new())
@@ -7629,13 +7819,20 @@ func _vytvor_settings_dialog() -> void:
 		row_label.text = row_text
 		hotkeys_grid.add_child(row_label)
 
+	var settings_scroll = ScrollContainer.new()
+	settings_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	settings_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	settings_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_settings_options_panel.add_child(settings_scroll)
+
 	var settings_margin = MarginContainer.new()
-	settings_margin.offset_left = 12
-	settings_margin.offset_top = 10
-	settings_margin.offset_right = -12
-	settings_margin.offset_bottom = -10
-	settings_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_settings_options_panel.add_child(settings_margin)
+	settings_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	settings_margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	settings_margin.add_theme_constant_override("margin_left", 12)
+	settings_margin.add_theme_constant_override("margin_top", 10)
+	settings_margin.add_theme_constant_override("margin_right", 12)
+	settings_margin.add_theme_constant_override("margin_bottom", 10)
+	settings_scroll.add_child(settings_margin)
 
 	var settings_content = VBoxContainer.new()
 	settings_content.add_theme_constant_override("separation", 7)
@@ -7663,6 +7860,11 @@ func _vytvor_settings_dialog() -> void:
 	_settings_ai_debug_mode_check.text = "Debug mode"
 	_settings_ai_debug_mode_check.tooltip_text = "Shows debug panel and detailed diagnostics in output."
 	settings_content.add_child(_settings_ai_debug_mode_check)
+
+	_settings_skip_battle_reports_check = CheckBox.new()
+	_settings_skip_battle_reports_check.text = "Skip battle reports on end turn"
+	_settings_skip_battle_reports_check.tooltip_text = "When enabled, battle/frontline popups are skipped and turn processing continues immediately."
+	settings_content.add_child(_settings_skip_battle_reports_check)
 
 	settings_content.add_child(HSeparator.new())
 
@@ -7800,49 +8002,41 @@ func _build_ingame_keybind_rows() -> void:
 		label.text = str(ControlsConfig.ACTION_LABELS.get(action, action))
 		_settings_keybind_grid.add_child(label)
 
-		var btn = Button.new()
-		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		btn.text = ControlsConfig.get_binding_text(action, _settings_keybind_state)
-		btn.pressed.connect(_on_ingame_keybind_button_pressed.bind(action))
-		_settings_keybind_buttons[action] = btn
-		_settings_keybind_grid.add_child(btn)
+		var value = Label.new()
+		value.text = ControlsConfig.get_binding_text(action, _settings_keybind_state)
+		value.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		_settings_keybind_grid.add_child(value)
 
 # Refreshes existing content to reflect current runtime values.
 func _refresh_ingame_keybind_buttons() -> void:
-	for action_any in _settings_keybind_buttons.keys():
-		var action = str(action_any)
-		var btn = _settings_keybind_buttons[action_any] as Button
-		if btn == null:
-			continue
-		if action == _settings_capture_action:
-			btn.text = "Press key..."
-		else:
-			btn.text = ControlsConfig.get_binding_text(action, _settings_keybind_state)
+	return
 
 # Reacts to incoming events.
 func _on_ingame_keybind_button_pressed(action: String) -> void:
-	_settings_capture_action = action
-	_refresh_ingame_keybind_buttons()
+	return
 
 func _capture_ingame_keybind(event: InputEventKey) -> bool:
-	if _settings_capture_action == "":
-		return false
-	if not event.pressed or event.echo:
-		return true
-	if event.keycode == KEY_ESCAPE:
-		_settings_capture_action = ""
-		_refresh_ingame_keybind_buttons()
-		return true
-	_settings_keybind_state[_settings_capture_action] = [int(event.keycode)]
-	_settings_capture_action = ""
-	_refresh_ingame_keybind_buttons()
-	return true
+	return false
 
 # Runs the local feature logic.
 func _pozicuj_settings_dialog() -> void:
 	if _settings_dialog:
 		var vp = get_viewport().get_visible_rect().size
-		_settings_dialog.position = Vector2((vp.x - _settings_dialog.size.x) * 0.5, (vp.y - _settings_dialog.size.y) * 0.5)
+		var target_size = _vypocitej_settings_dialog_size(vp)
+		_settings_dialog.size = target_size
+		_settings_dialog.position = Vector2(
+			maxf(0.0, (vp.x - target_size.x) * 0.5),
+			maxf(0.0, (vp.y - target_size.y) * 0.5)
+		)
+
+func _vypocitej_settings_dialog_size(viewport_size: Vector2) -> Vector2i:
+	var available_w = int(maxf(float(SETTINGS_DIALOG_MIN_SIZE.x), viewport_size.x - SETTINGS_DIALOG_SCREEN_MARGIN))
+	var available_h = int(maxf(float(SETTINGS_DIALOG_MIN_SIZE.y), viewport_size.y - SETTINGS_DIALOG_SCREEN_MARGIN))
+	return Vector2i(
+		min(SETTINGS_DIALOG_DEFAULT_SIZE.x, available_w),
+		min(SETTINGS_DIALOG_DEFAULT_SIZE.y, available_h)
+	)
 
 # Main runtime logic lives here.
 func _pozicuj_save_load_popupy() -> void:
@@ -7858,20 +8052,21 @@ func _ziskej_map_kameru() -> Node:
 
 func _nacti_settings_do_ingame_ui() -> void:
 	ControlsConfig.ensure_default_actions()
+	_settings_keybind_state = ControlsConfig.get_default_bindings()
 	var cfg = ConfigFile.new()
 	if cfg.load(SETTINGS_FILE_PATH) != OK:
-		_settings_keybind_state = ControlsConfig.get_default_bindings()
 		_settings_fullscreen_check.button_pressed = DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
 		_settings_vsync_check.button_pressed = DisplayServer.window_get_vsync_mode() != DisplayServer.VSYNC_DISABLED
 		_settings_potato_mode_check.button_pressed = false
 		if _settings_ai_debug_mode_check:
 			_settings_ai_debug_mode_check.button_pressed = false
+		if _settings_skip_battle_reports_check:
+			_settings_skip_battle_reports_check.button_pressed = false
 		_settings_volume_slider.value = 1.0
 		_settings_camera_slider.value = 1000.0
 		_settings_zoom_slider.value = 0.1
 		_settings_invert_zoom_check.button_pressed = false
 	else:
-		_settings_keybind_state = ControlsConfig.load_bindings_from_config(cfg)
 		_settings_fullscreen_check.button_pressed = bool(cfg.get_value("display", "fullscreen", false))
 		_settings_vsync_check.button_pressed = bool(cfg.get_value("display", "vsync", true))
 		var potato_display = bool(cfg.get_value("display", "potato_mode", false))
@@ -7880,6 +8075,8 @@ func _nacti_settings_do_ingame_ui() -> void:
 		if _settings_ai_debug_mode_check:
 			# Always initialize debug mode as disabled at startup.
 			_settings_ai_debug_mode_check.button_pressed = false
+		if _settings_skip_battle_reports_check:
+			_settings_skip_battle_reports_check.button_pressed = bool(cfg.get_value("other", "skip_battle_reports", false))
 		_settings_volume_slider.value = clamp(float(cfg.get_value("audio", "master_volume", 1.0)), 0.0, 1.0)
 		_settings_camera_slider.value = float(cfg.get_value("controls", "camera_speed", 1000.0))
 		_settings_zoom_slider.value = clamp(float(cfg.get_value("controls", "zoom_speed", 0.1)), 0.03, 0.35)
@@ -7888,6 +8085,7 @@ func _nacti_settings_do_ingame_ui() -> void:
 	_refresh_ingame_keybind_buttons()
 
 	_aplikuj_ai_debug_mode_runtime(_settings_ai_debug_mode_check.button_pressed if _settings_ai_debug_mode_check else false)
+	_aplikuj_skip_battle_reports_runtime(_settings_skip_battle_reports_check.button_pressed if _settings_skip_battle_reports_check else false)
 
 	_on_ingame_volume_changed(_settings_volume_slider.value)
 	_on_ingame_camera_speed_changed(_settings_camera_slider.value)
@@ -7899,18 +8097,18 @@ func _uloz_a_aplikuj_ingame_settings() -> void:
 	var vsync_enabled = _settings_vsync_check.button_pressed
 	var potato_mode = _settings_potato_mode_check.button_pressed if _settings_potato_mode_check else false
 	var ai_debug_mode = _settings_ai_debug_mode_check.button_pressed if _settings_ai_debug_mode_check else false
+	var skip_battle_reports = _settings_skip_battle_reports_check.button_pressed if _settings_skip_battle_reports_check else false
 	var master_volume = float(_settings_volume_slider.value)
 	var camera_speed = float(_settings_camera_slider.value)
 	var zoom_speed = float(_settings_zoom_slider.value)
 	var invert_zoom = _settings_invert_zoom_check.button_pressed
-	var keybinds = ControlsConfig.load_bindings_from_config()
-	if not _settings_keybind_state.is_empty():
-		keybinds = _settings_keybind_state.duplicate(true)
+	var keybinds = ControlsConfig.get_default_bindings()
 
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if fullscreen else DisplayServer.WINDOW_MODE_WINDOWED)
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if vsync_enabled else DisplayServer.VSYNC_DISABLED)
 	_aplikuj_potato_mode_runtime(potato_mode)
 	_aplikuj_ai_debug_mode_runtime(ai_debug_mode)
+	_aplikuj_skip_battle_reports_runtime(skip_battle_reports)
 
 	var master_bus_idx = AudioServer.get_bus_index("Master")
 	if master_bus_idx == -1:
@@ -7924,11 +8122,11 @@ func _uloz_a_aplikuj_ingame_settings() -> void:
 	cfg.set_value("display", "potato_mode", potato_mode)
 	cfg.set_value("other", "potato_mode", potato_mode)
 	cfg.set_value("other", "ai_debug_mode", ai_debug_mode)
+	cfg.set_value("other", "skip_battle_reports", skip_battle_reports)
 	cfg.set_value("audio", "master_volume", master_volume)
 	cfg.set_value("controls", "camera_speed", camera_speed)
 	cfg.set_value("controls", "zoom_speed", zoom_speed)
 	cfg.set_value("controls", "invert_zoom", invert_zoom)
-	ControlsConfig.save_bindings_to_config(cfg, keybinds)
 	var save_err = cfg.save(SETTINGS_FILE_PATH)
 	if save_err != OK:
 		push_warning("Failed to save in-game settings. Error: %s" % str(save_err))
@@ -7958,6 +8156,11 @@ func _aplikuj_ai_debug_mode_runtime(enabled: bool) -> void:
 	var game_manager = get_tree().root.get_node_or_null("GameManager")
 	if game_manager and game_manager.has_method("nastav_ai_debug_mode"):
 		game_manager.nastav_ai_debug_mode(enabled)
+
+func _aplikuj_skip_battle_reports_runtime(enabled: bool) -> void:
+	var map_loader = _ziskej_map_loader_node()
+	if map_loader and map_loader.has_method("nastav_skip_battle_reportu"):
+		map_loader.nastav_skip_battle_reportu(enabled)
 
 func _on_ingame_volume_changed(value: float) -> void:
 	if _settings_volume_value:
@@ -8122,42 +8325,21 @@ func _on_pause_resume_pressed() -> void:
 func _obnov_text_spectate_tlacitka() -> void:
 	if _pause_spectate_btn == null:
 		return
-	if _spectate_mode_enabled:
-		_pause_spectate_btn.text = "Spectate mode: ON"
-		_pause_spectate_btn.tooltip_text = "Turns are auto-ended. Pick a state below, then click to take control."
-	else:
-		_pause_spectate_btn.text = "Spectate mode: OFF"
-		_pause_spectate_btn.tooltip_text = "Enable observer mode with automatic turn advance."
+	_spectate_mode_enabled = false
+	_pause_spectate_btn.text = "Spectate mode: Disabled"
+	_pause_spectate_btn.tooltip_text = "Temporarily disabled."
+	_pause_spectate_btn.disabled = true
+	_pause_spectate_btn.visible = false
 	if _pause_spectate_pick_row:
-		_pause_spectate_pick_row.visible = _spectate_mode_enabled
+		_pause_spectate_pick_row.visible = false
 	_obnov_spectate_hud_indicator()
 
 func _on_pause_toggle_spectate_pressed() -> void:
-	# Same button handles both entering spectate and taking control back.
-	# Pro male dite: stejne tlacitko umi prepnout na divani i zpet na hrani.
-	if _spectate_mode_enabled:
-		var selected_tag = _ziskej_pause_selected_hrac_tag()
-		if selected_tag == "":
-			await zobraz_systemove_hlaseni("Spectate", "No playable state is available to take control.")
-			return
-		if GameManager and GameManager.has_method("nastav_lokalni_hrace"):
-			GameManager.nastav_lokalni_hrace([selected_tag])
-		if GameManager and GameManager.has_method("nastav_spectate_mode"):
-			GameManager.nastav_spectate_mode(false)
-		_spectate_mode_enabled = false
-		_spectate_auto_turn_cooldown = 0.0
-		_obnov_pause_spectate_vyber_hrace()
-		_obnov_text_spectate_tlacitka()
-		_otevri_prehled_statu_podle_tagu(selected_tag)
-		await zobraz_systemove_hlaseni("Spectate", "You now control %s." % _ziskej_jmeno_statu_podle_tagu(selected_tag))
-		return
-
-	_spectate_mode_enabled = true
+	_spectate_mode_enabled = false
 	_spectate_auto_turn_cooldown = 0.0
-	_obnov_pause_spectate_vyber_hrace()
 	if GameManager and GameManager.has_method("nastav_spectate_mode"):
-		GameManager.nastav_spectate_mode(true)
-	_obnov_text_spectate_tlacitka()
+		GameManager.nastav_spectate_mode(false)
+	await zobraz_systemove_hlaseni("Spectate", "Spectate mode is temporarily disabled.")
 
 func _ziskej_pause_volitelne_hrace() -> Array:
 	var out: Array = []
@@ -8282,8 +8464,8 @@ func _on_pause_options_pressed() -> void:
 	_nacti_settings_do_ingame_ui()
 	_show_ingame_settings_tab(1)
 	if _settings_dialog:
-		_settings_dialog.size = _settings_dialog.min_size
-		_settings_dialog.popup_centered(_settings_dialog.min_size)
+		_pozicuj_settings_dialog()
+		_settings_dialog.popup()
 
 # Event handler for user or game actions.
 func _on_pause_surrender_pressed() -> void:
@@ -8416,6 +8598,9 @@ func _aktualizuj_pozice_popupu():
 		var extra_meta_h = 0.0
 		if _system_message_meta_row and _system_message_meta_row.visible:
 			extra_meta_h = SYSTEM_MESSAGE_META_ROW_HEIGHT
+		var extra_batch_h = 0.0
+		if _system_batch_panel and _system_batch_panel.visible:
+			extra_batch_h = _system_batch_panel.custom_minimum_size.y + 6.0
 		var msg_y = top_y
 		if diplomacy_request_popup and diplomacy_request_popup.visible:
 			msg_y += diplomacy_request_popup.size.y + POPUP_GAP
@@ -8428,9 +8613,9 @@ func _aktualizuj_pozice_popupu():
 		var max_msg_h = max(110.0, viewport_size.y - msg_y - 12.0)
 		var msg_h = 0.0
 		if _system_message_compact_battle:
-			msg_h = clamp(90.0 + extra_battle_h + extra_meta_h, 108.0, max_msg_h)
+			msg_h = clamp(90.0 + extra_battle_h + extra_meta_h + extra_batch_h, 108.0, max_msg_h)
 		else:
-			msg_h = clamp(90.0 + float(approx_lines) * 17.0 + extra_battle_h + extra_meta_h, 108.0, max_msg_h)
+			msg_h = clamp(90.0 + float(approx_lines) * 17.0 + extra_battle_h + extra_meta_h + extra_batch_h, 108.0, max_msg_h)
 		msg_y = clamp(msg_y, top_y, max(top_y, viewport_size.y - msg_h - 8.0))
 		system_message_popup.position = Vector2((viewport_size.x - msg_w) * 0.5, msg_y)
 		system_message_popup.size = Vector2(msg_w, msg_h)
@@ -8438,7 +8623,7 @@ func _aktualizuj_pozice_popupu():
 			if _system_message_compact_battle:
 				system_message_text.custom_minimum_size = Vector2(0.0, 0.0)
 			else:
-				var text_area_h = max(34.0, msg_h - 62.0 - extra_battle_h - extra_meta_h)
+				var text_area_h = max(34.0, msg_h - 62.0 - extra_battle_h - extra_meta_h - extra_batch_h)
 				system_message_text.custom_minimum_size = Vector2(0.0, text_area_h)
 
 	if _alliance_dialog and _alliance_dialog.visible:
@@ -8446,13 +8631,15 @@ func _aktualizuj_pozice_popupu():
 	if _alliance_create_popup and _alliance_create_popup.visible:
 		_pozicuj_alliance_create_popup()
 
-func zobraz_systemove_hlaseni(titulek: String, text: String, allow_auto_ack_during_turn: bool = true, battle_payload: Dictionary = {}) -> void:
+func zobraz_systemove_hlaseni(titulek: String, text: String, allow_auto_ack_during_turn: bool = true, battle_payload: Dictionary = {}, state_tags: Array = []) -> void:
 	if not system_message_popup:
 		return
+	if _system_batch_panel:
+		_system_batch_panel.hide()
 	_system_message_compact_battle = not battle_payload.is_empty()
 	var final_title = _zpolish_system_message_title(_nahrad_tagy_nazvy_ve_zprave(titulek))
 	var final_text = _zpolish_system_message_text(_nahrad_tagy_nazvy_ve_zprave(text))
-	_nastav_system_message_meta_row(_ziskej_tagy_systemove_zpravy(titulek, text, battle_payload))
+	_nastav_system_message_meta_row(_ziskej_tagy_systemove_zpravy(titulek, text, battle_payload, state_tags))
 	var puvodni_pozastaveni_overlay = _turn_loading_suppressed
 	nastav_pozastaveni_turn_overlay(true)
 	if system_message_title:
@@ -8490,6 +8677,32 @@ func zobraz_systemove_hlaseni(titulek: String, text: String, allow_auto_ack_duri
 
 	nastav_pozastaveni_turn_overlay(puvodni_pozastaveni_overlay)
 	_system_message_compact_battle = false
+
+func zobraz_batched_hlaseni(items: Array) -> void:
+	if not system_message_popup:
+		return
+	_system_message_compact_battle = false
+	var puvodni_pozastaveni_overlay = _turn_loading_suppressed
+	nastav_pozastaveni_turn_overlay(true)
+	if system_message_title:
+		system_message_title.text = "Reports (%d)" % items.size()
+	_nastav_system_message_meta_row([])
+	_nastav_system_battle_panel({})
+	_nastav_system_batch_items(items)
+	if system_message_text:
+		system_message_text.hide()
+	_system_message_ack = false
+	_aktualizuj_pozice_popupu()
+	system_message_popup.show()
+	while is_instance_valid(system_message_popup) and system_message_popup.visible and not _system_message_ack:
+		var tree := get_tree()
+		if tree == null:
+			break
+		await tree.process_frame
+	nastav_pozastaveni_turn_overlay(puvodni_pozastaveni_overlay)
+	_system_message_compact_battle = false
+	if system_message_text:
+		system_message_text.show()
 
 func _napln_aliance_option():
 	# Legacy stub - alliance is now managed via popup dialog
@@ -8766,6 +8979,9 @@ func _ziskej_aktivni_zpravy() -> Array:
 			out = GameManager.ziskej_globalni_zpravy(ZPRAVY_MAX_ITEMS)
 			out = _odfiltruj_popup_kategorie(out)
 		return out
+	if GameManager.has_method("ziskej_relevantni_zpravy_statu"):
+		out = GameManager.ziskej_relevantni_zpravy_statu(GameManager.hrac_stat, ZPRAVY_MAX_ITEMS, true)
+		return _odfiltruj_popup_kategorie(out)
 	if GameManager.has_method("ziskej_zpravy_hrace"):
 		out = GameManager.ziskej_zpravy_hrace(GameManager.hrac_stat, ZPRAVY_MAX_ITEMS)
 		var current_turn = int(GameManager.aktualni_kolo)
@@ -8774,9 +8990,6 @@ func _ziskej_aktivni_zpravy() -> Array:
 			if int((entry as Dictionary).get("turn", -1)) == current_turn:
 				filtered.append(entry)
 		return _odfiltruj_popup_kategorie(filtered)
-	if GameManager.has_method("ziskej_relevantni_zpravy_statu"):
-		out = GameManager.ziskej_relevantni_zpravy_statu(GameManager.hrac_stat, ZPRAVY_MAX_ITEMS, true)
-		return _odfiltruj_popup_kategorie(out)
 	return out
 
 func _ziskej_historicke_zpravy() -> Array:
@@ -8788,10 +9001,10 @@ func _ziskej_historicke_zpravy() -> Array:
 		if GameManager.has_method("ziskej_globalni_zpravy"):
 			out = _odfiltruj_popup_kategorie(GameManager.ziskej_globalni_zpravy(ZPRAVY_HISTORY_MAX_ITEMS))
 	else:
-		if GameManager.has_method("ziskej_zpravy_hrace"):
-			out = _odfiltruj_popup_kategorie(GameManager.ziskej_zpravy_hrace(GameManager.hrac_stat, ZPRAVY_HISTORY_MAX_ITEMS))
-		elif GameManager.has_method("ziskej_relevantni_zpravy_statu"):
+		if GameManager.has_method("ziskej_relevantni_zpravy_statu"):
 			out = _odfiltruj_popup_kategorie(GameManager.ziskej_relevantni_zpravy_statu(GameManager.hrac_stat, ZPRAVY_HISTORY_MAX_ITEMS, false))
+		elif GameManager.has_method("ziskej_zpravy_hrace"):
+			out = _odfiltruj_popup_kategorie(GameManager.ziskej_zpravy_hrace(GameManager.hrac_stat, ZPRAVY_HISTORY_MAX_ITEMS))
 
 	var hist: Array = []
 	for entry in out:
@@ -9206,6 +9419,7 @@ func _vyhledat_tagy_statu_podle_nazvu(text: String) -> Array:
 
 	var lower_text = text.to_lower()
 	var states: Dictionary = {}
+	var matches: Array = []
 	for p_id in GameManager.map_data:
 		var d = GameManager.map_data[p_id]
 		var tag = str(d.get("owner", "")).strip_edges().to_upper()
@@ -9218,9 +9432,30 @@ func _vyhledat_tagy_statu_podle_nazvu(text: String) -> Array:
 		var country_name = str(states[tag]).strip_edges()
 		if country_name == "":
 			continue
-		if lower_text.find(country_name.to_lower()) != -1 and not seen.has(tag):
-			seen[tag] = true
-			tags.append(tag)
+		var at = lower_text.find(country_name.to_lower())
+		if at == -1:
+			continue
+		matches.append({
+			"tag": tag,
+			"at": at
+		})
+
+	# Keep state picks stable and aligned with message wording.
+	matches.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var a_at = int(a.get("at", 0))
+		var b_at = int(b.get("at", 0))
+		if a_at == b_at:
+			return str(a.get("tag", "")) < str(b.get("tag", ""))
+		return a_at < b_at
+	)
+
+	for m_any in matches:
+		var m = m_any as Dictionary
+		var tag = str(m.get("tag", "")).strip_edges().to_upper()
+		if tag == "" or seen.has(tag):
+			continue
+		seen[tag] = true
+		tags.append(tag)
 	return tags
 
 # Eligibility/guard check.
@@ -9786,9 +10021,9 @@ func _aktualizuj_aliance_ui(target_tag: String):
 		else:
 			level_name = "Level %d" % level
 		if alliance_count > 0:
-			alliance_btn.text = "Alliances (%d) Ä‚ËĂ˘â€šÂ¬Ă˘â‚¬ĹĄ %s" % [alliance_count, level_name]
+			alliance_btn.text = "Alliances (%d) -> %s" % [alliance_count, level_name]
 		else:
-			alliance_btn.text = "Alliances Ä‚ËĂ˘â€šÂ¬Ă˘â‚¬ĹĄ %s" % level_name
+			alliance_btn.text = "Alliances -> %s" % level_name
 		alliance_btn.disabled = false
 		alliance_btn.tooltip_text = "Open alliance management menu."
 	else:
@@ -10397,10 +10632,10 @@ func _aktualizuj_diplomacii_tlacitka(target_tag: String):
 			if not has_access and GameManager.has_method("_ma_cekajici_zadost_vojenskeho_pristupu"):
 				pending = bool(GameManager._ma_cekajici_zadost_vojenskeho_pristupu(GameManager.hrac_stat, target))
 			if alliance_level > 0:
-				_military_access_btn.text = "Military access Ä‚ËÄąâ€şĂ˘â‚¬Ĺ› (alliance)"
+				_military_access_btn.text = "Military access -> (alliance)"
 				_military_access_btn.disabled = true
 			elif has_access:
-				_military_access_btn.text = "Military access Ä‚ËÄąâ€şĂ˘â‚¬Ĺ› (Revoke)"
+				_military_access_btn.text = "Military access -> (Revoke)"
 				_military_access_btn.disabled = false
 			elif pending:
 				_military_access_btn.text = "Military access (pending...)"

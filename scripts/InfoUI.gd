@@ -59,6 +59,7 @@ var presun_path: Array = []
 var hromadny_vyber_ids: Array = []
 var je_hromadny_rezim: bool = false
 var je_hromadne_verbovani: bool = false
+var je_hromadne_likvidovani: bool = false
 # ---------------------------------------------------
 
 var aktualni_provincie_id: int = -1
@@ -844,6 +845,7 @@ func schovej_se():
 	hromadny_vyber_ids.clear()
 	je_hromadny_rezim = false
 	je_hromadne_verbovani = false
+	je_hromadne_likvidovani = false
 	var map_loader = get_tree().current_scene.find_child("Map", true, false)
 	if map_loader and map_loader.has_method("vycisti_hromadny_vyber_provincii"):
 		map_loader.vycisti_hromadny_vyber_provincii()
@@ -859,6 +861,7 @@ func zobraz_data(data: Dictionary):
 	$PanelContainer.show()
 	je_hromadny_rezim = false
 	je_hromadne_verbovani = false
+	je_hromadne_likvidovani = false
 	hromadny_vyber_ids.clear()
 	recruit_popup.hide() 
 	if move_popup: move_popup.hide()
@@ -964,6 +967,9 @@ func zobraz_data(data: Dictionary):
 
 # Callback for UI/game events.
 func _on_likvidovat_pressed():
+	if je_hromadny_rezim:
+		_otevri_hromadne_likvidovani()
+		return
 	if aktualni_provincie_id == -1:
 		return
 	var province_data = _ziskej_provincie_data()
@@ -1002,12 +1008,18 @@ func _on_likvidace_slider_zmenen(hodnota: float):
 		return
 	var pocet = int(hodnota)
 	var refundace = float(pocet) * likvidace_vynos_za_vojaka
-	likvidace_info.text = "Disband: %s soldiers\nRefund: +%s" % [_formatuj_cislo(pocet), _format_money_auto(refundace, 2)]
+	if je_hromadne_likvidovani:
+		likvidace_info.text = "Disband all: %s soldiers\nRefund: +%s" % [_formatuj_cislo(pocet), _format_money_auto(refundace, 2)]
+	else:
+		likvidace_info.text = "Disband: %s soldiers\nRefund: +%s" % [_formatuj_cislo(pocet), _format_money_auto(refundace, 2)]
 	if btn_likvidace_potvrdit:
 		btn_likvidace_potvrdit.disabled = (pocet <= 0)
 
 # Triggered by a UI/game signal.
 func _on_potvrdit_likvidaci():
+	if je_hromadne_likvidovani:
+		_potvrd_hromadne_likvidovani()
+		return
 	if aktualni_provincie_id == -1:
 		return
 	var province_data = _ziskej_provincie_data()
@@ -1292,6 +1304,7 @@ func zobraz_hromadna_data(ids: Array, all_provinces: Dictionary):
 
 	je_hromadny_rezim = true
 	je_hromadne_verbovani = false
+	je_hromadne_likvidovani = false
 	hromadny_vyber_ids = ids.duplicate()
 	$PanelContainer.show()
 	action_menu.show()
@@ -1337,7 +1350,8 @@ func zobraz_hromadna_data(ids: Array, all_provinces: Dictionary):
 	gdp_label.text = "Total GDP: %.2f bn USD" % total_gdp
 	soldiers_label.text = "Total soldiers: %s" % _formatuj_cislo(total_soldiers)
 
-	btn_likvidovat.hide()
+	btn_likvidovat.show()
+	btn_likvidovat.disabled = vlastni_s_armadou.is_empty()
 	btn_stavet.show()
 	btn_verbovat.show()
 	btn_presunout.show()
@@ -1414,29 +1428,46 @@ func _otevri_hromadne_verbovani():
 
 # Validates and confirms an action, then commits the result.
 func _potvrd_hromadne_verbovani():
-	var remaining = int(recruit_slider.value)
-	if remaining <= 0:
+	var total_to_recruit = int(recruit_slider.value)
+	if total_to_recruit <= 0:
 		recruit_popup.hide()
 		return
 
 	var pozemni = _ziskej_hromadne_vlastni_pozemni()
-	var total_recruited := 0
 	var province_data = _ziskej_provincie_data()
+
+	# First pass: collect valid provinces and their per-cap.
+	var valid_pids: Array = []
+	var caps: Array = []
+	var total_cap := 0
 	for pid in pozemni:
-		if remaining <= 0:
-			break
 		if not province_data.has(pid):
 			continue
 		var d = province_data[pid]
-		var available_recruits = int(d.get("recruitable_population", 0))
-		var max_allowed_here = _limit_verbovani_v_okupaci(available_recruits, d)
-		if max_allowed_here <= 0:
+		var cap = _limit_verbovani_v_okupaci(int(d.get("recruitable_population", 0)), d)
+		if cap > 0:
+			valid_pids.append(pid)
+			caps.append(cap)
+			total_cap += cap
+
+	if total_cap <= 0:
+		_ukaz_stavbu_info("BULK RECRUITMENT", "Selected provinces have no available recruits.")
+		recruit_popup.hide()
+		return
+
+	# Second pass: strict equal split (floor) across all valid provinces.
+	# Example: 1000 over 3 provinces => 333, 333, 333 (remainder 1 is intentionally not used).
+	var total_recruited := 0
+	var per_province = int(floor(float(total_to_recruit) / float(valid_pids.size())))
+	for i in range(valid_pids.size()):
+		var pid = valid_pids[i]
+		var d = province_data[pid]
+		var share = clampi(per_province, 0, caps[i])
+		if share <= 0:
 			continue
-		var add = min(remaining, max_allowed_here)
-		d["recruitable_population"] = available_recruits - add
-		d["soldiers"] = int(d.get("soldiers", 0)) + add
-		remaining -= add
-		total_recruited += add
+		d["recruitable_population"] = int(d.get("recruitable_population", 0)) - share
+		d["soldiers"] = int(d.get("soldiers", 0)) + share
+		total_recruited += share
 
 	if total_recruited > 0:
 		GameManager.statni_kasa -= float(total_recruited) * _ziskej_cenu_za_vojaka()
@@ -1447,6 +1478,72 @@ func _potvrd_hromadne_verbovani():
 	recruit_popup.hide()
 	_clear_preview_text()
 	GameManager.kolo_zmeneno.emit()
+
+# Opens bulk-disband popup for all selected provinces with armies.
+func _otevri_hromadne_likvidovani():
+	var s_armadou = _ziskej_hromadne_zdroje_s_armadou()
+	if s_armadou.is_empty():
+		_ukaz_stavbu_info("BULK DISBAND", "No selected province has troops to disband.")
+		return
+
+	var total_soldiers := 0
+	var province_data = _ziskej_provincie_data()
+	for pid in s_armadou:
+		if province_data.has(pid):
+			total_soldiers += int(province_data[pid].get("soldiers", 0))
+
+	if total_soldiers <= 0:
+		_ukaz_stavbu_info("BULK DISBAND", "No troops available in selected provinces.")
+		return
+
+	je_hromadne_likvidovani = true
+	likvidace_slider.visible = false
+	likvidace_slider.min_value = total_soldiers
+	likvidace_slider.max_value = total_soldiers
+	likvidace_slider.value = total_soldiers
+	_on_likvidace_slider_zmenen(float(total_soldiers))
+
+	var rect = Rect2i()
+	rect.position = Vector2i(btn_likvidovat.global_position.x, btn_likvidovat.global_position.y - likvidace_popup.size.y - 5)
+	rect.size = likvidace_popup.size
+	rect = _clamp_popup_rect_to_viewport(rect)
+	likvidace_popup.popup(rect)
+
+# Confirms bulk disband and removes all armies in selected provinces.
+func _potvrd_hromadne_likvidovani():
+	var s_armadou = _ziskej_hromadne_zdroje_s_armadou()
+	var province_data = _ziskej_provincie_data()
+	var total_disbanded := 0
+	var total_refund := 0.0
+	for pid in s_armadou:
+		if not province_data.has(pid):
+			continue
+		var d = province_data[pid]
+		var pocet = int(d.get("soldiers", 0))
+		if pocet <= 0:
+			continue
+		var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
+		var je_more = (owner_tag == "SEA")
+		var refund = float(pocet) * likvidace_vynos_za_vojaka
+		total_refund += refund
+		total_disbanded += pocet
+		d["soldiers"] = 0
+		if je_more:
+			d["army_owner"] = ""
+		else:
+			d["recruitable_population"] = int(d.get("recruitable_population", 0)) + pocet
+
+	if total_disbanded > 0:
+		GameManager.statni_kasa += total_refund
+
+	je_hromadne_likvidovani = false
+	likvidace_slider.visible = true
+	likvidace_popup.hide()
+	if total_disbanded > 0:
+		_ukaz_stavbu_info("BULK DISBAND", "Disbanded %s soldiers across %d provinces. Refund: +%s" % [_formatuj_cislo(total_disbanded), s_armadou.size(), _format_money_auto(total_refund, 2)])
+		GameManager.kolo_zmeneno.emit()
+	else:
+		_ukaz_stavbu_info("BULK DISBAND", "No troops were disbanded.")
 
 # Handles this gameplay/UI path.
 func _postav_hromadne(building_id: String):

@@ -295,9 +295,9 @@ const COUNTRY_BROWSER_DETAIL_MIN_W := 360.0
 const COUNTRY_BROWSER_VIEWPORT_MARGIN := 16.0
 const COUNTRY_BROWSER_SAFE_MIN_W := 280.0
 const COUNTRY_BROWSER_SAFE_MIN_H := 180.0
-const COUNTRY_BROWSER_BUTTON_H_DEFAULT := 44.0
-const COUNTRY_BROWSER_BUTTON_H_COMPACT := 30.0
-const COUNTRY_BROWSER_BUTTON_H_TINY := 28.0
+const COUNTRY_BROWSER_BUTTON_H_DEFAULT := 52.0
+const COUNTRY_BROWSER_BUTTON_H_COMPACT := 44.0
+const COUNTRY_BROWSER_BUTTON_H_TINY := 38.0
 const COUNTRY_BROWSER_ROW_H_DEFAULT := 74.0
 const COUNTRY_BROWSER_ROW_H_COMPACT := 44.0
 const COUNTRY_BROWSER_ROW_H_TINY := 38.0
@@ -596,6 +596,10 @@ func _apply_country_browser_window_size() -> void:
 	if detail_name:
 		detail_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		detail_name.custom_minimum_size = Vector2(0, 32 if tiny_layout else (44 if compact_height else 56))
+	if detail_info:
+		detail_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		detail_info.fit_content = false
+		detail_info.scroll_active = true
 
 func _restore_country_browser_root_layout() -> void:
 	if country_browser_panel == null:
@@ -671,6 +675,7 @@ func _apply_country_browser_compact_mode(vp_size: Vector2) -> void:
 		detail_info.custom_minimum_size = Vector2(0, 16) if tiny else (Vector2(0, 30) if compact else Vector2(0, 70))
 		detail_info.fit_content = false
 		detail_info.scroll_active = true
+		detail_info.visible = not compact
 	if selected_players_title:
 		selected_players_title.add_theme_font_size_override("font_size", 13 if tiny else (14 if compact else 16))
 	if _browser_potato_mode_check:
@@ -686,11 +691,11 @@ func _apply_country_browser_compact_mode(vp_size: Vector2) -> void:
 		browser_buttons_row.vertical = tiny
 	if btn_confirm_country:
 		btn_confirm_country.custom_minimum_size.y = COUNTRY_BROWSER_BUTTON_H_TINY if tiny else (COUNTRY_BROWSER_BUTTON_H_COMPACT if compact else COUNTRY_BROWSER_BUTTON_H_DEFAULT)
-		btn_confirm_country.add_theme_font_size_override("font_size", 12 if tiny else (14 if compact else 16))
+		btn_confirm_country.add_theme_font_size_override("font_size", 14 if tiny else (16 if compact else 18))
 		btn_confirm_country.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if btn_close_browser:
 		btn_close_browser.custom_minimum_size.y = COUNTRY_BROWSER_BUTTON_H_TINY if tiny else (COUNTRY_BROWSER_BUTTON_H_COMPACT if compact else COUNTRY_BROWSER_BUTTON_H_DEFAULT)
-		btn_close_browser.add_theme_font_size_override("font_size", 12 if tiny else (14 if compact else 16))
+		btn_close_browser.add_theme_font_size_override("font_size", 14 if tiny else (16 if compact else 18))
 		btn_close_browser.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var row_h = COUNTRY_BROWSER_ROW_H_TINY if tiny else (COUNTRY_BROWSER_ROW_H_COMPACT if compact else COUNTRY_BROWSER_ROW_H_DEFAULT)
 	for row_key in country_rows.keys():
@@ -830,6 +835,8 @@ func _ensure_ai_aggression_control() -> void:
 	_browser_spectate_mode_check.name = "BrowserSpectateModeCheck"
 	_browser_spectate_mode_check.text = "Spectate mode (AI only)"
 	_browser_spectate_mode_check.button_pressed = false
+	_browser_spectate_mode_check.disabled = true
+	_browser_spectate_mode_check.visible = false
 	_browser_spectate_mode_check.toggled.connect(_on_browser_spectate_mode_toggled)
 	_browser_current_settings_vbox.add_child(_browser_spectate_mode_check)
 
@@ -1014,13 +1021,11 @@ func _on_browser_ai_debug_mode_toggled(enabled: bool) -> void:
 		ai_debug_mode_check.set_block_signals(false)
 
 func _on_browser_spectate_mode_toggled(enabled: bool) -> void:
-	if not new_game_browser_flow:
-		if _browser_spectate_mode_check:
-			_browser_spectate_mode_check.set_block_signals(true)
-			_browser_spectate_mode_check.button_pressed = false
-			_browser_spectate_mode_check.set_block_signals(false)
-		enabled = false
-	_aktualizuj_spectate_stav_v_new_game(enabled)
+	if _browser_spectate_mode_check:
+		_browser_spectate_mode_check.set_block_signals(true)
+		_browser_spectate_mode_check.button_pressed = false
+		_browser_spectate_mode_check.set_block_signals(false)
+	_aktualizuj_spectate_stav_v_new_game(false)
 
 func _aktualizuj_spectate_stav_v_new_game(enabled: bool) -> void:
 	if enabled:
@@ -1032,7 +1037,7 @@ func _aktualizuj_spectate_stav_v_new_game(enabled: bool) -> void:
 	_obnov_texty_radku_statu()
 
 func _je_spectate_new_game_aktivni() -> bool:
-	return new_game_browser_flow and _browser_spectate_mode_check != null and _browser_spectate_mode_check.button_pressed
+	return false
 
 func _aktualizuj_stav_blokace_vyberu_statu() -> void:
 	var lock_selection = _je_spectate_new_game_aktivni()
@@ -1099,7 +1104,7 @@ func _nastav_tooltipy_ui() -> void:
 	if _browser_ai_debug_mode_check:
 		_browser_ai_debug_mode_check.tooltip_text = "Shows debug panel and detailed diagnostics in output."
 	if _browser_spectate_mode_check:
-		_browser_spectate_mode_check.tooltip_text = "Observer start. Country selection and offers are disabled."
+		_browser_spectate_mode_check.tooltip_text = "Temporarily disabled."
 	if _browser_settings_country_separator:
 		_browser_settings_country_separator.tooltip_text = "Visual separator between setup settings and country selection."
 	if potato_mode_check:
@@ -1327,17 +1332,18 @@ func _vytvor_vychozi_nastaveni() -> Dictionary:
 # Pulls data and verifies parse output.
 func _nacti_nastaveni() -> void:
 	nastaveni_data = _vytvor_vychozi_nastaveni()
+	# Keybinds are currently fixed to defaults (custom rebinding is temporarily disabled).
+	var default_keybinds = ControlsConfig.get_default_bindings()
+	nastaveni_data["keybinds"] = default_keybinds.duplicate(true)
+	_keybind_state = default_keybinds.duplicate(true)
 	var cfg = ConfigFile.new()
 	if cfg.load(SETTINGS_FILE_PATH) != OK:
-		_keybind_state = ControlsConfig.get_default_bindings()
 		ControlsConfig.apply_bindings(_keybind_state)
 		return
 
 	nastaveni_data["controls"]["camera_speed"] = float(cfg.get_value("controls", "camera_speed", nastaveni_data["controls"]["camera_speed"]))
 	nastaveni_data["controls"]["zoom_speed"] = float(cfg.get_value("controls", "zoom_speed", nastaveni_data["controls"]["zoom_speed"]))
 	nastaveni_data["controls"]["invert_zoom"] = bool(cfg.get_value("controls", "invert_zoom", nastaveni_data["controls"]["invert_zoom"]))
-	nastaveni_data["keybinds"] = ControlsConfig.load_bindings_from_config(cfg)
-	_keybind_state = (nastaveni_data["keybinds"] as Dictionary).duplicate(true)
 
 	var loaded_language = str(cfg.get_value("language", "code", nastaveni_data["language"]["code"]))
 	nastaveni_data["language"]["code"] = _normalizuj_jazyk(loaded_language)
@@ -1356,7 +1362,6 @@ func _uloz_nastaveni() -> void:
 	cfg.set_value("controls", "camera_speed", float(nastaveni_data["controls"]["camera_speed"]))
 	cfg.set_value("controls", "zoom_speed", float(nastaveni_data["controls"]["zoom_speed"]))
 	cfg.set_value("controls", "invert_zoom", bool(nastaveni_data["controls"]["invert_zoom"]))
-	ControlsConfig.save_bindings_to_config(cfg, nastaveni_data.get("keybinds", ControlsConfig.get_default_bindings()))
 
 	cfg.set_value("language", "code", str(nastaveni_data["language"]["code"]))
 
@@ -1447,45 +1452,8 @@ func _aktualizuj_settings_hodnoty(_v: float = 0.0) -> void:
 
 # Construct/setup block for required nodes.
 func _ensure_keybind_controls() -> void:
-	if controls_content == null or _keybind_grid != null:
-		return
-
-	var separator = HSeparator.new()
-	separator.name = "KeybindsSeparator"
-	controls_content.add_child(separator)
-
-	var title = Label.new()
-	title.name = "KeybindsTitle"
-	title.text = "Custom keybinds"
-	title.add_theme_font_size_override("font_size", 16)
-	controls_content.add_child(title)
-
-	var hint = Label.new()
-	hint.name = "KeybindsHint"
-	hint.text = "Click a binding and press a new key. Escape cancels capture."
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	controls_content.add_child(hint)
-
-	_keybind_grid = GridContainer.new()
-	_keybind_grid.name = "KeybindsGrid"
-	_keybind_grid.columns = 2
-	_keybind_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_keybind_grid.add_theme_constant_override("h_separation", 12)
-	_keybind_grid.add_theme_constant_override("v_separation", 6)
-	controls_content.add_child(_keybind_grid)
-
-	for action_any in ControlsConfig.ACTIONS:
-		var action = str(action_any)
-		var label = Label.new()
-		label.text = str(ControlsConfig.ACTION_LABELS.get(action, action))
-		_keybind_grid.add_child(label)
-
-		var btn = Button.new()
-		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		btn.text = ControlsConfig.get_binding_text(action, _keybind_state)
-		btn.pressed.connect(_on_keybind_button_pressed.bind(action))
-		_keybind_buttons[action] = btn
-		_keybind_grid.add_child(btn)
+	# Rebinding UI intentionally disabled for now.
+	return
 
 # Refreshes existing content to reflect current runtime values.
 func _refresh_keybind_buttons() -> void:
@@ -2623,6 +2591,7 @@ func _spust_load_ze_slotu(slot_key: String) -> void:
 func _spust_hru_vyberem(player_tags: Array = [], spectate_mode: bool = false):
 	# One entry point for both normal player start and observer/spectate start.
 	# Pro male dite: tohle je hlavni cudlik v kodu, co opravdu pusti mapu.
+	spectate_mode = false
 	var final_tags = player_tags.duplicate()
 	if not spectate_mode and final_tags.is_empty() and selected_country_tag != "":
 		final_tags = [selected_country_tag]
