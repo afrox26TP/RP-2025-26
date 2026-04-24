@@ -59,6 +59,9 @@ var _selection_label_states: Dictionary = {}
 var _last_cursor_shape: int = -1
 var _potato_mode_enabled: bool = false
 var _peace_use_core_ownership_preview: bool = false
+var _trade_pick_saved_has_selected: bool = false
+var _trade_pick_saved_selected_id: float = -1.0
+var _trade_pick_selection_suspended: bool = false
 const MODE_HOVER_OFFSET := Vector2(16, 18)
 const MODE_HOVER_DEBUG_LOG := false
 
@@ -340,6 +343,24 @@ func vycisti_nahled_hlavniho_mesta() -> void:
 	capital_focus_owned_texture.update(capital_focus_owned_image)
 	capital_focus_valid_texture.update(capital_focus_valid_image)
 	material.set_shader_parameter("capital_focus_mode", false)
+
+func pozastav_trade_single_selection_highlight() -> void:
+	if material == null or _trade_pick_selection_suspended:
+		return
+	_trade_pick_saved_has_selected = bool(material.get_shader_parameter("has_selected"))
+	_trade_pick_saved_selected_id = float(material.get_shader_parameter("selected_id"))
+	material.set_shader_parameter("has_selected", false)
+	material.set_shader_parameter("selected_id", -1.0)
+	_trade_pick_selection_suspended = true
+
+func obnov_trade_single_selection_highlight() -> void:
+	if material == null or not _trade_pick_selection_suspended:
+		return
+	material.set_shader_parameter("has_selected", _trade_pick_saved_has_selected)
+	material.set_shader_parameter("selected_id", _trade_pick_saved_selected_id)
+	_trade_pick_saved_has_selected = false
+	_trade_pick_saved_selected_id = -1.0
+	_trade_pick_selection_suspended = false
 
 # Feature logic entry point.
 func _ensure_mode_hover_tooltip() -> void:
@@ -1421,7 +1442,7 @@ func dobyt_provincii(prov_id: int, novy_vlastnik: String, z_dev_nastroje: bool =
 		if "aktualni_mapovy_mod" in root:
 			mod = str(root.aktualni_mapovy_mod)
 		aktualizuj_mapovy_mod(mod, root.provinces)
-		print("Provincie ", prov_id, " byla dobyta stĂˇtem ", novy_vlastnik)
+		print("Province ", prov_id, " was captured by ", novy_vlastnik)
 		
 		var labels_manager = root.get_node_or_null("CountryLabelsManager")
 		var prov_labels = root.get_node_or_null("ProvinceLabels")

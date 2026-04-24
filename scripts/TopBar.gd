@@ -1066,7 +1066,7 @@ func aktualizuj_ui():
 		var finance = GameManager.ziskej_financni_rozpad_statu(str(GameManager.hrac_stat)) as Dictionary
 		if bool(finance.get("ok", false)):
 			topbar_balance = float(finance.get("cashflow", finance.get("profit", topbar_balance)))
-	money_label.text = "Funds: %.2f M USD (+%.2f)" % [GameManager.statni_kasa, topbar_balance]
+	money_label.text = "Funds: %.2f M USD (cashflow %+.2f)" % [GameManager.statni_kasa, topbar_balance]
 	if date_label:
 		date_label.text = _ziskej_text_data_pro_kolo(int(GameManager.aktualni_kolo))
 	

@@ -2732,6 +2732,8 @@ func zrus_rezim_vyberu_trade_provincie() -> void:
 		sprite.vycisti_nahled_mirovych_cilu()
 	if sprite and sprite.has_method("_aktualizuj_hromadny_selection_texture"):
 		sprite._aktualizuj_hromadny_selection_texture([])
+	if sprite and sprite.has_method("obnov_trade_single_selection_highlight"):
+		sprite.obnov_trade_single_selection_highlight()
 
 # Core flow for this feature.
 func aktivuj_rezim_vyberu_trade_provincie(source_tag: String, preselected_ids: Array = []) -> Dictionary:
@@ -2769,6 +2771,8 @@ func aktivuj_rezim_vyberu_trade_provincie(source_tag: String, preselected_ids: A
 			vybrane_cile_trade_provincie.append(pid_pre)
 
 	var sprite = $Sprite2D
+	if sprite and sprite.has_method("pozastav_trade_single_selection_highlight"):
+		sprite.pozastav_trade_single_selection_highlight()
 	if sprite and sprite.has_method("nastav_nahled_hlavniho_mesta"):
 		sprite.nastav_nahled_hlavniho_mesta(_ziskej_provincie_statu_v_mape(source), dostupne_cile_trade_provincie)
 	if sprite and sprite.has_method("vycisti_nahled_mirovych_cilu"):

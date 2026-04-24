@@ -906,11 +906,40 @@ func _zobraz_pending_loan_notes() -> void:
 
 	_showing_loan_notes = true
 	while not _pending_loan_notes.is_empty():
-		var note = str(_pending_loan_notes.pop_front()).strip_edges()
+		var note = _oprav_rozbite_kodovani_textu(str(_pending_loan_notes.pop_front()).strip_edges())
 		if note == "":
 			continue
 		await zobraz_systemove_hlaseni("Loans", note)
 	_showing_loan_notes = false
+
+func _oprav_rozbite_kodovani_textu(text: String) -> String:
+	var out = text.strip_edges()
+	if out == "":
+		return out
+
+	# Repair common UTF-8 mojibake sequences seen in loan give/take messages.
+	var replacements := {
+		"\u00C3\u00A1": "\u00E1", "\u00C3\u00A9": "\u00E9", "\u00C3\u00AD": "\u00ED", "\u00C3\u00B3": "\u00F3", "\u00C3\u00BA": "\u00FA", "\u00C3\u00BD": "\u00FD",
+		"\u00C3\u0081": "\u00C1", "\u00C3\u0089": "\u00C9", "\u00C3\u008D": "\u00CD", "\u00C3\u0093": "\u00D3", "\u00C3\u009A": "\u00DA", "\u00C3\u009D": "\u00DD",
+		"\u00C4\u008D": "\u010D", "\u00C4\u008F": "\u010F", "\u00C4\u009B": "\u011B", "\u00C4\u0088": "\u0148",
+		"\u00C4\u008C": "\u010C", "\u00C4\u008E": "\u010E", "\u00C4\u009A": "\u011A", "\u00C4\u0087": "\u0147",
+		"\u00C5\u0099": "\u0159", "\u00C5\u00A1": "\u0161", "\u00C5\u00A5": "\u0165", "\u00C5\u00AF": "\u016F", "\u00C5\u00BE": "\u017E",
+		"\u00C5\u0098": "\u0158", "\u00C5\u00A0": "\u0160", "\u00C5\u00A4": "\u0164", "\u00C5\u00AE": "\u016E", "\u00C5\u00BD": "\u017D",
+		"\u00C2\u00A0": " ", "\u00E2\u20AC\u009A": "", "\u00E2\u20AC\u009E": "", "\u00E2\u20AC\u009D": "\"", "\u00E2\u20AC\u009C": "\""
+	}
+
+	for _i in range(2):
+		var changed = false
+		for bad_any in replacements.keys():
+			var bad = str(bad_any)
+			if out.find(bad) == -1:
+				continue
+			out = out.replace(bad, str(replacements[bad]))
+			changed = true
+		if not changed:
+			break
+
+	return out.strip_edges()
 
 # Applies updates and syncs dependent state.
 func nastav_pozastaveni_turn_overlay(pozastavit: bool) -> void:
@@ -1750,7 +1779,7 @@ func _zpolish_system_message_title(title: String) -> String:
 	return t
 
 func _zpolish_system_message_text(text: String) -> String:
-	var t = text.strip_edges()
+	var t = _oprav_rozbite_kodovani_textu(text)
 	if t == "":
 		return t
 
@@ -2353,7 +2382,7 @@ func _obnov_panel_vazalu() -> void:
 				var tribute_info = GameManager.ziskej_projektovany_vazalsky_odvod(GameManager.hrac_stat, subject) as Dictionary
 				est = float(tribute_info.get("paid", 0.0))
 			else:
-				var inc = float(GameManager.ziskej_cisty_prijem_statu(subject))
+				var inc = float(GameManager.ziskej_profit_income_pro_vazalsky_odvod(subject)) if GameManager.has_method("ziskej_profit_income_pro_vazalsky_odvod") else float(GameManager.ziskej_cisty_prijem_statu(subject))
 				est = max(0.0, inc) * (float(slider.value) / 100.0)
 			var est_lbl = Label.new()
 			est_lbl.text = "Projected tribute/turn: $%.2f" % est
@@ -2371,7 +2400,7 @@ func _obnov_panel_vazalu() -> void:
 						var tribute_info_now = GameManager.ziskej_projektovany_vazalsky_odvod(GameManager.hrac_stat, subject) as Dictionary
 						est_now = float(tribute_info_now.get("paid", 0.0))
 				if est_now <= 0.0:
-					var inc_now = max(0.0, float(GameManager.ziskej_cisty_prijem_statu(subject)))
+					var inc_now = max(0.0, float(GameManager.ziskej_profit_income_pro_vazalsky_odvod(subject))) if GameManager.has_method("ziskej_profit_income_pro_vazalsky_odvod") else max(0.0, float(GameManager.ziskej_cisty_prijem_statu(subject)))
 					est_now = inc_now * (float(v) / 100.0)
 				est_lbl.text = "Projected tribute/turn: $%.2f" % est_now
 			)
@@ -5476,10 +5505,10 @@ func _pozicuj_loans_dialog() -> void:
 
 func _on_loan_button_pressed(mode: String) -> void:
 	if current_viewed_tag == "" or GameManager == null:
-		zobraz_systemove_hlaseni("Chyba", "NejdĂ„Ä…Ă˘â€žËĂ„â€šĂ‚Â­v si vyber stĂ„â€šĂ‹â€ˇt.")
+		zobraz_systemove_hlaseni("Error", "Select a target state first.")
 		return
 	if current_viewed_tag == str(GameManager.hrac_stat).strip_edges().to_upper():
-		zobraz_systemove_hlaseni("Chyba", "SĂ„â€šĂ‹â€ˇm sobÄ‚â€žĂ˘â‚¬Ĺź pĂ„Ä…ÄąÂ»jÄ‚â€žÄąÂ¤ku dĂ„â€šĂ‹â€ˇt nelze.")
+		zobraz_systemove_hlaseni("Error", "You cannot create a loan with yourself.")
 		return
 	
 	# Store mode for later use in confirmation
@@ -5499,16 +5528,16 @@ func _on_loan_confirmed(principal_str: String, interest_str: String, turns_str: 
 	# Validate state
 	var target = current_viewed_tag.strip_edges().to_upper()
 	if target == "":
-		zobraz_systemove_hlaseni("Chyba", "NejdĂ„Ä…Ă˘â€žËĂ„â€šĂ‚Â­v si vyber stĂ„â€šĂ‹â€ˇt.")
+		zobraz_systemove_hlaseni("Error", "Select a target state first.")
 		return
 	
 	# Get player country
 	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
 	if player_tag == "":
-		zobraz_systemove_hlaseni("Chyba", "HrĂ„â€šĂ‹â€ˇÄ‚â€žÄąÂ¤Ă„Ä…ÄąÂ»v stĂ„â€šĂ‹â€ˇt nebyl stanoven.")
+		zobraz_systemove_hlaseni("Error", "Player state is not set.")
 		return
 	if target == player_tag:
-		zobraz_systemove_hlaseni("Chyba", "SĂ„â€šĂ‹â€ˇm sobÄ‚â€žĂ˘â‚¬Ĺź pĂ„Ä…ÄąÂ»jÄ‚â€žÄąÂ¤ku dĂ„â€šĂ‹â€ˇt nelze.")
+		zobraz_systemove_hlaseni("Error", "You cannot create a loan with yourself.")
 		return
 	
 	# Parse and validate principal
@@ -5516,7 +5545,7 @@ func _on_loan_confirmed(principal_str: String, interest_str: String, turns_str: 
 	if principal_str.strip_edges() != "":
 		principal = float(principal_str)
 	if principal <= 0.0:
-		zobraz_systemove_hlaseni("Chyba", "Ä‚â€žÄąĹˇĂ„â€šĂ‹â€ˇstka musĂ„â€šĂ‚Â­ bĂ„â€šĂ‹ĹĄt kladnĂ„â€šĂ‹â€ˇ.")
+		zobraz_systemove_hlaseni("Error", "Principal must be positive.")
 		return
 	
 	# Parse and validate interest
@@ -5524,7 +5553,7 @@ func _on_loan_confirmed(principal_str: String, interest_str: String, turns_str: 
 	if interest_str.strip_edges() != "":
 		interest = float(interest_str)
 		if interest < 0.0 or interest > 100.0:
-			zobraz_systemove_hlaseni("Chyba", "Ă„â€šÄąË‡rok musĂ„â€šĂ‚Â­ bĂ„â€šĂ‹ĹĄt 0-100%.")
+			zobraz_systemove_hlaseni("Error", "Interest must be between 0 and 100%.")
 			return
 	
 	# Parse and validate turns
@@ -5532,12 +5561,12 @@ func _on_loan_confirmed(principal_str: String, interest_str: String, turns_str: 
 	if turns_str.strip_edges() != "":
 		turns = int(turns_str)
 	if turns < 5 or turns > 36:
-		zobraz_systemove_hlaseni("Chyba", "Doba trvĂ„â€šĂ‹â€ˇnĂ„â€šĂ‚Â­ musĂ„â€šĂ‚Â­ bĂ„â€šĂ‹ĹĄt 5-36 kol.")
+		zobraz_systemove_hlaseni("Error", "Loan duration must be between 5 and 36 turns.")
 		return
 
 	var max_principal = _ziskej_max_principal_pro_rezim(player_tag, target)
 	if max_principal <= 0.0:
-		zobraz_systemove_hlaseni("Chyba", "DostupnĂ„â€šĂ‚Â© funds pro tuto pĂ„Ä…ÄąÂ»jÄ‚â€žÄąÂ¤ku jsou 0.")
+		zobraz_systemove_hlaseni("Error", "No available funds for this loan.")
 		return
 	if principal > max_principal:
 		principal = max_principal
@@ -5556,10 +5585,10 @@ func _on_loan_confirmed(principal_str: String, interest_str: String, turns_str: 
 			else:
 				result = GameManager._vytvor_statni_pujcku(player_tag, target, principal, interest, turns)
 			if bool(result.get("ok", false)):
-				zobraz_systemove_hlaseni("PĂ„Ä…ÄąÂ»jÄ‚â€žÄąÂ¤ka nabĂ„â€šĂ‚Â­dnuta", "NabĂ„â€šĂ‚Â­dnuto %.0f M za %.1f%% na %d kol stĂ„â€šĂ‹â€ˇtu %s." % [principal, interest, turns, _ziskej_jmeno_statu_podle_tagu(target)])
+				zobraz_systemove_hlaseni("Loan Offered", "Offered %.0f M at %.1f%% for %d turns to %s." % [principal, interest, turns, _ziskej_jmeno_statu_podle_tagu(target)])
 				_loans_dialog.hide()
 			else:
-				zobraz_systemove_hlaseni("Chyba", str(result.get("reason", "Selhalo.")))
+				zobraz_systemove_hlaseni("Error", str(result.get("reason", "Failed.")))
 		else:  # "take"
 			# Player is borrower, target is lender.
 			var result: Dictionary = {}
@@ -5568,10 +5597,10 @@ func _on_loan_confirmed(principal_str: String, interest_str: String, turns_str: 
 			else:
 				result = GameManager._vytvor_statni_pujcku(target, player_tag, principal, interest, turns)
 			if bool(result.get("ok", false)):
-				zobraz_systemove_hlaseni("PĂ„Ä…ÄąÂ»jÄ‚â€žÄąÂ¤ka poĂ„Ä…Ă„ÄľadovĂ„â€šĂ‹â€ˇna", "PoĂ„Ä…Ă„ÄľadovĂ„â€šĂ‹â€ˇno %.0f M za %.1f%% na %d kol od stĂ„â€šĂ‹â€ˇtu %s." % [principal, interest, turns, _ziskej_jmeno_statu_podle_tagu(target)])
+				zobraz_systemove_hlaseni("Loan Requested", "Requested %.0f M at %.1f%% for %d turns from %s." % [principal, interest, turns, _ziskej_jmeno_statu_podle_tagu(target)])
 				_loans_dialog.hide()
 			else:
-				zobraz_systemove_hlaseni("Chyba", str(result.get("reason", "Selhalo.")))
+				zobraz_systemove_hlaseni("Error", str(result.get("reason", "Failed.")))
 
 # ---- Alliance Dialog ----
 
@@ -7535,12 +7564,13 @@ func _on_trade_send_pressed() -> void:
 
 	var queued = bool(result.get("queued", false))
 	var accepted = bool(result.get("accepted", false))
+	var trade_state_tags: Array = [GameManager.hrac_stat, _trade_target_tag]
 	if queued:
-		await zobraz_systemove_hlaseni("Trade", "Trade offer was sent to %s." % _trade_target_tag)
+		await zobraz_systemove_hlaseni("Trade", "Trade offer was sent to %s." % _trade_target_tag, true, {}, trade_state_tags)
 	elif accepted:
-		await zobraz_systemove_hlaseni("Trade", "%s accepted your trade offer and terms were applied." % _trade_target_tag)
+		await zobraz_systemove_hlaseni("Trade", "%s accepted your trade offer and terms were applied." % _trade_target_tag, true, {}, trade_state_tags)
 	else:
-		await zobraz_systemove_hlaseni("Trade", "%s declined your trade offer." % _trade_target_tag)
+		await zobraz_systemove_hlaseni("Trade", "%s declined your trade offer." % _trade_target_tag, true, {}, trade_state_tags)
 
 	if queued or accepted:
 		var map_node = _ziskej_map_node_pro_mir()
@@ -7558,8 +7588,8 @@ func _on_trade_send_pressed() -> void:
 		_trade_left_selected_slot = ""
 		_trade_right_selected_slot = ""
 		_trade_refresh_dialog_ui()
-		if _trade_dialog:
-			_trade_dialog.hide()
+	if _trade_dialog:
+		_trade_dialog.hide()
 
 	_aktualizuj_popup_diplomatickych_zadosti()
 	if current_viewed_tag != "":
@@ -9394,7 +9424,7 @@ func _vyhledat_tagy_statu_v_textu(text: String) -> Array:
 	var rx = RegEx.new()
 	if rx.compile("\\b[A-Z]{3}\\b") != OK:
 		return tags
-	for m in rx.search_all(text.to_upper()):
+	for m in rx.search_all(text):
 		var tag = str(m.get_string()).strip_edges().to_upper()
 		if tag == "" or tag == "SEA" or seen.has(tag):
 			continue
@@ -9432,13 +9462,19 @@ func _vyhledat_tagy_statu_podle_nazvu(text: String) -> Array:
 		var country_name = str(states[tag]).strip_edges()
 		if country_name == "":
 			continue
-		var at = lower_text.find(country_name.to_lower())
-		if at == -1:
-			continue
-		matches.append({
-			"tag": tag,
-			"at": at
-		})
+		var needle = country_name.to_lower()
+		var from_idx = 0
+		while true:
+			var at = lower_text.find(needle, from_idx)
+			if at == -1:
+				break
+			var end_idx = at + needle.length()
+			if _je_hranice_slova(lower_text, at - 1) and _je_hranice_slova(lower_text, end_idx):
+				matches.append({
+					"tag": tag,
+					"at": at
+				})
+			from_idx = at + max(1, needle.length())
 
 	# Keep state picks stable and aligned with message wording.
 	matches.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
@@ -9470,7 +9506,7 @@ func _najdi_zminky_statu_v_textu(text: String) -> Array:
 	var mentions: Array = []
 	var rx = RegEx.new()
 	if rx.compile("\\b[A-Z]{3}\\b") == OK:
-		for m in rx.search_all(text.to_upper()):
+		for m in rx.search_all(text):
 			var tag = str(m.get_string()).strip_edges().to_upper()
 			if tag == "" or tag == "SEA":
 				continue
@@ -10474,6 +10510,9 @@ func _on_kolo_zmeneno():
 
 func _aktualizuj_vztah_ui(target_tag: String):
 	if not relationship_label or not GameManager.has_method("ziskej_vztah_statu"):
+		return
+	if target_tag == str(GameManager.hrac_stat).strip_edges().to_upper():
+		relationship_label.hide()
 		return
 	var vztah = GameManager.ziskej_vztah_statu(GameManager.hrac_stat, target_tag)
 	var relation_suffix = ""

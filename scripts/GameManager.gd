@@ -3750,6 +3750,39 @@ func _trade_parse_loan_terms(value_a: String, value_b: String) -> Dictionary:
 		"turns": turns
 	}
 
+func _spocitej_celkovou_dluznou_castku_pujcky(principal: float, interest_pct: float) -> float:
+	var safe_principal = max(0.0, principal)
+	var safe_interest = max(0.0, interest_pct)
+	# Interest is interpreted as total % for whole loan duration, not per turn.
+	return safe_principal * (1.0 + (safe_interest / 100.0))
+
+func _spocitej_splatku_pujcky(principal: float, interest_pct: float, turns: int) -> float:
+	var safe_turns = max(1, turns)
+	var total_due = _spocitej_celkovou_dluznou_castku_pujcky(principal, interest_pct)
+	return total_due / float(safe_turns)
+
+func _normalizuj_loan_na_celkovy_urok_model(loan: Dictionary) -> Dictionary:
+	var normalized = loan.duplicate(true)
+	var principal = max(0.0, float(normalized.get("principal", 0.0)))
+	var interest_pct = max(0.0, float(normalized.get("interest_pct", 0.0)))
+	var turns_total = max(1, int(normalized.get("turns_total", max(1, int(normalized.get("remaining_turns", 1))))))
+	var remaining_turns = max(0, int(normalized.get("remaining_turns", turns_total)))
+	var expected_total_due = _spocitej_celkovou_dluznou_castku_pujcky(principal, interest_pct)
+	var expected_installment = _spocitej_splatku_pujcky(principal, interest_pct, turns_total)
+	var expected_remaining_due = max(0.0, expected_installment * float(remaining_turns))
+	var current_installment = max(0.0, float(normalized.get("installment", expected_installment)))
+	var current_remaining_due = max(0.0, float(normalized.get("remaining_due", expected_remaining_due)))
+	var model = str(normalized.get("interest_model", "")).strip_edges().to_lower()
+
+	# Upgrade legacy schedules that used per-turn interest (overly punitive).
+	if model != "term_total":
+		if current_installment > (expected_installment * 1.25) or current_remaining_due > (expected_remaining_due * 1.25):
+			normalized["installment"] = expected_installment
+			normalized["remaining_due"] = min(current_remaining_due, max(expected_remaining_due, expected_total_due))
+		normalized["interest_model"] = "term_total"
+
+	return normalized
+
 # Builds UI objects and default wiring.
 func _vytvor_statni_pujcku(lender_tag: String, borrower_tag: String, principal: float, interest_pct: float, turns: int) -> Dictionary:
 	var lender = _normalizuj_tag(lender_tag)
@@ -3772,8 +3805,8 @@ func _vytvor_statni_pujcku(lender_tag: String, borrower_tag: String, principal: 
 			"available": lender_cash
 		}
 
-	var total_due = principal * (1.0 + (interest_pct / 100.0) * float(turns))
-	var installment = total_due / max(1.0, float(turns))
+	var total_due = _spocitej_celkovou_dluznou_castku_pujcky(principal, interest_pct)
+	var installment = _spocitej_splatku_pujcky(principal, interest_pct, turns)
 	_nastav_kasu_statu(lender, lender_cash - principal)
 	var borrower_cash_before = _ziskej_kasu_statu(borrower)
 	_nastav_kasu_statu(borrower, borrower_cash_before + principal)
@@ -3785,6 +3818,7 @@ func _vytvor_statni_pujcku(lender_tag: String, borrower_tag: String, principal: 
 		"borrower": borrower,
 		"principal": principal,
 		"interest_pct": interest_pct,
+		"interest_model": "term_total",
 		"turns_total": turns,
 		"remaining_turns": turns,
 		"installment": installment,
@@ -3850,14 +3884,68 @@ func navrhni_statni_pujcku(lender_tag: String, borrower_tag: String, principal: 
 			"available": lender_cash
 		}
 
+	var decision_maker = borrower if not borrower_is_human else lender
+	var request_kind = "give" if requester != borrower else "take"
+
+	# For human-vs-AI interactions, evaluate AI response immediately to avoid
+	# an extra waiting turn before the player sees the funded loan flow.
+	if requester != "" and je_lidsky_stat(requester) and ((not lender_is_human) or (not borrower_is_human)):
+		var accepted = false
+		if decision_maker == lender:
+			accepted = _ai_ma_poskytnout_pujcku(lender, borrower, principal, interest_pct, turns)
+		else:
+			accepted = _ai_ma_prijmout_pujcku_nabidku(lender, borrower, principal, interest_pct, turns)
+
+		if accepted:
+			var result_now = _vytvor_statni_pujcku(lender, borrower, principal, interest_pct, turns)
+			if bool(result_now.get("ok", false)):
+				if request_kind == "take" and je_lidsky_stat(borrower):
+					var granted_now_text = "%s granted your loan request." % lender
+					_pridej_popup_hraci(borrower, "Loans", granted_now_text, true)
+					_pridej_notifikaci_pujcky_hraci(borrower, granted_now_text)
+				elif je_lidsky_stat(lender):
+					var accept_now_text = "%s accepted your loan offer." % borrower
+					_pridej_popup_hraci(lender, "Loans", accept_now_text, true)
+					_pridej_notifikaci_pujcky_hraci(lender, accept_now_text)
+				result_now["immediate_resolve"] = true
+				return result_now
+
+			if request_kind == "take" and je_lidsky_stat(borrower):
+				var fail_take_now_text = "%s could not grant your loan request: %s" % [lender, str(result_now.get("reason", "failed"))]
+				_pridej_popup_hraci(borrower, "Loans", fail_take_now_text, true)
+				_pridej_notifikaci_pujcky_hraci(borrower, fail_take_now_text)
+				return {"ok": false, "reason": fail_take_now_text}
+			if je_lidsky_stat(lender):
+				var fail_now_text = "%s could not accept your loan offer: %s" % [borrower, str(result_now.get("reason", "failed"))]
+				_pridej_popup_hraci(lender, "Loans", fail_now_text, true)
+				_pridej_notifikaci_pujcky_hraci(lender, fail_now_text)
+				return {"ok": false, "reason": fail_now_text}
+			return result_now
+
+		var reject_now_msg = "%s rejected loan offer from %s (%.2f mil. USD, %.2f%%, %d turns)." % [borrower, lender, principal, interest_pct, turns]
+		if request_kind == "take":
+			reject_now_msg = "%s rejected loan request from %s (%.2f mil. USD, %.2f%%, %d turns)." % [lender, borrower, principal, interest_pct, turns]
+		_zaloguj_globalni_zpravu("Loans", reject_now_msg, "trade")
+		if request_kind == "take" and je_lidsky_stat(borrower):
+			var reject_take_now_text = "%s rejected your loan request." % lender
+			_pridej_popup_hraci(borrower, "Loans", reject_take_now_text, true)
+			_pridej_notifikaci_pujcky_hraci(borrower, reject_take_now_text)
+			return {"ok": false, "reason": reject_take_now_text}
+		if je_lidsky_stat(lender):
+			var reject_now_text = "%s rejected your loan offer." % borrower
+			_pridej_popup_hraci(lender, "Loans", reject_now_text, true)
+			_pridej_notifikaci_pujcky_hraci(lender, reject_now_text)
+			return {"ok": false, "reason": reject_now_text}
+		return {"ok": false, "reason": "Loan proposal rejected."}
+
 	var offer = {
 		"lender": lender,
 		"borrower": borrower,
 		"principal": principal,
 		"interest_pct": interest_pct,
 		"turns": turns,
-		"decision_maker": borrower if not borrower_is_human else lender,
-		"request_kind": "give" if requester != borrower else "take",
+		"decision_maker": decision_maker,
+		"request_kind": request_kind,
 		"created_turn": aktualni_kolo,
 		"resolve_turn": aktualni_kolo + 1
 	}
@@ -3878,8 +3966,8 @@ func navrhni_statni_pujcku(lender_tag: String, borrower_tag: String, principal: 
 func _ai_ma_prijmout_pujcku_nabidku(lender: String, borrower: String, principal: float, interest_pct: float, turns: int) -> bool:
 	var borrower_cash = _ziskej_kasu_statu(borrower)
 	var income = max(0.0, _spocitej_cisty_prijem_statu(borrower))
-	var total_due = principal * (1.0 + (interest_pct / 100.0) * float(turns))
-	var installment = total_due / max(1.0, float(turns))
+	var total_due = _spocitej_celkovou_dluznou_castku_pujcky(principal, interest_pct)
+	var installment = _spocitej_splatku_pujcky(principal, interest_pct, turns)
 	var rel = ziskej_vztah_statu(borrower, lender)
 
 	var score = 0.0
@@ -3913,7 +4001,7 @@ func _ai_ma_poskytnout_pujcku(lender: String, borrower: String, principal: float
 	var lender_income = max(0.0, _spocitej_cisty_prijem_statu(lender))
 	var borrower_cash = _ziskej_kasu_statu(borrower)
 	var rel = ziskej_vztah_statu(lender, borrower)
-	var total_due = principal * (1.0 + (interest_pct / 100.0) * float(turns))
+	var total_due = _spocitej_celkovou_dluznou_castku_pujcky(principal, interest_pct)
 	var total_profit = max(0.0, total_due - principal)
 
 	var score = 0.0
@@ -4920,16 +5008,16 @@ func _synchronizuj_vojensky_pristup_po_zmene_vztahu(tag_a: String, tag_b: String
 	var rel = ziskej_vztah_statu(tag_a, tag_b)
 	if rel >= 15.0:
 		return
-	# Revoke Aâ†’B grant if A gave B access
+	# Revoke A->B grant if A gave B access
 	for pair in [[tag_a, tag_b], [tag_b, tag_a]]:
 		var host = pair[0]
 		var guest = pair[1]
 		var key = "%s|%s" % [host, guest]
 		if vojensky_pristup.has(key):
 			vojensky_pristup.erase(key)
-			_zaloguj_globalni_zpravu("Diplomacy", "Military access %sâ†’%s revoked (relations dropped below 15)." % [host, guest], "diplomacy")
+			_zaloguj_globalni_zpravu("Diplomacy", "Military access %s->%s revoked (relations dropped below 15)." % [host, guest], "diplomacy")
 			if je_lidsky_stat(guest):
-				_pridej_popup_hraci(guest, "Diplomacy", "Military access in %s revoked â€” relations dropped too low." % host)
+				_pridej_popup_hraci(guest, "Diplomacy", "Military access in %s revoked - relations dropped too low." % host)
 			if je_lidsky_stat(host):
 				_pridej_popup_hraci(host, "Diplomacy", "You revoked military access for %s (relations too low)." % guest)
 			_expeluj_jednotky_bez_pristupu(guest)
@@ -5403,7 +5491,7 @@ func uzavrit_neagresivni_smlouvu(tag_a: String, tag_b: String) -> bool:
 	return true
 
 # ---- Military access ----
-# vojensky_pristup["HOST|GUEST"] = true  â†’  HOST has granted GUEST right to move troops through HOST's territory.
+# vojensky_pristup["HOST|GUEST"] = true -> HOST has granted GUEST right to move troops through HOST's territory.
 # Alliance automatically grants mutual access (checked in ma_vojensky_pristup, not stored).
 
 # Eligibility/guard check.
@@ -5572,7 +5660,7 @@ func pozadej_vojensky_pristup(guest: String, host: String) -> bool:
 		return false
 	if ma_vojensky_pristup(g, h):
 		return false
-	# If target is AI, grant immediately when relations â‰Ą 15, otherwise deny.
+	# If target is AI, grant immediately when relations >= 15, otherwise deny.
 	if not je_lidsky_stat(h):
 		if _vazal_musi_prijmout_zadost(h, g):
 			udelit_vojensky_pristup(h, g)
@@ -5591,7 +5679,7 @@ func pozadej_vojensky_pristup(guest: String, host: String) -> bool:
 			if je_lidsky_stat(g):
 				_pridej_popup_hraci(g, "Diplomacy", "Military access denied by %s (relations too low: %.0f, need 15)." % [h, rel])
 			return false
-	# Target is human â€” send a diplomatic request.
+	# Target is human - send a diplomatic request.
 	return _pridej_diplomatickou_zadost(g, h, "military_access")
 
 # Boolean check for required state.
@@ -5906,7 +5994,7 @@ func _vykonej_prijeti_diplomaticke_zadosti(player_clean: String, req: Dictionary
 		if bool(trade_ok.get("ok", false)):
 			_zaloguj_globalni_zpravu("Trade", "%s accepted trade offer from %s." % [player_clean, sender], "trade")
 			if je_lidsky_stat(sender):
-				_pridej_popup_hraci(sender, "Trade", "%s accepted your trade offer." % player_clean)
+				_pridej_popup_hraci(sender, "Trade", "%s accepted your trade offer." % player_clean, false, [sender, player_clean])
 		return bool(trade_ok.get("ok", false))
 	if req_type == "loan":
 		var payload = req.get("payload", {}) as Dictionary
@@ -6411,7 +6499,163 @@ func vyhlasit_valku(utocnik: String, obrance: String):
 
 	_aktivuj_aliance_po_vyhlaseni_valky(a, b)
 	_end_ai_cache_batch()
+	
+	# Trigger immediate AI response if defender is AI-controlled
+	if not je_lidsky_stat(b):
+		_ai_zagent_valka_okamzita_reakce(a, b)
+	
 	return true
+
+# Handles immediate AI response when this state is declared war on.
+# Triggers recruitment and attack planning for the defending AI state.
+func _ai_zagent_valka_okamzita_reakce(attacker: String, defender: String) -> void:
+	var attacker_tag = _normalizuj_tag(attacker)
+	var defender_tag = _normalizuj_tag(defender)
+	if attacker_tag == "" or defender_tag == "" or attacker_tag == defender_tag or defender_tag == "SEA":
+		return
+	if je_lidsky_stat(defender_tag):
+		return
+	
+	# Quick sanity check: are they actually at war?
+	if not jsou_ve_valce(attacker_tag, defender_tag):
+		return
+	
+	var map_loader = _get_map_loader()
+	if not map_loader:
+		return
+	
+	# Prepare caches for this brief AI planning phase
+	_core_state_cache.clear()
+	_ai_phase_cache_active = true
+	_ai_vycisti_runtime_cache()
+	_rebuild_turn_cache()
+	_set_defer_log_maintenance(true)
+	
+	# Get defender's owned provinces
+	var owned_by_defender: Array = []
+	for p_id in map_data:
+		var d = map_data[p_id]
+		if _normalizuj_tag(str(d.get("owner", ""))) == defender_tag:
+			owned_by_defender.append(p_id)
+	
+	if owned_by_defender.is_empty():
+		_ai_phase_cache_active = false
+		_ai_vycisti_runtime_cache()
+		_set_defer_log_maintenance(false)
+		return
+	
+	# Quick recruitment response: find threatened border provinces and recruit defenders
+	var budget = _ziskej_kasu_statu(defender_tag)
+	var cena_za_vojaka = max(0.001, ziskej_cenu_za_vojaka(defender_tag))
+	var recruit_reserve = budget * 0.15  # Keep 15% in reserve
+	var spend_cap = max(0.0, budget - recruit_reserve)
+	
+	var cil_provinces: Array = []
+	for p_id in owned_by_defender:
+		if not map_data.has(p_id):
+			continue
+		# Find provinces bordering the attacker
+		var border_to_enemy = false
+		for n_id in (_turn_neighbors_by_province.get(p_id, []) as Array):
+			if _normalizuj_tag(str(_turn_owner_by_province.get(n_id, ""))) == attacker_tag:
+				border_to_enemy = true
+				break
+		if border_to_enemy:
+			cil_provinces.append(p_id)
+	
+	# Recruit emergency troops at border
+	if not cil_provinces.is_empty() and spend_cap > cena_za_vojaka:
+		cil_provinces.sort_custom(func(a, b):
+			# Prioritize capital and high-population areas
+			var pop_a = int(map_data[a].get("population", 0))
+			var pop_b = int(map_data[b].get("population", 0))
+			return pop_a > pop_b
+		)
+		
+		var recruited = 0
+		for p_id in cil_provinces:
+			if recruited >= min(3, int(spend_cap / (cena_za_vojaka * 200))):  # Max 3 provinces
+				break
+			var d = map_data[p_id]
+			var dostupni = int(d.get("recruitable_population", 0))
+			if dostupni <= 0:
+				continue
+			
+			# Recruit up to 400 soldiers per border province
+			var cast = min(dostupni, 400)
+			cast = min(cast, int((spend_cap - (recruited * cena_za_vojaka * 100)) / cena_za_vojaka))
+			
+			if cast <= 0:
+				continue
+			
+			d["recruitable_population"] -= cast
+			d["soldiers"] += cast
+			d["army_owner"] = defender_tag
+			spend_cap -= cast * cena_za_vojaka
+			ai_kasy[defender_tag] = ai_kasy.get(defender_tag, 0.0) - cast * cena_za_vojaka
+			recruited += 1
+			_ai_vycisti_runtime_cache_pro_stat(defender_tag)
+	
+	# Quick movement planning: trigger defensive movements against the attacker
+	if map_loader.has_method("zacni_davkovy_presun"):
+		map_loader.zacni_davkovy_presun()
+	
+	var core_defense_moves = 0
+	var serazene = _seradene_ai_provincie(defender_tag)
+	var own_capital_id = _ziskej_hlavni_mesto_statu(defender_tag)
+	var frontline_cache: Dictionary = {}
+	
+	# Phase: Crisis reaction + core defense
+	for p_id in serazene:
+		if core_defense_moves >= 5:  # Limit moves for immediate response
+			break
+		
+		var soldiers = int(map_data[p_id].get("soldiers", 0))
+		if soldiers <= 0:
+			continue
+		
+		# Try crisis reaction (capital recapture)
+		var crisis_move = _navrhni_krizovy_protiutok(defender_tag, p_id, own_capital_id, frontline_cache)
+		if not crisis_move.is_empty():
+			var move_amount = int(crisis_move.get("amount", 0))
+			if move_amount > 0:
+				map_loader.zaregistruj_presun_armady(
+					int(crisis_move["from"]),
+					int(crisis_move["to"]),
+					move_amount,
+					false,
+					[int(crisis_move["from"]), int(crisis_move["to"])]
+				)
+				core_defense_moves += 1
+				continue
+		
+		# Try core defense
+		var core_state = _ziskej_core_state_cached(defender_tag)
+		var core_move = _navrhni_core_obranu(defender_tag, p_id, core_state, frontline_cache)
+		if not core_move.is_empty():
+			var move_amount = int(core_move.get("amount", 0))
+			if move_amount > 0:
+				map_loader.zaregistruj_presun_armady(
+					int(core_move["from"]),
+					int(core_move["to"]),
+					move_amount,
+					false,
+					[int(core_move["from"]), int(core_move["to"])]
+				)
+				core_defense_moves += 1
+				continue
+	
+	if map_loader.has_method("ukonci_davkovy_presun"):
+		map_loader.ukonci_davkovy_presun()
+	
+	# Cleanup
+	_ai_phase_cache_active = false
+	_ai_vycisti_runtime_cache()
+	_invalidate_turn_cache()
+	_set_defer_log_maintenance(false)
+	
+	if core_defense_moves > 0:
+		_ai_debug("immediate_response %s moves=%d against %s" % [defender_tag, core_defense_moves, attacker_tag])
 
 # Runs the local feature logic.
 func nabidnout_mir(tag1: String, tag2: String):
@@ -6935,6 +7179,20 @@ func _spocitej_cisty_prijem_statu(tag: String) -> float:
 	var income_rate = ziskej_prijmovou_sazbu_hdp(state)
 	return (hdp * income_rate) - _spocitej_naklady_udrzby_statu(state)
 
+# Computes the tribute base from profit before vassal payments are deducted.
+func _spocitej_profit_income_pro_vazalsky_odvod(state_tag: String, projected_row: Dictionary = {}) -> float:
+	var state = _normalizuj_tag(state_tag)
+	if state == "" or state == "SEA":
+		return 0.0
+	var row = projected_row
+	if row.is_empty():
+		var projection = _simuluj_financni_toky_aktualniho_tahu()
+		var projected_states = projection.get("states", {}) as Dictionary
+		row = projected_states.get(state, {}) as Dictionary
+	var base_income = _spocitej_cisty_prijem_statu(state)
+	var reparations_delta = float(row.get("reparations_in", 0.0)) - float(row.get("reparations_out", 0.0))
+	return max(0.0, base_income + reparations_delta)
+
 # Pulls current state data.
 func _ziskej_staty_pro_financni_projekci() -> Array:
 	var states: Dictionary = {}
@@ -6995,7 +7253,7 @@ func _ziskej_urokovou_cast_splatky_pujcky(loan: Dictionary, paid_this_turn: floa
 	var turns_total = max(1, int(loan.get("turns_total", remaining_turns)))
 	var principal = max(0.0, float(loan.get("principal", 0.0)))
 	var interest_pct = max(0.0, float(loan.get("interest_pct", 0.0)))
-	var total_interest = principal * (interest_pct / 100.0) * float(turns_total)
+	var total_interest = principal * (interest_pct / 100.0)
 	var scheduled_interest = max(0.0, total_interest / float(turns_total))
 	return min(due_paid, scheduled_interest)
 
@@ -7073,12 +7331,12 @@ func _simuluj_financni_toky_aktualniho_tahu() -> Dictionary:
 		if not state_rows.has(subject) or not state_rows.has(overlord):
 			continue
 		var rate = clamp(float(vazalske_odvody.get(subject, VASSAL_TRIBUTE_DEFAULT_RATE)), VASSAL_TRIBUTE_MIN_RATE, VASSAL_TRIBUTE_MAX_RATE)
-		var subject_income = max(0.0, _spocitej_cisty_prijem_statu(subject))
-		var planned = subject_income * rate
-		if planned <= 0.0:
-			continue
 		var subject_row = state_rows[subject] as Dictionary
 		var overlord_row = state_rows[overlord] as Dictionary
+		var subject_profit_income = _spocitej_profit_income_pro_vazalsky_odvod(subject, subject_row)
+		var planned = subject_profit_income * rate
+		if planned <= 0.0:
+			continue
 		var subject_cash = float(subject_row.get("cash_work", 0.0))
 		var paid = clamp(planned, 0.0, max(0.0, subject_cash))
 		if paid <= 0.0:
@@ -7097,13 +7355,17 @@ func _simuluj_financni_toky_aktualniho_tahu() -> Dictionary:
 		state_rows[overlord] = overlord_row
 
 	for loan_any in aktivni_pujcky:
-		var loan = loan_any as Dictionary
+		var loan = _normalizuj_loan_na_celkovy_urok_model(loan_any as Dictionary)
 		var lender = _normalizuj_tag(str(loan.get("lender", "")))
 		var borrower = _normalizuj_tag(str(loan.get("borrower", "")))
+		var created_turn = int(loan.get("created_turn", -1))
 		var remaining_turns = int(loan.get("remaining_turns", 0))
 		var remaining_due = max(0.0, float(loan.get("remaining_due", 0.0)))
 		var installment = max(0.0, float(loan.get("installment", 0.0)))
 		if lender == "" or borrower == "" or lender == borrower:
+			continue
+		# New loan should grant principal first; first installment starts next turn.
+		if created_turn == aktualni_kolo:
 			continue
 		if remaining_turns <= 0 or remaining_due <= 0.0001:
 			continue
@@ -7228,17 +7490,23 @@ func ziskej_projektovany_vazalsky_odvod(overlord_tag: String, subject_tag: Strin
 	if ziskej_overlorda_statu(subject) != overlord:
 		return {"ok": false, "reason": "Not a valid vassal relation."}
 	var rate = clamp(float(vazalske_odvody.get(subject, VASSAL_TRIBUTE_DEFAULT_RATE)), VASSAL_TRIBUTE_MIN_RATE, VASSAL_TRIBUTE_MAX_RATE)
-	var planned = max(0.0, _spocitej_cisty_prijem_statu(subject)) * rate
 	var projection = _simuluj_financni_toky_aktualniho_tahu()
 	var states = projection.get("states", {}) as Dictionary
 	var subject_row = states.get(subject, {}) as Dictionary
+	var profit_income = _spocitej_profit_income_pro_vazalsky_odvod(subject, subject_row)
+	var planned = profit_income * rate
 	var paid = float((subject_row.get("vassal_out_details", {}) as Dictionary).get(overlord, 0.0))
 	return {
 		"ok": true,
 		"rate": rate,
+		"profit_income": profit_income,
 		"planned": planned,
 		"paid": paid
 	}
+
+# Public accessor for UI preview parity.
+func ziskej_profit_income_pro_vazalsky_odvod(state_tag: String) -> float:
+	return _spocitej_profit_income_pro_vazalsky_odvod(state_tag)
 
 # Pulls current state data.
 func ziskej_vazalsky_odvod(overlord_tag: String, subject_tag: String) -> float:
@@ -7296,8 +7564,8 @@ func _zpracuj_vazalske_odvody_za_kolo() -> void:
 			continue
 
 		var rate = clamp(float(vazalske_odvody.get(subject, VASSAL_TRIBUTE_DEFAULT_RATE)), VASSAL_TRIBUTE_MIN_RATE, VASSAL_TRIBUTE_MAX_RATE)
-		var subject_income = max(0.0, _spocitej_cisty_prijem_statu(subject))
-		var planned = subject_income * rate
+		var subject_profit_income = _spocitej_profit_income_pro_vazalsky_odvod(subject)
+		var planned = subject_profit_income * rate
 		if planned <= 0.0:
 			continue
 		var subject_cash = _ziskej_kasu_statu(subject)
@@ -7345,13 +7613,18 @@ func _zpracuj_aktivni_pujcky_za_kolo() -> void:
 
 	var active: Array = []
 	for loan_any in aktivni_pujcky:
-		var loan = loan_any as Dictionary
+		var loan = _normalizuj_loan_na_celkovy_urok_model(loan_any as Dictionary)
 		var lender = _normalizuj_tag(str(loan.get("lender", "")))
 		var borrower = _normalizuj_tag(str(loan.get("borrower", "")))
+		var created_turn = int(loan.get("created_turn", -1))
 		var remaining_turns = int(loan.get("remaining_turns", 0))
 		var remaining_due = max(0.0, float(loan.get("remaining_due", 0.0)))
 		var installment = max(0.0, float(loan.get("installment", 0.0)))
 		if lender == "" or borrower == "" or lender == borrower:
+			continue
+		# Do not collect installments on the same turn the loan is created.
+		if created_turn == aktualni_kolo:
+			active.append(loan)
 			continue
 		if remaining_turns <= 0 or remaining_due <= 0.0001:
 			continue
@@ -12061,7 +12334,9 @@ func _vyber_ai_staty_pro_tah(ai_staty_all: Array) -> Array:
 	# States currently at war are always processed this turn.
 	var rotation_cap = max(0, cap - forced_include.size())
 
-	var use_cached = (aktualni_kolo - _ai_fastmode_cached_turn_marker) < AI_FASTMODE_WINDOW_TURNS and not _ai_fastmode_cached_subset.is_empty()
+	# Always recompute subset each turn. This keeps round-robin visibly rotating
+	# and avoids sticky AI subsets over long peace-time stretches.
+	var use_cached = false
 	var dynamic_subset: Array = []
 	if use_cached:
 		for cached_any in _ai_fastmode_cached_subset:
