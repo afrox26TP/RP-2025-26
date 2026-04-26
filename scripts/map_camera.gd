@@ -61,10 +61,6 @@ func _blokuje_kamerovy_pohyb_klavesami() -> bool:
 	if focused and _is_canvas_layer_ui_control(focused):
 		return true
 
-	# Also block when cursor is over UI controls that should own interaction.
-	if _is_hovering_any_ui_blocking_camera():
-		return true
-
 	var game_ui = _ziskej_game_ui_node()
 	if game_ui and game_ui.has_method("blokuje_hotkey_ukonceni_tahu"):
 		return bool(game_ui.blokuje_hotkey_ukonceni_tahu())

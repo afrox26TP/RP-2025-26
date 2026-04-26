@@ -103,6 +103,10 @@ func _vykresli_label(tag: String, jmeno: String, pozice: Vector2, velikost: floa
 	
 	var lbl = inst.get_node("Label")
 	var flag = inst.get_node_or_null("Flag")
+	if lbl and lbl is Control:
+		(lbl as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if flag and flag is Control:
+		(flag as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
 	
 	lbl.text = jmeno
 	

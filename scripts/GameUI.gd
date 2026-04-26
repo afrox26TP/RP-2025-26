@@ -378,6 +378,7 @@ const POPUP_GAP := 6
 const QUEUE_PREVIEW_MAX_ITEMS := 8
 const ZPRAVY_MAX_ITEMS := 180
 const ZPRAVY_HISTORY_MAX_ITEMS := 500
+const ZPRAVY_MAX_LINE_CHARS := 260
 const MAIN_MENU_SCENE_PATH := "res://scenes/MainMenu.tscn"
 const SETTINGS_FILE_PATH := "user://settings.cfg"
 const IDEOLOGY_UI_ORDER := ["demokracie", "kralovstvi", "autokracie", "komunismus", "nacismus", "fasismus"]
@@ -1277,12 +1278,15 @@ func _on_custom_flag_file_selected(path: String) -> void:
 
 func _ziskej_map_loader_node() -> Node:
 	var scene_root = get_tree().current_scene
-	if scene_root and scene_root.has_method("_ziskej_map_pozici_provincie") and scene_root.has_method("_ziskej_map_offset"):
+	if scene_root and scene_root.has_method("nastav_skip_battle_reportu"):
 		return scene_root
 	if scene_root:
-		var by_name = scene_root.find_child("Map", true, false)
-		if by_name and by_name.has_method("_ziskej_map_pozici_provincie") and by_name.has_method("_ziskej_map_offset"):
+		var by_name = scene_root.find_child("map", true, false)
+		if by_name and by_name.has_method("nastav_skip_battle_reportu"):
 			return by_name
+		var by_name_caps = scene_root.find_child("Map", true, false)
+		if by_name_caps and by_name_caps.has_method("nastav_skip_battle_reportu"):
+			return by_name_caps
 	return null
 
 func _ziskej_barvu_statu_pro_battle(tag: String) -> Color:
@@ -7894,6 +7898,7 @@ func _vytvor_settings_dialog() -> void:
 	_settings_skip_battle_reports_check = CheckBox.new()
 	_settings_skip_battle_reports_check.text = "Skip battle reports on end turn"
 	_settings_skip_battle_reports_check.tooltip_text = "When enabled, battle/frontline popups are skipped and turn processing continues immediately."
+	_settings_skip_battle_reports_check.toggled.connect(_on_ingame_skip_battle_reports_toggled)
 	settings_content.add_child(_settings_skip_battle_reports_check)
 
 	settings_content.add_child(HSeparator.new())
@@ -8191,6 +8196,15 @@ func _aplikuj_skip_battle_reports_runtime(enabled: bool) -> void:
 	var map_loader = _ziskej_map_loader_node()
 	if map_loader and map_loader.has_method("nastav_skip_battle_reportu"):
 		map_loader.nastav_skip_battle_reportu(enabled)
+
+func _on_ingame_skip_battle_reports_toggled(enabled: bool) -> void:
+	_aplikuj_skip_battle_reports_runtime(enabled)
+	var cfg = ConfigFile.new()
+	cfg.load(SETTINGS_FILE_PATH)
+	cfg.set_value("other", "skip_battle_reports", enabled)
+	var save_err = cfg.save(SETTINGS_FILE_PATH)
+	if save_err != OK:
+		push_warning("Failed to save battle report toggle. Error: %s" % str(save_err))
 
 func _on_ingame_volume_changed(value: float) -> void:
 	if _settings_volume_value:
@@ -9257,8 +9271,17 @@ func _sestav_skupiny_zprav(entries: Array) -> Dictionary:
 func _format_zprava_radek(entry: Dictionary, historical: bool) -> String:
 	var base = _format_zprava(entry)
 	if historical:
-		return "[Turn %d] %s" % [int(entry.get("turn", 0)), base]
-	return base
+		return _upravit_radek_zpravy_pro_panel("[Turn %d] %s" % [int(entry.get("turn", 0)), base])
+	return _upravit_radek_zpravy_pro_panel(base)
+
+func _upravit_radek_zpravy_pro_panel(line: String) -> String:
+	var out = line.replace("\r", " ").replace("\n", " ")
+	while out.find("  ") != -1:
+		out = out.replace("  ", " ")
+	out = out.strip_edges()
+	if out.length() <= ZPRAVY_MAX_LINE_CHARS:
+		return out
+	return "%s..." % out.substr(0, ZPRAVY_MAX_LINE_CHARS).strip_edges()
 
 func _vykresli_skupiny_zprav(current_entries: Array, history_entries: Array) -> void:
 	if _zpravy_groups_list == null:
@@ -9322,46 +9345,27 @@ func _vykresli_skupiny_zprav(current_entries: Array, history_entries: Array) -> 
 			if line.strip_edges() == "":
 				continue
 
-			var row = HBoxContainer.new()
-			row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			row.add_theme_constant_override("separation", 6)
-
-			var flow = HFlowContainer.new()
-			flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			flow.add_theme_constant_override("h_separation", 3)
-			flow.add_theme_constant_override("v_separation", 2)
-			row.add_child(flow)
-
-			var mentions = _najdi_zminky_statu_v_textu(line)
-			if mentions.is_empty():
-				var fallback_line = line
-				if fallback_line == "":
-					fallback_line = "-"
-				flow.add_child(_vytvor_zprava_text_chunk(fallback_line))
-			else:
-				var cursor := 0
-				for m_any in mentions:
-					var m = m_any as Dictionary
-					var start_idx = int(m.get("start", 0))
-					var end_idx = int(m.get("end", start_idx))
-					var tag = str(m.get("tag", "")).strip_edges().to_upper()
-					if start_idx > cursor:
-						var chunk = line.substr(cursor, start_idx - cursor)
-						if chunk.strip_edges() != "":
-							flow.add_child(_vytvor_zprava_text_chunk(chunk))
+			var tags_for_line = _ziskej_tagy_pro_zpravu(entry, line)
+			if not tags_for_line.is_empty():
+				var flags_row = HBoxContainer.new()
+				flags_row.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+				flags_row.add_theme_constant_override("separation", 4)
+				for tag_any in tags_for_line:
+					var tag = str(tag_any).strip_edges().to_upper()
+					if tag == "":
+						continue
 					var flag_btn = _vytvor_zprava_flag_btn(tag)
 					if flag_btn:
-						flow.add_child(flag_btn)
-					else:
-						var fallback = line.substr(start_idx, max(0, end_idx - start_idx))
-						flow.add_child(_vytvor_zprava_text_chunk(fallback))
-					cursor = max(cursor, end_idx)
-				if cursor < line.length():
-					var tail = line.substr(cursor, line.length() - cursor)
-					if tail.strip_edges() != "":
-						flow.add_child(_vytvor_zprava_text_chunk(tail))
+						flags_row.add_child(flag_btn)
+				if flags_row.get_child_count() > 0:
+					body.add_child(flags_row)
 
-			body.add_child(row)
+			var line_lbl = Label.new()
+			line_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			line_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			line_lbl.add_theme_color_override("font_color", Color(0.92, 0.95, 1.0))
+			line_lbl.text = line
+			body.add_child(line_lbl)
 
 		section.add_child(body)
 

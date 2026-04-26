@@ -86,6 +86,7 @@ const TooltipUtilsScript = preload("res://scripts/TooltipUtils.gd")
 @onready var vsync_check: CheckBox = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/VsyncCheck
 var potato_mode_check: CheckBox = null
 var ai_debug_mode_check: CheckBox = null
+var skip_battle_reports_check: CheckBox = null
 @onready var master_volume_label: Label = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/MasterVolumeLabel
 @onready var master_volume_slider: HSlider = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/MasterVolumeRow/MasterVolumeSlider
 @onready var master_volume_value: Label = $Dialogs/SettingsDialog/SettingsRoot/SettingsVBox/SettingsPanel/SettingsPad/SettingsContent/MasterVolumeRow/MasterVolumeValue
@@ -159,7 +160,7 @@ const CREDITS_DIALOG_TITLE := "Credits"
 const CREDITS_DIALOG_TEXT := "RP-2025-26\n\nDesign and gameplay: ME (Afrox26TP)\nMap and data: internal dataset (mine)\nTester: Andhyy (outsourced)"
 const EXIT_DIALOG_TITLE := "Confirmation"
 const EXIT_DIALOG_TEXT := "Do you really want to quit the game?"
-const SETTINGS_DEFAULT_LANGUAGE := "cs"
+const SETTINGS_DEFAULT_LANGUAGE := "en"
 
 const UI_TEXTS := {
 	"en": {
@@ -194,6 +195,7 @@ const UI_TEXTS := {
 		"vsync": "VSync",
 		"potato_mode": "Potato mode (low-end PC)",
 		"ai_debug_mode": "Debug mode",
+		"skip_battle_reports": "Skip battle reports on end turn",
 		"spectate_mode": "Spectate mode (AI only)",
 		"master_volume": "Master volume",
 		"reset": "Reset defaults",
@@ -232,6 +234,7 @@ const UI_TEXTS := {
 		"vsync": "VSync",
 		"potato_mode": "Potato mode (slabe PC)",
 		"ai_debug_mode": "Debug mode",
+		"skip_battle_reports": "Preskocit battle reporty na konci kola",
 		"spectate_mode": "Spectate mode (pouze AI)",
 		"master_volume": "Hlavni hlasitost",
 		"reset": "Obnovit vychozi",
@@ -428,6 +431,7 @@ func _ready():
 	country_browser_panel.hide()
 	_ensure_potato_mode_checkbox()
 	_ensure_ai_debug_mode_checkbox()
+	_ensure_skip_battle_reports_checkbox()
 
 	# Connect UI signals
 	btn_new_game.pressed.connect(_on_new_game_pressed)
@@ -455,6 +459,8 @@ func _ready():
 		potato_mode_check.toggled.connect(_on_settings_toggle_changed)
 	if ai_debug_mode_check:
 		ai_debug_mode_check.toggled.connect(_on_settings_toggle_changed)
+	if skip_battle_reports_check:
+		skip_battle_reports_check.toggled.connect(_on_settings_toggle_changed)
 	exit_dialog.confirmed.connect(_on_exit_confirmed)
 
 	_napln_language_option()
@@ -1111,6 +1117,8 @@ func _nastav_tooltipy_ui() -> void:
 		potato_mode_check.tooltip_text = "Turns on low-detail rendering and power-saving updates for weak PCs."
 	if ai_debug_mode_check:
 		ai_debug_mode_check.tooltip_text = "Shows debug panel and detailed diagnostics in output."
+	if skip_battle_reports_check:
+		skip_battle_reports_check.tooltip_text = "When enabled, battle/frontline popups are skipped and turn processing continues immediately."
 	TooltipUtilsScript.apply_default_tooltips(self)
 
 # Feature logic entry point.
@@ -1144,6 +1152,21 @@ func _ensure_ai_debug_mode_checkbox() -> void:
 
 	settings_content.add_child(ai_debug_mode_check)
 	settings_content.move_child(ai_debug_mode_check, insert_index)
+
+func _ensure_skip_battle_reports_checkbox() -> void:
+	if skip_battle_reports_check != null or settings_content == null:
+		return
+
+	skip_battle_reports_check = CheckBox.new()
+	skip_battle_reports_check.name = "SkipBattleReportsCheck"
+	skip_battle_reports_check.text = "Skip battle reports on end turn"
+
+	var insert_index := settings_content.get_child_count()
+	if master_volume_label and master_volume_label.get_parent() == settings_content:
+		insert_index = master_volume_label.get_index()
+
+	settings_content.add_child(skip_battle_reports_check)
+	settings_content.move_child(skip_battle_reports_check, insert_index)
 
 # Writes new values and refreshes related state.
 func _nastav_texty_dialogu():
@@ -1325,6 +1348,7 @@ func _vytvor_vychozi_nastaveni() -> Dictionary:
 			"vsync": true,
 			"potato_mode": false,
 			"ai_debug_mode": false,
+			"skip_battle_reports": false,
 			"master_volume": 0.85
 		}
 	}
@@ -1353,6 +1377,7 @@ func _nacti_nastaveni() -> void:
 	nastaveni_data["other"]["potato_mode"] = bool(cfg.get_value("other", "potato_mode", nastaveni_data["other"]["potato_mode"]))
 	# Always start with AI debug disabled, regardless of previously saved value.
 	nastaveni_data["other"]["ai_debug_mode"] = false
+	nastaveni_data["other"]["skip_battle_reports"] = bool(cfg.get_value("other", "skip_battle_reports", nastaveni_data["other"]["skip_battle_reports"]))
 	nastaveni_data["other"]["master_volume"] = float(cfg.get_value("other", "master_volume", nastaveni_data["other"]["master_volume"]))
 	ControlsConfig.apply_bindings(_keybind_state)
 
@@ -1369,6 +1394,7 @@ func _uloz_nastaveni() -> void:
 	cfg.set_value("other", "vsync", bool(nastaveni_data["other"]["vsync"]))
 	cfg.set_value("other", "potato_mode", bool(nastaveni_data["other"]["potato_mode"]))
 	cfg.set_value("other", "ai_debug_mode", bool(nastaveni_data["other"]["ai_debug_mode"]))
+	cfg.set_value("other", "skip_battle_reports", bool(nastaveni_data["other"]["skip_battle_reports"]))
 	cfg.set_value("other", "master_volume", float(nastaveni_data["other"]["master_volume"]))
 
 	var save_err = cfg.save(SETTINGS_FILE_PATH)
@@ -1378,6 +1404,8 @@ func _uloz_nastaveni() -> void:
 # Handles this gameplay/UI path.
 func _normalizuj_jazyk(raw_code: String) -> String:
 	var code = raw_code.strip_edges().to_lower()
+	if code != "en":
+		return SETTINGS_DEFAULT_LANGUAGE
 	if not UI_TEXTS.has(code):
 		return SETTINGS_DEFAULT_LANGUAGE
 	return code
@@ -1396,8 +1424,8 @@ func _napln_language_option() -> void:
 	language_option.clear()
 	language_option.add_item("English")
 	language_option.set_item_metadata(0, "en")
-	language_option.add_item("Cesky")
-	language_option.set_item_metadata(1, "cs")
+	language_option.select(0)
+	language_option.disabled = true
 
 # Main runtime logic lives here.
 func _jazyk_z_option() -> String:
@@ -1429,6 +1457,8 @@ func _nastav_settings_ui_z_dat() -> void:
 		potato_mode_check.button_pressed = bool(nastaveni_data["other"].get("potato_mode", false))
 	if ai_debug_mode_check:
 		ai_debug_mode_check.button_pressed = bool(nastaveni_data["other"].get("ai_debug_mode", false))
+	if skip_battle_reports_check:
+		skip_battle_reports_check.button_pressed = bool(nastaveni_data["other"].get("skip_battle_reports", false))
 	master_volume_slider.value = clamp(float(nastaveni_data["other"]["master_volume"]), 0.0, 1.0)
 
 # Stores current data to disk.
@@ -1442,6 +1472,7 @@ func _uloz_settings_ui_do_dat() -> void:
 	nastaveni_data["other"]["vsync"] = vsync_check.button_pressed
 	nastaveni_data["other"]["potato_mode"] = potato_mode_check.button_pressed if potato_mode_check else false
 	nastaveni_data["other"]["ai_debug_mode"] = ai_debug_mode_check.button_pressed if ai_debug_mode_check else false
+	nastaveni_data["other"]["skip_battle_reports"] = skip_battle_reports_check.button_pressed if skip_battle_reports_check else false
 	nastaveni_data["other"]["master_volume"] = clamp(master_volume_slider.value, 0.0, 1.0)
 
 # Recomputes values from current data.
@@ -1552,6 +1583,8 @@ func _aktualizuj_texty_dle_jazyka() -> void:
 		potato_mode_check.text = str(t["potato_mode"])
 	if ai_debug_mode_check:
 		ai_debug_mode_check.text = str(t["ai_debug_mode"])
+	if skip_battle_reports_check:
+		skip_battle_reports_check.text = str(t["skip_battle_reports"])
 	master_volume_label.text = str(t["master_volume"])
 	btn_settings_reset.text = str(t["reset"])
 	btn_settings_apply.text = str(t["apply"])
@@ -1580,12 +1613,13 @@ func _read_settings_from_ui() -> Dictionary:
 		"vsync": vsync_check.button_pressed,
 		"potato_mode": potato_mode_check.button_pressed if potato_mode_check else false,
 		"ai_debug_mode": ai_debug_mode_check.button_pressed if ai_debug_mode_check else false,
+		"skip_battle_reports": skip_battle_reports_check.button_pressed if skip_battle_reports_check else false,
 		"master_volume": snapped(master_volume_slider.value, 0.01)
 	}
 
 # Runs the local feature logic.
 func _settings_state_equals(a: Dictionary, b: Dictionary) -> bool:
-	for key in ["camera_speed", "zoom_speed", "invert_zoom", "language", "fullscreen", "vsync", "potato_mode", "ai_debug_mode", "master_volume"]:
+	for key in ["camera_speed", "zoom_speed", "invert_zoom", "language", "fullscreen", "vsync", "potato_mode", "ai_debug_mode", "skip_battle_reports", "master_volume"]:
 		if not a.has(key) or not b.has(key):
 			return false
 		if a[key] != b[key]:

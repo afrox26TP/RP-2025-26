@@ -176,7 +176,7 @@ const AI_PROFILE_WARN_MS := 500
 const AI_MOVEMENT_PROFILE_ENABLED := false
 const AI_DECISION_DEBUG_ENABLED := false
 const AI_DEBUG_MAX_LINES_PER_TURN := 150
-const AI_FASTMODE_ENABLED := true
+const AI_FASTMODE_ENABLED := false
 const AI_STATES_PER_TURN_CAP := 8
 const AI_STATES_PER_TURN_CAP_POTATO := 4
 const AI_FASTMODE_WINDOW_TURNS := 3
@@ -6596,8 +6596,13 @@ func _ai_zagent_valka_okamzita_reakce(attacker: String, defender: String) -> voi
 			recruited += 1
 			_ai_vycisti_runtime_cache_pro_stat(defender_tag)
 	
-	# Quick movement planning: trigger defensive movements against the attacker
-	if map_loader.has_method("zacni_davkovy_presun"):
+	# Quick movement planning: trigger defensive movements against the attacker.
+	# If we are already inside an outer batch (e.g. _naplanuj_ai_presuny), do NOT start a
+	# nested batch: zacni_davkovy_presun() would clear _minimalni_ai_tahy and
+	# ukonci_davkovy_presun() would flip _pozastavit_aktualizaci_ikon to false, which causes
+	# any attack moves registered *after* this reaction to skip the attack-arrow recording.
+	var _reaction_was_batching: bool = "_pozastavit_aktualizaci_ikon" in map_loader and bool(map_loader._pozastavit_aktualizaci_ikon)
+	if not _reaction_was_batching and map_loader.has_method("zacni_davkovy_presun"):
 		map_loader.zacni_davkovy_presun()
 	
 	var core_defense_moves = 0
@@ -6645,7 +6650,7 @@ func _ai_zagent_valka_okamzita_reakce(attacker: String, defender: String) -> voi
 				core_defense_moves += 1
 				continue
 	
-	if map_loader.has_method("ukonci_davkovy_presun"):
+	if not _reaction_was_batching and map_loader.has_method("ukonci_davkovy_presun"):
 		map_loader.ukonci_davkovy_presun()
 	
 	# Cleanup

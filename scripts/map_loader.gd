@@ -4407,6 +4407,14 @@ func _kapituluj_stat_rozdelenim(cilovy_stat: String, fallback_vitez: String = ""
 
 # Runs the local feature logic.
 func _zpracuj_automaticke_kapitulace(celkovy_report: String) -> String:
+	var states_under_capitulation_pressure: Dictionary = {}
+	if "cekajici_kapitulace" in GameManager:
+		for zaznam_any in (GameManager.cekajici_kapitulace as Array):
+			var zaznam = zaznam_any as Dictionary
+			var obrance = str(zaznam.get("obrance", "")).strip_edges().to_upper()
+			if obrance != "" and obrance != "SEA":
+				states_under_capitulation_pressure[obrance] = true
+
 	var state_flags: Dictionary = {}
 	for p_id in provinces.keys():
 		var p = provinces[p_id]
@@ -4428,6 +4436,8 @@ func _zpracuj_automaticke_kapitulace(celkovy_report: String) -> String:
 			continue
 		var flags = state_flags[target_owner] as Dictionary
 		if bool(flags.get("has_self", false)) or not bool(flags.get("has_occupied", false)):
+			continue
+		if not states_under_capitulation_pressure.has(str(target_owner)):
 			continue
 
 		# If exactly one state occupies all remaining cores, use peace conference flow
@@ -4456,29 +4466,12 @@ func _zpracuj_automaticke_kapitulace(celkovy_report: String) -> String:
 						celkovy_report += "%s | AUTOMATIC CAPITULATION -> PEACE CONFERENCE STARTED\n\n" % _ziskej_jmeno_statu_pro_zpravy(target_owner)
 					continue
 
-		var vysledek = _kapituluj_stat_rozdelenim(target_owner, "")
-		if not bool(vysledek.get("provedeno", false)):
-			continue
-
-		if GameManager.has_method("vycisti_stat_po_kapitulaci"):
-			GameManager.vycisti_stat_po_kapitulaci(target_owner)
-
-		var okupanti: Dictionary = vysledek.get("okupanti", {})
-		var casti: Array = []
-		for okupant in okupanti.keys():
-			casti.append("%s: %d" % [_ziskej_jmeno_statu_pro_zpravy(str(okupant)), int(okupanti[okupant])])
-		var hrac_zapojen = GameManager.je_lidsky_stat(target_owner)
-		if not hrac_zapojen:
-			for okupant in okupanti.keys():
-				if GameManager.je_lidsky_stat(str(okupant)):
-					hrac_zapojen = true
-					break
-		if hrac_zapojen:
-			celkovy_report += "%s | AUTOMATIC CAPITULATION | OCCUPATION SPLIT: %s\n\n" % [_ziskej_jmeno_statu_pro_zpravy(target_owner), ", ".join(casti)]
+		# Safety: never perform ownership split fallback here.
+		# Without a valid peace-conference result this can look like random teleports/annexations.
 		if GameManager.has_method("_zaloguj_globalni_zpravu"):
 			GameManager._zaloguj_globalni_zpravu(
 				"War",
-				"Automatic capitulation of %s. Occupation split: %s." % [_ziskej_jmeno_statu_pro_zpravy(target_owner), ", ".join(casti)],
+				"Automatic capitulation of %s was skipped because peace conference could not be started." % _ziskej_jmeno_statu_pro_zpravy(target_owner),
 				"war"
 			)
 
@@ -4508,26 +4501,13 @@ func _zpracuj_odlozene_kapitulace(celkovy_report: String) -> String:
 					celkovy_report += "%s -> %s | CAPITULATION TRIGGERED -> PEACE CONFERENCE\n\n" % [winner_name, target_name]
 				continue
 
-		# Fallback to legacy split when conference API is unavailable.
-		var vysledek = _kapituluj_stat_rozdelenim(target_owner, winner_tag)
-		if not bool(vysledek.get("provedeno", false)):
-			continue
-
-		if GameManager.has_method("vycisti_stat_po_kapitulaci"):
-			GameManager.vycisti_stat_po_kapitulaci(target_owner)
-
-		if GameManager.je_lidsky_stat(winner_tag) or GameManager.je_lidsky_stat(target_owner):
-			var okupanti: Dictionary = vysledek.get("okupanti", {})
-			var casti: Array = []
-			for okupant in okupanti.keys():
-				casti.append("%s: %d" % [_ziskej_jmeno_statu_pro_zpravy(str(okupant)), int(okupanti[okupant])])
-			celkovy_report += "%s -> %s | CAPITAL HELD 1 TURN | OCCUPATION SPLIT: %s\n\n" % [winner_name, target_name, ", ".join(casti)]
-			if GameManager.has_method("_zaloguj_globalni_zpravu"):
-				GameManager._zaloguj_globalni_zpravu(
-					"War",
-					"Capitulation of %s after capital hold. Occupation split: %s." % [target_name, ", ".join(casti)],
-					"war"
-				)
+		# Safety: never do legacy ownership split fallback.
+		if GameManager.has_method("_zaloguj_globalni_zpravu"):
+			GameManager._zaloguj_globalni_zpravu(
+				"War",
+				"Capitulation of %s after capital hold was skipped because peace conference could not be started." % target_name,
+				"war"
+			)
 
 	return celkovy_report
 
