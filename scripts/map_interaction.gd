@@ -1,4 +1,4 @@
-# ==================================================================================================
+﻿# ==================================================================================================
 #  __  __    _    ____  _____   ______   __     _    _____ ____   _____  __
 # |  \/  |  / \  |  _ \| ____| | __ ) \ / /    / \  |  ___|  _ \ / _ \ \/ /
 # | |\/| | / _ \ | | | |  _|   |  _ \\ V /    / _ \ | |_  | |_) | | |\  /
@@ -576,7 +576,8 @@ func _show_attack_target_tooltip(from_id: int, province_id: int, data: Dictionar
 	_update_mode_hover_tooltip_position(get_global_mouse_position())
 	return true
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_sestav_text_hover_modu]
+# Ai generated or editted start (priloha_a.txt)
 func _sestav_text_hover_modu(data: Dictionary, mod: String) -> String:
 	match mod:
 		"population":
@@ -605,6 +606,7 @@ func _sestav_text_hover_modu(data: Dictionary, mod: String) -> String:
 			return ""
 
 # Applies visual/UI updates.
+# Ai generated or editted end (priloha_a.txt)
 func _show_mode_hover_tooltip(data: Dictionary, root: Node) -> void:
 	if _mode_hover_panel == null or _mode_hover_label == null:
 		return
@@ -936,7 +938,8 @@ func _odzanc_vse():
 		game_ui.schovej_se()
 	_clear_selection_label_states()
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_zpracuj_interakci]
+# Ai generated or editted start (priloha_a.txt)
 func _zpracuj_interakci(_mouse_pos: Vector2, je_kliknuti: bool, shift_held: bool = false):
 	if map_image == null: return
 
@@ -967,6 +970,7 @@ func _zpracuj_interakci(_mouse_pos: Vector2, je_kliknuti: bool, shift_held: bool
 
 # Updates selection and hover states
 # Updates derived state and UI.
+# Ai generated or editted end (priloha_a.txt)
 func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shift_held: bool = false):
 	var root = _get_root()
 	var is_targeting = "ceka_na_cil_presunu" in root and root.ceka_na_cil_presunu
@@ -1403,7 +1407,8 @@ func aktualizuj_mapovy_mod(mod: String, province_db: Dictionary):
 	data_texture.update(data_image)
 	occupation_texture.update(occupation_image)
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_barva_aliance]
+# Ai generated or editted start (priloha_a.txt)
 func _barva_aliance(owner_tag: String) -> Color:
 	var alliances = GameManager.ziskej_aliance_statu(owner_tag)
 	if alliances.size() == 0:
@@ -1413,6 +1418,7 @@ func _barva_aliance(owner_tag: String) -> Color:
 	return Color.html(barva_str)
 
 # Core flow for this feature.
+# Ai generated or editted end (priloha_a.txt)
 func dobyt_provincii(prov_id: int, novy_vlastnik: String, z_dev_nastroje: bool = false):
 	var root = get_parent()
 	if not root or not "provinces" in root: return
@@ -1448,6 +1454,7 @@ func dobyt_provincii(prov_id: int, novy_vlastnik: String, z_dev_nastroje: bool =
 		var prov_labels = root.get_node_or_null("ProvinceLabels")
 		if labels_manager and prov_labels:
 			labels_manager.aktualizuj_labely_statu(root.provinces, prov_labels)
+
 
 
 

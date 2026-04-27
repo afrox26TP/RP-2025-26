@@ -1,4 +1,4 @@
-# ==================================================================================================
+﻿# ==================================================================================================
 #  __  __    _    ____  _____   ______   __     _    _____ ____   _____  __
 # |  \/  |  / \  |  _ \| ____| | __ ) \ / /    / \  |  ___|  _ \ / _ \ \/ /
 # | |\/| | / _ \ | | | |  _|   |  _ \\ V /    / _ \ | |_  | |_) | | | |\  /
@@ -98,7 +98,8 @@ func _format_pct_signed(value: float) -> String:
 		return "+%d%%" % pct
 	return "%d%%" % pct
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_format_pct_signed]
+# Ai generated or editted start (priloha_a.txt)
 func _terenni_obranny_bonus_fallback(terrain_raw: String) -> float:
 	var key = terrain_raw.strip_edges().to_lower()
 	match key:
@@ -116,6 +117,7 @@ func _terenni_obranny_bonus_fallback(terrain_raw: String) -> float:
 			return 0.0
 
 # Returns current runtime data.
+# Ai generated or editted end (priloha_a.txt)
 func _ziskej_terenni_obranny_bonus_pro_data(data: Dictionary, terrain_raw: String) -> float:
 	var prov_id = int(data.get("id", -1))
 	var map_loader = _ziskej_map_loader()
@@ -263,7 +265,7 @@ func _ready():
 	btn_potvrdit.pressed.connect(_on_potvrdit_verbovani)
 	btn_zrusit.pressed.connect(func(): recruit_popup.hide(); _clear_preview_text())
 	
-	# --- NEW: PĹ™ipojenĂ­ tlaÄŤĂ­tek pro pĹ™esun ---
+	# --- NEW: PÄąâ„˘ipojenÄ‚Â­ tlaĂ„Ĺ¤Ä‚Â­tek pro pÄąâ„˘esun ---
 	if move_slider: move_slider.value_changed.connect(_on_move_slider_zmenen)
 	if btn_move_potvrdit: btn_move_potvrdit.pressed.connect(_on_potvrdit_presun)
 	if btn_move_zrusit: btn_move_zrusit.pressed.connect(func(): move_popup.hide())
@@ -399,7 +401,8 @@ func _aktualizuj_responzivni_layout() -> void:
 	if action_row:
 		action_row.add_theme_constant_override("separation", 3 if tiny else 4)
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
+# Ai generated or editted start (priloha_a.txt)
 func _clamp_popup_rect_to_viewport(rect: Rect2i) -> Rect2i:
 	var viewport = get_viewport()
 	if viewport == null:
@@ -411,6 +414,7 @@ func _clamp_popup_rect_to_viewport(rect: Rect2i) -> Rect2i:
 	return out
 
 # Applies updates and syncs dependent state.
+# Ai generated or editted end (priloha_a.txt)
 func _nastav_tooltipy_ui() -> void:
 	id_label.tooltip_text = "Name of the selected province."
 	owner_label.tooltip_text = "Current owner of the province."
@@ -454,7 +458,8 @@ func _vytvor_preview_label() -> void:
 	_preview_label.visible = false
 	vbox.add_child(_preview_label)
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_vytvor_preview_label]
+# Ai generated or editted start (priloha_a.txt)
 func _wrap_metric_label(key: String, base_label: Label) -> void:
 	if base_label == null:
 		return
@@ -488,6 +493,7 @@ func _wrap_metric_label(key: String, base_label: Label) -> void:
 	_metric_deltas[key] = delta
 
 # Runs the local feature logic.
+# Ai generated or editted end (priloha_a.txt)
 func _setup_inline_delta_rows() -> void:
 	_wrap_metric_label("pop", pop_label)
 	_wrap_metric_label("recruit", recruit_label)
@@ -1088,7 +1094,7 @@ func _on_presunout_pressed():
 		
 	schovej_se()
 
-# --- NEW: ZobrazĂ­ slider po ĂşspÄ›ĹˇnĂ©m kliknutĂ­ na souseda v mapÄ› ---
+# --- NEW: ZobrazÄ‚Â­ slider po Ä‚ĹźspĂ„â€şÄąË‡nÄ‚Â©m kliknutÄ‚Â­ na souseda v mapĂ„â€ş ---
 # Updates what the player sees.
 func zobraz_presun_slider(from_id: int, to_id: int, max_troops: int, path: Array = []):
 	presun_od_id = from_id
@@ -1101,7 +1107,7 @@ func zobraz_presun_slider(from_id: int, to_id: int, max_troops: int, path: Array
 	
 	_on_move_slider_zmenen(max_troops)
 	
-	# ZobrazĂ­me popup (pokud je to PopupPanel, pouĹľije popup_centered)
+	# ZobrazÄ‚Â­me popup (pokud je to PopupPanel, pouÄąÄľije popup_centered)
 	if move_popup is Popup:
 		move_popup.popup_centered()
 	else:
@@ -1164,7 +1170,8 @@ func _on_stavba_vybrana(id: int):
 	_ukaz_stavbu_info("CONSTRUCTION", reason)
 	_clear_preview_text()
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
+# Ai generated or editted start (priloha_a.txt)
 func _ukaz_stavbu_info(title: String, text: String):
 	var map_loader = get_tree().current_scene.find_child("Map", true, false)
 	if not map_loader and get_parent().has_method("_ukaz_bitevni_popup"):
@@ -1174,6 +1181,7 @@ func _ukaz_stavbu_info(title: String, text: String):
 		map_loader._ukaz_bitevni_popup(title, text)
 
 # Triggered by a UI/game signal.
+# Ai generated or editted end (priloha_a.txt)
 func _on_verbovat_pressed():
 	if je_hromadny_rezim:
 		_otevri_hromadne_verbovani()
@@ -1567,6 +1575,7 @@ func _postav_hromadne(building_id: String):
 		GameManager.kolo_zmeneno.emit()
 
 	_ukaz_stavbu_info("BULK CONSTRUCTION", "Built: %d | Skipped: %d" % [postaveno, preskoceno])
+
 
 
 

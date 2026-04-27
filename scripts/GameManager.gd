@@ -1,4 +1,4 @@
-# ==================================================================================================
+﻿# ==================================================================================================
 #  __  __    _    ____  _____   ______   __     _    _____ ____   _____  __
 # |  \/  |  / \  |  _ \| ____| | __ ) \ / /    / \  |  ___|  _ \ / _ \ \/ /
 # | |\/| | / _ \ | | | |  _|   |  _ \\ V /    / _ \ | |_  | |_) | | | |\  /
@@ -532,7 +532,8 @@ func nastav_lokalni_hrace(staty: Array) -> void:
 
 	_synchronizuj_jmeno_a_ideologii_hrace()
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
+# Ai generated or editted start (priloha_a.txt)
 func _pridej_popup_hraci(tag: String, titulek: String, text: String, force_popup: bool = false, state_tags: Array = []) -> void:
 	var cisty_tag = _normalizuj_tag(tag)
 	if cisty_tag == "" or not je_lidsky_stat(cisty_tag):
@@ -559,6 +560,7 @@ func _pridej_popup_hraci(tag: String, titulek: String, text: String, force_popup
 	})
 
 # Core flow for this feature.
+# Ai generated or editted end (priloha_a.txt)
 func _pridej_notifikaci_pujcky_hraci(tag: String, text: String) -> void:
 	var cisty = _normalizuj_tag(tag)
 	if cisty == "" or not je_lidsky_stat(cisty):
@@ -980,7 +982,8 @@ func _nacti_finance_aktivniho_hrace() -> void:
 	statni_kasa = float(hrac_kasy.get(aktivni, statni_kasa))
 	celkovy_prijem = float(hrac_prijmy.get(aktivni, celkovy_prijem))
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_nacti_finance_aktivniho_hrace]
+# Ai generated or editted start (priloha_a.txt)
 func _sjednot_multiplayer_finance_cache() -> void:
 	if lokalni_hraci_staty.size() <= 1:
 		return
@@ -1053,6 +1056,7 @@ func _sjednot_multiplayer_finance_cache() -> void:
 	_nacti_finance_aktivniho_hrace()
 
 # Handles this gameplay/UI path.
+# Ai generated or editted end (priloha_a.txt)
 func _sjednot_financni_toky_cache() -> void:
 	_sim_cache_validni = false
 	var sjednocene_vztahy: Dictionary = {}
@@ -1092,7 +1096,8 @@ func _sjednot_financni_toky_cache() -> void:
 		})
 	valecne_reparace = sjednocene_reparace
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
+# Ai generated or editted start (priloha_a.txt)
 func _synchronizuj_jmeno_a_ideologii_hrace() -> void:
 	hrac_jmeno = ""
 	hrac_ideologie = ""
@@ -1105,6 +1110,7 @@ func _synchronizuj_jmeno_a_ideologii_hrace() -> void:
 			hrac_ideologie = str(d.get("ideology", ""))
 			return
 
+# Ai generated or editted end (priloha_a.txt)
 func _oznac_runtime_cache_jako_studene() -> void:
 	_runtime_caches_warmed = false
 
@@ -1538,7 +1544,8 @@ func smaz_save_slot(slot_name: String) -> bool:
 	var abs_path = ProjectSettings.globalize_path(slot_path)
 	return DirAccess.remove_absolute(abs_path) == OK
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [smaz_save_slot]
+# Ai generated or editted start (priloha_a.txt)
 func smaz_legacy_save() -> bool:
 	if not FileAccess.file_exists(SAVEGAME_STATE_PATH):
 		return false
@@ -1546,6 +1553,7 @@ func smaz_legacy_save() -> bool:
 	return DirAccess.remove_absolute(abs_path) == OK
 
 # Load pass with basic validation.
+# Ai generated or editted end (priloha_a.txt)
 func nacti_posledni_hru() -> bool:
 	var slots = ziskej_save_sloty()
 	if not slots.is_empty():
@@ -1567,7 +1575,8 @@ func nacti_hru() -> bool:
 	# Fallback to slot-based quicksave if legacy file is missing.
 	return nacti_hru_ze_slotu("quicksave")
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [nacti_hru]
+# Ai generated or editted start (priloha_a.txt)
 func spust_load_ze_slotu_pres_scenu(slot_key: String, scene_path: String) -> void:
 	if _menu_load_in_progress:
 		push_warning("Menu load is already in progress.")
@@ -1576,6 +1585,7 @@ func spust_load_ze_slotu_pres_scenu(slot_key: String, scene_path: String) -> voi
 	call_deferred("_dokoncit_load_ze_slotu_pres_scenu", slot_key, scene_path)
 
 # Core flow for this feature.
+# Ai generated or editted end (priloha_a.txt)
 func _pockej_na_map_loader_pripravenost(tree: SceneTree, max_frames: int = 300) -> bool:
 	if tree == null:
 		return false
@@ -1667,7 +1677,8 @@ func _get_map_loader():
 	_map_loader_cache_scene = current_scene
 	return null
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_get_map_loader]
+# Ai generated or editted start (priloha_a.txt)
 func _normalizuj_tag(tag: String) -> String:
 	var clean = tag.strip_edges().to_upper()
 	if clean == "" or clean == "SEA":
@@ -1680,6 +1691,7 @@ func _normalizuj_tag(tag: String) -> String:
 	return clean
 
 # Boolean check for required state.
+# Ai generated or editted end (priloha_a.txt)
 func _je_pravdepodobny_stat_tag(value: String) -> bool:
 	var s = value.strip_edges().to_upper()
 	if s.length() != 3:
@@ -1883,7 +1895,8 @@ func _arm_lab_tier_roll(quality_level: int) -> int:
 		return 2
 	return 1
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_arm_lab_tier_roll]
+# Ai generated or editted start (priloha_a.txt)
 func _arm_lab_level_roll(quality_level: int) -> int:
 	var q = _clamp_arm_lab_quality(quality_level)
 	var roll = randf()
@@ -1899,6 +1912,7 @@ func _arm_lab_level_roll(quality_level: int) -> int:
 	return 1
 
 # Core flow for this feature.
+# Ai generated or editted end (priloha_a.txt)
 func _arm_lab_vyber_sablonu_dle_tieru(tier: int) -> Dictionary:
 	var pool: Array = []
 	for tpl_any in ARM_LAB_ITEM_POOL:
@@ -2008,7 +2022,8 @@ func _arm_lab_muze_umistit_na(grid_items: Array, w: int, h: int, x: int, y: int,
 				return false
 	return true
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_arm_lab_muze_umistit_na]
+# Ai generated or editted start (priloha_a.txt)
 func _arm_lab_muze_umistit_na_ignorovat(grid_items: Array, w: int, h: int, x: int, y: int, ignore_uid: String, grid_w: int, grid_h: int, unlocked: Dictionary = {}) -> bool:
 	var iw = max(1, w)
 	var ih = max(1, h)
@@ -2042,6 +2057,7 @@ func _arm_lab_muze_umistit_na_ignorovat(grid_items: Array, w: int, h: int, x: in
 
 # Offers refresh by turn, so UI can just ask for current state and not solve timing sama.
 # Core flow for this feature.
+# Ai generated or editted end (priloha_a.txt)
 func _arm_lab_zajisti_nabidky(state_tag: String) -> void:
 	var cisty = _normalizuj_tag(state_tag)
 	if cisty == "" or cisty == "SEA":
@@ -2063,7 +2079,8 @@ func _arm_lab_zajisti_nabidky(state_tag: String) -> void:
 	lab["rerolls_this_turn"] = 0
 	armadni_lab_statu[cisty] = lab
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_arm_lab_zajisti_nabidky]
+# Ai generated or editted start (priloha_a.txt)
 func _arm_lab_spocitej_bonus(grid_items: Array) -> Dictionary:
 	var total_flat := 0
 	var total_pct := 0.0
@@ -2077,6 +2094,7 @@ func _arm_lab_spocitej_bonus(grid_items: Array) -> Dictionary:
 	}
 
 # Read-only data accessor.
+# Ai generated or editted end (priloha_a.txt)
 func ziskej_armadni_lab_statu(state_tag: String) -> Dictionary:
 	var cisty = _normalizuj_tag(state_tag)
 	if cisty == "" or cisty == "SEA":
@@ -2379,7 +2397,8 @@ func koupit_armadni_bunku(state_tag: String, x: int, y: int) -> Dictionary:
 		"treasury_after": _ziskej_kasu_statu(cisty)
 	}
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
+# Ai generated or editted start (priloha_a.txt)
 func prodej_armadni_item(state_tag: String, item_uid: String) -> Dictionary:
 	var cisty = _normalizuj_tag(state_tag)
 	if cisty == "" or cisty == "SEA":
@@ -2421,6 +2440,7 @@ func prodej_armadni_item(state_tag: String, item_uid: String) -> Dictionary:
 	}
 
 # Core flow for this feature.
+# Ai generated or editted end (priloha_a.txt)
 func sloucit_armadni_itemy(state_tag: String, source_uid: String, target_uid: String) -> Dictionary:
 	var cisty = _normalizuj_tag(state_tag)
 	if cisty == "" or cisty == "SEA":
@@ -2908,7 +2928,8 @@ func _jsou_ideologie_podobne(ideology_a: String, ideology_b: String) -> bool:
 	}
 	return similar_pairs.has(_klic_ideologickeho_paru(a, b))
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_jsou_ideologie_podobne]
+# Ai generated or editted start (priloha_a.txt)
 func _jsou_ideologie_uplne_odlisne(ideology_a: String, ideology_b: String) -> bool:
 	var a = _normalizuj_ideologii(ideology_a)
 	var b = _normalizuj_ideologii(ideology_b)
@@ -2927,6 +2948,7 @@ func _jsou_ideologie_uplne_odlisne(ideology_a: String, ideology_b: String) -> bo
 	return opposite_pairs.has(_klic_ideologickeho_paru(a, b))
 
 # Computes derived values from current inputs and game state.
+# Ai generated or editted end (priloha_a.txt)
 func _spocitej_zmeny_vztahu_po_ideologii(state: String, target_ideology: String) -> Array:
 	var relation_changes: Array = []
 	for other_state in _ziskej_aktivni_staty():
@@ -3421,7 +3443,8 @@ func ma_dostupny_cil_presunu_hlavniho_mesta(state_tag: String) -> bool:
 			return true
 	return false
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [ma_dostupny_cil_presunu_hlavniho_mesta]
+# Ai generated or editted start (priloha_a.txt)
 func presun_hlavni_mesto(state_tag: String, target_province_id: int, pay_cost: bool = true, emit_ui_signal: bool = true) -> Dictionary:
 	var check = muze_presunout_hlavni_mesto(state_tag, target_province_id)
 	if not bool(check.get("ok", false)):
@@ -3470,6 +3493,7 @@ func presun_hlavni_mesto(state_tag: String, target_province_id: int, pay_cost: b
 	}
 
 # Core flow for this feature.
+# Ai generated or editted end (priloha_a.txt)
 func daruj_penize_statu(odesilatel: String, prijemce: String, amount: float) -> Dictionary:
 	var from_tag = _normalizuj_tag(odesilatel)
 	var to_tag = _normalizuj_tag(prijemce)
@@ -3715,7 +3739,8 @@ func _trade_extract_numeric_tokens(raw: String) -> Array:
 	return out
 
 # Tiny parser for UI text input, so player can write stuff a bit messy and it still works.
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_trade_extract_numeric_tokens]
+# Ai generated or editted start (priloha_a.txt)
 func _trade_parse_loan_terms(value_a: String, value_b: String) -> Dictionary:
 	var numbers: Array = []
 	numbers.append_array(_trade_extract_numeric_tokens(value_a))
@@ -3750,6 +3775,7 @@ func _trade_parse_loan_terms(value_a: String, value_b: String) -> Dictionary:
 		"turns": turns
 	}
 
+# Ai generated or editted end (priloha_a.txt)
 func _spocitej_celkovou_dluznou_castku_pujcky(principal: float, interest_pct: float) -> float:
 	var safe_principal = max(0.0, principal)
 	var safe_interest = max(0.0, interest_pct)
@@ -4130,7 +4156,8 @@ func _trade_can_declare_war(attacker_tag: String, defender_tag: String) -> bool:
 		return false
 	return true
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_trade_can_declare_war]
+# Ai generated or editted start (priloha_a.txt)
 func _trade_validate_terms(provider_tag: String, receiver_tag: String, terms: Dictionary) -> Dictionary:
 	var provider = _normalizuj_tag(provider_tag)
 	var receiver = _normalizuj_tag(receiver_tag)
@@ -4213,6 +4240,7 @@ func _trade_validate_terms(provider_tag: String, receiver_tag: String, terms: Di
 	return {"ok": true}
 
 # Feature logic entry point.
+# Ai generated or editted end (priloha_a.txt)
 func _trade_transfer_province(provider_tag: String, receiver_tag: String, province_id: int) -> Dictionary:
 	var provider = _normalizuj_tag(provider_tag)
 	var receiver = _normalizuj_tag(receiver_tag)
@@ -4293,7 +4321,8 @@ func _trade_execute_terms(provider_tag: String, receiver_tag: String, terms: Dic
 
 	return {"ok": true, "map_changed": map_changed}
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
+# Ai generated or editted start (priloha_a.txt)
 func _trade_update_map_after_changes() -> void:
 	var map_loader = _get_map_loader()
 	if map_loader:
@@ -4305,6 +4334,7 @@ func _trade_update_map_after_changes() -> void:
 			map_loader.aktualizuj_ikony_armad()
 
 # Runs the local feature logic.
+# Ai generated or editted end (priloha_a.txt)
 func _trade_spocitej_hodnotu_terms(receiver_tag: String, provider_tag: String, terms: Dictionary) -> float:
 	var receiver = _normalizuj_tag(receiver_tag)
 	var provider = _normalizuj_tag(provider_tag)
@@ -4352,7 +4382,8 @@ func _trade_spocitej_hodnotu_terms(receiver_tag: String, provider_tag: String, t
 				score += 7.0
 	return score
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
+# Ai generated or editted start (priloha_a.txt)
 func _vyhodnot_trade_nabidku_ai(from_tag: String, to_tag: String, from_terms: Dictionary, to_terms: Dictionary) -> bool:
 	var ai_gain = _trade_spocitej_hodnotu_terms(to_tag, from_tag, from_terms)
 	var ai_cost = _trade_spocitej_hodnotu_terms(to_tag, from_tag, to_terms)
@@ -4361,6 +4392,7 @@ func _vyhodnot_trade_nabidku_ai(from_tag: String, to_tag: String, from_terms: Di
 	return (ai_gain - ai_cost) >= threshold
 
 # Core flow for this feature.
+# Ai generated or editted end (priloha_a.txt)
 func _proved_trade_dohodu(from_tag: String, to_tag: String, payload: Dictionary) -> Dictionary:
 	var from_clean = _normalizuj_tag(from_tag)
 	var to_clean = _normalizuj_tag(to_tag)
@@ -4679,11 +4711,13 @@ func ziskej_bonus_obrany_stavby_provincie(prov_id: int) -> float:
 		bonus += float(bdef.get("defense_bonus_pct", 0.0)) * float(level)
 	return bonus
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [ziskej_bonus_obrany_stavby_provincie]
+# Ai generated or editted start (priloha_a.txt)
 func _klic_vztahu(tag_a: String, tag_b: String) -> String:
 	return "%s|%s" % [_normalizuj_tag(tag_a), _normalizuj_tag(tag_b)]
 
 # Handles this gameplay/UI path.
+# Ai generated or editted end (priloha_a.txt)
 func _klic_vztah_pair(tag_a: String, tag_b: String) -> String:
 	var a = _normalizuj_tag(tag_a)
 	var b = _normalizuj_tag(tag_b)
@@ -4800,7 +4834,8 @@ func _uprav_vztah_statu_bez_cooldown(tag_a: String, tag_b: String, delta: float)
 		_synchronizuj_aliance_po_zmene_vztahu(a, b)
 	return updated
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_uprav_vztah_statu_bez_cooldown]
+# Ai generated or editted start (priloha_a.txt)
 func _uprav_vztah_statu_bez_cooldown_rychle(tag_a: String, tag_b: String, delta: float) -> float:
 	var a = _normalizuj_tag(tag_a)
 	var b = _normalizuj_tag(tag_b)
@@ -4824,6 +4859,7 @@ func _uprav_vztah_statu_bez_cooldown_rychle(tag_a: String, tag_b: String, delta:
 	return updated
 
 # Core flow for this feature.
+# Ai generated or editted end (priloha_a.txt)
 func _vyzaduje_vztahova_synchronizace(old_rel: float, new_rel: float) -> bool:
 	if new_rel >= old_rel:
 		return false
@@ -4832,11 +4868,13 @@ func _vyzaduje_vztahova_synchronizace(old_rel: float, new_rel: float) -> bool:
 			return true
 	return false
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_vyzaduje_vztahova_synchronizace]
+# Ai generated or editted start (priloha_a.txt)
 func zlepsi_vztah_statu(tag_a: String, tag_b: String, amount: float = RELATION_STEP_PLAYER) -> float:
 	return uprav_vztah_statu(tag_a, tag_b, absf(amount))
 
 # Runs the local feature logic.
+# Ai generated or editted end (priloha_a.txt)
 func zhorsi_vztah_statu(tag_a: String, tag_b: String, amount: float = RELATION_STEP_PLAYER) -> float:
 	return uprav_vztah_statu(tag_a, tag_b, -absf(amount))
 
@@ -5063,7 +5101,8 @@ func vytvor_alianci_skupinu(nazev: String, level: int, zakladatel: String, cleno
 	_zaloguj_globalni_zpravu("Alliance", "%s founded alliance '%s' (%s)." % [founder, clean_name, nazev_urovne_aliance(target_level)], "alliance")
 	return {"ok": true, "id": alliance_id}
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
+# Ai generated or editted start (priloha_a.txt)
 func upravit_alianci_skupinu(alliance_id: String, novy_nazev: String = "", novy_level: int = -1) -> bool:
 	if not aliance_skupiny.has(alliance_id):
 		return false
@@ -5080,7 +5119,9 @@ func upravit_alianci_skupinu(alliance_id: String, novy_nazev: String = "", novy_
 		_synchronizuj_bilateralni_aliance_skupiny(alliance_id)
 	return changed
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [upravit_alianci_skupinu]
+# Ai generated or editted end (priloha_a.txt)
+# Ai generated or editted start (priloha_a.txt)
 func pridej_clena_do_aliance(alliance_id: String, tag: String, ignoruj_vztahove_podminky: bool = false) -> Dictionary:
 	if not aliance_skupiny.has(alliance_id):
 		return {"ok": false, "reason": "Alliance does not exist."}
@@ -5123,6 +5164,7 @@ func pridej_clena_do_aliance(alliance_id: String, tag: String, ignoruj_vztahove_
 	return {"ok": true}
 
 # Runs the local feature logic.
+# Ai generated or editted end (priloha_a.txt)
 func odeber_clena_z_aliance(alliance_id: String, tag: String) -> bool:
 	if not aliance_skupiny.has(alliance_id):
 		return false
@@ -5431,7 +5473,8 @@ func odeslat_aliancni_zadost(tag_a: String, tag_b: String, level: int, ignoruj_v
 		_pridej_popup_hraci(a, "Diplomacy", "Request for %s was sent to %s." % [nazev_urovne_aliance(target_level), b])
 	return true
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
+# Ai generated or editted start (priloha_a.txt)
 func _vyhodnot_aliancni_zadosti_pred_ai() -> void:
 	if cekajici_aliancni_zadosti.is_empty():
 		return
@@ -5463,6 +5506,7 @@ func _vyhodnot_aliancni_zadosti_pred_ai() -> void:
 				_pridej_popup_hraci(from_tag, "Diplomacy", "Country %s rejected your request for %s." % [to_tag, nazev_urovne_aliance(level)])
 
 # Runs the local feature logic.
+# Ai generated or editted end (priloha_a.txt)
 func uzavrit_neagresivni_smlouvu(tag_a: String, tag_b: String) -> bool:
 	var a = _normalizuj_tag(tag_a)
 	var b = _normalizuj_tag(tag_b)
@@ -5605,7 +5649,8 @@ func _expeluj_jednotky_bez_pristupu(filter_tag: String = "") -> void:
 	if ml and ml.has_method("aktualizuj_ikony_armad"):
 		ml.aktualizuj_ikony_armad()
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
+# Ai generated or editted start (priloha_a.txt)
 func _oprav_neplatne_vlastniky_armad() -> bool:
 	if map_data.is_empty():
 		return false
@@ -5649,6 +5694,7 @@ func _oprav_neplatne_vlastniky_armad() -> bool:
 	return changed
 
 # Feature logic entry point.
+# Ai generated or editted end (priloha_a.txt)
 func pozadej_vojensky_pristup(guest: String, host: String) -> bool:
 	var g = _normalizuj_tag(guest)
 	var h = _normalizuj_tag(host)
@@ -6031,7 +6077,8 @@ func hrac_prijmi_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> boo
 		return false
 	return _vykonej_prijeti_diplomaticke_zadosti(player_clean, req)
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [hrac_prijmi_diplomatickou_zadost]
+# Ai generated or editted start (priloha_a.txt)
 func hrac_odmitni_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> bool:
 	var player_clean = _normalizuj_tag(hrac_tag)
 	var from_clean = _normalizuj_tag(from_tag)
@@ -6068,6 +6115,7 @@ func hrac_odmitni_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> bo
 	return true
 
 # Feature logic entry point.
+# Ai generated or editted end (priloha_a.txt)
 func hrac_odmitni_vsechny_diplomaticke_zadosti(hrac_tag: String) -> int:
 	var player_clean = _normalizuj_tag(hrac_tag)
 	if player_clean == "":
@@ -6151,7 +6199,8 @@ func hrac_prijmi_vsechny_diplomaticke_zadosti(hrac_tag: String) -> int:
 	return accepted
 
 # Diplomacy helpers
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [hrac_prijmi_vsechny_diplomaticke_zadosti]
+# Ai generated or editted start (priloha_a.txt)
 func jsou_ve_valce(tag1: String, tag2: String) -> bool:
 	var klic = _klic_valky(tag1, tag2)
 	if klic == "":
@@ -6159,6 +6208,7 @@ func jsou_ve_valce(tag1: String, tag2: String) -> bool:
 	return valky.has(klic)
 
 # Clears temporary state.
+# Ai generated or editted end (priloha_a.txt)
 func vycisti_stat_po_kapitulaci(tag: String):
 	var target = tag.strip_edges().to_upper()
 	if target == "":
@@ -6414,7 +6464,8 @@ func _ma_byt_spojenec_povolan(state_tag: String, ally_tag: String, enemy_tag: St
 
 	return true
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_ma_byt_spojenec_povolan]
+# Ai generated or editted start (priloha_a.txt)
 func _aktivuj_aliance_po_vyhlaseni_valky(utocnik: String, obrance: String) -> void:
 	var attacker = _normalizuj_tag(utocnik)
 	var defender = _normalizuj_tag(obrance)
@@ -6455,6 +6506,7 @@ func _aktivuj_aliance_po_vyhlaseni_valky(utocnik: String, obrance: String) -> vo
 		)
 
 # Handles this gameplay/UI path.
+# Ai generated or editted end (priloha_a.txt)
 func vyhlasit_valku(utocnik: String, obrance: String):
 	var a = _normalizuj_tag(utocnik)
 	var b = _normalizuj_tag(obrance)
@@ -7040,7 +7092,8 @@ func _anektuj_cely_stat(vitez_tag: String, porazeny_tag: String) -> Dictionary:
 
 	return {"transferred": prevedeno}
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_anektuj_cely_stat]
+# Ai generated or editted start (priloha_a.txt)
 func _vezmi_cast_provincii(vitez_tag: String, porazeny_tag: String, count: int) -> Dictionary:
 	var vitez = _normalizuj_tag(vitez_tag)
 	var porazeny = _normalizuj_tag(porazeny_tag)
@@ -7083,7 +7136,9 @@ func _vezmi_cast_provincii(vitez_tag: String, porazeny_tag: String, count: int) 
 
 	return {"transferred": transferred}
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
+# Ai generated or editted end (priloha_a.txt)
+# Ai generated or editted start (priloha_a.txt)
 func _vezmi_konkretni_provincie(vitez_tag: String, porazeny_tag: String, selected_ids: Array) -> Dictionary:
 	var vitez = _normalizuj_tag(vitez_tag)
 	var porazeny = _normalizuj_tag(porazeny_tag)
@@ -7111,6 +7166,7 @@ func _vezmi_konkretni_provincie(vitez_tag: String, porazeny_tag: String, selecte
 	return {"transferred": transferred}
 
 # Applies incoming data to runtime state.
+# Ai generated or editted end (priloha_a.txt)
 func _nastav_vazala(overlord_tag: String, subject_tag: String) -> void:
 	var overlord = _normalizuj_tag(overlord_tag)
 	var subject = _normalizuj_tag(subject_tag)
@@ -7880,7 +7936,8 @@ func ma_cekajici_mirovou_konferenci_pro_stat(stat_tag: String) -> bool:
 				return true
 	return false
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [ma_cekajici_mirovou_konferenci_pro_stat]
+# Ai generated or editted start (priloha_a.txt)
 func hrac_uzavri_mirovou_konferenci(hrac_tag: String, conference_id: int, demands: Dictionary) -> Dictionary:
 	var player = _normalizuj_tag(hrac_tag)
 	if player == "" or not cekajici_mirove_konference.has(player):
@@ -7906,6 +7963,7 @@ func hrac_uzavri_mirovou_konferenci(hrac_tag: String, conference_id: int, demand
 	return result
 
 # Fetches data for callers.
+# Ai generated or editted end (priloha_a.txt)
 func ziskej_vazaly_statu(overlord_tag: String) -> Array:
 	var overlord = _normalizuj_tag(overlord_tag)
 	var out: Array = []
@@ -7948,7 +8006,8 @@ func jsou_vazalsky_spojeni(tag_a: String, tag_b: String) -> bool:
 		return false
 	return je_vazal_statu(a, b) or je_vazal_statu(b, a)
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [jsou_vazalsky_spojeni]
+# Ai generated or editted start (priloha_a.txt)
 func muze_vstoupit_na_uzemi(actor_tag: String, owner_tag: String) -> bool:
 	var actor = _normalizuj_tag(actor_tag)
 	var owner_state = _normalizuj_tag(owner_tag)
@@ -7967,6 +8026,7 @@ func muze_vstoupit_na_uzemi(actor_tag: String, owner_tag: String) -> bool:
 	return false
 
 # Feature logic entry point.
+# Ai generated or editted end (priloha_a.txt)
 func propustit_vazala(overlord_tag: String, subject_tag: String) -> bool:
 	var overlord = _normalizuj_tag(overlord_tag)
 	var subject = _normalizuj_tag(subject_tag)
@@ -8100,7 +8160,8 @@ func _klic_pair(tag_a: String, tag_b: String) -> String:
 		return "%s|%s" % [a, b]
 	return "%s|%s" % [b, a]
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_klic_pair]
+# Ai generated or editted start (priloha_a.txt)
 func _klic_valky(tag_a: String, tag_b: String) -> String:
 	var a = _normalizuj_tag(tag_a)
 	var b = _normalizuj_tag(tag_b)
@@ -8111,6 +8172,7 @@ func _klic_valky(tag_a: String, tag_b: String) -> String:
 	return "%s_%s" % [b, a]
 
 # Runs the local feature logic.
+# Ai generated or editted end (priloha_a.txt)
 func _normalizuj_valecne_klice() -> void:
 	if valky.is_empty():
 		return
@@ -8584,7 +8646,8 @@ func _zobraz_hlaseni_neagresivnich_smluv_hrace(zmeny: Array) -> void:
 			continue
 		_pridej_popup_hraci(str(target_tag), "Diplomacy", "\n".join(lines))
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
+# Ai generated or editted start (priloha_a.txt)
 func _zpracuj_ai_opusteni_alianci(ai_staty: Array) -> Array:
 	var zmeny_opusteni: Array = []
 	var processed_pairs: Dictionary = {}
@@ -8655,6 +8718,7 @@ func _zpracuj_ai_opusteni_alianci(ai_staty: Array) -> Array:
 	return zmeny_opusteni
 
 # Applies visual/UI updates.
+# Ai generated or editted end (priloha_a.txt)
 func _zobraz_hlaseni_opusteni_alianci_hrace(zmeny: Array) -> void:
 	if zmeny.is_empty():
 		return
@@ -8742,7 +8806,8 @@ func _zobraz_hlaseni_vztahu_hrace(zmeny: Array):
 			continue
 		_pridej_popup_hraci(str(target_tag), "Diplomacy", "\n".join(lines))
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_zobraz_hlaseni_vztahu_hrace]
+# Ai generated or editted start (priloha_a.txt)
 func _vyhodnot_mirove_nabidky_pred_ai():
 	if cekajici_mirove_nabidky.is_empty():
 		return
@@ -8781,6 +8846,7 @@ func _vyhodnot_mirove_nabidky_pred_ai():
 				_pridej_popup_zucastnenym_hracum(odesilatel, prijemce, "DIPLOMACY", no_msg)
 
 # Core flow for this feature.
+# Ai generated or editted end (priloha_a.txt)
 func zaregistruj_obsazeni_hlavniho_mesta(obrance: String, utocnik: String, capital_province_id: int):
 	if obrance == "" or utocnik == "" or obrance == utocnik:
 		return
@@ -8805,7 +8871,8 @@ func zaregistruj_obsazeni_hlavniho_mesta(obrance: String, utocnik: String, capit
 		"war"
 	)
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [zaregistruj_obsazeni_hlavniho_mesta]
+# Ai generated or editted start (priloha_a.txt)
 func vyhodnot_odlozene_kapitulace() -> Array:
 	var hotove: Array = []
 	var stale_cekaji: Array = []
@@ -8832,6 +8899,7 @@ func vyhodnot_odlozene_kapitulace() -> Array:
 	return hotove
 
 # Eligibility/guard check.
+# Ai generated or editted end (priloha_a.txt)
 func _je_more_provincie_v_datech(all_provinces: Dictionary, prov_id: int) -> bool:
 	if not all_provinces.has(prov_id):
 		return false
@@ -9053,7 +9121,8 @@ func _uloz_debug_turn_profile(total_ms: int, phases: Dictionary) -> void:
 		_debug_turn_history.remove_at(0)
 	_debug_turn_live_events.clear()
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_uloz_debug_turn_profile]
+# Ai generated or editted start (priloha_a.txt)
 func _log_turn_profile(total_ms: int, phases: Dictionary) -> void:
 	if not TURN_PROFILE_ENABLED:
 		return
@@ -9079,6 +9148,7 @@ func _log_turn_profile(total_ms: int, phases: Dictionary) -> void:
 	])
 
 # Feature logic entry point.
+# Ai generated or editted end (priloha_a.txt)
 func _log_ai_profile(total_ms: int, phases: Dictionary) -> void:
 	if not AI_PROFILE_ENABLED:
 		return
@@ -9156,7 +9226,8 @@ func _snapshot_lidske_kasy() -> Dictionary:
 		snapshot[t] = _ziskej_kasu_statu(t)
 	return snapshot
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_snapshot_lidske_kasy]
+# Ai generated or editted start (priloha_a.txt)
 func _with_finance_projection_cash_overrides(overrides: Dictionary, callback: Callable):
 	# mala helper vrstva: docasne prehodi cash snapshot jen pro vypocet projekce.
 	var previous = _finance_projection_cash_overrides.duplicate(true)
@@ -9166,6 +9237,7 @@ func _with_finance_projection_cash_overrides(overrides: Dictionary, callback: Ca
 	return result
 
 # Core flow for this feature.
+# Ai generated or editted end (priloha_a.txt)
 func _money_debug_log_delta(stage: String, before: Dictionary) -> void:
 	if not _ai_debug_mode_enabled:
 		return
@@ -9181,7 +9253,8 @@ func _money_debug_log_delta(stage: String, before: Dictionary) -> void:
 			continue
 		_money_debug("%s %s delta=%.2f cash_before=%.2f cash_after=%.2f" % [stage, t, delta, old_cash, new_cash])
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_money_debug_log_delta]
+# Ai generated or editted start (priloha_a.txt)
 func _turn_slice_wait(counter: int, chunk: int) -> int:
 	# Keep slicing only for low-end potato mode to maximize turn throughput on normal PCs.
 	if not TURN_FRAME_SLICE_ENABLED or not _potato_mode_enabled:
@@ -9194,6 +9267,7 @@ func _turn_slice_wait(counter: int, chunk: int) -> int:
 	return next_counter
 
 # Runs the local feature logic.
+# Ai generated or editted end (priloha_a.txt)
 func ukonci_kolo():
 	# End-turn pipeline runs in deterministic phases so profiling output stays readable
 	# and multiplayer turn-switch logic can short-circuit before global AI processing.
@@ -10117,7 +10191,8 @@ func _ai_je_blizko_fronty(state_tag: String, province_id: int, frontline_cache: 
 			return true
 	return false
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_ai_je_blizko_fronty]
+# Ai generated or editted start (priloha_a.txt)
 func _ai_urci_roli_jednotky(state_tag: String, province_id: int, own_capital_id: int, frontline_cache: Dictionary) -> String:
 	if not map_data.has(province_id):
 		return "reserve"
@@ -10143,6 +10218,7 @@ func _ai_urci_roli_jednotky(state_tag: String, province_id: int, own_capital_id:
 	return "reserve"
 
 # Handles this gameplay/UI path.
+# Ai generated or editted end (priloha_a.txt)
 func _ai_provincie_hranicni_k_targetu(state_tag: String, province_id: int, target_owner: String) -> bool:
 	var owner = _normalizuj_tag(state_tag)
 	var target = _normalizuj_tag(target_owner)
@@ -10159,7 +10235,8 @@ func _ai_provincie_hranicni_k_targetu(state_tag: String, province_id: int, targe
 			return true
 	return false
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_ai_provincie_hranicni_k_targetu]
+# Ai generated or editted start (priloha_a.txt)
 func _ai_provincie_hranicni_k_neprateli(state_tag: String, province_id: int, enemies_set: Dictionary) -> bool:
 	if enemies_set.is_empty() or not map_data.has(province_id):
 		return false
@@ -10172,6 +10249,7 @@ func _ai_provincie_hranicni_k_neprateli(state_tag: String, province_id: int, ene
 	return false
 
 # Core flow for this feature.
+# Ai generated or editted end (priloha_a.txt)
 func _ai_stat_ma_hranici_s_neprateli(state_tag: String, owned: Array, enemies_set: Dictionary) -> bool:
 	if enemies_set.is_empty():
 		return false
@@ -10576,7 +10654,8 @@ func _ai_ziskej_recruit_emergency_level(state_tag: String, owned: Array, at_war_
 	level += clamp((frontline_ratio - 0.28) / 0.42, 0.0, 1.0) * 0.10
 	return clamp(level, 0.0, 1.0)
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_ai_ziskej_recruit_emergency_level]
+# Ai generated or editted start (priloha_a.txt)
 func _ai_odhad_dostupnych_rekrutu(state_tag: String, owned: Array, recruit_targets: Array, at_war_state: bool) -> int:
 	var used: Dictionary = {}
 	var pool: Array = []
@@ -10635,7 +10714,9 @@ func _ai_odhad_dostupnych_rekrutu(state_tag: String, owned: Array, recruit_targe
 		raw_available += max(0, recruits)
 	return raw_available
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
+# Ai generated or editted end (priloha_a.txt)
+# Ai generated or editted start (priloha_a.txt)
 func _ai_odhad_max_rekrutu_na_tah(state_tag: String, recruit_targets: Array, recruit_order_cap: int, at_war_state: bool, state_pressure: float, recruit_spend_cap: float, emergency_level: float = 0.0) -> int:
 	if recruit_targets.is_empty() or recruit_order_cap <= 0:
 		return 0
@@ -10731,6 +10812,7 @@ func _ai_odhad_max_rekrutu_na_tah(state_tag: String, recruit_targets: Array, rec
 	return recruited_units
 
 # Handles this gameplay/UI path.
+# Ai generated or editted end (priloha_a.txt)
 func _ai_vypocitej_hotovostni_rezervu(state_tag: String, owned: Array) -> float:
 	var upkeep_total = _spocitej_naklady_udrzby_statu(state_tag)
 	var pressure = _ai_spocitej_tlak_statu(state_tag, owned)
@@ -10768,7 +10850,8 @@ func _ai_uprav_hotovostni_rezervu_pro_spending(state_tag: String, reserve: float
 	adjusted = max(min_guard, adjusted)
 	return clamp(adjusted, 0.0, treasury)
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_ai_uprav_hotovostni_rezervu_pro_spending]
+# Ai generated or editted start (priloha_a.txt)
 func _ai_skore_vyzkumu(state_tag: String, project: Dictionary, pressure: float, treasury: float) -> float:
 	var mods = project.get("modifiers", {}) as Dictionary
 	var cost = max(1.0, float(project.get("cost", 1.0)))
@@ -10799,6 +10882,7 @@ func _ai_skore_vyzkumu(state_tag: String, project: Dictionary, pressure: float, 
 	return score / cost
 
 # Core flow for this feature.
+# Ai generated or editted end (priloha_a.txt)
 func _ai_zvaz_vyzkum(state_tag: String, reserve: float, pressure: float) -> bool:
 	if not RESEARCH_PROJECTS_ENABLED:
 		return false
@@ -12455,7 +12539,8 @@ func _ai_pripis_pasivni_ekonomiku_mimo_subset(ai_staty_all: Array, ai_staty_subs
 			_ai_debug_last_spending_by_state[owner_tag] = {}
 		(_ai_debug_last_spending_by_state[owner_tag] as Dictionary)["income"] = income_gained_this_turn
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
+# Ai generated or editted start (priloha_a.txt)
 func _seradene_ai_provincie(state_tag: String) -> Array:
 	var ids: Array = []
 	if _turn_cache_valid and _turn_state_owned_provinces.has(state_tag):
@@ -12511,6 +12596,7 @@ func _seradene_ai_provincie(state_tag: String) -> Array:
 	return ids
 
 # Runs the local feature logic.
+# Ai generated or editted end (priloha_a.txt)
 func _ai_ma_namorni_prilezitost(state_tag: String, from_id: int, preferred_front_owner: String = "") -> bool:
 	if state_tag == "" or state_tag == "SEA":
 		return false
@@ -12841,7 +12927,8 @@ func _ma_smyls_vyhlasit_valku(state_tag: String, target_owner: String, from_id: 
 		_ai_debug("war decide %s->%s reason=standard border=%.2f local=%.2f strategic=%.2f" % [state_tag, target_owner, ratio, local_ratio, strategic_ratio])
 	return final_ok
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
+# Ai generated or editted start (priloha_a.txt)
 func _ai_otevri_valky(ai_staty: Array) -> int:
 	var opened := 0
 	for owner_any in ai_staty:
@@ -12946,7 +13033,9 @@ func _ai_otevri_valky(ai_staty: Array) -> int:
 
 	return opened
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
+# Ai generated or editted end (priloha_a.txt)
+# Ai generated or editted start (priloha_a.txt)
 func _navrhni_krizovy_protiutok(state_tag: String, from_id: int, own_capital_id: int, frontline_cache: Dictionary = {}) -> Dictionary:
 	if not map_data.has(from_id):
 		return {}
@@ -13004,6 +13093,7 @@ func _navrhni_krizovy_protiutok(state_tag: String, from_id: int, own_capital_id:
 	return {"from": from_id, "to": best_target, "amount": best_amount}
 
 # Pulls current state data.
+# Ai generated or editted end (priloha_a.txt)
 func _ziskej_ai_vztah_cached(tag_a: String, tag_b: String) -> float:
 	if not _ai_phase_cache_active:
 		return ziskej_vztah_statu(tag_a, tag_b)
@@ -13463,7 +13553,8 @@ func _navrhni_utok(state_tag: String, from_id: int, frontline_cache: Dictionary 
 		"amount": best_amount
 	}
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
+# Ai generated or editted start (priloha_a.txt)
 func _navrhni_namorni_presun(state_tag: String, from_id: int, preferred_front_owner: String = "") -> Dictionary:
 	if not map_data.has(from_id):
 		return {}
@@ -13542,6 +13633,7 @@ func _navrhni_namorni_presun(state_tag: String, from_id: int, preferred_front_ow
 	}
 
 # Applies updates and syncs dependent state.
+# Ai generated or editted end (priloha_a.txt)
 func nastav_potato_mode(enabled: bool) -> void:
 	_potato_mode_enabled = enabled
 
@@ -13656,6 +13748,7 @@ func ziskej_ai_debug_snapshot(state_tag: String = "") -> Dictionary:
 		"ai_profile": _debug_last_ai_profile.duplicate(true),
 		"turn_history": ziskej_debug_historii_tahu(6)
 	}
+
 
 
 

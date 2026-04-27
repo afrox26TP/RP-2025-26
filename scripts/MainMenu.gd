@@ -1,4 +1,4 @@
-# ==================================================================================================
+﻿# ==================================================================================================
 #  __  __    _    ____  _____   ______   __     _    _____ ____   _____  __
 # |  \/  |  / \  |  _ \| ____| | __ ) \ / /    / \  |  ___|  _ \ / _ \ \/ /
 # | |\/| | / _ \ | | | |  _|   |  _ \\ V /    / _ \ | |_  | |_) | | | |\  /
@@ -862,7 +862,7 @@ func _ensure_ai_aggression_control() -> void:
 	root_vbox.move_child(_browser_settings_country_separator, insert_index + 1)
 
 	# Initialize the global aggression slider from current stored value.
-	_set_ai_aggression_ui_for_tag("")  # tag ignored Ă˘â‚¬â€ť always shows global value
+	_set_ai_aggression_ui_for_tag("")  # tag ignored Ä‚ËĂ˘â€šÂ¬Ă˘â‚¬ĹĄ always shows global value
 
 # Handles this gameplay/UI path.
 func _ensure_selected_players_flag_list() -> void:
@@ -1427,7 +1427,8 @@ func _napln_language_option() -> void:
 	language_option.select(0)
 	language_option.disabled = true
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_napln_language_option]
+# Ai generated or editted start (priloha_a.txt)
 func _jazyk_z_option() -> String:
 	var idx = language_option.selected
 	if idx < 0:
@@ -1438,6 +1439,7 @@ func _jazyk_z_option() -> String:
 	return _normalizuj_jazyk(str(metadata))
 
 # Writes new values and refreshes related state.
+# Ai generated or editted end (priloha_a.txt)
 func _nastav_settings_ui_z_dat() -> void:
 	camera_speed_slider.value = float(nastaveni_data["controls"]["camera_speed"])
 	zoom_speed_slider.value = float(nastaveni_data["controls"]["zoom_speed"])
@@ -1601,7 +1603,8 @@ func _aktualizuj_settings_header_stav(dirty: bool) -> void:
 		settings_header_subtitle.text = str(t["settings_header_subtitle_clean"])
 		settings_header_subtitle.modulate = Color(0.72, 0.88, 1.0, 1.0)
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_aktualizuj_settings_header_stav]
+# Ai generated or editted start (priloha_a.txt)
 func _read_settings_from_ui() -> Dictionary:
 	return {
 		"camera_speed": int(round(camera_speed_slider.value)),
@@ -1618,6 +1621,7 @@ func _read_settings_from_ui() -> Dictionary:
 	}
 
 # Runs the local feature logic.
+# Ai generated or editted end (priloha_a.txt)
 func _settings_state_equals(a: Dictionary, b: Dictionary) -> bool:
 	for key in ["camera_speed", "zoom_speed", "invert_zoom", "language", "fullscreen", "vsync", "potato_mode", "ai_debug_mode", "skip_battle_reports", "master_volume"]:
 		if not a.has(key) or not b.has(key):
@@ -1687,7 +1691,8 @@ func _resolve_provinces_data_path() -> String:
 			return path
 	return str(PROVINCES_DATA_PATHS[PROVINCES_DATA_PATHS.size() - 1])
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_resolve_provinces_data_path]
+# Ai generated or editted start (priloha_a.txt)
 func _build_column_index(header_line: String) -> Dictionary:
 	var out: Dictionary = {}
 	var cols = header_line.split(";")
@@ -1696,6 +1701,7 @@ func _build_column_index(header_line: String) -> Dictionary:
 	return out
 
 # Search helper over available data.
+# Ai generated or editted end (priloha_a.txt)
 func _find_column_idx(col_index: Dictionary, names: Array, fallback_idx: int = -1) -> int:
 	for raw_name in names:
 		var key = str(raw_name).strip_edges().to_lower()
@@ -1721,13 +1727,15 @@ func _read_float(parts: Array, idx: int, default_val: float = 0.0) -> float:
 		return default_val
 	return float(raw)
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_read_float]
+# Ai generated or editted start (priloha_a.txt)
 func _read_text(parts: Array, idx: int, default_val: String = "") -> String:
 	if idx < 0 or idx >= parts.size():
 		return default_val
 	return str(parts[idx]).strip_edges()
 
 # Data/resource load and sanity checks.
+# Ai generated or editted end (priloha_a.txt)
 func _nacti_data_statu_pro_browser():
 	country_stats.clear()
 	var data_path = _resolve_provinces_data_path()
@@ -2304,7 +2312,7 @@ func _vytvor_load_dialog() -> void:
 	_load_dialog.ok_button_text = "Close"
 	add_child(_load_dialog)
 
-	# Hide the native OK button Ă˘â‚¬â€ś our footer provides its own Close
+	# Hide the native OK button Ä‚ËĂ˘â€šÂ¬Ă˘â‚¬Ĺ› our footer provides its own Close
 	_load_dialog.get_ok_button().hide()
 
 	var root = MarginContainer.new()
@@ -2322,13 +2330,13 @@ func _vytvor_load_dialog() -> void:
 	vbox.add_theme_constant_override("separation", 10)
 	root.add_child(vbox)
 
-	# Title Ă˘â‚¬â€ś matches BrowserTitle font size
+	# Title Ä‚ËĂ˘â€šÂ¬Ă˘â‚¬Ĺ› matches BrowserTitle font size
 	var title_lbl = Label.new()
 	title_lbl.text = "Load Game"
 	title_lbl.add_theme_font_size_override("font_size", 28)
 	vbox.add_child(title_lbl)
 
-	# List panel Ă˘â‚¬â€ś matches ListPanel structure from Country Browser
+	# List panel Ä‚ËĂ˘â€šÂ¬Ă˘â‚¬Ĺ› matches ListPanel structure from Country Browser
 	var list_panel = PanelContainer.new()
 	list_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.add_child(list_panel)
@@ -2355,13 +2363,13 @@ func _vytvor_load_dialog() -> void:
 	_load_scroll_vbox.add_theme_constant_override("separation", 6)
 	scroll.add_child(_load_scroll_vbox)
 
-	# Status label Ă˘â‚¬â€ś BrowserFlowHint color
+	# Status label Ä‚ËĂ˘â€šÂ¬Ă˘â‚¬Ĺ› BrowserFlowHint color
 	_load_status_label = Label.new()
 	_load_status_label.text = ""
 	_load_status_label.add_theme_color_override("font_color", Color(0.8, 0.870588, 0.964706, 1.0))
 	vbox.add_child(_load_status_label)
 
-	# Footer buttons Ă˘â‚¬â€ś matches BrowserButtons style exactly
+	# Footer buttons Ä‚ËĂ˘â€šÂ¬Ă˘â‚¬Ĺ› matches BrowserButtons style exactly
 	var browser_btns = HBoxContainer.new()
 	browser_btns.add_theme_constant_override("separation", 10)
 	vbox.add_child(browser_btns)
@@ -2621,7 +2629,8 @@ func _spust_load_ze_slotu(slot_key: String) -> void:
 			if loader.has_method("aktualizuj_vlajky_hlavnich_mest"):
 				loader.aktualizuj_vlajky_hlavnich_mest()
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
+# Ai generated or editted start (priloha_a.txt)
 func _spust_hru_vyberem(player_tags: Array = [], spectate_mode: bool = false):
 	# One entry point for both normal player start and observer/spectate start.
 	# Pro male dite: tohle je hlavni cudlik v kodu, co opravdu pusti mapu.
@@ -2657,6 +2666,7 @@ func _spust_hru_vyberem(player_tags: Array = [], spectate_mode: bool = false):
 	get_tree().change_scene_to_file(MAP_SCENE_PATH)
 
 # Reacts to incoming events.
+# Ai generated or editted end (priloha_a.txt)
 func _on_new_game_pressed():
 	# Reset setup state so previous browser/session choices cannot leak into new game.
 	# Pro male dite: zmacknu New Game -> vse stare se vycisti a zacina se od nuly.
@@ -2818,5 +2828,6 @@ func _formatuj_cislo(cislo: int) -> String:
 			vysledek += " "
 		vysledek += text_cisla[i]
 	return vysledek
+
 
 

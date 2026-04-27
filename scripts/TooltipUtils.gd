@@ -1,4 +1,4 @@
-# ==================================================================================================
+﻿# ==================================================================================================
 #  __  __    _    ____  _____   ______   __     _    _____ ____   _____  __
 # |  \/  |  / \  |  _ \| ____| | __ ) \ / /    / \  |  ___|  _ \ / _ \ \/ /
 # | |\/| | / _ \ | | | |  _|   |  _ \\ V /    / _ \ | |_  | |_) | | | |\  /
@@ -146,7 +146,8 @@ static func _apply_recursive(node: Node) -> void:
 		# Recursive walk lets us apply defaults to whole UI trees with one call.
 		_apply_recursive(child)
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
+# Ai generated or editted start (priloha_a.txt)
 static func _guess_tooltip(control: Control) -> String:
 	if control is Button:
 		var button_text := (control as Button).text.strip_edges()
@@ -188,4 +189,6 @@ static func _guess_tooltip(control: Control) -> String:
 
 	return ""
 
+
+# Ai generated or editted end (priloha_a.txt)
 

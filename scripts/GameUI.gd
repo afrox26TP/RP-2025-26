@@ -1,4 +1,4 @@
-# ==================================================================================================
+﻿# ==================================================================================================
 #  __  __    _    ____  _____   ______   __     _    _____ ____   _____  __
 # |  \/  |  / \  |  _ \| ____| | __ ) \ / /    / \  |  ___|  _ \ / _ \ \/ /
 # | |\/| | / _ \ | | | |  _|   |  _ \\ V /    / _ \ | |_  | |_) | | | |\  /
@@ -5886,7 +5886,8 @@ func _obnov_alliance_dialog_obsah(target_tag: String) -> void:
 			bilateral_label.text = "Bilateral status with %s: %s (relation: %.1f)" % [target_name, level_name, rel]
 			_alliance_dialog_list.add_child(bilateral_label)
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
+# Ai generated or editted start (priloha_a.txt)
 func _pridej_alliance_kartu(alliance: Dictionary, target_tag: String, view_mode: String = "own") -> void:
 	var card = PanelContainer.new()
 	var card_style = StyleBoxFlat.new()
@@ -6075,6 +6076,7 @@ func _pridej_alliance_kartu(alliance: Dictionary, target_tag: String, view_mode:
 			_aplikuj_ingame_tlacitko_styl(disband_btn, true)
 			btn_row.add_child(disband_btn)
 
+# Ai generated or editted end (priloha_a.txt)
 func _on_alliance_create_pressed() -> void:
 	if _alliance_create_popup:
 		if _alliance_create_name_input:
@@ -6765,7 +6767,8 @@ func _vytvor_trade_dialog() -> void:
 	bottom.add_child(close_btn)
 	_trade_vytvor_province_picker_popup()
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
+# Ai generated or editted start (priloha_a.txt)
 func _trade_close_dialog() -> void:
 	_trade_zrus_vyber_provincii_z_mapy(false)
 	_trade_zrus_vyber_valecneho_cile_z_mapy(false)
@@ -6774,6 +6777,7 @@ func _trade_close_dialog() -> void:
 		_trade_dialog.hide()
 
 # Condition check helper.
+# Ai generated or editted end (priloha_a.txt)
 func je_aktivni_vyber_trade_valky_na_mape() -> bool:
 	return _ceka_na_vyber_trade_war_cile
 
@@ -6864,7 +6868,8 @@ func obsluha_vyberu_trade_valky_z_mapy(data: Dictionary) -> bool:
 	_trade_refresh_dialog_ui()
 	return true
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [obsluha_vyberu_trade_valky_z_mapy]
+# Ai generated or editted start (priloha_a.txt)
 func _trade_vytvor_province_picker_popup() -> void:
 	if _trade_province_picker_popup != null:
 		return
@@ -6924,6 +6929,7 @@ func _trade_vytvor_province_picker_popup() -> void:
 	_trade_province_picker_cancel_btn.pressed.connect(_trade_zrus_vyber_provincii_z_mapy)
 	close_row.add_child(_trade_province_picker_cancel_btn)
 
+# Ai generated or editted end (priloha_a.txt)
 func _trade_seznam_provincii_statu(state_tag: String) -> Array:
 	var tag = state_tag.strip_edges().to_upper()
 	var out: Array = []
@@ -7056,7 +7062,8 @@ func obsluha_vyberu_trade_provincie_z_mapy(result: Dictionary, _province_id: int
 	_trade_map_selected_ids = (result.get("selected", []) as Array).duplicate()
 	_trade_obnov_popup_vyberu_provincii_info()
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [obsluha_vyberu_trade_provincie_z_mapy]
+# Ai generated or editted start (priloha_a.txt)
 func _trade_obnov_popup_vyberu_provincii_info() -> void:
 	if _trade_province_picker_info:
 		_trade_province_picker_info.text = "Source state: %s" % (_trade_map_pick_source_tag if _trade_map_pick_source_tag != "" else "-")
@@ -7067,6 +7074,7 @@ func _trade_obnov_popup_vyberu_provincii_info() -> void:
 	if _trade_province_picker_popup and _trade_province_picker_popup.visible:
 		_trade_pozicuj_province_picker_popup()
 
+# Ai generated or editted end (priloha_a.txt)
 func _trade_pozicuj_province_picker_popup() -> void:
 	if _trade_province_picker_popup == null:
 		return
@@ -7090,7 +7098,8 @@ func _trade_pozicuj_province_picker_popup() -> void:
 	y = clampf(y, min_y, viewport_size.y - panel_size.y - margin)
 	_trade_province_picker_popup.position = Vector2(x, y)
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_trade_pozicuj_province_picker_popup]
+# Ai generated or editted start (priloha_a.txt)
 func _trade_parse_selected_province_ids(raw_text: String) -> Array:
 	var text = raw_text.strip_edges().replace(";", ",").replace(" ", "")
 	if text == "":
@@ -7106,6 +7115,7 @@ func _trade_parse_selected_province_ids(raw_text: String) -> Array:
 	return out
 
 # Handles this gameplay/UI path.
+# Ai generated or editted end (priloha_a.txt)
 func _trade_potvrd_vyber_provincii_z_mapy() -> void:
 	if not _ceka_na_vyber_trade_provincie:
 		return
@@ -7148,7 +7158,8 @@ func _trade_potvrd_vyber_provincii_z_mapy() -> void:
 	_trade_set_selected_slot(side, "province")
 	_trade_refresh_dialog_ui()
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
+# Ai generated or editted start (priloha_a.txt)
 func _trade_zrus_vyber_provincii_z_mapy(obnovit_hlavni_dialog: bool = true) -> void:
 	var map_node = _ziskej_map_node_pro_mir()
 	if map_node and map_node.has_method("zrus_rezim_vyberu_trade_provincie"):
@@ -7167,6 +7178,7 @@ func _trade_zrus_vyber_provincii_z_mapy(obnovit_hlavni_dialog: bool = true) -> v
 	_trade_refresh_dialog_ui()
 
 # Runs the local feature logic.
+# Ai generated or editted end (priloha_a.txt)
 func _trade_vytvor_stranu(side: int) -> PanelContainer:
 	var panel = PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -8073,12 +8085,14 @@ func _vypocitej_settings_dialog_size(viewport_size: Vector2) -> Vector2i:
 		min(SETTINGS_DIALOG_DEFAULT_SIZE.y, available_h)
 	)
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_vypocitej_settings_dialog_size]
+# Ai generated or editted start (priloha_a.txt)
 func _pozicuj_save_load_popupy() -> void:
 	if _save_dialog:
 		var vp = get_viewport().get_visible_rect().size
 		_save_dialog.position = Vector2((vp.x - _save_dialog.size.x) * 0.5, (vp.y - _save_dialog.size.y) * 0.5)
 
+# Ai generated or editted end (priloha_a.txt)
 func _ziskej_map_kameru() -> Node:
 	var map_cam = get_tree().current_scene.find_child("Camera2D", true, false)
 	if map_cam != null and map_cam.has_method("_nacti_ovladani_ze_settings"):
@@ -8348,7 +8362,8 @@ func _on_load_dialog_confirm_pressed() -> void:
 	else:
 		await zobraz_systemove_hlaseni("Load", "Load failed.")
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_on_load_dialog_confirm_pressed]
+# Ai generated or editted start (priloha_a.txt)
 func _smaz_load_slot(slot_name: String) -> void:
 	var ok = false
 	if slot_name == "__legacy__" and GameManager and GameManager.has_method("smaz_legacy_save"):
@@ -8363,6 +8378,7 @@ func _smaz_load_slot(slot_name: String) -> void:
 		await zobraz_systemove_hlaseni("Load", "Failed to delete save slot.")
 
 # Callback for UI/game events.
+# Ai generated or editted end (priloha_a.txt)
 func _on_pause_resume_pressed() -> void:
 	_zavri_pause_menu()
 
@@ -8775,7 +8791,8 @@ func _vytvor_otisk_diplomaticke_fronty(queue: Array) -> String:
 	parts.sort()
 	return "||".join(parts)
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_vytvor_otisk_diplomaticke_fronty]
+# Ai generated or editted start (priloha_a.txt)
 func _potlac_diplomatickou_frontu_do_zmeny() -> void:
 	if diplomacy_request_popup == null:
 		return
@@ -8794,6 +8811,7 @@ func _potlac_diplomatickou_frontu_do_zmeny() -> void:
 	_aktualizuj_pozice_popupu()
 
 # Updates derived state and UI.
+# Ai generated or editted end (priloha_a.txt)
 func _aktualizuj_popup_diplomatickych_zadosti():
 	_popup_request_from_tag = ""
 	if not diplomacy_request_popup:
@@ -10687,4 +10705,5 @@ func _aktualizuj_diplomacii_tlacitka(target_tag: String):
 				_military_access_btn.text = "Request military access"
 				_military_access_btn.disabled = false
 			_military_access_btn.show()
+
 

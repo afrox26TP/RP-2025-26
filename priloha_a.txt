@@ -1,0 +1,115 @@
+# AI Disclosure (Coding Assistance)
+
+Date: 2026-04-27
+Project: RP-2025-26-main
+
+This document discloses code areas that are  AI-assisted (LLM)
+
+### scripts/CountryLabelsManager.gd
+
+- `scripts/CountryLabelsManager.gd:91`
+
+### scripts/GameManager.gd
+
+- `scripts/GameManager.gd:535`
+- `scripts/GameManager.gd:983`
+- `scripts/GameManager.gd:1095`
+- `scripts/GameManager.gd:1541`
+- `scripts/GameManager.gd:1570`
+- `scripts/GameManager.gd:1670`
+- `scripts/GameManager.gd:1886`
+- `scripts/GameManager.gd:2011`
+- `scripts/GameManager.gd:2066`
+- `scripts/GameManager.gd:2382`
+- `scripts/GameManager.gd:2911`
+- `scripts/GameManager.gd:3424`
+- `scripts/GameManager.gd:3718`
+- `scripts/GameManager.gd:4133`
+- `scripts/GameManager.gd:4296`
+- `scripts/GameManager.gd:4355`
+- `scripts/GameManager.gd:4682`
+- `scripts/GameManager.gd:4803`
+- `scripts/GameManager.gd:4835`
+- `scripts/GameManager.gd:5066`
+- `scripts/GameManager.gd:5083`
+- `scripts/GameManager.gd:5434`
+- `scripts/GameManager.gd:5608`
+- `scripts/GameManager.gd:6034`
+- `scripts/GameManager.gd:6154`
+- `scripts/GameManager.gd:6417`
+- `scripts/GameManager.gd:7043`
+- `scripts/GameManager.gd:7086`
+- `scripts/GameManager.gd:7883`
+- `scripts/GameManager.gd:7951`
+- `scripts/GameManager.gd:8103`
+- `scripts/GameManager.gd:8587`
+- `scripts/GameManager.gd:8745`
+- `scripts/GameManager.gd:8808`
+- `scripts/GameManager.gd:9056`
+- `scripts/GameManager.gd:9159`
+- `scripts/GameManager.gd:9184`
+- `scripts/GameManager.gd:10120`
+- `scripts/GameManager.gd:10162`
+- `scripts/GameManager.gd:10579`
+- `scripts/GameManager.gd:10638`
+- `scripts/GameManager.gd:10771`
+- `scripts/GameManager.gd:12458`
+- `scripts/GameManager.gd:12844`
+- `scripts/GameManager.gd:12949`
+- `scripts/GameManager.gd:13466`
+
+### scripts/GameUI.gd
+
+- `scripts/GameUI.gd:5889`
+- `scripts/GameUI.gd:6768`
+- `scripts/GameUI.gd:6867`
+- `scripts/GameUI.gd:7059`
+- `scripts/GameUI.gd:7093`
+- `scripts/GameUI.gd:7151`
+- `scripts/GameUI.gd:8076`
+- `scripts/GameUI.gd:8351`
+- `scripts/GameUI.gd:8778`
+
+### scripts/InfoUI.gd
+
+- `scripts/InfoUI.gd:101`
+- `scripts/InfoUI.gd:402`
+- `scripts/InfoUI.gd:457`
+- `scripts/InfoUI.gd:1167`
+
+### scripts/MainMenu.gd
+
+- `scripts/MainMenu.gd:1430`
+- `scripts/MainMenu.gd:1604`
+- `scripts/MainMenu.gd:1690`
+- `scripts/MainMenu.gd:1724`
+- `scripts/MainMenu.gd:2624`
+
+### scripts/TooltipUtils.gd
+
+- `scripts/TooltipUtils.gd:149`
+
+### scripts/TopBar.gd
+
+- `scripts/TopBar.gd:97`
+- `scripts/TopBar.gd:380`
+- `scripts/TopBar.gd:758`
+
+### scripts/map_interaction.gd
+
+- `scripts/map_interaction.gd:579`
+- `scripts/map_interaction.gd:939`
+- `scripts/map_interaction.gd:1406`
+
+### scripts/map_loader.gd
+
+- `scripts/map_loader.gd:1222`
+- `scripts/map_loader.gd:1288`
+- `scripts/map_loader.gd:1452`
+- `scripts/map_loader.gd:2569`
+- `scripts/map_loader.gd:2888`
+- `scripts/map_loader.gd:2974`
+
+
+
+

@@ -1,4 +1,4 @@
-# ==================================================================================================
+﻿# ==================================================================================================
 #  __  __    _    ____  _____   ______   __     _    _____ ____   _____  __
 # |  \/  |  / \  |  _ \| ____| | __ ) \ / /    / \  |  ___|  _ \ / _ \ \/ /
 # | |\/| | / _ \ | | | |  _|   |  _ \\ V /    / _ \ | |_  | |_) | | | |\  /
@@ -1219,7 +1219,8 @@ func _aktualizuj_anim_markery(markery: Array, delta: float) -> Array:
 
 	return out
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
+# Ai generated or editted start (priloha_a.txt)
 func _sample_polyline_position(points: PackedVector2Array, cumulative_lengths: PackedFloat32Array, distance: float) -> Dictionary:
 	if points.size() < 2 or cumulative_lengths.size() < 2:
 		return {"position": Vector2.ZERO, "angle": 0.0}
@@ -1251,6 +1252,7 @@ func _sample_polyline_position(points: PackedVector2Array, cumulative_lengths: P
 		"angle": seg_dir.angle()
 	}
 
+# Ai generated or editted end (priloha_a.txt)
 func _pridej_animovany_marker(container: Node2D, marker_store: Array, start_pos: Vector2, end_pos: Vector2, color: Color, speed: float, phase: float, width: float):
 	var dir = end_pos - start_pos
 	var length = dir.length()
@@ -1285,7 +1287,8 @@ func _pridej_animovany_marker(container: Node2D, marker_store: Array, start_pos:
 		"progress": fposmod(phase, 1.0)
 	})
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
+# Ai generated or editted start (priloha_a.txt)
 func _pridej_animovany_marker_po_linii(container: Node2D, marker_store: Array, poly_points: PackedVector2Array, color: Color, speed: float, phase: float, width: float):
 	if poly_points.size() < 2:
 		return
@@ -1330,6 +1333,7 @@ func _pridej_animovany_marker_po_linii(container: Node2D, marker_store: Array, p
 	})
 
 # Resource loading with validation.
+# Ai generated or editted end (priloha_a.txt)
 func load_provinces():
 	# Open data
 	var data_path = _resolve_provinces_data_path()
@@ -1449,7 +1453,8 @@ func load_provinces():
 	_rebuild_movement_topology_cache()
 	_invalidate_naval_reachability_cache()
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
+# Ai generated or editted start (priloha_a.txt)
 func generuj_nazvy_provincii():
 	var label_container = Node2D.new()
 	label_container.name = "ProvinceLabels"
@@ -1521,6 +1526,7 @@ func generuj_nazvy_provincii():
 			umistene_pozice.append(pozice)
 
 # flow
+# Ai generated or editted end (priloha_a.txt)
 func aktualizuj_vlajky_hlavnich_mest() -> void:
 	var labels = get_node_or_null("ProvinceLabels")
 	if labels == null:
@@ -2566,7 +2572,8 @@ func oznac_pristavy_k_aktualizaci():
 	_port_icons_dirty = true
 
 # Activates target selection mode
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [oznac_pristavy_k_aktualizaci]
+# Ai generated or editted start (priloha_a.txt)
 func aktivuj_rezim_vyberu_cile(from_id: int, max_troops: int):
 	vybrana_armada_od = from_id
 	vybrana_armada_max = max_troops
@@ -2577,6 +2584,7 @@ func aktivuj_rezim_vyberu_cile(from_id: int, max_troops: int):
 	print("Click on the map to select a move target.")
 
 # ui glue
+# Ai generated or editted end (priloha_a.txt)
 func _ziskej_provincie_statu_v_mape(state_tag: String) -> Array:
 	var out: Array = []
 	var wanted = state_tag.strip_edges().to_upper()
@@ -2885,7 +2893,8 @@ func zrus_rezim_vyberu_hlavniho_mesta() -> void:
 	if sprite and sprite.has_method("vycisti_nahled_hlavniho_mesta"):
 		sprite.vycisti_nahled_hlavniho_mesta()
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [zrus_rezim_vyberu_hlavniho_mesta]
+# Ai generated or editted start (priloha_a.txt)
 func aktivuj_rezim_vyberu_hlavniho_mesta(state_tag: String) -> Dictionary:
 	var state = state_tag.strip_edges().to_upper()
 	zrus_rezim_vyberu_hlavniho_mesta()
@@ -2920,6 +2929,7 @@ func aktivuj_rezim_vyberu_hlavniho_mesta(state_tag: String) -> Dictionary:
 	return {"ok": true, "count": targets.size()}
 
 # Condition check helper.
+# Ai generated or editted end (priloha_a.txt)
 func je_platny_cil_hlavniho_mesta(prov_id: int) -> bool:
 	if not ceka_na_cil_hlavniho_mesta:
 		return false
@@ -2971,7 +2981,8 @@ func _vymaz_indikaci_cekajicich_presunu():
 	for child in container.get_children():
 		child.queue_free()
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_vymaz_indikaci_cekajicich_presunu]
+# Ai generated or editted start (priloha_a.txt)
 func _zaregistruj_minimalni_ai_tah_s_mnozstvim(from_id: int, to_id: int, owner_tag: String, is_attack: bool, amount: int):
 	var key = "%d_%d_%s_%d" % [from_id, to_id, owner_tag, 1 if is_attack else 0]
 	if not _minimalni_ai_tahy.has(key):
@@ -2987,6 +2998,7 @@ func _zaregistruj_minimalni_ai_tah_s_mnozstvim(from_id: int, to_id: int, owner_t
 	_minimalni_ai_tahy[key]["total_amount"] = int(_minimalni_ai_tahy[key].get("total_amount", 0)) + max(0, amount)
 
 # Updates what the player sees.
+# Ai generated or editted end (priloha_a.txt)
 func _zobraz_minimalni_presun(from_id: int, to_id: int, owner_tag: String, is_attack: bool, total_amount: int, count: int = 1):
 	if not provinces.has(from_id) or not provinces.has(to_id):
 		return
@@ -4586,6 +4598,7 @@ func _aktualizuj_indikatory_kapitulace():
 		node.add_child(lbl)
 
 		container.add_child(node)
+
 
 
 

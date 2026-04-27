@@ -1,4 +1,4 @@
-# ==================================================================================================
+﻿# ==================================================================================================
 #  __  __    _    ____  _____   ______   __     _    _____ ____   _____  __
 # |  \/  |  / \  |  _ \| ____| | __ ) \ / /    / \  |  ___|  _ \ / _ \ \/ /
 # | |\/| | / _ \ | | | |  _|   |  _ \\ V /    / _ \ | |_  | |_) | | | |\  /
@@ -88,7 +88,8 @@ func aktualizuj_labely_statu(all_provinces: Dictionary, prov_labels_node: Node2D
 	for zniceny in znicene_staty:
 		aktivni_labely.erase(zniceny)
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_vykresli_label]
+# Ai generated or editted start (priloha_a.txt)
 func _vykresli_label(tag: String, jmeno: String, pozice: Vector2, velikost: float, _ideologie: String):
 	var inst
 	if not aktivni_labely.has(tag):
@@ -123,4 +124,6 @@ func _vykresli_label(tag: String, jmeno: String, pozice: Vector2, velikost: floa
 			flag.hide()
 
 
+
+# Ai generated or editted end (priloha_a.txt)
 

@@ -1,4 +1,4 @@
-# ==================================================================================================
+﻿# ==================================================================================================
 #  __  __    _    ____  _____   ______   __     _    _____ ____   _____  __
 # |  \/  |  / \  |  _ \| ____| | __ ) \ / /    / \  |  ___|  _ \ / _ \ \/ /
 # | |\/| | / _ \ | | | |  _|   |  _ \\ V /    / _ \ | |_  | |_) | | | |\  /
@@ -94,7 +94,7 @@ class StatsLineChart:
 				if not _hover_info.is_empty():
 					chart_point_selected.emit(_hover_info.duplicate(true))
 
-	# Main runtime logic lives here.
+	# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_gui_input]
 	func _exit_tree() -> void:
 		_hover_info.clear()
 
@@ -370,6 +370,7 @@ const MAP_MODE_ORDER := [
 const MAP_MODE_DROPDOWN_BREAKPOINT := 1817.0
 
 # Feature logic entry point.
+# Ai generated or editted start (priloha_a.txt)
 func _cached_texture(path: String):
 	if path == "" or not ResourceLoader.exists(path):
 		return null
@@ -377,7 +378,9 @@ func _cached_texture(path: String):
 		flag_texture_cache[path] = load(path)
 	return flag_texture_cache[path]
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_cached_texture]
+# Ai generated or editted end (priloha_a.txt)
+# Ai generated or editted start (priloha_a.txt)
 func _normalizuj_ideologii(ideologie: String) -> String:
 	var raw = ideologie.strip_edges().to_lower()
 	match raw:
@@ -397,6 +400,7 @@ func _normalizuj_ideologii(ideologie: String) -> String:
 			return raw
 
 # Handles this gameplay/UI path.
+# Ai generated or editted end (priloha_a.txt)
 func _ensure_ideology_flag_index() -> void:
 	if ideology_flag_index_ready:
 		return
@@ -755,13 +759,15 @@ func _ziskej_game_ui_node() -> Node:
 		return null
 	return scene_root.find_child("GameUI", true, false)
 
-# Main runtime logic lives here.
+# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_ziskej_game_ui_node]
+# Ai generated or editted start (priloha_a.txt)
 func _registruj_anchor_zprav() -> void:
 	var game_ui = _ziskej_game_ui_node()
 	if game_ui and game_ui.has_method("nastav_zpravy_anchor_control"):
 		game_ui.nastav_zpravy_anchor_control(zpravy_btn)
 
 # Reacts to incoming events.
+# Ai generated or editted end (priloha_a.txt)
 func _on_zpravy_pressed() -> void:
 	var game_ui = _ziskej_game_ui_node()
 	if game_ui and game_ui.has_method("prepni_zpravy_panel"):
@@ -2142,7 +2148,7 @@ func _aktualizuj_statistics_report() -> void:
 		_zapis_snapshot_statu_do_historie(snapshot, max(1, int(GameManager.aktualni_kolo)))
 
 	var h = _stats_history_by_state.get(selected, {}) as Dictionary
-	# bereme serii explicitne po klĂ­ÄŤĂ­ch, at je jasne co feeduje kterej graf.
+	# bereme serii explicitne po klÄ‚Â­Ă„Ĺ¤Ä‚Â­ch, at je jasne co feeduje kterej graf.
 	var turns = h.get("turns", []) as Array
 	var gdp_series = h.get("gdp", []) as Array
 	var gdp_pc_series = h.get("gdp_pc", []) as Array
@@ -2479,7 +2485,7 @@ func _aktualizuj_financni_tooltip_text() -> void:
 	var cashflow = float(finance.get("cashflow", profit))
 
 	var t := ""
-	# bbcode text je levnejsi udrzovat jako jeden string, nez sklĂˇdat desitky labelu.
+	# bbcode text je levnejsi udrzovat jako jeden string, nez sklÄ‚Ë‡dat desitky labelu.
 	t += "[b][color=#FFFFFF]INCOME[/color][/b]\n"
 	t += "[color=#65D96E]GDP: %s[/color]\n" % _format_finance_value(float(income.get("gdp", 0.0)))
 	t += "[color=#65D96E]Vassals: %s[/color]\n" % _format_finance_value(float(income.get("vassals", 0.0)))
@@ -2651,6 +2657,7 @@ func _vycentruj_kameru_na_stat(tag: String, smooth: bool = true) -> void:
 		_player_focus_tween.tween_property(camera, "position", target_pos, 0.70)
 	else:
 		camera.position = target_pos
+
 
 
 
