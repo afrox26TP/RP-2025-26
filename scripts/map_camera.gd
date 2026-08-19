@@ -29,12 +29,29 @@ var dragging = false
 var invert_zoom_wheel: bool = false
 var _game_ui_cache: Node = null
 
-# Initializes references, connects signals, and prepares default runtime state.
+# Inputs:
+# - none
+# Outputs:
+# - none; initializes camera input action bindings and loads camera control settings
+# Execution timing:
+# - Called once when camera node enters scene tree.
+# Steps:
+# - Ensure default input actions exist.
+# - Load camera speed/zoom settings from config.
 func _ready() -> void:
 	ControlsConfig.ensure_default_actions()
 	_nacti_ovladani_ze_settings()
 
-# Per-frame runtime logic.
+# Inputs:
+# - delta: frame time in seconds
+# Outputs:
+# - none; updates camera position from keyboard input when movement is allowed
+# Execution timing:
+# - Called every frame.
+# Steps:
+# - Skip when UI currently blocks keyboard camera movement.
+# - Build movement vector from configured camera actions.
+# - Normalize diagonal input and move camera with zoom-compensated speed.
 func _process(delta):
 	if _blokuje_kamerovy_pohyb_klavesami():
 		return
@@ -55,6 +72,15 @@ func _process(delta):
 	position += input_dir * speed * delta * (1.0 / zoom.x)
 
 
+# Inputs:
+# - none
+# Outputs:
+# - bool: true when camera keyboard movement should be blocked by focused UI state
+# Execution timing:
+# - Called each frame before processing keyboard camera movement.
+# Steps:
+# - Block movement when focused control belongs to CanvasLayer UI.
+# - Ask GameUI whether hotkeys/movement should be blocked by modal UI.
 func _blokuje_kamerovy_pohyb_klavesami() -> bool:
 	# If keyboard focus is inside CanvasLayer UI, do not move camera.
 	var focused = get_viewport().gui_get_focus_owner()
@@ -67,6 +93,15 @@ func _blokuje_kamerovy_pohyb_klavesami() -> bool:
 	return false
 
 
+# Inputs:
+# - none
+# Outputs:
+# - Node|null: cached GameUI node if present in current scene
+# Execution timing:
+# - Utility used by camera movement block checks.
+# Steps:
+# - Return cached valid node when available.
+# - Resolve GameUI from parent once and cache it.
 func _ziskej_game_ui_node() -> Node:
 	if _game_ui_cache != null and is_instance_valid(_game_ui_cache):
 		return _game_ui_cache
@@ -75,7 +110,16 @@ func _ziskej_game_ui_node() -> Node:
 		_game_ui_cache = root.get_node_or_null("GameUI")
 	return _game_ui_cache
 
-# Input event handler for this node.
+# Inputs:
+# - event: input event delivered to camera node
+# Outputs:
+# - none; handles wheel zoom and right-mouse drag panning when not over blocking UI
+# Execution timing:
+# - Called on input events for this node.
+# Steps:
+# - Process wheel-up/down zoom with optional inverted behavior.
+# - Start/stop RMB dragging.
+# - Apply drag delta scaled by current zoom.
 func _input(event):
 	# Handle mouse input for zooming and panning
 	if event is InputEventMouseButton:
@@ -104,8 +148,15 @@ func _input(event):
 		position += diff
 		drag_start = drag_current
 
-# Prevent camera stealing input when mouse is above menus/HUD.
-# Boolean check for required state.
+# Inputs:
+# - none
+# Outputs:
+# - bool: true when hovered control chain belongs to blocking CanvasLayer UI
+# Execution timing:
+# - Called before zoom/drag handling.
+# Steps:
+# - Walk hovered control parents.
+# - Return true for non-ignored CanvasLayer UI controls.
 func _is_hovering_any_ui_blocking_camera() -> bool:
 	var hovered := get_viewport().gui_get_hovered_control()
 	while hovered != null:
@@ -115,7 +166,15 @@ func _is_hovering_any_ui_blocking_camera() -> bool:
 		hovered = hovered.get_parent() as Control
 	return false
 
-# Returns true when conditions are met.
+# Inputs:
+# - ctrl: control node to inspect
+# Outputs:
+# - bool: true when control is inside any CanvasLayer hierarchy
+# Execution timing:
+# - Utility for camera input blocking checks.
+# Steps:
+# - Traverse parent chain from control to root.
+# - Detect presence of CanvasLayer ancestor.
 func _is_canvas_layer_ui_control(ctrl: Control) -> bool:
 	var node: Node = ctrl
 	while node != null:
@@ -124,14 +183,32 @@ func _is_canvas_layer_ui_control(ctrl: Control) -> bool:
 		node = node.get_parent()
 	return false
 
-# Runs the local feature logic.
+# Inputs:
+# - factor: multiplicative zoom factor
+# Outputs:
+# - none; updates camera zoom within limits and emits zoom signal
+# Execution timing:
+# - Called from mouse-wheel handling.
+# Steps:
+# - Multiply current zoom by factor.
+# - Clamp zoom into min/max bounds.
+# - Emit zoom_zmenen signal with resulting scalar zoom.
 func _zoom_camera(factor):
 	zoom = (zoom * factor).clamp(Vector2(min_zoom, min_zoom), Vector2(max_zoom, max_zoom))
 	
 	# Broadcast the new zoom level to other game systems
 	zoom_zmenen.emit(zoom.x)
 
-# Pulls data and verifies parse output.
+# Inputs:
+# - none
+# Outputs:
+# - none; loads camera controls and keybind settings from configuration file
+# Execution timing:
+# - Called during _ready and can be called by external refreshers.
+# Steps:
+# - Apply default keybind set first.
+# - Load settings config file when available.
+# - Apply camera speed, zoom speed, and invert wheel flag.
 func _nacti_ovladani_ze_settings() -> void:
 	ControlsConfig.apply_bindings(ControlsConfig.get_default_bindings())
 	var cfg = ConfigFile.new()

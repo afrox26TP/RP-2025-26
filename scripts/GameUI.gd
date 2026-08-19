@@ -156,7 +156,6 @@ var _alliance_create_cancel_btn: Button
 var _alliance_dialog_target_tag: String = ""
 var _system_message_ack: bool = false
 var _loans_dialog: PopupPanel
-var _loans_list: VBoxContainer
 var _loans_mode: String = ""  # "give" or "take"
 var _loan_principal_slider: HSlider
 var _loan_principal_input: LineEdit
@@ -494,7 +493,12 @@ func _ensure_ideology_flag_index() -> void:
 			_ideology_flag_path_index[key] = path
 	dir.list_dir_end()
 
-# Read-only data accessor.
+# Inputs:
+# - tag: state tag to resolve
+# Outputs:
+# - String: human-readable country name for tag, fallback to tag when unknown
+# Execution timing:
+# - Utility used by overview, diplomacy popups, and message formatting.
 func _ziskej_jmeno_statu_podle_tagu(tag: String) -> String:
 	var cisty = tag.strip_edges().to_upper()
 	if cisty == "":
@@ -751,7 +755,12 @@ func _vytvor_turn_loading_overlay() -> void:
 	_turn_loading_tip_label.add_theme_color_override("font_color", Color(0.78, 0.86, 0.96, 0.95))
 	_turn_loading_overlay.add_child(_turn_loading_tip_label)
 
-# Triggered by a UI/game signal.
+# Inputs:
+# - aktivni: true when turn processing starts, false when it ends
+# Outputs:
+# - none; updates turn-loading overlay and turn-debug timing samples
+# Execution timing:
+# - Connected to GameManager signal zpracovani_tahu_zmeneno.
 func _on_zpracovani_tahu_zmeneno(aktivni: bool) -> void:
 	var now_ms := Time.get_ticks_msec()
 	if aktivni:
@@ -856,13 +865,13 @@ func _ziskej_spectate_ai_staty() -> Array:
 			human_set[player_tag] = true
 	for p_id in GameManager.map_data:
 		var d = GameManager.map_data[p_id] as Dictionary
-		var owner = str(d.get("owner", "")).strip_edges().to_upper()
-		if owner == "" or owner == "SEA":
+		var province_owner = str(d.get("province_owner", "")).strip_edges().to_upper()
+		if province_owner == "" or province_owner == "SEA":
 			continue
-		if human_set.has(owner):
+		if human_set.has(province_owner):
 			continue
-		if not out.has(owner):
-			out.append(owner)
+		if not out.has(province_owner):
+			out.append(province_owner)
 	out.sort()
 	return out
 
@@ -973,7 +982,12 @@ func _setup_country_flag_upload_link() -> void:
 		country_flag.mouse_filter = Control.MOUSE_FILTER_STOP
 		country_flag.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 
-# Builds UI objects and default wiring.
+# Inputs:
+# - none
+# Outputs:
+# - none; creates file dialog for custom country-flag upload
+# Execution timing:
+# - Called during _ready UI bootstrap.
 func _vytvor_custom_flag_dialog() -> void:
 	if _custom_flag_dialog:
 		return
@@ -1087,7 +1101,12 @@ func _on_popup_flag_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		_on_popup_country_reference_pressed()
 
-# Event handler for user or game actions.
+# Inputs:
+# - event: gui input event from country-name label
+# Outputs:
+# - none; opens rename-country dialog for player's own country
+# Execution timing:
+# - Triggered by double-click on overview country name.
 func _on_country_name_gui_input(event: InputEvent) -> void:
 	if not (event is InputEventMouseButton):
 		return
@@ -1101,7 +1120,12 @@ func _on_country_name_gui_input(event: InputEvent) -> void:
 		return
 	_otevri_prejmenovani_statu_dialog(player_tag)
 
-# Triggered by a UI/game signal.
+# Inputs:
+# - event: GUI input event from country flag widget
+# Outputs:
+# - none; opens custom-flag upload flow for player's own country
+# Execution timing:
+# - Fired on double-click interaction over overview country flag.
 func _on_country_flag_gui_input(event: InputEvent) -> void:
 	if not (event is InputEventMouseButton):
 		return
@@ -1200,7 +1224,12 @@ func _otevri_prejmenovani_statu_dialog(state_tag: String) -> void:
 	if _rename_country_upload_flag_btn:
 		_rename_country_upload_flag_btn.disabled = state_tag.strip_edges().to_upper() != str(GameManager.hrac_stat).strip_edges().to_upper()
 
-# Applies prepared settings/effects to runtime systems.
+# Inputs:
+# - center: when true, popup is centered after size enforcement
+# Outputs:
+# - none; enforces fixed rename-dialog dimensions
+# Execution timing:
+# - Called before showing rename dialog and after viewport changes.
 func _vynutit_velikost_prejmenovani_dialogu(center: bool = false) -> void:
 	if _rename_country_dialog == null:
 		return
@@ -1216,7 +1245,16 @@ func _on_rename_country_upload_flag_pressed() -> void:
 		return
 	_otevri_upload_vlajky_dialog(state_tag)
 
-# Callback for UI/game events.
+# Inputs:
+# - _submitted_text: optional Enter-submit payload (unused; text is read from input field)
+# Outputs:
+# - none; validates and applies country rename for current player state
+# Execution timing:
+# - Triggered by rename dialog confirm action.
+# Steps:
+# - Validate input/backend availability.
+# - Send rename request to GameManager.
+# - Close dialog, refresh overview, and show result notification.
 func _on_confirm_rename_country(_submitted_text: String = "") -> void:
 	if _rename_country_input == null:
 		return
@@ -1239,7 +1277,16 @@ func _on_confirm_rename_country(_submitted_text: String = "") -> void:
 	_obnov_otevreny_prehled_statu()
 	await zobraz_systemove_hlaseni("Rename", "Country renamed to %s." % str(result.get("new_name", new_name)))
 
-# Opens a UI flow/panel and prepares its data and position.
+# Inputs:
+# - state_tag: state tag whose custom flag is being uploaded
+# Outputs:
+# - none; opens file dialog for flag upload and stores pending target tag
+# Execution timing:
+# - Called from rename dialog flag-upload button.
+# Steps:
+# - Ensure file dialog exists.
+# - Store normalized target tag.
+# - Open dialog with viewport-aware popup size.
 func _otevri_upload_vlajky_dialog(state_tag: String) -> void:
 	if _custom_flag_dialog == null:
 		_vytvor_custom_flag_dialog()
@@ -2065,7 +2112,16 @@ func _zajisti_tlacitko_obchodu() -> void:
 	if gift_money_btn and gift_money_btn.get_parent() == vbox:
 		vbox.move_child(trade_btn, gift_money_btn.get_index() + 1)
 
-# Runs the local feature logic.
+# Inputs:
+# - none
+# Outputs:
+# - none; ensures vassals action button exists in overview action list
+# Execution timing:
+# - Called during UI setup/refresh for diplomacy controls.
+# Steps:
+# - Return if button already exists.
+# - Create/configure new button.
+# - Insert near action separator for consistent ordering.
 func _zajisti_tlacitko_vazalu() -> void:
 	_vassals_btn = get_node_or_null("OverviewPanel/VBoxContainer/VassalsButton") as Button
 	if _vassals_btn:
@@ -2082,7 +2138,16 @@ func _zajisti_tlacitko_vazalu() -> void:
 	if action_separator and action_separator.get_parent() == vbox:
 		vbox.move_child(_vassals_btn, action_separator.get_index() + 1)
 
-# Runs the local feature logic.
+# Inputs:
+# - none
+# Outputs:
+# - none; ensures military-access action button exists and is connected
+# Execution timing:
+# - Called when diplomacy actions are prepared.
+# Steps:
+# - Return when button already exists.
+# - Build and style button.
+# - Place it behind non-aggression action and connect handler.
 func _zajisti_tlacitko_vojenskeho_pristupu() -> void:
 	_military_access_btn = get_node_or_null("OverviewPanel/VBoxContainer/MilitaryAccessButton") as Button
 	if _military_access_btn:
@@ -2102,7 +2167,16 @@ func _zajisti_tlacitko_vojenskeho_pristupu() -> void:
 		vbox.move_child(_military_access_btn, non_aggression_btn.get_index() + 1)
 	_military_access_btn.pressed.connect(_on_military_access_btn_pressed)
 
-# Construct/setup block for required nodes.
+# Inputs:
+# - none
+# Outputs:
+# - none; creates vassals popup panel and list container lazily
+# Execution timing:
+# - Called before first vassals panel usage.
+# Steps:
+# - Build popup shell and scrollable list hierarchy.
+# - Cache references used by refresh/resize handlers.
+# - Hide panel until opened explicitly.
 func _vytvor_panel_vazalu() -> void:
 	if _vassals_dialog != null:
 		return
@@ -2175,7 +2249,16 @@ func _vytvor_panel_vazalu() -> void:
 
 	_vassals_dialog.hide()
 
-# Runs the local feature logic.
+# Inputs:
+# - vassal_count: optional precomputed vassal count, negative value triggers live lookup
+# Outputs:
+# - none; resizes and repositions vassals dialog to fit content and viewport
+# Execution timing:
+# - Called when opening/refreshing vassals panel and after layout changes.
+# Steps:
+# - Resolve viewport and effective vassal count.
+# - Compute adaptive dialog size with clamps.
+# - Position dialog near overview panel and keep it on-screen.
 func _pozicuj_a_zmen_velikost_panelu_vazalu(vassal_count: int = -1) -> void:
 	if _vassals_dialog == null:
 		return
@@ -2217,7 +2300,16 @@ func _pozicuj_a_zmen_velikost_panelu_vazalu(vassal_count: int = -1) -> void:
 	y = clampf(y, min_y, maxf(min_y, vp.y - h - 8.0))
 	_vassals_dialog.position = Vector2(x, y)
 
-# Triggered by a UI/game signal.
+# Inputs:
+# - none
+# Outputs:
+# - none; toggles vassals panel visibility and refreshes data on open
+# Execution timing:
+# - Triggered by vassals overview button press.
+# Steps:
+# - Hide panel when already visible.
+# - Otherwise close conflicting dialogs, refresh list, and show panel.
+# - Defer one extra position pass after show.
 func _on_vassals_button_pressed() -> void:
 	if _vassals_dialog == null:
 		return
@@ -2440,7 +2532,16 @@ func _on_vassal_release_pressed(subject_tag: String) -> void:
 			_aktualizuj_vztah_ui(current_viewed_tag)
 		_aktualizuj_mirove_overview_statistiky(str(GameManager.hrac_stat).strip_edges().to_upper(), true)
 
-# Refresh pass for current state.
+# Inputs:
+# - je_hracuv_stat: true if currently viewed state belongs to player
+# Outputs:
+# - none; updates vassals button visibility and label count
+# Execution timing:
+# - Called when overview target changes and after vassal-related actions.
+# Steps:
+# - Hide button for foreign states.
+# - For player state, show button and compute current vassal count.
+# - Close panel if it should no longer be visible.
 func _aktualizuj_tlacitko_vazalu(je_hracuv_stat: bool) -> void:
 	if _vassals_btn == null:
 		return
@@ -2493,7 +2594,16 @@ func _zajisti_mirove_overview_labely() -> void:
 		vbox.move_child(vassals_label, action_separator.get_index())
 		vbox.move_child(war_reparations_label, action_separator.get_index())
 
-# Core flow for this feature.
+# Inputs:
+# - none
+# Outputs:
+# - none; creates and configures AI debug side panel controls
+# Execution timing:
+# - Called during UI initialization when AI debug info can be displayed.
+# Steps:
+# - Create panel and root layout if missing.
+# - Configure styles/labels/buttons/dropdown controls.
+# - Cache references for periodic debug refresh.
 func _zajisti_ai_debug_overview_labely() -> void:
 	ai_debug_panel = get_node_or_null("AIDebugPanel") as PanelContainer
 	if ai_debug_panel == null:
@@ -3045,12 +3155,29 @@ func _on_ai_debug_filter_all_pressed() -> void:
 func _on_ai_debug_filter_mine_pressed() -> void:
 	_nastav_ai_debug_filter_mode(1)
 
-# Triggered by a UI/game signal.
+# Inputs:
+# - none
+# Outputs:
+# - none; switches AI debug filter mode to "other"
+# Execution timing:
+# - Triggered by AI debug filter button press.
+# Steps:
+# - Delegate mode change to shared setter.
 func _on_ai_debug_filter_other_pressed() -> void:
 	_nastav_ai_debug_filter_mode(2)
 
-# Refresh pass for current state.
-func _aktualizuj_ai_debug_overview(owner_tag: String, je_hracuv_stat: bool) -> void:
+# Inputs:
+# - owner_tag: preferred state tag to inspect in debug panel
+# - je_hracuv_stat: whether overview currently points to player's state (kept for call compatibility)
+# Outputs:
+# - none; rebuilds AI debug text panel from current snapshot and UI filter settings
+# Execution timing:
+# - Called during overview refresh and debug update ticks.
+# Steps:
+# - Validate debug prerequisites and resolve effective target tag.
+# - Collect snapshot data and format section-specific lines.
+# - Update label text, reposition panel, and show/hide accordingly.
+func _aktualizuj_ai_debug_overview(owner_tag: String, _je_hracuv_stat: bool) -> void:
 	# Collects a snapshot and formats one combined debug report for the right panel.
 	# Pro male dite: tady se seberou cisla o AI a napisi se do debug okna.
 	if ai_debug_label == null or ai_debug_panel == null:
@@ -3152,7 +3279,16 @@ func _aktualizuj_ai_debug_overview(owner_tag: String, je_hracuv_stat: bool) -> v
 	_pozicuj_ai_debug_panel()
 	ai_debug_panel.show()
 
-# Feature logic entry point.
+# Inputs:
+# - none
+# Outputs:
+# - none; ensures ideology controls and labels exist in overview panel
+# Execution timing:
+# - Called during overview UI setup and refresh.
+# Steps:
+# - Create separator and effects label when missing.
+# - Wire ideology dropdown/button controls.
+# - Keep controls ordered inside overview container.
 func _zajisti_ideology_controls() -> void:
 	var vbox = get_node_or_null("OverviewPanel/VBoxContainer")
 	if vbox == null:
@@ -3406,7 +3542,15 @@ func _vytvor_vyzkum_dialog() -> void:
 
 	_research_dialog.hide()
 
-# Closes the active UI flow and clears temporary interaction context.
+# Inputs:
+# - none
+# Outputs:
+# - none; closes research dialog and marks it as not user-opened
+# Execution timing:
+# - Called by research close button and dialog toggling logic.
+# Steps:
+# - Reset user-open flag.
+# - Hide dialog when available.
 func _zavri_vyzkum_dialog() -> void:
 	_research_dialog_user_open = false
 	if _research_dialog:
@@ -3436,7 +3580,16 @@ func _predhrej_vyzkum_dialog_layout() -> void:
 	_research_dialog_user_open = false
 	_research_dialog_layout_warmed = true
 
-# Handles this gameplay/UI path.
+# Inputs:
+# - none
+# Outputs:
+# - none; calculates and applies research dialog size/position for current viewport
+# Execution timing:
+# - Called before opening dialog and on viewport/layout updates.
+# Steps:
+# - Resolve available area beside overview panel.
+# - Compute desired size from army-grid dimensions.
+# - Clamp and apply final position/size.
 func _pozicuj_vyzkum_dialog() -> void:
 	if _research_dialog == null:
 		return
@@ -3466,7 +3619,16 @@ func _pozicuj_vyzkum_dialog() -> void:
 	_research_dialog.size = Vector2(w, h)
 	_research_dialog.position = Vector2(clamp(left_x + margin, 0.0, max(0.0, vp.x - w)), clamp(top_offset, 0.0, max(0.0, vp.y - h)))
 
-# Reacts to incoming events.
+# Inputs:
+# - none
+# Outputs:
+# - none; toggles research dialog for player's own state and prepares data on open
+# Execution timing:
+# - Triggered by overview research button press.
+# Steps:
+# - Ensure viewed state belongs to player.
+# - Toggle close when already visible.
+# - Warm layout if needed, show dialog, and defer content refresh.
 func _on_research_button_pressed() -> void:
 	if current_viewed_tag == "":
 		return
@@ -3487,7 +3649,15 @@ func _on_research_button_pressed() -> void:
 	# Update after popup layout is ready to avoid first-open visual glitches.
 	call_deferred("_aktualizuj_vyzkum_dialog", player_tag)
 
-# Runs the local feature logic.
+# Inputs:
+# - item_name: raw army item name
+# Outputs:
+# - String: compact uppercase abbreviation used in tight UI contexts
+# Execution timing:
+# - Utility used by army research UI labels/previews.
+# Steps:
+# - Build acronym from first two words when possible.
+# - Fallback to uppercase whole/trimmed prefix.
 func _item_short_name(item_name: String) -> String:
 	var words = item_name.strip_edges().split(" ")
 	if words.size() >= 2:
@@ -3516,7 +3686,16 @@ func _format_army_item_title(item_name: String, level: int) -> String:
 	var safe_level = max(1, level)
 	return "%s L%d" % [_display_army_item_name(item_name), safe_level]
 
-# Updates derived state and UI.
+# Inputs:
+# - state_tag: state whose army research/lab state should be displayed
+# Outputs:
+# - none; refreshes all research dialog controls and summary labels
+# Execution timing:
+# - Called when opening research dialog and after related state changes.
+# Steps:
+# - Validate dialog and backend availability.
+# - Fetch army lab state snapshot.
+# - Rebuild visible research offers/grid/summary UI.
 func _aktualizuj_vyzkum_dialog(state_tag: String) -> void:
 	if _research_dialog == null or _research_list == null:
 		return
@@ -3741,7 +3920,13 @@ func _vytvor_army_drag_preview(w: int, h: int, _level: int = 1) -> Control:
 	preview.position = -preview.size * 0.5
 	return root
 
-# Core flow for this feature.
+# Inputs:
+# - offer_index: index of offer being dragged
+# - source: control initiating drag operation
+# Outputs:
+# - Dictionary|null: drag payload for selected offer, null when unavailable
+# Execution timing:
+# - Called by offer card drag-and-drop handler.
 func _army_offer_get_drag_data(offer_index: int, source: Control):
 	if not _army_research_last_info.has("offers"):
 		return null
@@ -3758,7 +3943,12 @@ func _army_offer_get_drag_data(offer_index: int, source: Control):
 		"offer_index": offer_index
 	}
 
-# Core flow for this feature.
+# Inputs:
+# - none
+# Outputs:
+# - Dictionary: unlocked cell set map from current research snapshot
+# Execution timing:
+# - Used by army-grid placement and drop validation.
 func _army_unlocked_dict() -> Dictionary:
 	var out: Dictionary = {}
 	var arr = _army_research_last_info.get("unlocked_cells", []) as Array
@@ -3793,7 +3983,16 @@ func _army_cell_index_to_xy(cell_index: int) -> Vector2i:
 	var gw = max(1, _army_research_view_w)
 	return Vector2i(cell_index % gw, int(cell_index / gw))
 
-# Runs the local feature logic.
+# Inputs:
+# - cell_index: flattened grid cell index
+# Outputs:
+# - Dictionary: grid item occupying given cell, or empty dictionary
+# Execution timing:
+# - Utility used by drag/drop validation and merge checks.
+# Steps:
+# - Convert cell index to x/y.
+# - Iterate placed grid items and test cell containment.
+# - Return matched item or empty result.
 func _army_grid_item_at_cell(cell_index: int) -> Dictionary:
 	var pos = _army_cell_index_to_xy(cell_index)
 	var x = pos.x
@@ -3823,7 +4022,17 @@ func _army_offer_mozno_sloucit_s_itemem(offer: Dictionary, item: Dictionary) -> 
 		return false
 	return int(offer.get("level", 1)) == int(item.get("level", 1))
 
-# Handles this gameplay/UI path.
+# Inputs:
+# - cell_index: candidate top-left target cell for placement
+# - offer: offer dictionary with dimensions w/h
+# Outputs:
+# - bool: true when offer fits unlocked unoccupied cells at target position
+# Execution timing:
+# - Called by drag hover and drop guards for new offers.
+# Steps:
+# - Validate target bounds against grid size.
+# - Build occupied-cell map from existing items.
+# - Ensure all target cells are unlocked and free.
 func _army_grid_can_place_offer_at(cell_index: int, offer: Dictionary) -> bool:
 	var pos = _army_cell_index_to_xy(cell_index)
 	var x = pos.x
@@ -3858,7 +4067,17 @@ func _army_grid_can_place_offer_at(cell_index: int, offer: Dictionary) -> bool:
 				return false
 	return true
 
-# Handles this gameplay/UI path.
+# Inputs:
+# - cell_index: target drop cell index
+# - data: drag payload dictionary for army_offer or army_item
+# Outputs:
+# - bool: true when payload can be dropped at target cell
+# Execution timing:
+# - Called continuously by Godot drag-and-drop system.
+# Steps:
+# - Validate payload type and required identifiers.
+# - Run move/merge checks for dragged items.
+# - Run place/merge checks for dragged offers.
 func _army_grid_cell_can_drop(cell_index: int, data) -> bool:
 	if not (data is Dictionary):
 		return false
@@ -3928,7 +4147,13 @@ func _army_grid_cell_can_drop(cell_index: int, data) -> bool:
 		return _army_offer_mozno_sloucit_s_itemem(offer, target_item)
 	return _army_grid_can_place_offer_at(cell_index, offer)
 
-# Core flow for this feature.
+# Inputs:
+# - cell_index: target drop cell index
+# - data: drag payload dictionary
+# Outputs:
+# - none; commits buy/move/merge action via GameManager and refreshes UI
+# Execution timing:
+# - Called on successful drop in army grid.
 func _army_grid_cell_drop(cell_index: int, data) -> void:
 	if not _army_grid_cell_can_drop(cell_index, data):
 		return
@@ -3980,7 +4205,17 @@ func _army_grid_cell_drop(cell_index: int, data) -> void:
 	_aktualizuj_vyzkum_dialog(player_tag)
 	_obnov_otevreny_prehled_statu()
 
-# Runs the local feature logic.
+# Inputs:
+# - cell_index: source cell index where drag starts
+# - source: control that initiates drag
+# Outputs:
+# - Dictionary|null: drag payload for selected army item, or null when unavailable
+# Execution timing:
+# - Called by grid cell when user starts dragging placed item.
+# Steps:
+# - Resolve item uid from per-cell uid map.
+# - Build drag preview sized to item footprint.
+# - Return payload consumed by drop targets.
 func _army_grid_cell_get_drag_data(cell_index: int, source: Control):
 	var key = "%d" % cell_index
 	if not _army_cell_drag_uid.has(key):
@@ -4051,7 +4286,13 @@ func _on_army_research_buy_offer_pressed(offer_index: int) -> void:
 	_aktualizuj_vyzkum_dialog(player_tag)
 	_obnov_otevreny_prehled_statu()
 
-# Callback for UI/game events.
+# Inputs:
+# - x: target cell x
+# - y: target cell y
+# Outputs:
+# - none; attempts to unlock/buy one army-lab grid cell
+# Execution timing:
+# - Triggered by plus-cell purchase button in army research grid.
 func _on_army_research_buy_cell_pressed(x: int, y: int) -> void:
 	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
 	if player_tag == "":
@@ -4064,7 +4305,12 @@ func _on_army_research_buy_cell_pressed(x: int, y: int) -> void:
 	_aktualizuj_vyzkum_dialog(player_tag)
 	_obnov_otevreny_prehled_statu()
 
-# Reacts to incoming events.
+# Inputs:
+# - none
+# Outputs:
+# - none; rerolls current army research offers
+# Execution timing:
+# - Triggered by reroll button in research dialog.
 func _on_army_research_reroll_pressed() -> void:
 	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
 	if player_tag == "":
@@ -4113,7 +4359,12 @@ func _normalizuj_ideologii(ideology: String) -> String:
 		_:
 			return raw
 
-# Feature logic entry point.
+# Inputs:
+# - ideology: raw ideology identifier
+# Outputs:
+# - String: localized display label for ideology
+# Execution timing:
+# - Used while rendering overview labels and menu options.
 func _display_ideologie(ideology: String) -> String:
 	var raw = _normalizuj_ideologii(ideology)
 	if raw == "":
@@ -4181,7 +4432,13 @@ func _set_ideology_effects_text(content: String) -> void:
 	ideology_effects_label.clear()
 	ideology_effects_label.append_text(content)
 
-# Feature logic entry point.
+# Inputs:
+# - base_ideology: currently active ideology
+# - preview_ideology: optional ideology being hovered/previewed
+# Outputs:
+# - String: formatted multiline economy/regen effect summary with deltas
+# Execution timing:
+# - Called when ideology panel updates or preview state changes.
 func _sestav_ideology_effects_text(base_ideology: String, preview_ideology: String = "") -> String:
 	if not GameManager.has_method("ziskej_ideologicky_ekonomicky_profil"):
 		return "Ideology data is unavailable."
@@ -4319,7 +4576,12 @@ func _obnov_ideology_vizual_z_mapy() -> void:
 		country_flag.texture = _resolve_flag_texture(current_viewed_tag, current_ideo)
 	ideo_label.text = "Regime: " + _display_ideologie(current_ideo)
 
-# Event handler for user or game actions.
+# Inputs:
+# - none
+# Outputs:
+# - none; marks ideology dropdown as active preview context
+# Execution timing:
+# - Triggered when ideology dropdown popup opens.
 func _on_ideology_dropdown_opened() -> void:
 	_ideology_dropdown_open = true
 	_ideology_hover_idx = -1
@@ -4340,7 +4602,12 @@ func _on_ideology_dropdown_item_focused(index: int) -> void:
 		country_flag.texture = _resolve_flag_texture(current_viewed_tag, selected)
 	ideo_label.text = "Regime: " + _display_ideologie(selected)
 
-# Reacts to incoming events.
+# Inputs:
+# - none
+# Outputs:
+# - none; exits ideology preview mode and restores consistent UI state
+# Execution timing:
+# - Triggered when ideology dropdown popup closes.
 func _on_ideology_dropdown_closed() -> void:
 	_ideology_dropdown_open = false
 	_ideology_hover_idx = -1
@@ -4400,7 +4667,12 @@ func _aplikuj_nahled_ideologie_do_ui(owner_tag: String, selected_ideology: Strin
 	if info_ui and info_ui.has_method("nastav_nahled_ideologie"):
 		info_ui.nastav_nahled_ideologie(preview)
 
-# Refreshes existing content to reflect current runtime values.
+# Inputs:
+# - none
+# Outputs:
+# - none; reapplies ideology preview according to current owner and selected option
+# Execution timing:
+# - Called when ideology dropdown closes or overview focus changes.
 func _obnov_nahled_ideologie_podle_volby() -> void:
 	if current_viewed_tag == "":
 		_vycisti_nahled_ideologie_v_ui()
@@ -4499,7 +4771,13 @@ func _obnov_otevreny_prehled_statu() -> void:
 	if representative_province_id >= 0 and provinces.has(representative_province_id):
 		zobraz_prehled_statu(provinces[representative_province_id], provinces)
 
-# Read-only data accessor.
+# Inputs:
+# - owner_tag: owner tag to summarize
+# - all_provinces: province dictionary source
+# Outputs:
+# - Dictionary: aggregated population/gdp/recruits/soldiers summary
+# Execution timing:
+# - Called while opening/refreshing country overview panel.
 func _ziskej_souhrn_statu(owner_tag: String, all_provinces: Dictionary) -> Dictionary:
 	var clean_tag = owner_tag.strip_edges().to_upper()
 	if clean_tag == "":
@@ -4593,7 +4871,13 @@ func _ziskej_dostupne_ideologie_pro_stat(tag: String) -> Array:
 	)
 	return out
 
-# Refresh pass for current state.
+# Inputs:
+# - owner_tag: currently viewed owner tag
+# - current_ideology: ideology currently shown in overview
+# Outputs:
+# - none; updates ideology controls visibility/options for player vs foreign state
+# Execution timing:
+# - Called whenever overview target changes or ideology mutates.
 func _aktualizuj_ideology_ui(owner_tag: String, current_ideology: String) -> void:
 	if ideology_separator == null or ideology_option == null or ideology_apply_btn == null or ideology_effects_label == null or ideology_relocate_capital_btn == null:
 		return
@@ -4783,7 +5067,13 @@ func zrus_vyber_cile_hlavniho_mesta_ui() -> void:
 	if current_viewed_tag != "":
 		_aktualizuj_tlacitko_presunu_hlavniho_mesta(current_viewed_tag)
 
-# Feature logic entry point.
+# Inputs:
+# - result: map callback result for capital relocation attempt
+# - _target_province_id: callback argument kept for signature compatibility
+# Outputs:
+# - none; finalizes relocation flow and updates overview feedback
+# Execution timing:
+# - Called after map selection confirms/cancels capital relocation.
 func obsluha_presunu_hlavniho_mesta_z_mapy(result: Dictionary, _target_province_id: int) -> void:
 	_ceka_na_vyber_cile_hlavniho_mesta = false
 	_relocate_capital_action_lock = false
@@ -4804,7 +5094,13 @@ func obsluha_presunu_hlavniho_mesta_z_mapy(result: Dictionary, _target_province_
 	)
 	_obnov_otevreny_prehled_statu()
 
-# Core flow for this feature.
+# Inputs:
+# - key: metric id (pop/recruit/gdp/gdp_pc/army)
+# - base_label: original overview metric label
+# Outputs:
+# - none; wraps label into row with dedicated inline delta holder
+# Execution timing:
+# - Called during overview UI setup.
 func _wrap_overview_metric_label(key: String, base_label: Label) -> void:
 	if base_label == null:
 		return
@@ -4917,14 +5213,24 @@ func nastav_akce_nahled(_text: String) -> void:
 	if _text.strip_edges() == "":
 		nastav_akce_nahled_delta({})
 
-# Triggered by a UI/game signal.
+# Inputs:
+# - none
+# Outputs:
+# - none; closes system message popup and unblocks awaiting flow
+# Execution timing:
+# - Triggered by system-message OK button or Space shortcut.
 func _on_system_message_ok_pressed():
 	_system_message_ack = true
 	if system_message_popup:
 		system_message_popup.hide()
 	_aktualizuj_pozice_popupu()
 
-# Event handler for user or game actions.
+# Inputs:
+# - none
+# Outputs:
+# - none; recomputes positions/sizes for responsive UI on viewport resize
+# Execution timing:
+# - Triggered by viewport size_changed signal.
 func _on_viewport_resized():
 	_aktualizuj_overview_panel_layout()
 	_pozicuj_ai_debug_panel()
@@ -5038,7 +5344,12 @@ func _input(event):
 			_on_system_message_ok_pressed()
 			get_viewport().set_input_as_handled()
 
-# Builds UI objects and default wiring.
+# Inputs:
+# - none
+# Outputs:
+# - none; builds pause menu popup and related dialogs/buttons
+# Execution timing:
+# - Called once during _ready UI bootstrap.
 func _vytvor_pause_menu() -> void:
 	_pause_menu_panel = PopupPanel.new()
 	_pause_menu_panel.name = "PauseMenu"
@@ -5148,7 +5459,12 @@ func _vytvor_pause_menu() -> void:
 	_pozicuj_save_load_popupy()
 	_pozicuj_settings_dialog()
 
-# Applies prepared settings/effects to runtime systems.
+# Inputs:
+# - node: popup/panel control to style
+# Outputs:
+# - none; applies standardized in-game popup stylebox overrides
+# Execution timing:
+# - Utility called by many dialog construction functions.
 func _aplikuj_ingame_popup_styl(node) -> void:
 	var s = StyleBoxFlat.new()
 	s.bg_color = Color(0.07, 0.10, 0.18, 0.97)
@@ -5177,7 +5493,13 @@ func _vytvor_ingame_kartu_styl(bg: Color = Color(0.11, 0.16, 0.24, 0.94), border
 	s.corner_radius_bottom_right = 6
 	return s
 
-# Applies prepared settings/effects to runtime systems.
+# Inputs:
+# - btn: button instance to style
+# - danger: whether danger color variant should be used
+# Outputs:
+# - none; applies unified in-game button styling
+# Execution timing:
+# - Called when constructing dialogs and action buttons.
 func _aplikuj_ingame_tlacitko_styl(btn: Button, danger: bool = false) -> void:
 	if btn == null:
 		return
@@ -5527,7 +5849,14 @@ func _on_loan_button_pressed(mode: String) -> void:
 	_pozicuj_loans_dialog()
 	_loans_dialog.show()
 
-# Reacts to incoming events.
+# Inputs:
+# - principal_str: principal input text
+# - interest_str: interest input text
+# - turns_str: duration input text
+# Outputs:
+# - none; validates and submits loan request/offer flow
+# Execution timing:
+# - Triggered by loan dialog confirm button.
 func _on_loan_confirmed(principal_str: String, interest_str: String, turns_str: String) -> void:
 	# Validate state
 	var target = current_viewed_tag.strip_edges().to_upper()
@@ -5676,7 +6005,12 @@ func _vytvor_alliance_dialog() -> void:
 	_aplikuj_ingame_tlacitko_styl(close_btn2, false)
 	bottom_row.add_child(close_btn2)
 
-# Builds UI objects and default wiring.
+# Inputs:
+# - none
+# Outputs:
+# - none; creates popup for creating a new alliance (name + level)
+# Execution timing:
+# - Called during _ready UI bootstrap.
 func _vytvor_alliance_create_popup() -> void:
 	_alliance_create_popup = PanelContainer.new()
 	_alliance_create_popup.name = "AllianceCreatePopup"
@@ -5764,20 +6098,48 @@ func _vytvor_alliance_create_popup() -> void:
 	_aplikuj_ingame_tlacitko_styl(_alliance_create_cancel_btn, false)
 	btn_row.add_child(_alliance_create_cancel_btn)
 
+# Inputs:
+# - none
+# Outputs:
+# - none; repositions alliance dialog when it exists
+# Execution timing:
+# - Called when alliance dialog opens and after viewport/layout changes.
+# Steps:
+# - Guard against missing popup.
+# - Compute centered position from viewport size and popup minimum size.
+# - Apply the resulting position.
 func _pozicuj_alliance_dialog() -> void:
 	if not _alliance_dialog:
 		return
 	var vp = get_viewport().get_visible_rect().size
 	_alliance_dialog.position = Vector2((vp.x - _alliance_dialog.custom_minimum_size.x) * 0.5, (vp.y - _alliance_dialog.custom_minimum_size.y) * 0.5)
 
-# Feature logic entry point.
+# Inputs:
+# - none
+# Outputs:
+# - none; aligns create-alliance popup near top-center
+# Execution timing:
+# - Called before showing alliance creation popup.
+# Steps:
+# - Return when popup is not available.
+# - Read current viewport dimensions.
+# - Place popup horizontally centered with a slightly higher vertical offset.
 func _pozicuj_alliance_create_popup() -> void:
 	if not _alliance_create_popup:
 		return
 	var vp = get_viewport().get_visible_rect().size
 	_alliance_create_popup.position = Vector2((vp.x - _alliance_create_popup.custom_minimum_size.x) * 0.5, (vp.y - _alliance_create_popup.custom_minimum_size.y) * 0.35)
 
-# Closes the active UI flow and clears temporary interaction context.
+# Inputs:
+# - none
+# Outputs:
+# - none; closes alliance dialog and cancels trade-alliance pick state when active
+# Execution timing:
+# - Called from dialog close button and escape/cancel paths.
+# Steps:
+# - If trade flow waits for alliance pick, cancel that pick mode.
+# - Hide alliance dialog.
+# - Ensure create popup is closed as well.
 func _zavri_alliance_dialog() -> void:
 	if _ceka_na_vyber_trade_aliance:
 		_trade_zrus_vyber_aliance_z_menu(true)
@@ -5785,11 +6147,29 @@ func _zavri_alliance_dialog() -> void:
 		_alliance_dialog.visible = false
 	_zavri_alliance_create_popup()
 
+# Inputs:
+# - none
+# Outputs:
+# - none; hides alliance create popup
+# Execution timing:
+# - Used by cancel actions and when closing parent alliance dialog.
+# Steps:
+# - Guard popup existence.
+# - Set visibility to false.
 func _zavri_alliance_create_popup() -> void:
 	if _alliance_create_popup:
 		_alliance_create_popup.visible = false
 
-# Opens a UI flow/panel and prepares its data and position.
+# Inputs:
+# - target_tag: state tag used as context for own/invite/trade-select views
+# Outputs:
+# - none; refreshes and opens alliance dialog
+# Execution timing:
+# - Called when player opens alliance UI for selected country.
+# Steps:
+# - Store current target tag in local UI state.
+# - Rebuild dialog content for selected mode.
+# - Reposition and show the dialog.
 func _otevri_alliance_dialog(target_tag: String) -> void:
 	_alliance_dialog_target_tag = target_tag
 	_obnov_alliance_dialog_obsah(target_tag)
@@ -5797,6 +6177,16 @@ func _otevri_alliance_dialog(target_tag: String) -> void:
 	if _alliance_dialog:
 		_alliance_dialog.visible = true
 
+# Inputs:
+# - target_tag: viewed country for invite mode, or player tag for own mode
+# Outputs:
+# - none; rebuilds alliance dialog card list and action availability
+# Execution timing:
+# - Called after alliance operations and when dialog target changes.
+# Steps:
+# - Clear previous list items.
+# - Resolve mode: trade-select, own alliances, or invite target.
+# - Query GameManager data and create explanatory labels/cards for current mode.
 func _obnov_alliance_dialog_obsah(target_tag: String) -> void:
 	if not _alliance_dialog_list:
 		return
@@ -5888,6 +6278,18 @@ func _obnov_alliance_dialog_obsah(target_tag: String) -> void:
 
 # Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
 # Ai generated or editted start (priloha_a.txt)
+# Inputs:
+# - alliance: alliance data dictionary (id, name, level, members, founder, color)
+# - target_tag: selected country tag for invite/trade-select checks
+# - view_mode: one of "own", "invite", "trade_select"
+# Outputs:
+# - none; appends one fully interactive alliance card into dialog list
+# Execution timing:
+# - Called while rebuilding alliance dialog content.
+# Steps:
+# - Build styled card with identity and member information.
+# - Render membership conditions where relevant.
+# - Add actions according to mode (invite/select/leave/disband).
 func _pridej_alliance_kartu(alliance: Dictionary, target_tag: String, view_mode: String = "own") -> void:
 	var card = PanelContainer.new()
 	var card_style = StyleBoxFlat.new()
@@ -6077,6 +6479,16 @@ func _pridej_alliance_kartu(alliance: Dictionary, target_tag: String, view_mode:
 			btn_row.add_child(disband_btn)
 
 # Ai generated or editted end (priloha_a.txt)
+# Inputs:
+# - none
+# Outputs:
+# - none; resets and opens create-alliance popup
+# Execution timing:
+# - Triggered by "Create Alliance" button in alliance dialog.
+# Steps:
+# - Reset text/level/color fields to defaults.
+# - Update popup title for own-country flow.
+# - Reposition and show popup.
 func _on_alliance_create_pressed() -> void:
 	if _alliance_create_popup:
 		if _alliance_create_name_input:
@@ -6092,6 +6504,16 @@ func _on_alliance_create_pressed() -> void:
 		_pozicuj_alliance_create_popup()
 		_alliance_create_popup.visible = true
 
+# Inputs:
+# - none (reads values from create-alliance form controls)
+# Outputs:
+# - none; creates alliance via GameManager and refreshes related UI panels
+# Execution timing:
+# - Triggered by confirm button in create-alliance popup.
+# Steps:
+# - Validate backend method and collect form values.
+# - Call alliance creation API.
+# - On success, close popup and refresh alliance/diplomacy/message UI.
 func _on_alliance_create_confirm() -> void:
 	if not GameManager.has_method("vytvor_alianci_skupinu"):
 		return
@@ -6121,6 +6543,17 @@ func _on_alliance_create_confirm() -> void:
 	_aktualizuj_diplomacii_tlacitka(_alliance_dialog_target_tag)
 	_aktualizuj_panel_zprav()
 
+# Inputs:
+# - alliance_id: target alliance identifier
+# - target_tag: state being invited/added
+# Outputs:
+# - none; sends request for human target or directly adds eligible member
+# Execution timing:
+# - Triggered by invite button on alliance card.
+# Steps:
+# - Resolve target type and overlord-force exceptions.
+# - Use request flow for human players, direct add flow otherwise.
+# - Refresh alliance and diplomacy UI after operation.
 func _on_alliance_invite_pressed(alliance_id: String, target_tag: String) -> void:
 	if not GameManager.has_method("pridej_clena_do_aliance"):
 		return
@@ -6157,6 +6590,17 @@ func _on_alliance_invite_pressed(alliance_id: String, target_tag: String) -> voi
 	_aktualizuj_diplomacii_tlacitka(_alliance_dialog_target_tag)
 	_aktualizuj_panel_zprav()
 
+# Inputs:
+# - alliance_id: alliance identifier
+# - target_tag: member to remove
+# Outputs:
+# - none; removes member and refreshes alliance-related UI
+# Execution timing:
+# - Called from kick action in alliance management view.
+# Steps:
+# - Guard backend method.
+# - Remove member.
+# - Rebuild alliance dialog and dependent panels.
 func _on_alliance_kick_pressed(alliance_id: String, target_tag: String) -> void:
 	if not GameManager.has_method("odeber_clena_z_aliance"):
 		return
@@ -6166,6 +6610,16 @@ func _on_alliance_kick_pressed(alliance_id: String, target_tag: String) -> void:
 	_aktualizuj_diplomacii_tlacitka(_alliance_dialog_target_tag)
 	_aktualizuj_panel_zprav()
 
+# Inputs:
+# - alliance_id: alliance to leave
+# Outputs:
+# - none; current player leaves alliance and UI is refreshed
+# Execution timing:
+# - Triggered by "Leave" button on own alliance card.
+# Steps:
+# - Resolve current player tag.
+# - Remove player from alliance.
+# - Refresh alliance, diplomacy and system-message areas.
 func _on_alliance_leave_pressed(alliance_id: String) -> void:
 	if not GameManager.has_method("odeber_clena_z_aliance"):
 		return
@@ -6176,6 +6630,16 @@ func _on_alliance_leave_pressed(alliance_id: String) -> void:
 	_aktualizuj_diplomacii_tlacitka(_alliance_dialog_target_tag)
 	_aktualizuj_panel_zprav()
 
+# Inputs:
+# - alliance_id: alliance to disband
+# Outputs:
+# - none; disbands alliance and updates visible diplomacy state
+# Execution timing:
+# - Triggered by founder-only "Disband" action.
+# Steps:
+# - Guard backend method existence.
+# - Execute disband API.
+# - Refresh alliance dialog and related UI blocks.
 func _on_alliance_disband_pressed(alliance_id: String) -> void:
 	if not GameManager.has_method("rozpust_alianci"):
 		return
@@ -6185,6 +6649,16 @@ func _on_alliance_disband_pressed(alliance_id: String) -> void:
 	_aktualizuj_diplomacii_tlacitka(_alliance_dialog_target_tag)
 	_aktualizuj_panel_zprav()
 
+# Inputs:
+# - none
+# Outputs:
+# - none; creates peace conference popup and caches node references
+# Execution timing:
+# - Called lazily during UI setup or first peace conference usage.
+# Steps:
+# - Skip if popup already exists.
+# - Build dialog hierarchy, controls and callbacks.
+# - Hide popup and place it in viewport-safe position.
 func _vytvor_mirovou_konferenci_dialog() -> void:
 	if _peace_dialog != null:
 		return
@@ -6280,6 +6754,16 @@ func _vytvor_mirovou_konferenci_dialog() -> void:
 	_peace_dialog.hide()
 	_pozicuj_mirovou_konferenci_dialog()
 
+# Inputs:
+# - none
+# Outputs:
+# - none; positions and sizes peace conference popup inside viewport bounds
+# Execution timing:
+# - Called on open and viewport resize updates.
+# Steps:
+# - Compute target width/height with min/max clamps.
+# - Anchor dialog to bottom-right corner with margin.
+# - Apply computed size and position.
 func _pozicuj_mirovou_konferenci_dialog() -> void:
 	if not _peace_dialog:
 		return
@@ -6290,6 +6774,16 @@ func _pozicuj_mirovou_konferenci_dialog() -> void:
 	_peace_dialog.size = Vector2(w, h)
 	_peace_dialog.position = Vector2(max(0.0, vp.x - w - margin), max(0.0, vp.y - h - margin))
 
+# Inputs:
+# - none
+# Outputs:
+# - none; creates compact top notification panel for pending peace conferences
+# Execution timing:
+# - Called once during UI initialization.
+# Steps:
+# - Build notice panel with flag, text and open button.
+# - Reuse existing popup/button theme styles for visual consistency.
+# - Position the panel relative to other top overlays.
 func _vytvor_hlaseni_mirove_konference() -> void:
 	if _peace_notice_panel != null:
 		return
@@ -6355,6 +6849,16 @@ func _vytvor_hlaseni_mirove_konference() -> void:
 
 	_pozicuj_hlaseni_mirove_konference()
 
+# Inputs:
+# - none
+# Outputs:
+# - none; repositions peace notice banner to avoid overlap with other popups
+# Execution timing:
+# - Called after notice updates and viewport/overlay layout changes.
+# Steps:
+# - Determine preferred banner size from viewport and companion popup height.
+# - Compute y-position below existing top overlays.
+# - Clamp final position to safe screen area.
 func _pozicuj_hlaseni_mirove_konference() -> void:
 	if _peace_notice_panel == null:
 		return
@@ -6375,6 +6879,16 @@ func _pozicuj_hlaseni_mirove_konference() -> void:
 	y = clampf(y, 8.0, maxf(8.0, vp.y - p_size.y - 8.0))
 	_peace_notice_panel.position = Vector2(x, y)
 
+# Inputs:
+# - none
+# Outputs:
+# - none; shows, updates or hides peace notice according to queued conferences
+# Execution timing:
+# - Called when conference queue changes and after peace dialog closes.
+# Steps:
+# - Read current first conference from GameManager.
+# - Build context text/flag and queue count indicators.
+# - Display banner unless deferred or blocked by open peace dialog.
 func _aktualizuj_hlaseni_mirove_konference() -> void:
 	if _peace_notice_panel == null:
 		return
@@ -6423,7 +6937,16 @@ func _aktualizuj_hlaseni_mirove_konference() -> void:
 	_peace_notice_panel.show()
 	_pozicuj_hlaseni_mirove_konference()
 
-# Core flow for this feature.
+# Inputs:
+# - none
+# Outputs:
+# - none; defers current peace notice until next conference appears
+# Execution timing:
+# - Called when player chooses to postpone handling peace negotiation.
+# Steps:
+# - Store current conference id as deferred marker.
+# - Hide notice panel.
+# - Re-run popup positioning pass.
 func _potlac_hlaseni_miru_do_dalsi_konference() -> void:
 	if _peace_notice_panel == null:
 		return
@@ -6434,13 +6957,39 @@ func _potlac_hlaseni_miru_do_dalsi_konference() -> void:
 	_peace_notice_panel.hide()
 	_aktualizuj_pozice_popupu()
 
+# Inputs:
+# - none
+# Outputs:
+# - none; opens first peace conference from queue
+# Execution timing:
+# - Triggered by peace notice button.
+# Steps:
+# - Forward action to queue open handler.
 func _on_peace_notice_open_pressed() -> void:
 	_otevri_mirovou_konferenci_z_fronty()
 
+# Inputs:
+# - none
+# Outputs:
+# - bool: true if peace conference popup exists and is visible
+# Execution timing:
+# - Queried by UI state logic and input blockers.
+# Steps:
+# - Check popup reference validity.
+# - Return current visibility state.
 func ma_otevrene_mirove_jednani() -> bool:
 	return _peace_dialog != null and _peace_dialog.visible
 
-# Feature logic entry point.
+# Inputs:
+# - show_error_popup: when true, user-facing errors are displayed on failure
+# Outputs:
+# - bool: true when map peace-selection mode starts successfully
+# Execution timing:
+# - Called when opening peace conference and when pressing selection button.
+# Steps:
+# - Validate active conference and map module capability.
+# - Activate map selection with winner/loser context and preselection.
+# - Sync local selection state and refresh preview UI.
 func _spust_vyber_miru_na_mape(show_error_popup: bool) -> bool:
 	if _active_peace_conference.is_empty():
 		return false
@@ -6468,7 +7017,16 @@ func _spust_vyber_miru_na_mape(show_error_popup: bool) -> bool:
 	_aktualizuj_mirovou_konferenci_preview()
 	return true
 
-# Refresh pass for current state.
+# Inputs:
+# - none
+# Outputs:
+# - none; recalculates cost/availability labels for current peace demands
+# Execution timing:
+# - Called after any peace option change (annex, province pick, vassal, reparations).
+# Steps:
+# - Read requested terms and conference points.
+# - Compute demand cost via GameManager fallback logic.
+# - Update labels and confirm button enabled state.
 func _aktualizuj_mirovou_konferenci_preview() -> void:
 	if _active_peace_conference.is_empty():
 		return
@@ -6498,6 +7056,16 @@ func _aktualizuj_mirovou_konferenci_preview() -> void:
 	_peace_cost_label.text = "Cost: %d / %d points" % [cost, points]
 	_peace_confirm_btn.disabled = cost > points
 
+# Inputs:
+# - none
+# Outputs:
+# - Node: map node supporting peace/trade pick methods, or null
+# Execution timing:
+# - Utility used by peace/trade map interaction handlers.
+# Steps:
+# - Try locating named Map node in current scene.
+# - Fallback to current scene when it exposes required methods.
+# - Return null when no suitable node exists.
 func _ziskej_map_node_pro_mir() -> Node:
 	var map_loader = get_tree().current_scene.find_child("Map", true, false)
 	if map_loader != null:
@@ -6506,7 +7074,16 @@ func _ziskej_map_node_pro_mir() -> Node:
 		return get_tree().current_scene
 	return null
 
-# Callback for UI/game events.
+# Inputs:
+# - none
+# Outputs:
+# - none; toggles peace map selection mode and refreshes preview
+# Execution timing:
+# - Triggered by peace dialog "Select provinces on map" button.
+# Steps:
+# - Validate active conference and map availability.
+# - If already selecting, cancel map mode.
+# - Otherwise attempt to start map pick flow.
 func _on_peace_pick_provinces_pressed() -> void:
 	if _active_peace_conference.is_empty():
 		return
@@ -6523,11 +7100,30 @@ func _on_peace_pick_provinces_pressed() -> void:
 		return
 	_spust_vyber_miru_na_mape(true)
 
-# Cancels the active flow and restores a safe default state.
+# Inputs:
+# - none
+# Outputs:
+# - none; exits peace map-pick UI state and refreshes labels
+# Execution timing:
+# - Called when external logic interrupts peace province selection.
+# Steps:
+# - Clear selection mode flag.
+# - Recompute dialog preview state.
 func zrus_vyber_miru_ui() -> void:
 	_ceka_na_vyber_miru = false
 	_aktualizuj_mirovou_konferenci_preview()
 
+# Inputs:
+# - result: map callback payload containing ok/status and selected province ids
+# - _province_id: callback signature placeholder (unused)
+# Outputs:
+# - none; syncs selected province list into peace dialog state
+# Execution timing:
+# - Called by map interaction when peace pick selection changes.
+# Steps:
+# - Ignore updates without active conference or unsuccessful callback.
+# - Copy selected ids from callback payload.
+# - Refresh preview labels/costs.
 func obsluha_vyberu_miru_z_mapy(result: Dictionary, _province_id: int) -> void:
 	if _active_peace_conference.is_empty():
 		return
@@ -6536,6 +7132,16 @@ func obsluha_vyberu_miru_z_mapy(result: Dictionary, _province_id: int) -> void:
 	_peace_selected_provinces = (result.get("selected", []) as Array).duplicate()
 	_aktualizuj_mirovou_konferenci_preview()
 
+# Inputs:
+# - none
+# Outputs:
+# - none; closes peace dialog, stores defer marker, and exits map pick mode
+# Execution timing:
+# - Triggered by "Later" button in peace conference popup.
+# Steps:
+# - Persist current conference id as deferred when available.
+# - Cancel map selection mode.
+# - Hide dialog and refresh top peace notice state.
 func _on_peace_close_pressed() -> void:
 	if not _active_peace_conference.is_empty():
 		_peace_notice_deferred_conf_id = int(_active_peace_conference.get("id", -1))
@@ -6547,7 +7153,16 @@ func _on_peace_close_pressed() -> void:
 		_peace_dialog.hide()
 	_aktualizuj_hlaseni_mirove_konference()
 
-# Opens a UI flow/panel and prepares its data and position.
+# Inputs:
+# - none
+# Outputs:
+# - none; opens the first queued peace conference and initializes dialog controls
+# Execution timing:
+# - Called from peace notice button and related quick-open paths.
+# Steps:
+# - Fetch first queued conference for current player.
+# - Fill dialog fields/reset selections.
+# - Show dialog, hide notice, move camera and start map selection.
 func _otevri_mirovou_konferenci_z_fronty() -> void:
 	if not GameManager or not GameManager.has_method("ziskej_prvni_mirovou_konferenci_pro_hrace"):
 		return
@@ -6584,6 +7199,16 @@ func _otevri_mirovou_konferenci_z_fronty() -> void:
 	# Start map focus/selection immediately, just like capital relocation targeting mode.
 	_spust_vyber_miru_na_mape(false)
 
+# Inputs:
+# - none (reads terms from peace dialog controls)
+# Outputs:
+# - none; submits terms, closes flow, and informs player about result
+# Execution timing:
+# - Triggered by peace dialog confirm button.
+# Steps:
+# - Validate active conference and backend availability.
+# - Build demands payload and submit closure request.
+# - On success, reset peace UI/map state and display summary message.
 func _on_potvrdit_mirovou_konferenci() -> void:
 	if _active_peace_conference.is_empty():
 		return
@@ -6625,6 +7250,16 @@ func _on_potvrdit_mirovou_konferenci() -> void:
 	_obnov_otevreny_prehled_statu()
 	_aktualizuj_hlaseni_mirove_konference()
 
+# Inputs:
+# - text: user-entered amount text
+# Outputs:
+# - float: non-negative parsed amount, defaults to 0.0 on invalid input
+# Execution timing:
+# - Used when confirming money gift dialog.
+# Steps:
+# - Normalize decimal separators and trim whitespace.
+# - Validate float format.
+# - Convert and clamp value to at least zero.
 func _parse_gift_amount(text: String) -> float:
 	var sanitized = text.strip_edges().replace(",", ".")
 	if sanitized == "":
@@ -6633,6 +7268,16 @@ func _parse_gift_amount(text: String) -> float:
 		return 0.0
 	return maxf(0.0, float(sanitized))
 
+# Inputs:
+# - none
+# Outputs:
+# - none; opens gift popup prefilled with default amount
+# Execution timing:
+# - Triggered by diplomacy gift button.
+# Steps:
+# - Validate selected target is another country.
+# - Reset amount field and show dialog.
+# - Focus and select input for quick overwrite.
 func _on_gift_money_pressed() -> void:
 	if current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat:
 		return
@@ -6644,11 +7289,30 @@ func _on_gift_money_pressed() -> void:
 	_gift_amount_input.grab_focus()
 	_gift_amount_input.select_all()
 
+# Inputs:
+# - none
+# Outputs:
+# - none; opens trade dialog for currently viewed foreign state
+# Execution timing:
+# - Triggered by diplomacy trade button.
+# Steps:
+# - Validate target is set and not player's own state.
+# - Open trade dialog with target context.
 func _on_trade_button_pressed() -> void:
 	if current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat:
 		return
 	_otevri_trade_dialog(current_viewed_tag)
 
+# Inputs:
+# - none (reads amount from gift dialog input)
+# Outputs:
+# - none; sends gift request and updates diplomacy UI by result
+# Execution timing:
+# - Triggered by gift dialog confirm action.
+# Steps:
+# - Validate target and backend method.
+# - Parse amount and call gift API.
+# - Show result message and refresh relevant UI on success.
 func _on_confirm_gift_money() -> void:
 	if current_viewed_tag == "" or current_viewed_tag == GameManager.hrac_stat:
 		return
@@ -6677,6 +7341,14 @@ func _on_confirm_gift_money() -> void:
 
 	await zobraz_systemove_hlaseni("Diplomacy", str(result.get("reason", "Failed to send gift.")))
 
+# Inputs:
+# - none
+# Outputs:
+# - Array: static descriptors for trade slots and editor placeholders
+# Execution timing:
+# - Utility used while constructing trade UI and slot editor state.
+# Steps:
+# - Return list of dictionaries for each supported trade slot.
 func _trade_option_specs() -> Array:
 	return [
 		{"slot": "gold", "label": "Money", "placeholder_a": "Amount (mil. USD)", "placeholder_b": "Currency / note"},
@@ -6688,13 +7360,33 @@ func _trade_option_specs() -> Array:
 		{"slot": "non_aggression", "label": "Non-Aggression Pact", "placeholder_a": "Duration", "placeholder_b": "Note"}
 	]
 
+# Inputs:
+# - slot: internal trade slot key
+# Outputs:
+# - Dictionary: matching slot specification, or empty dictionary when missing
+# Execution timing:
+# - Used by slot-selection and preview refresh logic.
+# Steps:
+# - Iterate known slot specs.
+# - Return first spec whose slot key matches.
+# - Fallback to empty dictionary.
 func _trade_option_spec(slot: String) -> Dictionary:
 	for spec_any in _trade_option_specs():
-		var spec = spec_any as Dictionary
-		if str(spec.get("slot", "")) == slot:
-			return spec
+		var field_spec = spec_any as Dictionary
+		if str(field_spec.get("slot", "")) == slot:
+			return field_spec
 	return {}
 
+# Inputs:
+# - none
+# Outputs:
+# - none; lazily constructs full trade popup UI and helper picker popup
+# Execution timing:
+# - Called on first trade dialog open.
+# Steps:
+# - Build popup root layout and title/status labels.
+# - Create both negotiator sides and bottom action buttons.
+# - Initialize province picker popup used by map-driven term selection.
 func _vytvor_trade_dialog() -> void:
 	if _trade_dialog != null:
 		return
@@ -6769,6 +7461,15 @@ func _vytvor_trade_dialog() -> void:
 
 # Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
 # Ai generated or editted start (priloha_a.txt)
+# Inputs:
+# - none
+# Outputs:
+# - none; closes trade dialog and cancels all temporary pick modes
+# Execution timing:
+# - Triggered by trade close button and cleanup paths.
+# Steps:
+# - Cancel province/war/alliance pick flows.
+# - Hide main trade popup.
 func _trade_close_dialog() -> void:
 	_trade_zrus_vyber_provincii_z_mapy(false)
 	_trade_zrus_vyber_valecneho_cile_z_mapy(false)
@@ -6776,12 +7477,28 @@ func _trade_close_dialog() -> void:
 	if _trade_dialog:
 		_trade_dialog.hide()
 
-# Condition check helper.
 # Ai generated or editted end (priloha_a.txt)
+# Inputs:
+# - none
+# Outputs:
+# - bool: true when map is currently in trade war-target selection mode
+# Execution timing:
+# - Queried by map interaction guards.
+# Steps:
+# - Return local picker-mode flag.
 func je_aktivni_vyber_trade_valky_na_mape() -> bool:
 	return _ceka_na_vyber_trade_war_cile
 
-# Returns true when conditions are met.
+# Inputs:
+# - owner_tag: owner of clicked map state/province
+# Outputs:
+# - bool: true when clicked target is valid for current trade country-target picker
+# Execution timing:
+# - Used by map callback before applying selected target.
+# Steps:
+# - Ensure picker mode is active.
+# - Normalize and validate target tag.
+# - Reject invalid self/receiver conflicts for current slot.
 func je_platny_trade_cil_statu_na_mape(owner_tag: String) -> bool:
 	if not _ceka_na_vyber_trade_war_cile:
 		return false
@@ -6794,10 +7511,27 @@ func je_platny_trade_cil_statu_na_mape(owner_tag: String) -> bool:
 		return false
 	return true
 
+# Inputs:
+# - none
+# Outputs:
+# - none; exits trade war-target map pick mode
+# Execution timing:
+# - Called by external UI cancel flows.
+# Steps:
+# - Delegate to central war-target picker cancel helper.
 func zrus_vyber_trade_valecneho_cile_ui() -> void:
 	_trade_zrus_vyber_valecneho_cile_z_mapy(false)
 
-# Handles this gameplay/UI path.
+# Inputs:
+# - side: 0 for player side, 1 for target side
+# Outputs:
+# - none; opens alliance picker flow for join-alliance trade slot
+# Execution timing:
+# - Triggered by join-alliance picker button in trade editor.
+# Steps:
+# - Cancel conflicting pick flows.
+# - Resolve provider tag for selected side.
+# - Toggle alliance-pick mode and open alliance dialog.
 func _trade_otevri_join_alliance_picker(side: int) -> void:
 	_trade_zrus_vyber_provincii_z_mapy(false)
 	_trade_zrus_vyber_valecneho_cile_z_mapy(false)
@@ -6817,7 +7551,16 @@ func _trade_otevri_join_alliance_picker(side: int) -> void:
 		_trade_dialog.hide()
 	_otevri_alliance_dialog(provider_tag)
 
-# Runs the local feature logic.
+# Inputs:
+# - obnovit_hlavni_dialog: true reopens trade dialog if it was hidden for alliance pick
+# Outputs:
+# - none; clears alliance-pick state and optionally restores trade popup
+# Execution timing:
+# - Called on cancel, completion, and flow interruptions.
+# Steps:
+# - Reset alliance picker flags.
+# - Reopen trade popup when requested.
+# - Clear hidden-state marker.
 func _trade_zrus_vyber_aliance_z_menu(obnovit_hlavni_dialog: bool = true) -> void:
 	_ceka_na_vyber_trade_aliance = false
 	_trade_alliance_pick_side = -1
@@ -6828,6 +7571,17 @@ func _trade_zrus_vyber_aliance_z_menu(obnovit_hlavni_dialog: bool = true) -> voi
 		_pozicuj_trade_dialog()
 	_trade_dialog_hidden_for_alliance_pick = false
 
+# Inputs:
+# - alliance_id: selected alliance identifier
+# - alliance_name: display name for preview text
+# Outputs:
+# - none; writes join-alliance term into selected trade side and refreshes UI
+# Execution timing:
+# - Triggered from alliance dialog in trade-select mode.
+# Steps:
+# - Validate active picker and selected side.
+# - Persist selected alliance into side values.
+# - Close picker flow and refresh trade editor.
 func _trade_vyber_aliance_z_menu(alliance_id: String, alliance_name: String) -> void:
 	if not _ceka_na_vyber_trade_aliance:
 		return
@@ -6846,6 +7600,16 @@ func _trade_vyber_aliance_z_menu(alliance_id: String, alliance_name: String) -> 
 		_alliance_dialog.visible = false
 	_trade_refresh_dialog_ui()
 
+# Inputs:
+# - data: map callback payload containing clicked owner tag
+# Outputs:
+# - bool: true when callback was consumed by trade picker logic
+# Execution timing:
+# - Called from map interaction layer during trade country-target pick mode.
+# Steps:
+# - Validate picker mode and clicked target.
+# - Store selected target into current slot values.
+# - Close picker mode and refresh editor state.
 func obsluha_vyberu_trade_valky_z_mapy(data: Dictionary) -> bool:
 	if not _ceka_na_vyber_trade_war_cile:
 		return false
@@ -6870,6 +7634,16 @@ func obsluha_vyberu_trade_valky_z_mapy(data: Dictionary) -> bool:
 
 # Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [obsluha_vyberu_trade_valky_z_mapy]
 # Ai generated or editted start (priloha_a.txt)
+# Inputs:
+# - none
+# Outputs:
+# - none; creates compact popup used to confirm map province selection for trade
+# Execution timing:
+# - Called once during trade dialog initialization.
+# Steps:
+# - Build popup with source/count labels.
+# - Add confirm and cancel actions.
+# - Store control references for live updates.
 func _trade_vytvor_province_picker_popup() -> void:
 	if _trade_province_picker_popup != null:
 		return
@@ -6930,6 +7704,16 @@ func _trade_vytvor_province_picker_popup() -> void:
 	close_row.add_child(_trade_province_picker_cancel_btn)
 
 # Ai generated or editted end (priloha_a.txt)
+# Inputs:
+# - state_tag: source state tag
+# Outputs:
+# - Array: sortable province list for non-capital provinces of selected state
+# Execution timing:
+# - Utility for trade validation and province selection helpers.
+# Steps:
+# - Normalize tag and skip invalid values.
+# - Collect eligible provinces from overview dataset.
+# - Sort by GDP descending and return.
 func _trade_seznam_provincii_statu(state_tag: String) -> Array:
 	var tag = state_tag.strip_edges().to_upper()
 	var out: Array = []
@@ -6959,7 +7743,16 @@ func _trade_seznam_provincii_statu(state_tag: String) -> Array:
 	)
 	return out
 
-# Core flow for this feature.
+# Inputs:
+# - side: 0 for player side, 1 for target side
+# Outputs:
+# - none; activates map province picker and opens small confirmation popup
+# Execution timing:
+# - Triggered by province picker button in trade editor.
+# Steps:
+# - Cancel other picker flows and validate source/map support.
+# - Start map selection with preselected ids.
+# - Hide main dialog, show picker popup, and refresh UI.
 func _trade_otevri_province_picker(side: int) -> void:
 	_trade_zrus_vyber_valecneho_cile_z_mapy(false)
 	_trade_zrus_vyber_aliance_z_menu(false)
@@ -7010,9 +7803,28 @@ func _trade_otevri_province_picker(side: int) -> void:
 	_trade_refresh_dialog_ui()
 	zobraz_systemove_hlaseni("Trade", "Click state territory on map for %s and confirm in small panel." % source_tag)
 
+# Inputs:
+# - side: 0 for player side, 1 for target side
+# Outputs:
+# - none; opens country-target picker preset for declare-war slot
+# Execution timing:
+# - Triggered by declare-war slot picker button.
+# Steps:
+# - Delegate to generic country-target picker with declare-war slot.
 func _trade_otevri_declare_war_picker(side: int) -> void:
 	_trade_otevri_country_relation_picker(side, "declare_war")
 
+# Inputs:
+# - side: initiating trade side
+# - slot: one of declare_war/improve_relationship_with/worsen_relationship_with
+# Outputs:
+# - none; enters map country-target selection mode for chosen slot
+# Execution timing:
+# - Triggered by country-target picker button in trade editor.
+# Steps:
+# - Cancel competing picker modes and validate state tags.
+# - Toggle picker when same selection is already active.
+# - Set picker context and optionally hide main trade dialog.
 func _trade_otevri_country_relation_picker(side: int, slot: String) -> void:
 	_trade_zrus_vyber_provincii_z_mapy(false)
 	_trade_zrus_vyber_aliance_z_menu(false)
@@ -7041,6 +7853,16 @@ func _trade_otevri_country_relation_picker(side: int, slot: String) -> void:
 		action_name = "Worsen Relations target"
 	zobraz_systemove_hlaseni("Trade", "Click target state territory for %s by %s." % [action_name, provider_tag])
 
+# Inputs:
+# - obnovit_hlavni_dialog: true restores trade popup if it was hidden for map pick
+# Outputs:
+# - none; clears trade war-target picker state
+# Execution timing:
+# - Called after target selection, cancel actions, and flow resets.
+# Steps:
+# - Reset war-target picker fields.
+# - Reopen dialog if requested and previously hidden.
+# - Clear hidden-state flag.
 func _trade_zrus_vyber_valecneho_cile_z_mapy(obnovit_hlavni_dialog: bool = true) -> void:
 	_ceka_na_vyber_trade_war_cile = false
 	_trade_war_pick_side = -1
@@ -7053,7 +7875,17 @@ func _trade_zrus_vyber_valecneho_cile_z_mapy(obnovit_hlavni_dialog: bool = true)
 		_pozicuj_trade_dialog()
 	_trade_dialog_hidden_for_war_pick = false
 
-# Runs the local feature logic.
+# Inputs:
+# - result: map callback payload with ok status and selected ids
+# - _province_id: callback signature placeholder (unused)
+# Outputs:
+# - none; updates temporary province selection preview in picker popup
+# Execution timing:
+# - Called by map interaction whenever trade province selection changes.
+# Steps:
+# - Ignore updates outside active picker mode or failed callbacks.
+# - Copy selected ids from callback.
+# - Refresh picker popup labels/buttons.
 func obsluha_vyberu_trade_provincie_z_mapy(result: Dictionary, _province_id: int) -> void:
 	if not _ceka_na_vyber_trade_provincie:
 		return
@@ -7064,6 +7896,16 @@ func obsluha_vyberu_trade_provincie_z_mapy(result: Dictionary, _province_id: int
 
 # Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [obsluha_vyberu_trade_provincie_z_mapy]
 # Ai generated or editted start (priloha_a.txt)
+# Inputs:
+# - none
+# Outputs:
+# - none; refreshes source/count info and confirm-button state in province picker popup
+# Execution timing:
+# - Called when selected province ids change or popup is shown.
+# Steps:
+# - Update labels from current picker context.
+# - Enable/disable confirm button based on selection.
+# - Reposition popup if visible.
 func _trade_obnov_popup_vyberu_provincii_info() -> void:
 	if _trade_province_picker_info:
 		_trade_province_picker_info.text = "Source state: %s" % (_trade_map_pick_source_tag if _trade_map_pick_source_tag != "" else "-")
@@ -7075,6 +7917,16 @@ func _trade_obnov_popup_vyberu_provincii_info() -> void:
 		_trade_pozicuj_province_picker_popup()
 
 # Ai generated or editted end (priloha_a.txt)
+# Inputs:
+# - none
+# Outputs:
+# - none; places trade province picker popup in visible non-overlapping area
+# Execution timing:
+# - Called on popup show and viewport/layout changes.
+# Steps:
+# - Enforce popup minimum size.
+# - Compute preferred placement near bottom-right/next-turn area.
+# - Clamp position inside viewport safe margins.
 func _trade_pozicuj_province_picker_popup() -> void:
 	if _trade_province_picker_popup == null:
 		return
@@ -7100,6 +7952,16 @@ func _trade_pozicuj_province_picker_popup() -> void:
 
 # Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_trade_pozicuj_province_picker_popup]
 # Ai generated or editted start (priloha_a.txt)
+# Inputs:
+# - raw_text: comma/semicolon/space separated province id list
+# Outputs:
+# - Array: unique integer province ids preserving first-seen order
+# Execution timing:
+# - Used to initialize preselected map ids from existing term text.
+# Steps:
+# - Normalize separators and whitespace.
+# - Parse valid integers.
+# - Deduplicate ids while collecting results.
 func _trade_parse_selected_province_ids(raw_text: String) -> Array:
 	var text = raw_text.strip_edges().replace(";", ",").replace(" ", "")
 	if text == "":
@@ -7114,8 +7976,17 @@ func _trade_parse_selected_province_ids(raw_text: String) -> Array:
 			out.append(pid)
 	return out
 
-# Handles this gameplay/UI path.
 # Ai generated or editted end (priloha_a.txt)
+# Inputs:
+# - none
+# Outputs:
+# - none; commits map-selected provinces into current side's trade terms
+# Execution timing:
+# - Triggered by province picker popup confirm button.
+# Steps:
+# - Validate active picker and map confirm method.
+# - Serialize/sort selected ids and store slot payload.
+# - Close picker flow, restore trade dialog, refresh UI.
 func _trade_potvrd_vyber_provincii_z_mapy() -> void:
 	if not _ceka_na_vyber_trade_provincie:
 		return
@@ -7160,6 +8031,16 @@ func _trade_potvrd_vyber_provincii_z_mapy() -> void:
 
 # Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
 # Ai generated or editted start (priloha_a.txt)
+# Inputs:
+# - obnovit_hlavni_dialog: true restores trade popup after cancel
+# Outputs:
+# - none; fully cancels trade province map-pick mode
+# Execution timing:
+# - Called by cancel button, dialog close, and generic flow resets.
+# Steps:
+# - Ask map node to stop province pick mode.
+# - Clear picker state and hide helper popup.
+# - Optionally restore main dialog and refresh UI.
 func _trade_zrus_vyber_provincii_z_mapy(obnovit_hlavni_dialog: bool = true) -> void:
 	var map_node = _ziskej_map_node_pro_mir()
 	if map_node and map_node.has_method("zrus_rezim_vyberu_trade_provincie"):
@@ -7177,17 +8058,26 @@ func _trade_zrus_vyber_provincii_z_mapy(obnovit_hlavni_dialog: bool = true) -> v
 	_trade_dialog_hidden_for_map_pick = false
 	_trade_refresh_dialog_ui()
 
-# Runs the local feature logic.
 # Ai generated or editted end (priloha_a.txt)
+# Inputs:
+# - side: 0 for player side, 1 for target side
+# Outputs:
+# - PanelContainer: fully configured trade side panel with buttons/editor controls
+# Execution timing:
+# - Called while constructing trade dialog split view.
+# Steps:
+# - Build side panel styling and title.
+# - Create slot buttons and value editor widgets.
+# - Store control references in side-specific dictionaries.
 func _trade_vytvor_stranu(side: int) -> PanelContainer:
-	var panel = PanelContainer.new()
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var dialog_panel = PanelContainer.new()
+	dialog_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dialog_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var panel_style = _vytvor_ingame_kartu_styl(
 		Color(0.09, 0.14, 0.22, 0.96) if side == 0 else Color(0.15, 0.11, 0.09, 0.96),
 		Color(0.42, 0.63, 0.90, 0.70) if side == 0 else Color(0.88, 0.62, 0.36, 0.70)
 	)
-	panel.add_theme_stylebox_override("panel", panel_style)
+	dialog_panel.add_theme_stylebox_override("dialog_panel", panel_style)
 
 	var margin = MarginContainer.new()
 	margin.offset_left = 8
@@ -7195,7 +8085,7 @@ func _trade_vytvor_stranu(side: int) -> PanelContainer:
 	margin.offset_right = -8
 	margin.offset_bottom = -8
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	panel.add_child(margin)
+	dialog_panel.add_child(margin)
 
 	var root = VBoxContainer.new()
 	root.add_theme_constant_override("separation", 8)
@@ -7235,7 +8125,7 @@ func _trade_vytvor_stranu(side: int) -> PanelContainer:
 
 	var editor_panel = PanelContainer.new()
 	editor_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	editor_panel.add_theme_stylebox_override("panel", _vytvor_ingame_kartu_styl(Color(0.05, 0.08, 0.14, 0.96), Color(0.32, 0.49, 0.74, 0.55)))
+	editor_panel.add_theme_stylebox_override("dialog_panel", _vytvor_ingame_kartu_styl(Color(0.05, 0.08, 0.14, 0.96), Color(0.32, 0.49, 0.74, 0.55)))
 	root.add_child(editor_panel)
 
 	var editor_margin = MarginContainer.new()
@@ -7342,33 +8232,92 @@ func _trade_vytvor_stranu(side: int) -> PanelContainer:
 	else:
 		_trade_right_editor = editor_ref
 
-	return panel
+	return dialog_panel
 
-# Core flow for this feature.
+# Inputs:
+# - side: trade side index
+# Outputs:
+# - Dictionary: mutable value dictionary for selected side
+# Execution timing:
+# - Helper used by trade editor read/write operations.
+# Steps:
+# - Return left or right values dictionary based on side.
 func _trade_side_values(side: int) -> Dictionary:
 	return _trade_left_values if side == 0 else _trade_right_values
 
-# Feature logic entry point.
+# Inputs:
+# - side: trade side index
+# Outputs:
+# - Dictionary: editor-control reference map for selected side
+# Execution timing:
+# - Helper used by slot and preview handlers.
+# Steps:
+# - Return left or right editor dictionary.
 func _trade_side_editor(side: int) -> Dictionary:
 	return _trade_left_editor if side == 0 else _trade_right_editor
 
+# Inputs:
+# - side: trade side index
+# Outputs:
+# - Dictionary: slot button map for selected side
+# Execution timing:
+# - Used by side UI refresh loops.
+# Steps:
+# - Return side-specific button dictionary.
 func _trade_side_buttons(side: int) -> Dictionary:
 	return _trade_left_buttons if side == 0 else _trade_right_buttons
 
+# Inputs:
+# - side: trade side index
+# Outputs:
+# - String: currently selected slot key for selected side
+# Execution timing:
+# - Used when applying/clearing terms and updating editor widgets.
+# Steps:
+# - Return stored selected-slot field for given side.
 func _trade_selected_slot(side: int) -> String:
 	return _trade_left_selected_slot if side == 0 else _trade_right_selected_slot
 
+# Inputs:
+# - side: trade side index
+# - slot: slot key to mark as active
+# Outputs:
+# - none; updates selected-slot state for side
+# Execution timing:
+# - Called on slot button presses and picker completion.
+# Steps:
+# - Assign slot to corresponding left/right state variable.
 func _trade_set_selected_slot(side: int, slot: String) -> void:
 	if side == 0:
 		_trade_left_selected_slot = slot
 	else:
 		_trade_right_selected_slot = slot
 
+# Inputs:
+# - side: trade side index
+# Outputs:
+# - none; opens country-target picker only for eligible slot types
+# Execution timing:
+# - Triggered by "Click country on map" button.
+# Steps:
+# - Read active slot.
+# - Open picker for declare-war or relation-target slots.
 func _trade_on_country_target_pick_pressed(side: int) -> void:
 	var slot = _trade_selected_slot(side)
 	if slot == "declare_war" or slot == "improve_relationship_with" or slot == "worsen_relationship_with":
 		_trade_otevri_country_relation_picker(side, slot)
 
+# Inputs:
+# - side: trade side index
+# - slot: selected trade slot key
+# Outputs:
+# - none; updates editor fields/buttons for chosen slot and picker states
+# Execution timing:
+# - Triggered by any trade slot button press.
+# Steps:
+# - Persist active slot and load existing stored values.
+# - Configure placeholders and visible controls by slot type.
+# - Refresh complete trade dialog UI preview.
 func _trade_on_slot_pressed(side: int, slot: String) -> void:
 	_trade_set_selected_slot(side, slot)
 	var spec = _trade_option_spec(slot)
@@ -7404,13 +8353,22 @@ func _trade_on_slot_pressed(side: int, slot: String) -> void:
 			var is_current_picker = _ceka_na_vyber_trade_war_cile and _trade_war_pick_side == side and _trade_war_pick_slot == slot
 			war_btn.text = "Finish target selection" if is_current_picker else "Click country on map"
 	if editor.has("pick_alliance"):
-		var alliance_btn = editor["pick_alliance"] as Button
-		alliance_btn.visible = is_join_alliance_slot
+		var alliance_picker_button = editor["pick_alliance"] as Button
+		alliance_picker_button.visible = is_join_alliance_slot
 		if is_join_alliance_slot:
-			alliance_btn.text = "Finish alliance selection" if (_ceka_na_vyber_trade_aliance and _trade_alliance_pick_side == side) else "Select alliance"
+			alliance_picker_button.text = "Finish alliance selection" if (_ceka_na_vyber_trade_aliance and _trade_alliance_pick_side == side) else "Select alliance"
 	_trade_refresh_dialog_ui()
 
-# Feature logic entry point.
+# Inputs:
+# - side: trade side index
+# Outputs:
+# - none; validates and stores current slot values for side
+# Execution timing:
+# - Triggered by side editor "Apply" button.
+# Steps:
+# - Validate selected slot and slot-specific picker prerequisites.
+# - Read text inputs for regular slots.
+# - Save values and refresh dialog state.
 func _trade_apply_side(side: int) -> void:
 	var slot = _trade_selected_slot(side)
 	if slot == "":
@@ -7458,6 +8416,16 @@ func _trade_apply_side(side: int) -> void:
 	_trade_side_values(side)[slot] = {"a": value_a if value_a != "" else "ON", "b": value_b}
 	_trade_refresh_dialog_ui()
 
+# Inputs:
+# - side: trade side index
+# Outputs:
+# - none; removes currently selected slot value for side
+# Execution timing:
+# - Triggered by side editor "Clear" button.
+# Steps:
+# - Resolve selected slot and erase stored entry.
+# - Reset editor text fields.
+# - Refresh side preview/buttons.
 func _trade_clear_side(side: int) -> void:
 	var slot = _trade_selected_slot(side)
 	if slot == "":
@@ -7469,7 +8437,16 @@ func _trade_clear_side(side: int) -> void:
 		(editor["input_b"] as LineEdit).text = ""
 	_trade_refresh_dialog_ui()
 
-# Feature logic entry point.
+# Inputs:
+# - entry: slot value dictionary with keys "a" and optional "b"
+# Outputs:
+# - String: compact single-line preview representation
+# Execution timing:
+# - Used while rendering slot button and preview text.
+# Steps:
+# - Normalize both value fields.
+# - Return concise joined format when both are present.
+# - Return empty string when no value exists.
 func _trade_compact_value(entry: Dictionary) -> String:
 	var value_a = str(entry.get("a", "")).strip_edges()
 	var value_b = str(entry.get("b", "")).strip_edges()
@@ -7479,18 +8456,28 @@ func _trade_compact_value(entry: Dictionary) -> String:
 		return value_a
 	return "%s | %s" % [value_a, value_b]
 
+# Inputs:
+# - side: trade side index
+# Outputs:
+# - none; redraws slot button labels/highlight and side preview text
+# Execution timing:
+# - Called after any side value/selection change.
+# Steps:
+# - Iterate all slot specs and rebuild each button label.
+# - Highlight active slot.
+# - Update editor preview area.
 func _trade_refresh_side_ui(side: int) -> void:
 	var values = _trade_side_values(side)
 	var buttons = _trade_side_buttons(side)
 	var editor = _trade_side_editor(side)
 	var selected_slot = _trade_selected_slot(side)
 	for spec_any in _trade_option_specs():
-		var spec = spec_any as Dictionary
-		var slot = str(spec.get("slot", ""))
+		var option_spec = spec_any as Dictionary
+		var slot = str(option_spec.get("slot", ""))
 		var btn = buttons.get(slot, null) as Button
 		if btn == null:
 			continue
-		var text = str(spec.get("label", slot))
+		var text = str(option_spec.get("label", slot))
 		if values.has(slot):
 			var compact = _trade_compact_value(values[slot] as Dictionary)
 			if compact != "":
@@ -7508,6 +8495,15 @@ func _trade_refresh_side_ui(side: int) -> void:
 	else:
 		editor["preview"].text = "No value set for %s" % str(spec.get("label", selected_slot))
 
+# Inputs:
+# - none
+# Outputs:
+# - none; refreshes global trade dialog labels and both side panels
+# Execution timing:
+# - Called after any trade state mutation.
+# Steps:
+# - Update title/status and side title labels.
+# - Refresh left and right side UI blocks.
 func _trade_refresh_dialog_ui() -> void:
 	if _trade_title_label:
 		_trade_title_label.text = "Trade Request"
@@ -7522,6 +8518,16 @@ func _trade_refresh_dialog_ui() -> void:
 	_trade_refresh_side_ui(0)
 	_trade_refresh_side_ui(1)
 
+# Inputs:
+# - target_tag: target country tag for trade negotiation
+# Outputs:
+# - none; initializes and opens trade dialog in clean state
+# Execution timing:
+# - Triggered from diplomacy panel trade action.
+# Steps:
+# - Ensure dialog exists and set target context.
+# - Reset picker flags and hide helper popups.
+# - Refresh UI and defer popup opening.
 func _otevri_trade_dialog(target_tag: String) -> void:
 	_vytvor_trade_dialog()
 	_trade_target_tag = target_tag.strip_edges().to_upper()
@@ -7537,6 +8543,16 @@ func _otevri_trade_dialog(target_tag: String) -> void:
 	_trade_refresh_dialog_ui()
 	call_deferred("_trade_open_popup_deferred")
 
+# Inputs:
+# - none
+# Outputs:
+# - none; safely opens trade popup after deferred call with clean picker states
+# Execution timing:
+# - Invoked via call_deferred from trade open flow.
+# Steps:
+# - Reset map picker modes once more.
+# - Hide helper popup if present.
+# - Position and show main trade dialog.
 func _trade_open_popup_deferred() -> void:
 	if _trade_dialog == null:
 		return
@@ -7554,6 +8570,15 @@ func _trade_open_popup_deferred() -> void:
 	_trade_dialog.popup()
 	_pozicuj_trade_dialog()
 
+# Inputs:
+# - none
+# Outputs:
+# - none; sizes and centers trade dialog according to viewport limits
+# Execution timing:
+# - Called before each trade dialog popup and on layout updates.
+# Steps:
+# - Compute clamped width/height from viewport.
+# - Apply size and centered position.
 func _pozicuj_trade_dialog() -> void:
 	if _trade_dialog == null:
 		return
@@ -7563,6 +8588,16 @@ func _pozicuj_trade_dialog() -> void:
 	_trade_dialog.size = Vector2(w, h)
 	_trade_dialog.position = Vector2((vp.x - _trade_dialog.size.x) * 0.5, (vp.y - _trade_dialog.size.y) * 0.5)
 
+# Inputs:
+# - none (reads current trade side value dictionaries)
+# Outputs:
+# - none; submits trade offer and handles queued/accepted/declined outcomes
+# Execution timing:
+# - Triggered by trade dialog "Send offer" button.
+# Steps:
+# - Validate target and trade backend availability.
+# - Submit sender/receiver terms to GameManager.
+# - Show result, reset dialog state, and refresh diplomacy request UI.
 func _on_trade_send_pressed() -> void:
 	if _trade_target_tag == "" or _trade_target_tag == GameManager.hrac_stat:
 		await zobraz_systemove_hlaseni("Trade", "Select a valid target country first.")
@@ -7611,12 +8646,31 @@ func _on_trade_send_pressed() -> void:
 	if current_viewed_tag != "":
 		_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
 
+# Inputs:
+# - none
+# Outputs:
+# - none; centers pause menu panel in viewport
+# Execution timing:
+# - Called when opening pause menu and on resize adjustments.
+# Steps:
+# - Guard against missing panel.
+# - Compute centered position and apply.
 func _pozicuj_pause_menu() -> void:
 	if not _pause_menu_panel:
 		return
 	var viewport_size = get_viewport().get_visible_rect().size
 	_pause_menu_panel.position = Vector2((viewport_size.x - _pause_menu_panel.size.x) * 0.5, (viewport_size.y - _pause_menu_panel.size.y) * 0.5)
 
+# Inputs:
+# - none
+# Outputs:
+# - none; toggles pause menu visibility and refreshes spectate controls on open
+# Execution timing:
+# - Triggered by pause hotkey/button.
+# Steps:
+# - Hide menu if already open.
+# - Otherwise refresh spectate UI state.
+# - Position and show pause panel.
 func _prepni_pause_menu() -> void:
 	if not _pause_menu_panel:
 		return
@@ -7628,10 +8682,31 @@ func _prepni_pause_menu() -> void:
 		_pozicuj_pause_menu()
 		_pause_menu_panel.show()
 
+# Inputs:
+# - none
+# Outputs:
+# - none; hides pause menu when it exists
+# Execution timing:
+# - Called by cancel actions and post-confirm flows.
+# Steps:
+# - Guard panel existence.
+# - Hide panel.
 func _zavri_pause_menu() -> void:
 	if _pause_menu_panel:
 		_pause_menu_panel.hide()
 
+# Inputs:
+# - action: pending pause action key
+# - title: confirmation dialog title
+# - text: confirmation dialog body text
+# Outputs:
+# - none; opens confirmation dialog and stores pending pause action
+# Execution timing:
+# - Triggered before destructive pause-menu actions.
+# Steps:
+# - Guard dialog existence.
+# - Persist pending action id.
+# - Configure and show confirmation dialog.
 func _zobraz_pause_confirm(action: String, title: String, text: String) -> void:
 	if not _pause_confirm_dialog:
 		return
@@ -7640,7 +8715,16 @@ func _zobraz_pause_confirm(action: String, title: String, text: String) -> void:
 	_pause_confirm_dialog.dialog_text = text
 	_pause_confirm_dialog.popup_centered()
 
-# Sets up nodes, defaults, and signals.
+# Inputs:
+# - none
+# Outputs:
+# - none; creates combined save/load popup UI and caches key controls
+# Execution timing:
+# - Called during UI setup before save/load actions are used.
+# Steps:
+# - Build popup container and scrollable slot list.
+# - Initialize action buttons and signal connections.
+# - Keep backward-compatible load-dialog references.
 func _vytvor_save_load_dialogy() -> void:
 	_save_dialog = PopupPanel.new()
 	_save_dialog.name = "SaveLoadDialog"
@@ -8055,18 +9139,34 @@ func _build_ingame_keybind_rows() -> void:
 		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		_settings_keybind_grid.add_child(value)
 
-# Refreshes existing content to reflect current runtime values.
+# Inputs:
+# - none
+# Outputs:
+# - none; placeholder for keybind button refresh in in-game settings
+# Execution timing:
+# - Called after loading settings keybind state.
 func _refresh_ingame_keybind_buttons() -> void:
 	return
 
-# Reacts to incoming events.
-func _on_ingame_keybind_button_pressed(action: String) -> void:
+# Inputs:
+# - action: keybind action id being captured
+# Outputs:
+# - none; placeholder for keybind rebinding interaction
+# Execution timing:
+# - Triggered by keybind row button click in settings.
+func _on_ingame_keybind_button_pressed(_action: String) -> void:
 	return
 
-func _capture_ingame_keybind(event: InputEventKey) -> bool:
+func _capture_ingame_keybind(_event: InputEventKey) -> bool:
 	return false
 
 # Runs the local feature logic.
+# Inputs:
+# - none
+# Outputs:
+# - none; positions settings dialog centered with responsive size
+# Execution timing:
+# - Called when opening settings dialog and on viewport resize.
 func _pozicuj_settings_dialog() -> void:
 	if _settings_dialog:
 		var vp = get_viewport().get_visible_rect().size
@@ -8140,7 +9240,12 @@ func _nacti_settings_do_ingame_ui() -> void:
 	_on_ingame_camera_speed_changed(_settings_camera_slider.value)
 	_on_ingame_zoom_speed_changed(_settings_zoom_slider.value)
 
-# Persistence write helper.
+# Inputs:
+# - none
+# Outputs:
+# - none; persists current in-game settings and applies them immediately
+# Execution timing:
+# - Triggered by settings Apply button.
 func _uloz_a_aplikuj_ingame_settings() -> void:
 	var fullscreen = _settings_fullscreen_check.button_pressed
 	var vsync_enabled = _settings_vsync_check.button_pressed
@@ -8187,7 +9292,12 @@ func _uloz_a_aplikuj_ingame_settings() -> void:
 		map_cam.zoom_speed = zoom_speed
 		map_cam.invert_zoom_wheel = invert_zoom
 
-# Applies prepared settings/effects to runtime systems.
+# Inputs:
+# - enabled: potato-mode toggle
+# Outputs:
+# - none; applies performance-focused runtime switches
+# Execution timing:
+# - Called when loading/applying settings.
 func _aplikuj_potato_mode_runtime(enabled: bool) -> void:
 	Engine.max_fps = 45 if enabled else 0
 	OS.low_processor_usage_mode = enabled
@@ -8224,7 +9334,12 @@ func _on_ingame_volume_changed(value: float) -> void:
 	if _settings_volume_value:
 		_settings_volume_value.text = "%d%%" % int(round(value * 100.0))
 
-# Reacts to incoming events.
+# Inputs:
+# - value: camera speed slider value
+# Outputs:
+# - none; updates displayed camera speed text
+# Execution timing:
+# - Triggered while user drags camera speed slider.
 func _on_ingame_camera_speed_changed(value: float) -> void:
 	if _settings_camera_value:
 		_settings_camera_value.text = "%d" % int(round(value))
@@ -8237,7 +9352,12 @@ func _on_ingame_settings_apply_pressed() -> void:
 	_uloz_a_aplikuj_ingame_settings()
 	_settings_dialog.hide()
 
-# Handles this gameplay/UI path.
+# Inputs:
+# - none
+# Outputs:
+# - String: default timestamp-based save slot name
+# Execution timing:
+# - Called when opening save UI with empty slot-name input.
 func _vygeneruj_default_jmeno_save() -> String:
 	return "save_%s" % Time.get_datetime_string_from_system().replace("T", "_").replace(":", "-")
 
@@ -8310,7 +9430,12 @@ func _nastav_vybrany_load_slot(slot_name: String) -> void:
 	if _load_confirm_btn:
 		_load_confirm_btn.disabled = _load_selected_slot_name == ""
 
-# Triggered by a UI/game signal.
+# Inputs:
+# - slot_name: clicked slot identifier
+# Outputs:
+# - none; marks clicked slot as selected for load action
+# Execution timing:
+# - Triggered when user clicks a slot row in load dialog.
 func _on_load_slot_row_pressed(slot_name: String) -> void:
 	_nastav_vybrany_load_slot(slot_name)
 
@@ -8322,7 +9447,12 @@ func _on_load_slot_selected(_index: int) -> void:
 	# Deprecated path (ItemList was replaced by custom row list).
 	pass
 
-# Reacts to incoming events.
+# Inputs:
+# - none
+# Outputs:
+# - none; saves current game into selected/generated slot
+# Execution timing:
+# - Triggered by Save button inside save/load dialog.
 func _on_save_dialog_confirm_pressed() -> void:
 	if not _save_name_input:
 		return
@@ -8377,8 +9507,13 @@ func _smaz_load_slot(slot_name: String) -> void:
 	else:
 		await zobraz_systemove_hlaseni("Load", "Failed to delete save slot.")
 
-# Callback for UI/game events.
 # Ai generated or editted end (priloha_a.txt)
+# Inputs:
+# - none
+# Outputs:
+# - none; closes pause menu popup
+# Execution timing:
+# - Triggered by Resume button in pause menu.
 func _on_pause_resume_pressed() -> void:
 	_zavri_pause_menu()
 
@@ -8408,13 +9543,13 @@ func _ziskej_pause_volitelne_hrace() -> Array:
 	var seen: Dictionary = {}
 	for p_id in GameManager.map_data:
 		var d = GameManager.map_data[p_id] as Dictionary
-		var owner = str(d.get("owner", "")).strip_edges().to_upper()
-		if owner == "" or owner == "SEA":
+		var province_owner = str(d.get("province_owner", "")).strip_edges().to_upper()
+		if province_owner == "" or province_owner == "SEA":
 			continue
-		if seen.has(owner):
+		if seen.has(province_owner):
 			continue
-		seen[owner] = true
-		out.append(owner)
+		seen[province_owner] = true
+		out.append(province_owner)
 	out.sort_custom(func(a, b): return _ziskej_jmeno_statu_podle_tagu(str(a)) < _ziskej_jmeno_statu_podle_tagu(str(b)))
 	return out
 
@@ -8439,8 +9574,8 @@ func _obnov_pause_spectate_vyber_hrace() -> void:
 	var states = _ziskej_pause_volitelne_hrace()
 	for tag_any in states:
 		var tag = str(tag_any)
-		var name = _ziskej_jmeno_statu_podle_tagu(tag)
-		var item = "%s (%s)" % [name, tag]
+		var country_name = _ziskej_jmeno_statu_podle_tagu(tag)
+		var item = "%s (%s)" % [country_name, tag]
 		_pause_spectate_pick_option.add_item(item)
 		_pause_spectate_pick_option.set_item_metadata(_pause_spectate_pick_option.item_count - 1, tag)
 	if _pause_spectate_pick_option.item_count <= 0:
@@ -8518,7 +9653,12 @@ func _obnov_spectate_hud_indicator() -> void:
 	_spectate_hud_panel.visible = _spectate_mode_enabled
 	_pozicuj_spectate_hud_indicator()
 
-# Event handler for user or game actions.
+# Inputs:
+# - none
+# Outputs:
+# - none; opens in-game settings tab from pause menu
+# Execution timing:
+# - Triggered by Settings button in pause menu.
 func _on_pause_options_pressed() -> void:
 	_zavri_pause_menu()
 	_nacti_settings_do_ingame_ui()
@@ -8527,7 +9667,12 @@ func _on_pause_options_pressed() -> void:
 		_pozicuj_settings_dialog()
 		_settings_dialog.popup()
 
-# Event handler for user or game actions.
+# Inputs:
+# - none
+# Outputs:
+# - none; opens surrender confirmation dialog from pause menu
+# Execution timing:
+# - Triggered by Surrender button in pause menu.
 func _on_pause_surrender_pressed() -> void:
 	_zobraz_pause_confirm("surrender", "Surrender", "Do you really want to surrender as the current country?")
 
@@ -8556,7 +9701,12 @@ func _on_pause_confirm_canceled() -> void:
 		_pozicuj_pause_menu()
 		_pause_menu_panel.call_deferred("show")
 
-# Triggered by a UI/game signal.
+# Inputs:
+# - none
+# Outputs:
+# - none; executes confirmed pause action (surrender/quit)
+# Execution timing:
+# - Triggered by confirmation dialog accept button.
 func _on_pause_confirmed() -> void:
 	var action = _pause_pending_action
 	_pause_pending_action = ""
@@ -8776,7 +9926,12 @@ func _aktualizuj_zadost_ui(_target_tag: String):
 	if respond_request_buttons:
 		respond_request_buttons.hide()
 
-# Sets up nodes, defaults, and signals.
+# Inputs:
+# - queue: pending diplomacy request queue
+# Outputs:
+# - String: normalized signature used to detect unchanged queue state
+# Execution timing:
+# - Called when deciding whether dismissed diplomacy popup should re-open.
 func _vytvor_otisk_diplomaticke_fronty(queue: Array) -> String:
 	if queue.is_empty():
 		return ""
@@ -8810,8 +9965,13 @@ func _potlac_diplomatickou_frontu_do_zmeny() -> void:
 	_aktualizuj_panel_rozbalene_fronty([])
 	_aktualizuj_pozice_popupu()
 
-# Updates derived state and UI.
 # Ai generated or editted end (priloha_a.txt)
+# Inputs:
+# - none
+# Outputs:
+# - none; refreshes diplomacy popup content, queue preview, and visibility rules
+# Execution timing:
+# - Called after diplomacy state changes and periodically during UI refresh.
 func _aktualizuj_popup_diplomatickych_zadosti():
 	_popup_request_from_tag = ""
 	if not diplomacy_request_popup:
@@ -8887,7 +10047,12 @@ func _aktualizuj_popup_diplomatickych_zadosti():
 	_aktualizuj_panel_zprav()
 	_aktualizuj_pozice_popupu()
 
-# Core flow for this feature.
+# Inputs:
+# - none
+# Outputs:
+# - none; ensures expandable queue-preview controls exist on diplomacy popup
+# Execution timing:
+# - Called during UI setup before queue preview is used.
 func _zajisti_rozbaleni_fronty_popupu() -> void:
 	if diplomacy_request_popup == null:
 		return
@@ -9074,7 +10239,12 @@ func _ziskej_historicke_zpravy() -> Array:
 			hist.append(entry)
 	return hist
 
-# Feature logic entry point.
+# Inputs:
+# - entries: message entry array
+# Outputs:
+# - Array: entries filtered to exclude popup-only category
+# Execution timing:
+# - Called before rendering messages list in panel.
 func _odfiltruj_popup_kategorie(entries: Array) -> Array:
 	var filtered: Array = []
 	for entry in entries:
@@ -9270,7 +10440,12 @@ func _normalizuj_kategorii_zpravy(category: String, title: String = "", text: St
 		return "Negotiations"
 	return "Other"
 
-# Core flow for this feature.
+# Inputs:
+# - entries: flat list of message dictionaries
+# Outputs:
+# - Dictionary: grouped entries by normalized category label
+# Execution timing:
+# - Used by message panel renderer.
 func _sestav_skupiny_zprav(entries: Array) -> Dictionary:
 	var grouped: Dictionary = {}
 	# seskupeni podle normalizovane kategorie drzi filtr stabilni i u ruznych zdroju logu.
@@ -9392,7 +10567,12 @@ func _vykresli_skupiny_zprav(current_entries: Array, history_entries: Array) -> 
 		empty_lbl2.text = "(no messages for current filter)"
 		_zpravy_groups_list.add_child(empty_lbl2)
 
-# Updates derived state and UI.
+# Inputs:
+# - none
+# Outputs:
+# - none; updates message toggle button labels/counts
+# Execution timing:
+# - Called whenever message data or mode changes.
 func _aktualizuj_tlacitko_zprav() -> void:
 	if _zpravy_toggle_btn == null:
 		return
@@ -9402,7 +10582,12 @@ func _aktualizuj_tlacitko_zprav() -> void:
 	if _zpravy_anchor_control and is_instance_valid(_zpravy_anchor_control) and _zpravy_anchor_control is Button:
 		(_zpravy_anchor_control as Button).text = "Messages (%d)" % count
 
-# Core flow for this feature.
+# Inputs:
+# - none
+# Outputs:
+# - none; positions floating messages toggle button
+# Execution timing:
+# - Called on layout/viewport updates when no external anchor control is used.
 func _pozicuj_tlacitko_zprav() -> void:
 	if _zpravy_toggle_btn == null:
 		return
@@ -9417,7 +10602,12 @@ func _pozicuj_tlacitko_zprav() -> void:
 		y = next_btn.global_position.y + next_btn.size.y + 4.0
 	_zpravy_toggle_btn.position = Vector2(viewport_size.x - _zpravy_toggle_btn.size.x - 12.0, y)
 
-# Read-only data accessor.
+# Inputs:
+# - none
+# Outputs:
+# - Rect2: anchor rect for messages panel placement
+# Execution timing:
+# - Called when positioning messages panel.
 func _ziskej_rect_anchoru_zprav() -> Rect2:
 	if _zpravy_anchor_control and is_instance_valid(_zpravy_anchor_control) and _zpravy_anchor_control.is_visible_in_tree():
 		return Rect2(_zpravy_anchor_control.global_position, _zpravy_anchor_control.size)
@@ -9596,7 +10786,12 @@ func _vytvor_zprava_text_chunk(text: String) -> Label:
 	lbl.text = text
 	return lbl
 
-# Builds UI objects and default wiring.
+# Inputs:
+# - tag: country tag for flag button
+# Outputs:
+# - TextureButton|null: clickable flag button for opening country overview
+# Execution timing:
+# - Used while rendering each message row.
 func _vytvor_zprava_flag_btn(tag: String):
 	var clean_tag = tag.strip_edges().to_upper()
 	if clean_tag == "":
@@ -9672,7 +10867,12 @@ func _odeber_nazvy_statu_z_textu(text: String, tags: Array) -> String:
 func _on_zprava_flag_pressed(state_tag: String) -> void:
 	_otevri_prehled_statu_podle_tagu(state_tag)
 
-# Refresh pass for current state.
+# Inputs:
+# - none
+# Outputs:
+# - none; refreshes complete messages panel content and visibility
+# Execution timing:
+# - Called after log updates and panel mode/toggle changes.
 func _aktualizuj_panel_zprav() -> void:
 	_aktualizuj_tlacitko_zprav()
 	if _zpravy_panel == null or _zpravy_groups_list == null:
@@ -9701,11 +10901,21 @@ func _aktualizuj_panel_zprav() -> void:
 	_zpravy_panel.show()
 	_aktualizuj_pozice_popupu()
 
-# Callback for UI/game events.
+# Inputs:
+# - none
+# Outputs:
+# - none; toggles messages panel open/closed
+# Execution timing:
+# - Triggered by messages toggle button.
 func _on_zpravy_toggle_pressed() -> void:
 	_nastav_zpravy_panel_otevreny(not _zpravy_expanded)
 
-# Callback for UI/game events.
+# Inputs:
+# - none
+# Outputs:
+# - none; switches messages panel to local-country mode
+# Execution timing:
+# - Triggered by My country tab button.
 func _on_zpravy_mode_local_pressed() -> void:
 	_zpravy_mode = 0
 	if _zpravy_mode_local_btn:
@@ -9714,7 +10924,12 @@ func _on_zpravy_mode_local_pressed() -> void:
 		_zpravy_mode_global_btn.button_pressed = false
 	_aktualizuj_panel_zprav()
 
-# Reacts to incoming events.
+# Inputs:
+# - none
+# Outputs:
+# - none; switches messages panel to global mode
+# Execution timing:
+# - Triggered by Global tab button.
 func _on_zpravy_mode_global_pressed() -> void:
 	_zpravy_mode = 1
 	if _zpravy_mode_local_btn:
@@ -9728,7 +10943,12 @@ func _on_zpravy_category_toggle_pressed(category_name: String) -> void:
 	_zpravy_category_expanded[category_name] = not current
 	_aktualizuj_panel_zprav()
 
-# Reacts to incoming events.
+# Inputs:
+# - pressed: history-checkbox state
+# Outputs:
+# - none; toggles display of historical messages
+# Execution timing:
+# - Triggered by History checkbox in messages panel.
 func _on_zpravy_historie_toggled(pressed: bool) -> void:
 	_zpravy_historie_expanded = pressed
 	if _zpravy_historie_checkbox:
@@ -9826,7 +11046,12 @@ func _trade_formatuj_terms_pro_zadost(terms: Dictionary) -> Array:
 		out.append("%s: %s" % [slot_extra, value_extra])
 	return out
 
-# Core flow for this feature.
+# Inputs:
+# - slot: trade slot key
+# Outputs:
+# - String: user-facing label for request summary text
+# Execution timing:
+# - Used while formatting trade terms in diplomacy requests.
 func _trade_label_slotu_pro_zadost(slot: String) -> String:
 	match slot:
 		"gold":
@@ -9952,7 +11177,12 @@ func _on_queue_preview_toggle_pressed() -> void:
 	if GameManager.has_method("ziskej_cekajici_diplomaticke_zadosti"):
 		_aktualizuj_panel_rozbalene_fronty(GameManager.ziskej_cekajici_diplomaticke_zadosti(GameManager.hrac_stat))
 
-# Triggered by a UI/game signal.
+# Inputs:
+# - from_tag: request sender tag
+# Outputs:
+# - none; accepts one queued diplomacy request from sender
+# Execution timing:
+# - Triggered by Accept button inside expanded queue row.
 func _on_queue_row_accept_pressed(from_tag: String) -> void:
 	if not GameManager.has_method("hrac_prijmi_diplomatickou_zadost"):
 		return
@@ -9983,7 +11213,12 @@ func _on_queue_row_decline_pressed(from_tag: String) -> void:
 	if current_viewed_tag == from_tag:
 		_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
 
-# Triggered by a UI/game signal.
+# Inputs:
+# - from_tag: selected sender tag
+# Outputs:
+# - none; opens sender country overview from queue row
+# Execution timing:
+# - Triggered by clicking row/flag in expanded diplomacy queue.
 func _on_queue_row_focus_country_pressed(from_tag: String) -> void:
 	_otevri_prehled_statu_podle_tagu(from_tag)
 
@@ -10016,7 +11251,12 @@ func _zajisti_vizual_fronty_diplomacii() -> void:
 		diplomacy_request_popup.move_child(card, 0)
 		_diplomacy_queue_preview_cards.append(card)
 
-# Handles this gameplay/UI path.
+# Inputs:
+# - none
+# Outputs:
+# - none; lays out stacked diplomacy preview cards behind main popup
+# Execution timing:
+# - Called whenever diplomacy popup size changes.
 func _rozmistit_vizual_fronty_diplomacii() -> void:
 	if diplomacy_request_popup == null:
 		return
@@ -10302,7 +11542,12 @@ func _on_apply_ideology_pressed() -> void:
 	)
 	_obnov_otevreny_prehled_statu()
 
-# Triggered by a UI/game signal.
+# Inputs:
+# - index: selected ideology option index
+# Outputs:
+# - none; refreshes ideology preview after explicit option selection
+# Execution timing:
+# - Triggered by OptionButton item_selected signal.
 func _on_ideology_option_selected(index: int) -> void:
 	if _updating_ideology_ui:
 		return
@@ -10337,7 +11582,12 @@ func _formatuj_cislo(cislo: int) -> String:
 	return vysledek
 
 # --- DIPLOMACY ACTION ---
-# Event handler for user or game actions.
+# Inputs:
+# - none
+# Outputs:
+# - none; declares war on currently viewed foreign country and refreshes diplomacy UI
+# Execution timing:
+# - Triggered by Declare War button in overview actions.
 func _on_declare_war_button_pressed():
 	if _je_spectate_observer_mode():
 		return
@@ -10372,7 +11622,12 @@ func _on_non_aggression_button_pressed():
 		_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
 	_aktualizuj_panel_zprav()
 
-# Handles this signal callback.
+# Inputs:
+# - none
+# Outputs:
+# - none; toggles military-access request/revoke flow for viewed country
+# Execution timing:
+# - Triggered by Military Access button.
 func _on_military_access_btn_pressed():
 	if _je_spectate_observer_mode():
 		return
@@ -10438,7 +11693,12 @@ func _on_popup_decline_all_requests_pressed():
 	if current_viewed_tag != "":
 		_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
 
-# Reacts to incoming events.
+# Inputs:
+# - none
+# Outputs:
+# - none; accepts currently selected incoming diplomacy request in side panel
+# Execution timing:
+# - Triggered by Accept button in compact incoming-request area.
 func _on_accept_request_pressed():
 	if _je_spectate_observer_mode():
 		return
@@ -10459,7 +11719,12 @@ func _on_accept_request_pressed():
 	_aktualizuj_diplomacii_tlacitka(current_viewed_tag)
 	_aktualizuj_popup_diplomatickych_zadosti()
 
-# Event handler for user or game actions.
+# Inputs:
+# - none
+# Outputs:
+# - none; declines currently selected incoming diplomacy request in side panel
+# Execution timing:
+# - Triggered by Decline button in compact incoming-request area.
 func _on_decline_request_pressed():
 	if _je_spectate_observer_mode():
 		return

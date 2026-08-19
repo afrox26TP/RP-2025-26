@@ -88,7 +88,9 @@ var country_colors = {
 }
 
 # Occupied provinces are tinted a bit, so the player sees non-core land faster.
-# Core flow for this feature.
+# Inputs: Province dictionary with owner/core_owner fields used for political coloring.
+# Outputs: Final province color, slightly muted for occupied (non-core) territory.
+# Execution timing: Called when rebuilding political map textures and previews.
 func _barva_politickeho_vlastnictvi(d: Dictionary) -> Color:
 	var owner_tag = str(d.get("owner", "")).strip_edges().to_upper()
 	var base = country_colors.get(owner_tag, Color.from_hsv(owner_tag.hash() / float(0x7FFFFFFF), 0.7, 0.8))
@@ -101,7 +103,9 @@ func _barva_politickeho_vlastnictvi(d: Dictionary) -> Color:
 
 	return base
 
-# Read-only data accessor.
+# Inputs: None.
+# Outputs: Opaque color used for player-owned selection highlights.
+# Execution timing: Used when shader params for selection visuals are refreshed.
 func _ziskej_barvu_hrace_pro_vyber() -> Color:
 	var player_tag = str(GameManager.hrac_stat).strip_edges().to_upper()
 	var base = country_colors.get(player_tag, Color(0.95, 0.85, 0.25, 1.0))
@@ -111,7 +115,9 @@ func _ziskej_barvu_hrace_pro_vyber() -> Color:
 		return col
 	return Color(0.95, 0.85, 0.25, 1.0)
 
-# Pulls current state data.
+# Inputs: Country tag.
+# Outputs: Opaque fallback-safe color for that country.
+# Execution timing: Used by map mode rendering and ownership previews.
 func _ziskej_barvu_statu(tag: String) -> Color:
 	var clean = str(tag).strip_edges().to_upper()
 	var base = country_colors.get(clean, Color(0.72, 0.34, 0.34, 1.0))
@@ -170,34 +176,44 @@ func _ready():
 	_connect_labels_cache_signals()
 
 # These small caches matter a lot, jinak hover/select spam would do too much lookup work.
-# Applies incoming data to runtime state.
+# Inputs: `enabled` toggle for reduced-detail rendering.
+# Outputs: None.
+# Execution timing: Called from settings/performance switches.
 func nastav_potato_mode(enabled: bool) -> void:
 	_potato_mode_enabled = enabled
 	if material:
 		material.set_shader_parameter("low_detail_mode", enabled)
 
-# Reads values from active state.
+# Inputs: None.
+# Outputs: Cached parent/root map logic node.
+# Execution timing: Called by most interaction handlers to access shared state.
 func _get_root() -> Node:
 	var parent_node = get_parent()
 	if _root_cache == null or not is_instance_valid(_root_cache) or _root_cache != parent_node:
 		_root_cache = parent_node
 	return _root_cache
 
-# Fetches data for callers.
+# Inputs: None.
+# Outputs: Cached `InfoUI` node if present in current scene.
+# Execution timing: Used before sending selection details to info panel.
 func _get_info_ui() -> Node:
 	if _info_ui_cache == null or not is_instance_valid(_info_ui_cache):
 		var current_scene = get_tree().current_scene
 		_info_ui_cache = current_scene.find_child("InfoUI", true, false) if current_scene else null
 	return _info_ui_cache
 
-# Pulls current state data.
+# Inputs: None.
+# Outputs: Cached `GameUI` node if present in current scene.
+# Execution timing: Used when map interaction needs UI state gates.
 func _get_game_ui() -> Node:
 	if _game_ui_cache == null or not is_instance_valid(_game_ui_cache):
 		var current_scene = get_tree().current_scene
 		_game_ui_cache = current_scene.find_child("GameUI", true, false) if current_scene else null
 	return _game_ui_cache
 
-# Reads values from active state.
+# Inputs: None.
+# Outputs: Cached map-loader/gameplay root that owns province data.
+# Execution timing: Used by interaction and rendering helpers.
 func _get_map_loader() -> Node:
 	if _map_loader_cache == null or not is_instance_valid(_map_loader_cache):
 		var current_scene = get_tree().current_scene
@@ -207,7 +223,9 @@ func _get_map_loader() -> Node:
 			_map_loader_cache = current_scene.find_child("Map", true, false)
 	return _map_loader_cache
 
-# Reads values from active state.
+# Inputs: None.
+# Outputs: Current `ProvinceLabels` node and refreshed cache linkage.
+# Execution timing: Called before reading/updating per-province label visuals.
 func _get_labels_node() -> Node2D:
 	var root = _get_root()
 	var next_labels = root.get_node_or_null("ProvinceLabels") as Node2D if root else null
@@ -218,7 +236,10 @@ func _get_labels_node() -> Node2D:
 		_connect_labels_cache_signals()
 	return _labels_node_cache
 
-# Feature logic entry point.
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called when label node cache changes or on `_ready`.
+# Steps: Connects child-enter/exit signals used to invalidate label cache.
 func _connect_labels_cache_signals() -> void:
 	var labels = _labels_node_cache
 	if labels == null:
@@ -230,7 +251,9 @@ func _connect_labels_cache_signals() -> void:
 	if not labels.child_exiting_tree.is_connected(_on_labels_child_changed):
 		labels.child_exiting_tree.connect(_on_labels_child_changed)
 
-# Runs the local feature logic.
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called before swapping cached labels node or on teardown.
 func _disconnect_labels_cache_signals() -> void:
 	if _labels_node_cache == null:
 		return
@@ -239,11 +262,16 @@ func _disconnect_labels_cache_signals() -> void:
 	if _labels_node_cache.child_exiting_tree.is_connected(_on_labels_child_changed):
 		_labels_node_cache.child_exiting_tree.disconnect(_on_labels_child_changed)
 
-# Triggered by a UI/game signal.
+# Inputs: Signal payload node (unused).
+# Outputs: None.
+# Execution timing: Runs when label children enter/exit tree.
 func _on_labels_child_changed(_node: Node) -> void:
 	_labels_cache_dirty = true
 
-# Feature logic entry point.
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called before province-id to label lookups.
+# Steps: Rebuilds label dictionary only when cache is dirty.
 func _ensure_labels_cache() -> void:
 	var labels = _get_labels_node()
 	if labels == null:
@@ -259,19 +287,25 @@ func _ensure_labels_cache() -> void:
 		_labels_by_province_id[int(lbl.get("province_id"))] = lbl
 	_labels_cache_dirty = false
 
-# Read-only data accessor.
+# Inputs: Province id.
+# Outputs: Label node for province id, or `null` when missing.
+# Execution timing: Called by hover/selection label-state updates.
 func _get_label_for_province(province_id: int) -> Node:
 	_ensure_labels_cache()
 	return _labels_by_province_id.get(province_id, null)
 
-# Sync update for linked values.
+# Inputs: Desired cursor shape constant.
+# Outputs: None.
+# Execution timing: Called on hover/selection state transitions.
 func _set_cursor_shape(shape: int) -> void:
 	if _last_cursor_shape == shape:
 		return
 	_last_cursor_shape = shape
 	Input.set_default_cursor_shape(shape)
 
-# Clears temporary state.
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called before applying a new selection-neighbor label state set.
 func _clear_selection_label_states() -> void:
 	if _selection_label_states.is_empty():
 		return
@@ -281,7 +315,10 @@ func _clear_selection_label_states() -> void:
 			lbl.reset_stav()
 	_selection_label_states.clear()
 
-# Applies prepared settings/effects to runtime systems.
+# Inputs: Selected province id and neighbor id list.
+# Outputs: None.
+# Execution timing: Called after selection updates to keep label overlays in sync.
+# Steps: Resets stale labels and applies selected/neighbor states to current set.
 func _apply_selection_label_states(target_id: int, neighbor_ids: Array) -> void:
 	var next_states: Dictionary = {}
 	next_states[target_id] = 2
@@ -334,7 +371,9 @@ func nastav_nahled_hlavniho_mesta(owned_ids: Array, valid_ids: Array) -> void:
 	capital_focus_valid_texture.update(capital_focus_valid_image)
 	material.set_shader_parameter("capital_focus_mode", true)
 
-# Wipes short-lived state.
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called when leaving capital-relocation targeting mode.
 func vycisti_nahled_hlavniho_mesta() -> void:
 	if capital_focus_owned_image == null or capital_focus_valid_image == null:
 		return
@@ -362,7 +401,10 @@ func obnov_trade_single_selection_highlight() -> void:
 	_trade_pick_saved_selected_id = -1.0
 	_trade_pick_selection_suspended = false
 
-# Feature logic entry point.
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Lazily created before first hover tooltip display.
+# Steps: Builds canvas layer and panel/label controls used by mode hover tooltip.
 func _ensure_mode_hover_tooltip() -> void:
 	if _mode_hover_layer != null:
 		return
@@ -631,7 +673,9 @@ func _show_mode_hover_tooltip(data: Dictionary, root: Node) -> void:
 		_last_mode_hover_debug_text = txt
 	_update_mode_hover_tooltip_position(get_global_mouse_position())
 
-# Render pass for custom visuals.
+# Inputs: None.
+# Outputs: None (draws drag rectangle overlay when active).
+# Execution timing: Godot draw pass, triggered by `queue_redraw()` during drag select.
 func _draw():
 	if not _drag_select_active or not _drag_select_started:
 		return
@@ -648,14 +692,19 @@ func _draw():
 
 	draw_rect(rect_draw, Color(0.1, 1.0, 1.0, 1.0), false, 3.0)
 
-# Fetches data for callers.
+# Inputs: Global mouse position.
+# Outputs: Local texture-space position aligned with centered sprite setup.
+# Execution timing: Called by click/drag handlers during interaction frames.
 func _ziskej_localni_pozici_mysi(global_mouse_pos: Vector2) -> Vector2:
 	var local_pos = to_local(global_mouse_pos)
 	if centered:
 		local_pos += texture.get_size() / 2.0
 	return local_pos
 
-# Updates derived state and UI.
+# Inputs: Province id array currently in bulk selection.
+# Outputs: None.
+# Execution timing: Called after bulk-selection changes and clear operations.
+# Steps: Rewrites one-row selection texture and updates related shader flags.
 func _aktualizuj_hromadny_selection_texture(ids: Array):
 	if selected_multi_image == null or selected_multi_texture == null:
 		return
@@ -678,14 +727,18 @@ func _aktualizuj_hromadny_selection_texture(ids: Array):
 		selected_multi_image.set_pixel(pid, 0, Color(1, 1, 1, 1))
 	selected_multi_texture.update(selected_multi_image)
 
-# Applies incoming data to runtime state.
+# Inputs: Defeated owner tag for peace-target ownership preview.
+# Outputs: None.
+# Execution timing: Called when entering peace-goal province selection mode.
 func nastav_nahled_mirovych_cilu(porazeny_tag: String) -> void:
 	if material == null:
 		return
 	material.set_shader_parameter("peace_target_visual_mode", true)
 	material.set_shader_parameter("peace_target_owner_color", _ziskej_barvu_statu(porazeny_tag))
 
-# Wipes short-lived state.
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called when leaving peace-goal selection mode.
 func vycisti_nahled_mirovych_cilu() -> void:
 	if material == null:
 		return
@@ -697,7 +750,9 @@ func nastav_peace_ownership_preview(enabled: bool) -> void:
 	if root and ("provinces" in root):
 		aktualizuj_mapovy_mod(_aktualni_mapovy_mod_local, root.provinces)
 
-# Fallback input handler.
+# Inputs: Unhandled input event.
+# Outputs: None.
+# Execution timing: Runs for map hotkeys and drag/selection interactions not consumed elsewhere.
 func _unhandled_input(event):
 	if event is InputEventMouseMotion:
 		if _drag_select_active:
@@ -813,7 +868,10 @@ func _unhandled_input(event):
 				else:
 					GameManager.ukonci_kolo()
 
-# Applies prepared settings/effects to runtime systems.
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called when drag-selection rectangle is released.
+# Steps: Clips selection rect to map texture bounds and adds provinces inside anchor points.
 func _aplikuj_drag_hromadny_vyber():
 	if map_image == null:
 		return
@@ -866,7 +924,9 @@ func _aplikuj_drag_hromadny_vyber():
 			if info_ui_single and info_ui_single.has_method("zobraz_data"):
 				info_ui_single.zobraz_data(root.provinces[pid])
 
-# Pulls current state data.
+# Inputs: Root node, province id, province data dictionary.
+# Outputs: Cached anchor position used for rectangle inclusion tests.
+# Execution timing: Called for each province during drag-select apply.
 func _ziskej_drag_select_anchor(root: Node, prov_id: int, prov_data: Dictionary) -> Vector2:
 	if _drag_select_anchor_cache.has(prov_id):
 		return _drag_select_anchor_cache[prov_id]
@@ -891,7 +951,10 @@ func _ziskej_drag_select_anchor(root: Node, prov_id: int, prov_data: Dictionary)
 	return Vector2.ZERO
 
 # Completely clears the active selection and hides all contextual UI panels
-# Runs the local feature logic.
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called by cancel actions and invalid selection transitions.
+# Steps: Clears shader selection, resets targeting modes, hides panels/tooltips, and wipes bulk selection.
 func _odzanc_vse():
 	material.set_shader_parameter("has_selected", false)
 	material.set_shader_parameter("selected_id", -1.0)
@@ -968,8 +1031,10 @@ func _zpracuj_interakci(_mouse_pos: Vector2, je_kliknuti: bool, shift_held: bool
 
 	_vymaz_hover()
 
-# Updates selection and hover states
-# Updates derived state and UI.
+# Inputs: Province id, click flag, province data, optional shift modifier state.
+# Outputs: None.
+# Execution timing: Called from click-hit and hover-hit map interaction paths.
+# Steps: Routes target-selection modes, updates shader hover/selection, and syncs InfoUI/labels.
 # Ai generated or editted end (priloha_a.txt)
 func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shift_held: bool = false):
 	var root = _get_root()
@@ -1275,7 +1340,9 @@ func _aktualizuj_vizual(prov_id: float, je_kliknuti: bool, data: Dictionary, shi
 		else:
 			_show_mode_hover_tooltip(data, root)
 
-# Feature logic entry point.
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called when hover exits map/icon targets or after failed hit tests.
 func _vymaz_hover():
 	material.set_shader_parameter("has_hover", false)
 	material.set_shader_parameter("is_target_hover", false)
@@ -1287,7 +1354,9 @@ func _vymaz_hover():
 	_vymaz_hover_labely()
 
 # Safely resets the previously hovered label to its correct persistent state
-# Handles this gameplay/UI path.
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called from `_vymaz_hover` and selection/hover transitions.
 func _vymaz_hover_labely():
 	if _posledni_hover_id != -1:
 		var sel_id = int(material.get_shader_parameter("selected_id"))
@@ -1310,7 +1379,10 @@ func _vymaz_hover_labely():
 				lbl.reset_stav()
 		_posledni_hover_id = -1
 
-# Recomputes values from current data.
+# Inputs: Requested map mode key and province database.
+# Outputs: None.
+# Execution timing: Called when map mode changes or province ownership/data updates.
+# Steps: Rebuilds mode color texture and occupation overlay texture.
 func aktualizuj_mapovy_mod(mod: String, province_db: Dictionary):
 	_aktualni_mapovy_mod_local = str(mod)
 	for prov_id in province_db.keys():
@@ -1417,7 +1489,10 @@ func _barva_aliance(owner_tag: String) -> Color:
 	var barva_str = str(skupina.get("color", "#4488ff"))
 	return Color.html(barva_str)
 
-# Core flow for this feature.
+# Inputs: Province id, new owner tag, and optional dev-tool capture flag.
+# Outputs: None.
+# Execution timing: Called by gameplay conquest flow or developer conquer hotkey.
+# Steps: Updates ownership, refreshes metadata/mod visuals, and propagates side effects to UI/state.
 # Ai generated or editted end (priloha_a.txt)
 func dobyt_provincii(prov_id: int, novy_vlastnik: String, z_dev_nastroje: bool = false):
 	var root = get_parent()

@@ -1,0 +1,1692 @@
+[
+  {
+    "line": 481,
+    "name": "_normalizuj_lidske_staty",
+    "sig": "func _normalizuj_lidske_staty(staty: Array) -> Array:"
+  },
+  {
+    "line": 503,
+    "name": "nastav_lokalni_hrace",
+    "sig": "func nastav_lokalni_hrace(staty: Array) -> void:"
+  },
+  {
+    "line": 568,
+    "name": "_pridej_popup_hraci",
+    "sig": "func _pridej_popup_hraci(tag: String, titulek: String, text: String, force_popup: bool = false, state_tags: Array = []) -> void:"
+  },
+  {
+    "line": 605,
+    "name": "_pridej_notifikaci_pujcky_hraci",
+    "sig": "func _pridej_notifikaci_pujcky_hraci(tag: String, text: String) -> void:"
+  },
+  {
+    "line": 625,
+    "name": "vyzvedni_notifikace_pujcek_hrace",
+    "sig": "func vyzvedni_notifikace_pujcek_hrace(tag: String) -> Array:"
+  },
+  {
+    "line": 643,
+    "name": "_je_dulezity_popup",
+    "sig": "func _je_dulezity_popup(titulek: String, text: String) -> bool:"
+  },
+  {
+    "line": 671,
+    "name": "_normalizuj_kategorii_logu_pro_prioritu",
+    "sig": "func _normalizuj_kategorii_logu_pro_prioritu(category: String, title: String, text: String) -> String:"
+  },
+  {
+    "line": 730,
+    "name": "_priorita_kategorie_logu",
+    "sig": "func _priorita_kategorie_logu(category: String, title: String, text: String) -> int:"
+  },
+  {
+    "line": 758,
+    "name": "_odstran_expirovane_historicke_smlouvy",
+    "sig": "func _odstran_expirovane_historicke_smlouvy(log_arr: Array) -> void:"
+  },
+  {
+    "line": 785,
+    "name": "_udrzba_vsech_logu",
+    "sig": "func _udrzba_vsech_logu() -> void:"
+  },
+  {
+    "line": 804,
+    "name": "_najdi_index_zpravy_k_odstraneni",
+    "sig": "func _najdi_index_zpravy_k_odstraneni(log_arr: Array) -> int:"
+  },
+  {
+    "line": 842,
+    "name": "_trim_log_pole",
+    "sig": "func _trim_log_pole(log_arr: Array, max_items: int = MAX_LOG_ZPRAV) -> void:"
+  },
+  {
+    "line": 862,
+    "name": "_set_defer_log_maintenance",
+    "sig": "func _set_defer_log_maintenance(enabled: bool) -> void:"
+  },
+  {
+    "line": 881,
+    "name": "_zaloguj_zpravu_hraci",
+    "sig": "func _zaloguj_zpravu_hraci(tag: String, titulek: String, text: String, kategorie: String = \"general\") -> void:"
+  },
+  {
+    "line": 918,
+    "name": "_zaloguj_globalni_zpravu",
+    "sig": "func _zaloguj_globalni_zpravu(titulek: String, text: String, kategorie: String = \"global\") -> void:"
+  },
+  {
+    "line": 940,
+    "name": "ziskej_zpravy_hrace",
+    "sig": "func ziskej_zpravy_hrace(tag: String, limit: int = 120) -> Array:"
+  },
+  {
+    "line": 961,
+    "name": "ziskej_globalni_zpravy",
+    "sig": "func ziskej_globalni_zpravy(limit: int = 160) -> Array:"
+  },
+  {
+    "line": 978,
+    "name": "ziskej_pocet_zprav_hrace",
+    "sig": "func ziskej_pocet_zprav_hrace(tag: String) -> int:"
+  },
+  {
+    "line": 992,
+    "name": "ziskej_pocet_globalnich_zprav",
+    "sig": "func ziskej_pocet_globalnich_zprav() -> int:"
+  },
+  {
+    "line": 1005,
+    "name": "_ziskej_jmeno_statu_podle_tagu",
+    "sig": "func _ziskej_jmeno_statu_podle_tagu(tag: String) -> String:"
+  },
+  {
+    "line": 1027,
+    "name": "_zprava_obsahuje_stat",
+    "sig": "func _zprava_obsahuje_stat(entry: Dictionary, state_tag: String) -> bool:"
+  },
+  {
+    "line": 1052,
+    "name": "ziskej_relevantni_zpravy_statu",
+    "sig": "func ziskej_relevantni_zpravy_statu(state_tag: String, limit: int = 160, jen_aktualni_kolo: bool = true) -> Array:"
+  },
+  {
+    "line": 1102,
+    "name": "_pridej_popup_zucastnenym_hracum",
+    "sig": "func _pridej_popup_zucastnenym_hracum(tag_a: String, tag_b: String, titulek: String, text: String) -> void:"
+  },
+  {
+    "line": 1127,
+    "name": "_zobraz_cekajici_popupy_aktivniho_hrace",
+    "sig": "func _zobraz_cekajici_popupy_aktivniho_hrace() -> void:"
+  },
+  {
+    "line": 1186,
+    "name": "je_lidsky_stat",
+    "sig": "func je_lidsky_stat(tag: String) -> bool:"
+  },
+  {
+    "line": 1200,
+    "name": "_uloz_finance_aktivniho_hrace",
+    "sig": "func _uloz_finance_aktivniho_hrace() -> void:"
+  },
+  {
+    "line": 1213,
+    "name": "_nacti_finance_aktivniho_hrace",
+    "sig": "func _nacti_finance_aktivniho_hrace() -> void:"
+  },
+  {
+    "line": 1231,
+    "name": "_sjednot_multiplayer_finance_cache",
+    "sig": "func _sjednot_multiplayer_finance_cache() -> void:"
+  },
+  {
+    "line": 1311,
+    "name": "_sjednot_financni_toky_cache",
+    "sig": "func _sjednot_financni_toky_cache() -> void:"
+  },
+  {
+    "line": 1359,
+    "name": "_synchronizuj_jmeno_a_ideologii_hrace",
+    "sig": "func _synchronizuj_jmeno_a_ideologii_hrace() -> void:"
+  },
+  {
+    "line": 1377,
+    "name": "_oznac_runtime_cache_jako_studene",
+    "sig": "func _oznac_runtime_cache_jako_studene() -> void:"
+  },
+  {
+    "line": 1388,
+    "name": "_prewarm_runtime_cache_if_needed",
+    "sig": "func _prewarm_runtime_cache_if_needed() -> void:"
+  },
+  {
+    "line": 1406,
+    "name": "_prepni_na_hrace",
+    "sig": "func _prepni_na_hrace(index: int) -> void:"
+  },
+  {
+    "line": 1421,
+    "name": "_prepni_na_dalsiho_hrace",
+    "sig": "func _prepni_na_dalsiho_hrace() -> void:"
+  },
+  {
+    "line": 1434,
+    "name": "_je_posledni_hrac_v_poradi",
+    "sig": "func _je_posledni_hrac_v_poradi() -> bool:"
+  },
+  {
+    "line": 1446,
+    "name": "odeber_lidsky_stat",
+    "sig": "func odeber_lidsky_stat(tag: String) -> void:"
+  },
+  {
+    "line": 1477,
+    "name": "_ziskej_data_mapy_pro_ulozeni",
+    "sig": "func _ziskej_data_mapy_pro_ulozeni() -> Dictionary:"
+  },
+  {
+    "line": 1493,
+    "name": "_normalizuj_nazev_save",
+    "sig": "func _normalizuj_nazev_save(slot_name: String) -> String:"
+  },
+  {
+    "line": 1515,
+    "name": "_cesta_slotu_save",
+    "sig": "func _cesta_slotu_save(slot_name: String) -> String:"
+  },
+  {
+    "line": 1524,
+    "name": "_zajisti_slozku_save",
+    "sig": "func _zajisti_slozku_save() -> void:"
+  },
+  {
+    "line": 1538,
+    "name": "_vytvor_save_state",
+    "sig": "func _vytvor_save_state() -> Dictionary:"
+  },
+  {
+    "line": 1613,
+    "name": "_uloz_state_do_cesty",
+    "sig": "func _uloz_state_do_cesty(path: String, state: Dictionary) -> bool:"
+  },
+  {
+    "line": 1630,
+    "name": "_nacti_state_z_cesty",
+    "sig": "func _nacti_state_z_cesty(path: String) -> Dictionary:"
+  },
+  {
+    "line": 1655,
+    "name": "_aplikuj_save_state",
+    "sig": "func _aplikuj_save_state(state: Dictionary) -> bool:"
+  },
+  {
+    "line": 1757,
+    "name": "reset_pro_novou_hru",
+    "sig": "func reset_pro_novou_hru() -> void:"
+  },
+  {
+    "line": 1829,
+    "name": "ziskej_save_sloty",
+    "sig": "func ziskej_save_sloty() -> Array:"
+  },
+  {
+    "line": 1871,
+    "name": "ziskej_save_slot_pro_kolo",
+    "sig": "func ziskej_save_slot_pro_kolo(turn_number: int) -> String:"
+  },
+  {
+    "line": 1894,
+    "name": "ma_save_pro_kolo",
+    "sig": "func ma_save_pro_kolo(turn_number: int) -> bool:"
+  },
+  {
+    "line": 1904,
+    "name": "ma_ulozene_hry",
+    "sig": "func ma_ulozene_hry() -> bool:"
+  },
+  {
+    "line": 1915,
+    "name": "ziskej_aktivni_pujcky",
+    "sig": "func ziskej_aktivni_pujcky() -> Array:"
+  },
+  {
+    "line": 1928,
+    "name": "uloz_hru_do_slotu",
+    "sig": "func uloz_hru_do_slotu(slot_name: String) -> bool:"
+  },
+  {
+    "line": 1949,
+    "name": "nacti_hru_ze_slotu",
+    "sig": "func nacti_hru_ze_slotu(slot_name: String) -> bool:"
+  },
+  {
+    "line": 1963,
+    "name": "smaz_save_slot",
+    "sig": "func smaz_save_slot(slot_name: String) -> bool:"
+  },
+  {
+    "line": 1984,
+    "name": "smaz_legacy_save",
+    "sig": "func smaz_legacy_save() -> bool:"
+  },
+  {
+    "line": 1998,
+    "name": "nacti_posledni_hru",
+    "sig": "func nacti_posledni_hru() -> bool:"
+  },
+  {
+    "line": 2013,
+    "name": "uloz_hru",
+    "sig": "func uloz_hru() -> bool:"
+  },
+  {
+    "line": 2023,
+    "name": "nacti_hru",
+    "sig": "func nacti_hru() -> bool:"
+  },
+  {
+    "line": 2041,
+    "name": "spust_load_ze_slotu_pres_scenu",
+    "sig": "func spust_load_ze_slotu_pres_scenu(slot_key: String, scene_path: String) -> void:"
+  },
+  {
+    "line": 2060,
+    "name": "_pockej_na_map_loader_pripravenost",
+    "sig": "func _pockej_na_map_loader_pripravenost(tree: SceneTree, max_frames: int = 300) -> bool:"
+  },
+  {
+    "line": 2085,
+    "name": "_dokoncit_load_ze_slotu_pres_scenu",
+    "sig": "func _dokoncit_load_ze_slotu_pres_scenu(slot_key: String, scene_path: String) -> void:"
+  },
+  {
+    "line": 2147,
+    "name": "_get_map_loader",
+    "sig": "func _get_map_loader():"
+  },
+  {
+    "line": 2180,
+    "name": "_normalizuj_tag",
+    "sig": "func _normalizuj_tag(tag: String) -> String:"
+  },
+  {
+    "line": 2201,
+    "name": "_je_pravdepodobny_stat_tag",
+    "sig": "func _je_pravdepodobny_stat_tag(value: String) -> bool:"
+  },
+  {
+    "line": 2219,
+    "name": "_rebuild_tag_alias_cache",
+    "sig": "func _rebuild_tag_alias_cache() -> void:"
+  },
+  {
+    "line": 2259,
+    "name": "_normalizuj_nazev_statu",
+    "sig": "func _normalizuj_nazev_statu(raw_name: String) -> String:"
+  },
+  {
+    "line": 2271,
+    "name": "_ziskej_nazev_statu_podle_owner",
+    "sig": "func _ziskej_nazev_statu_podle_owner(owner_tag: String) -> String:"
+  },
+  {
+    "line": 2291,
+    "name": "_clamp_arm_lab_quality",
+    "sig": "func _clamp_arm_lab_quality(level: int) -> int:"
+  },
+  {
+    "line": 2306,
+    "name": "_zajisti_armadni_lab_statu",
+    "sig": "func _zajisti_armadni_lab_statu(tag: String) -> Dictionary:"
+  },
+  {
+    "line": 2374,
+    "name": "_arm_lab_odemcene_dict",
+    "sig": "func _arm_lab_odemcene_dict(lab: Dictionary) -> Dictionary:"
+  },
+  {
+    "line": 2397,
+    "name": "_arm_lab_odemcene_array",
+    "sig": "func _arm_lab_odemcene_array(unlocked: Dictionary) -> Array:"
+  },
+  {
+    "line": 2413,
+    "name": "_arm_lab_obsah_mrizky_odemykani",
+    "sig": "func _arm_lab_obsah_mrizky_odemykani(unlocked: Dictionary) -> Dictionary:"
+  },
+  {
+    "line": 2440,
+    "name": "_arm_lab_je_kandidat_expanze",
+    "sig": "func _arm_lab_je_kandidat_expanze(unlocked: Dictionary, x: int, y: int) -> bool:"
+  },
+  {
+    "line": 2472,
+    "name": "_arm_lab_tier_roll",
+    "sig": "func _arm_lab_tier_roll(quality_level: int) -> int:"
+  },
+  {
+    "line": 2494,
+    "name": "_arm_lab_level_roll",
+    "sig": "func _arm_lab_level_roll(quality_level: int) -> int:"
+  },
+  {
+    "line": 2518,
+    "name": "_arm_lab_vyber_sablonu_dle_tieru",
+    "sig": "func _arm_lab_vyber_sablonu_dle_tieru(tier: int) -> Dictionary:"
+  },
+  {
+    "line": 2541,
+    "name": "_arm_lab_vytvor_random_offer",
+    "sig": "func _arm_lab_vytvor_random_offer(quality_level: int) -> Dictionary:"
+  },
+  {
+    "line": 2585,
+    "name": "_arm_lab_obsazena_mrizka",
+    "sig": "func _arm_lab_obsazena_mrizka(grid_items: Array) -> Dictionary:"
+  },
+  {
+    "line": 2613,
+    "name": "_arm_lab_najdi_prvni_volne_misto",
+    "sig": "func _arm_lab_najdi_prvni_volne_misto(grid_items: Array, w: int, h: int, grid_w: int, grid_h: int, unlocked: Dictionary = {}) -> Vector2i:"
+  },
+  {
+    "line": 2653,
+    "name": "_arm_lab_muze_umistit_na",
+    "sig": "func _arm_lab_muze_umistit_na(grid_items: Array, w: int, h: int, x: int, y: int, grid_w: int, grid_h: int, unlocked: Dictionary = {}) -> bool:"
+  },
+  {
+    "line": 2691,
+    "name": "_arm_lab_muze_umistit_na_ignorovat",
+    "sig": "func _arm_lab_muze_umistit_na_ignorovat(grid_items: Array, w: int, h: int, x: int, y: int, ignore_uid: String, grid_w: int, grid_h: int, unlocked: Dictionary = {}) -> bool:"
+  },
+  {
+    "line": 2733,
+    "name": "_arm_lab_zajisti_nabidky",
+    "sig": "func _arm_lab_zajisti_nabidky(state_tag: String) -> void:"
+  },
+  {
+    "line": 2765,
+    "name": "_arm_lab_spocitej_bonus",
+    "sig": "func _arm_lab_spocitej_bonus(grid_items: Array) -> Dictionary:"
+  },
+  {
+    "line": 2788,
+    "name": "ziskej_armadni_lab_statu",
+    "sig": "func ziskej_armadni_lab_statu(state_tag: String) -> Dictionary:"
+  },
+  {
+    "line": 2842,
+    "name": "ziskej_silu_armady_statu",
+    "sig": "func ziskej_silu_armady_statu(state_tag: String, base_soldiers: int = -1) -> Dictionary:"
+  },
+  {
+    "line": 2885,
+    "name": "kup_armadni_nabidku_na_pozici",
+    "sig": "func kup_armadni_nabidku_na_pozici(state_tag: String, offer_index: int, target_x: int, target_y: int) -> Dictionary:"
+  },
+  {
+    "line": 2952,
+    "name": "kup_armadni_nabidku",
+    "sig": "func kup_armadni_nabidku(state_tag: String, offer_index: int) -> Dictionary:"
+  },
+  {
+    "line": 2968,
+    "name": "kup_a_slouc_armadni_nabidku",
+    "sig": "func kup_a_slouc_armadni_nabidku(state_tag: String, offer_index: int, target_uid: String) -> Dictionary:"
+  },
+  {
+    "line": 4269,
+    "name": "_stat_existuje",
+    "sig": "func _stat_existuje(tag: String) -> bool:"
+  },
+  {
+    "line": 4283,
+    "name": "_ziskej_kasu_statu",
+    "sig": "func _ziskej_kasu_statu(tag: String) -> float:"
+  },
+  {
+    "line": 4297,
+    "name": "_nastav_kasu_statu",
+    "sig": "func _nastav_kasu_statu(tag: String, value: float) -> void:"
+  },
+  {
+    "line": 4313,
+    "name": "_ziskej_pozici_provincie",
+    "sig": "func _ziskej_pozici_provincie(province_id: int) -> Vector2:"
+  },
+  {
+    "line": 4347,
+    "name": "ziskej_cenu_presunu_hlavniho_mesta",
+    "sig": "func ziskej_cenu_presunu_hlavniho_mesta(state_tag: String, target_province_id: int = -1) -> float:"
+  },
+  {
+    "line": 4367,
+    "name": "_ziskej_hlavni_mesto_statu",
+    "sig": "func _ziskej_hlavni_mesto_statu(state_tag: String) -> int:"
+  },
+  {
+    "line": 6522,
+    "name": "pridej_clena_do_aliance",
+    "sig": "func pridej_clena_do_aliance(alliance_id: String, tag: String, ignoruj_vztahove_podminky: bool = false) -> Dictionary:"
+  },
+  {
+    "line": 6565,
+    "name": "odeber_clena_z_aliance",
+    "sig": "func odeber_clena_z_aliance(alliance_id: String, tag: String) -> bool:"
+  },
+  {
+    "line": 6594,
+    "name": "rozpust_alianci",
+    "sig": "func rozpust_alianci(alliance_id: String) -> bool:"
+  },
+  {
+    "line": 6611,
+    "name": "ziskej_aliance_statu",
+    "sig": "func ziskej_aliance_statu(tag: String) -> Array:"
+  },
+  {
+    "line": 6624,
+    "name": "ziskej_alianci_podle_id",
+    "sig": "func ziskej_alianci_podle_id(alliance_id: String) -> Dictionary:"
+  },
+  {
+    "line": 6630,
+    "name": "ziskej_spolecne_aliance",
+    "sig": "func ziskej_spolecne_aliance(tag_a: String, tag_b: String) -> Array:"
+  },
+  {
+    "line": 6644,
+    "name": "ziskej_podminky_clenstvi_aliance",
+    "sig": "func ziskej_podminky_clenstvi_aliance(alliance_id: String, candidate_tag: String) -> Array:"
+  },
+  {
+    "line": 6680,
+    "name": "_synchronizuj_bilateralni_aliance_skupiny",
+    "sig": "func _synchronizuj_bilateralni_aliance_skupiny(alliance_id: String) -> void:"
+  },
+  {
+    "line": 6698,
+    "name": "_resynchronizuj_bilateralni_aliance_vsech_skupin",
+    "sig": "func _resynchronizuj_bilateralni_aliance_vsech_skupin() -> void:"
+  },
+  {
+    "line": 6736,
+    "name": "_vycisti_aliance_skupiny_mrtve_staty",
+    "sig": "func _vycisti_aliance_skupiny_mrtve_staty() -> void:"
+  },
+  {
+    "line": 6757,
+    "name": "_ziskej_vsechny_aliance_skupiny",
+    "sig": "func _ziskej_vsechny_aliance_skupiny() -> Array:"
+  },
+  {
+    "line": 6764,
+    "name": "_ziskej_aliance_kde_je_zakladatel",
+    "sig": "func _ziskej_aliance_kde_je_zakladatel(tag: String) -> Array:"
+  },
+  {
+    "line": 6776,
+    "name": "_ziskej_spojence_s_min_alianci",
+    "sig": "func _ziskej_spojence_s_min_alianci(state_tag: String, min_level: int) -> Array:"
+  },
+  {
+    "line": 6799,
+    "name": "_vycisti_expirovane_neagresivni_smlouvy",
+    "sig": "func _vycisti_expirovane_neagresivni_smlouvy() -> void:"
+  },
+  {
+    "line": 6807,
+    "name": "ma_neagresivni_smlouvu",
+    "sig": "func ma_neagresivni_smlouvu(tag_a: String, tag_b: String) -> bool:"
+  },
+  {
+    "line": 6815,
+    "name": "zbyva_kol_neagresivni_smlouvy",
+    "sig": "func zbyva_kol_neagresivni_smlouvy(tag_a: String, tag_b: String) -> int:"
+  },
+  {
+    "line": 6824,
+    "name": "je_aliancni_zadost_cekajici",
+    "sig": "func je_aliancni_zadost_cekajici(odesilatel: String, prijemce: String) -> bool:"
+  },
+  {
+    "line": 6839,
+    "name": "odeslat_aliancni_zadost",
+    "sig": "func odeslat_aliancni_zadost(tag_a: String, tag_b: String, level: int, ignoruj_vztahove_podminky: bool = false) -> bool:"
+  },
+  {
+    "line": 6875,
+    "name": "_vyhodnot_aliancni_zadosti_pred_ai",
+    "sig": "func _vyhodnot_aliancni_zadosti_pred_ai() -> void:"
+  },
+  {
+    "line": 6907,
+    "name": "uzavrit_neagresivni_smlouvu",
+    "sig": "func uzavrit_neagresivni_smlouvu(tag_a: String, tag_b: String) -> bool:"
+  },
+  {
+    "line": 6939,
+    "name": "ma_vojensky_pristup",
+    "sig": "func ma_vojensky_pristup(guest: String, host: String) -> bool:"
+  },
+  {
+    "line": 6950,
+    "name": "udelit_vojensky_pristup",
+    "sig": "func udelit_vojensky_pristup(host: String, guest: String) -> void:"
+  },
+  {
+    "line": 6957,
+    "name": "odvolej_vojensky_pristup",
+    "sig": "func odvolej_vojensky_pristup(host: String, guest: String) -> void:"
+  },
+  {
+    "line": 6966,
+    "name": "_najdi_nejblizsi_vlastni_provincii_pro_presun",
+    "sig": "func _najdi_nejblizsi_vlastni_provincii_pro_presun(tag: String, from_prov_id: int) -> int:"
+  },
+  {
+    "line": 6991,
+    "name": "_expeluj_jednotky_bez_pristupu",
+    "sig": "func _expeluj_jednotky_bez_pristupu(filter_tag: String = \"\") -> void:"
+  },
+  {
+    "line": 7049,
+    "name": "_oprav_neplatne_vlastniky_armad",
+    "sig": "func _oprav_neplatne_vlastniky_armad() -> bool:"
+  },
+  {
+    "line": 7092,
+    "name": "pozadej_vojensky_pristup",
+    "sig": "func pozadej_vojensky_pristup(guest: String, host: String) -> bool:"
+  },
+  {
+    "line": 7126,
+    "name": "_ma_cekajici_zadost_vojenskeho_pristupu",
+    "sig": "func _ma_cekajici_zadost_vojenskeho_pristupu(guest: String, host: String) -> bool:"
+  },
+  {
+    "line": 7139,
+    "name": "_pridej_diplomatickou_zadost",
+    "sig": "func _pridej_diplomatickou_zadost(from_tag: String, to_tag: String, req_type: String, alliance_level: int = ALLIANCE_NONE, payload: Dictionary = {}) -> bool:"
+  },
+  {
+    "line": 7209,
+    "name": "_je_essential_diplomaticka_zadost",
+    "sig": "func _je_essential_diplomaticka_zadost(from_tag: String, to_tag: String, req_type: String, alliance_level: int) -> bool:"
+  },
+  {
+    "line": 7239,
+    "name": "_diplomaticka_zadost_priorita",
+    "sig": "func _diplomaticka_zadost_priorita(req: Dictionary) -> int:"
+  },
+  {
+    "line": 7261,
+    "name": "_ziskej_index_nejvyssi_priority_zadosti",
+    "sig": "func _ziskej_index_nejvyssi_priority_zadosti(queue: Array) -> int:"
+  },
+  {
+    "line": 7280,
+    "name": "_odeber_diplomatickou_zadost",
+    "sig": "func _odeber_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> Dictionary:"
+  },
+  {
+    "line": 7298,
+    "name": "ziskej_cekajici_zadost_od_statu",
+    "sig": "func ziskej_cekajici_zadost_od_statu(hrac_tag: String, from_tag: String) -> Dictionary:"
+  },
+  {
+    "line": 7312,
+    "name": "ziskej_prvni_cekajici_diplomatickou_zadost",
+    "sig": "func ziskej_prvni_cekajici_diplomatickou_zadost(hrac_tag: String) -> Dictionary:"
+  },
+  {
+    "line": 7329,
+    "name": "ziskej_pocet_cekajicich_diplomatickych_zadosti",
+    "sig": "func ziskej_pocet_cekajicich_diplomatickych_zadosti(hrac_tag: String) -> int:"
+  },
+  {
+    "line": 7338,
+    "name": "ziskej_cekajici_diplomaticke_zadosti",
+    "sig": "func ziskej_cekajici_diplomaticke_zadosti(hrac_tag: String) -> Array:"
+  },
+  {
+    "line": 7357,
+    "name": "_vazal_musi_prijmout_zadost",
+    "sig": "func _vazal_musi_prijmout_zadost(receiver_tag: String, sender_tag: String) -> bool:"
+  },
+  {
+    "line": 7364,
+    "name": "_vykonej_prijeti_diplomaticke_zadosti",
+    "sig": "func _vykonej_prijeti_diplomaticke_zadosti(player_clean: String, req: Dictionary, forced_vassal_accept: bool = false) -> bool:"
+  },
+  {
+    "line": 7462,
+    "name": "hrac_prijmi_diplomatickou_zadost",
+    "sig": "func hrac_prijmi_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> bool:"
+  },
+  {
+    "line": 7471,
+    "name": "hrac_odmitni_diplomatickou_zadost",
+    "sig": "func hrac_odmitni_diplomatickou_zadost(hrac_tag: String, from_tag: String) -> bool:"
+  },
+  {
+    "line": 7507,
+    "name": "hrac_odmitni_vsechny_diplomaticke_zadosti",
+    "sig": "func hrac_odmitni_vsechny_diplomaticke_zadosti(hrac_tag: String) -> int:"
+  },
+  {
+    "line": 7566,
+    "name": "hrac_prijmi_vsechny_diplomaticke_zadosti",
+    "sig": "func hrac_prijmi_vsechny_diplomaticke_zadosti(hrac_tag: String) -> int:"
+  },
+  {
+    "line": 7592,
+    "name": "jsou_ve_valce",
+    "sig": "func jsou_ve_valce(tag1: String, tag2: String) -> bool:"
+  },
+  {
+    "line": 7600,
+    "name": "vycisti_stat_po_kapitulaci",
+    "sig": "func vycisti_stat_po_kapitulaci(tag: String):"
+  },
+  {
+    "line": 7717,
+    "name": "_vyhlasit_valku_par",
+    "sig": "func _vyhlasit_valku_par(utocnik: String, obrance: String, headline: String, details: String) -> bool:"
+  },
+  {
+    "line": 7776,
+    "name": "_aplikuj_diplomatickou_reakci_na_agresi",
+    "sig": "func _aplikuj_diplomatickou_reakci_na_agresi(utocnik: String, obrance: String) -> void:"
+  },
+  {
+    "line": 7827,
+    "name": "_ma_byt_spojenec_povolan",
+    "sig": "func _ma_byt_spojenec_povolan(state_tag: String, ally_tag: String, enemy_tag: String, min_alliance_level: int) -> bool:"
+  },
+  {
+    "line": 7857,
+    "name": "_aktivuj_aliance_po_vyhlaseni_valky",
+    "sig": "func _aktivuj_aliance_po_vyhlaseni_valky(utocnik: String, obrance: String) -> void:"
+  },
+  {
+    "line": 7898,
+    "name": "vyhlasit_valku",
+    "sig": "func vyhlasit_valku(utocnik: String, obrance: String):"
+  },
+  {
+    "line": 7951,
+    "name": "_ai_zagent_valka_okamzita_reakce",
+    "sig": "func _ai_zagent_valka_okamzita_reakce(attacker: String, defender: String) -> void:"
+  },
+  {
+    "line": 8106,
+    "name": "nabidnout_mir",
+    "sig": "func nabidnout_mir(tag1: String, tag2: String):"
+  },
+  {
+    "line": 8131,
+    "name": "je_mirova_nabidka_cekajici",
+    "sig": "func je_mirova_nabidka_cekajici(odesilatel: String, prijemce: String) -> bool:"
+  },
+  {
+    "line": 8147,
+    "name": "_uzavri_mir_mezi",
+    "sig": "func _uzavri_mir_mezi(tag1: String, tag2: String, prepis_okupace: bool = true):"
+  },
+  {
+    "line": 8191,
+    "name": "_vycisti_expirovane_povalecne_cooldowny",
+    "sig": "func _vycisti_expirovane_povalecne_cooldowny() -> void:"
+  },
+  {
+    "line": 8199,
+    "name": "_nastav_povalecny_cooldown",
+    "sig": "func _nastav_povalecny_cooldown(tag_a: String, tag_b: String) -> void:"
+  },
+  {
+    "line": 8206,
+    "name": "zbyva_kol_do_dalsi_valky",
+    "sig": "func zbyva_kol_do_dalsi_valky(tag_a: String, tag_b: String) -> int:"
+  },
+  {
+    "line": 8215,
+    "name": "_prepis_okupace_po_miru",
+    "sig": "func _prepis_okupace_po_miru(tag_a: String, tag_b: String) -> void:"
+  },
+  {
+    "line": 8241,
+    "name": "_ma_aktivni_tlak_na_kapitulaci",
+    "sig": "func _ma_aktivni_tlak_na_kapitulaci(obrance: String, utocnik: String) -> bool:"
+  },
+  {
+    "line": 8250,
+    "name": "_ma_stat_cekajici_kapitulaci",
+    "sig": "func _ma_stat_cekajici_kapitulaci(state_tag: String) -> bool:"
+  },
+  {
+    "line": 8260,
+    "name": "_ziskej_statove_provincie",
+    "sig": "func _ziskej_statove_provincie(owner_tag: String) -> Array:"
+  },
+  {
+    "line": 8272,
+    "name": "_je_mirova_provincie_porazeneho",
+    "sig": "func _je_mirova_provincie_porazeneho(vitez_tag: String, porazeny_tag: String, d: Dictionary) -> bool:"
+  },
+  {
+    "line": 8288,
+    "name": "_ziskej_mirove_provincie_porazeneho",
+    "sig": "func _ziskej_mirove_provincie_porazeneho(vitez_tag: String, porazeny_tag: String) -> Array:"
+  },
+  {
+    "line": 8297,
+    "name": "_ziskej_potencialni_mirove_provincie_dle_losera",
+    "sig": "func _ziskej_potencialni_mirove_provincie_dle_losera(porazeny_tag: String) -> Array:"
+  },
+  {
+    "line": 8313,
+    "name": "_klic_mirovych_bodu",
+    "sig": "func _klic_mirovych_bodu(vitez_tag: String, porazeny_tag: String) -> String:"
+  },
+  {
+    "line": 8321,
+    "name": "_spocitej_aktualni_body_mirove_konference",
+    "sig": "func _spocitej_aktualni_body_mirove_konference(vitez_tag: String, porazeny_tag: String, reason: String = \"\") -> int:"
+  },
+  {
+    "line": 8354,
+    "name": "_ziskej_peak_mirovych_bodu",
+    "sig": "func _ziskej_peak_mirovych_bodu(vitez_tag: String, porazeny_tag: String) -> int:"
+  },
+  {
+    "line": 8361,
+    "name": "_uloz_peak_mirovych_bodu",
+    "sig": "func _uloz_peak_mirovych_bodu(vitez_tag: String, porazeny_tag: String, body: int) -> void:"
+  },
+  {
+    "line": 8371,
+    "name": "_aktualizuj_peak_mirovych_bodu_pro_dvojici",
+    "sig": "func _aktualizuj_peak_mirovych_bodu_pro_dvojici(tag_a: String, tag_b: String) -> void:"
+  },
+  {
+    "line": 8381,
+    "name": "zaznamenej_okupacni_zmenu_pro_mir",
+    "sig": "func zaznamenej_okupacni_zmenu_pro_mir(tag_a: String, tag_b: String) -> void:"
+  },
+  {
+    "line": 8385,
+    "name": "_spocitej_body_mirove_konference",
+    "sig": "func _spocitej_body_mirove_konference(vitez_tag: String, porazeny_tag: String, reason: String = \"\") -> int:"
+  },
+  {
+    "line": 8391,
+    "name": "_spocitej_cenu_mirovych_pozadavku",
+    "sig": "func _spocitej_cenu_mirovych_pozadavku(porazeny_tag: String, provinces_to_take: int, annex_all: bool, make_vassal: bool, reparations_turns: int) -> int:"
+  },
+  {
+    "line": 8407,
+    "name": "spocitej_cenu_mirovych_pozadavku",
+    "sig": "func spocitej_cenu_mirovych_pozadavku(porazeny_tag: String, provinces_to_take: int, annex_all: bool, make_vassal: bool, reparations_turns: int) -> int:"
+  },
+  {
+    "line": 8411,
+    "name": "_ziskej_profile_statu_pro_mir",
+    "sig": "func _ziskej_profile_statu_pro_mir(tag: String) -> Dictionary:"
+  },
+  {
+    "line": 8437,
+    "name": "_obnov_okupovana_uzemi_porazeneho",
+    "sig": "func _obnov_okupovana_uzemi_porazeneho(vitez_tag: String, porazeny_tag: String) -> int:"
+  },
+  {
+    "line": 8461,
+    "name": "_anektuj_cely_stat",
+    "sig": "func _anektuj_cely_stat(vitez_tag: String, porazeny_tag: String) -> Dictionary:"
+  },
+  {
+    "line": 8490,
+    "name": "_vezmi_cast_provincii",
+    "sig": "func _vezmi_cast_provincii(vitez_tag: String, porazeny_tag: String, count: int) -> Dictionary:"
+  },
+  {
+    "line": 8535,
+    "name": "_vezmi_konkretni_provincie",
+    "sig": "func _vezmi_konkretni_provincie(vitez_tag: String, porazeny_tag: String, selected_ids: Array) -> Dictionary:"
+  },
+  {
+    "line": 8563,
+    "name": "_nastav_vazala",
+    "sig": "func _nastav_vazala(overlord_tag: String, subject_tag: String) -> void:"
+  },
+  {
+    "line": 8576,
+    "name": "_uzavri_valky_statu_krome",
+    "sig": "func _uzavri_valky_statu_krome(state_tag: String, except_tags: Array = []) -> void:"
+  },
+  {
+    "line": 8607,
+    "name": "_pridej_valecne_reparace",
+    "sig": "func _pridej_valecne_reparace(from_tag: String, to_tag: String, turns: int) -> void:"
+  },
+  {
+    "line": 8621,
+    "name": "_spocitej_cisty_prijem_statu",
+    "sig": "func _spocitej_cisty_prijem_statu(tag: String) -> float:"
+  },
+  {
+    "line": 8637,
+    "name": "_spocitej_profit_income_pro_vazalsky_odvod",
+    "sig": "func _spocitej_profit_income_pro_vazalsky_odvod(state_tag: String, projected_row: Dictionary = {}) -> float:"
+  },
+  {
+    "line": 8651,
+    "name": "_ziskej_staty_pro_financni_projekci",
+    "sig": "func _ziskej_staty_pro_financni_projekci() -> Array:"
+  },
+  {
+    "line": 8690,
+    "name": "_ma_prijem_pred_toky_v_aktualnim_tahu",
+    "sig": "func _ma_prijem_pred_toky_v_aktualnim_tahu(state_tag: String) -> bool:"
+  },
+  {
+    "line": 8702,
+    "name": "_ziskej_urokovou_cast_splatky_pujcky",
+    "sig": "func _ziskej_urokovou_cast_splatky_pujcky(loan: Dictionary, paid_this_turn: float) -> float:"
+  },
+  {
+    "line": 8715,
+    "name": "_ziskej_vychozi_kasu_pro_financni_projekci",
+    "sig": "func _ziskej_vychozi_kasu_pro_financni_projekci(state_tag: String) -> float:"
+  },
+  {
+    "line": 8724,
+    "name": "_simuluj_financni_toky_aktualniho_tahu",
+    "sig": "func _simuluj_financni_toky_aktualniho_tahu() -> Dictionary:"
+  },
+  {
+    "line": 8863,
+    "name": "ziskej_cisty_prijem_statu",
+    "sig": "func ziskej_cisty_prijem_statu(tag: String) -> float:"
+  },
+  {
+    "line": 8867,
+    "name": "ziskej_financni_rozpad_statu",
+    "sig": "func ziskej_financni_rozpad_statu(state_tag: String = \"\") -> Dictionary:"
+  },
+  {
+    "line": 8939,
+    "name": "ziskej_projektovany_vazalsky_odvod",
+    "sig": "func ziskej_projektovany_vazalsky_odvod(overlord_tag: String, subject_tag: String) -> Dictionary:"
+  },
+  {
+    "line": 8962,
+    "name": "ziskej_profit_income_pro_vazalsky_odvod",
+    "sig": "func ziskej_profit_income_pro_vazalsky_odvod(state_tag: String) -> float:"
+  },
+  {
+    "line": 8966,
+    "name": "ziskej_vazalsky_odvod",
+    "sig": "func ziskej_vazalsky_odvod(overlord_tag: String, subject_tag: String) -> float:"
+  },
+  {
+    "line": 8977,
+    "name": "nastav_vazalsky_odvod",
+    "sig": "func nastav_vazalsky_odvod(overlord_tag: String, subject_tag: String, procenta: float) -> bool:"
+  },
+  {
+    "line": 8995,
+    "name": "ziskej_zbyvajici_cooldown_vazalskeho_odvodu",
+    "sig": "func ziskej_zbyvajici_cooldown_vazalskeho_odvodu(overlord_tag: String, subject_tag: String) -> int:"
+  },
+  {
+    "line": 9009,
+    "name": "_zpracuj_vazalske_odvody_za_kolo",
+    "sig": "func _zpracuj_vazalske_odvody_za_kolo() -> void:"
+  },
+  {
+    "line": 9033,
+    "name": "_zpracuj_valecne_reparace_za_kolo",
+    "sig": "func _zpracuj_valecne_reparace_za_kolo() -> void:"
+  },
+  {
+    "line": 9063,
+    "name": "_zpracuj_aktivni_pujcky_za_kolo",
+    "sig": "func _zpracuj_aktivni_pujcky_za_kolo() -> void:"
+  },
+  {
+    "line": 9121,
+    "name": "_odstran_neplatne_mirove_konference",
+    "sig": "func _odstran_neplatne_mirove_konference() -> void:"
+  },
+  {
+    "line": 9142,
+    "name": "_vytvor_mirovou_konferenci",
+    "sig": "func _vytvor_mirovou_konferenci(vitez_tag: String, porazeny_tag: String, reason: String = \"peace\") -> Dictionary:"
+  },
+  {
+    "line": 9163,
+    "name": "_auto_navrh_mirovych_podminek",
+    "sig": "func _auto_navrh_mirovych_podminek(conf: Dictionary) -> Dictionary:"
+  },
+  {
+    "line": 9179,
+    "name": "_proved_mirovou_konferenci",
+    "sig": "func _proved_mirovou_konferenci(conf: Dictionary, demands: Dictionary) -> Dictionary:"
+  },
+  {
+    "line": 9266,
+    "name": "uzavri_mir_a_zahaj_konferenci",
+    "sig": "func uzavri_mir_a_zahaj_konferenci(tag1: String, tag2: String, reason: String = \"peace\") -> Dictionary:"
+  },
+  {
+    "line": 9295,
+    "name": "ziskej_prvni_mirovou_konferenci_pro_hrace",
+    "sig": "func ziskej_prvni_mirovou_konferenci_pro_hrace(hrac_tag: String) -> Dictionary:"
+  },
+  {
+    "line": 9306,
+    "name": "ziskej_pocet_mirovych_konferenci_pro_hrace",
+    "sig": "func ziskej_pocet_mirovych_konferenci_pro_hrace(hrac_tag: String) -> int:"
+  },
+  {
+    "line": 9315,
+    "name": "ma_cekajici_mirovou_konferenci_pro_stat",
+    "sig": "func ma_cekajici_mirovou_konferenci_pro_stat(stat_tag: String) -> bool:"
+  },
+  {
+    "line": 9332,
+    "name": "hrac_uzavri_mirovou_konferenci",
+    "sig": "func hrac_uzavri_mirovou_konferenci(hrac_tag: String, conference_id: int, demands: Dictionary) -> Dictionary:"
+  },
+  {
+    "line": 9358,
+    "name": "ziskej_vazaly_statu",
+    "sig": "func ziskej_vazaly_statu(overlord_tag: String) -> Array:"
+  },
+  {
+    "line": 9374,
+    "name": "ziskej_overlorda_statu",
+    "sig": "func ziskej_overlorda_statu(subject_tag: String) -> String:"
+  },
+  {
+    "line": 9381,
+    "name": "je_vazal_statu",
+    "sig": "func je_vazal_statu(subject_tag: String, overlord_tag: String = \"\") -> bool:"
+  },
+  {
+    "line": 9393,
+    "name": "jsou_vazalsky_spojeni",
+    "sig": "func jsou_vazalsky_spojeni(tag_a: String, tag_b: String) -> bool:"
+  },
+  {
+    "line": 9402,
+    "name": "muze_vstoupit_na_uzemi",
+    "sig": "func muze_vstoupit_na_uzemi(actor_tag: String, owner_tag: String) -> bool:"
+  },
+  {
+    "line": 9420,
+    "name": "propustit_vazala",
+    "sig": "func propustit_vazala(overlord_tag: String, subject_tag: String) -> bool:"
+  },
+  {
+    "line": 9436,
+    "name": "ziskej_aktivni_reparace_statu",
+    "sig": "func ziskej_aktivni_reparace_statu(state_tag: String) -> Dictionary:"
+  },
+  {
+    "line": 9458,
+    "name": "_spocitej_silu_statu",
+    "sig": "func _spocitej_silu_statu(tag: String) -> int:"
+  },
+  {
+    "line": 9475,
+    "name": "_ma_ai_prijmout_mir",
+    "sig": "func _ma_ai_prijmout_mir(prijemce: String, odesilatel: String) -> bool:"
+  },
+  {
+    "line": 9534,
+    "name": "_ziskej_ai_staty",
+    "sig": "func _ziskej_ai_staty() -> Array:"
+  },
+  {
+    "line": 9544,
+    "name": "_klic_pair",
+    "sig": "func _klic_pair(tag_a: String, tag_b: String) -> String:"
+  },
+  {
+    "line": 9555,
+    "name": "_klic_valky",
+    "sig": "func _klic_valky(tag_a: String, tag_b: String) -> String:"
+  },
+  {
+    "line": 9566,
+    "name": "_normalizuj_valecne_klice",
+    "sig": "func _normalizuj_valecne_klice() -> void:"
+  },
+  {
+    "line": 9589,
+    "name": "_begin_ai_cache_batch",
+    "sig": "func _begin_ai_cache_batch() -> void:"
+  },
+  {
+    "line": 9593,
+    "name": "_end_ai_cache_batch",
+    "sig": "func _end_ai_cache_batch() -> void:"
+  },
+  {
+    "line": 9603,
+    "name": "_mark_ai_war_pair_eval_dirty_state",
+    "sig": "func _mark_ai_war_pair_eval_dirty_state(tag: String) -> void:"
+  },
+  {
+    "line": 9609,
+    "name": "_mark_ai_war_pair_eval_dirty_pair",
+    "sig": "func _mark_ai_war_pair_eval_dirty_pair(tag_a: String, tag_b: String) -> void:"
+  },
+  {
+    "line": 9616,
+    "name": "_flush_ai_war_pair_eval_dirty_states",
+    "sig": "func _flush_ai_war_pair_eval_dirty_states() -> void:"
+  },
+  {
+    "line": 9624,
+    "name": "_invalidate_turn_cache",
+    "sig": "func _invalidate_turn_cache() -> void:"
+  },
+  {
+    "line": 9638,
+    "name": "_rebuild_turn_cache",
+    "sig": "func _rebuild_turn_cache() -> void:"
+  },
+  {
+    "line": 9679,
+    "name": "_refresh_turn_runtime_owner_soldier_cache",
+    "sig": "func _refresh_turn_runtime_owner_soldier_cache() -> void:"
+  },
+  {
+    "line": 9689,
+    "name": "_ziskej_aktivni_staty",
+    "sig": "func _ziskej_aktivni_staty() -> Array:"
+  },
+  {
+    "line": 9702,
+    "name": "_ma_spolecnou_hranici",
+    "sig": "func _ma_spolecnou_hranici(tag_a: String, tag_b: String) -> bool:"
+  },
+  {
+    "line": 9722,
+    "name": "_zpracuj_ai_diplomacii",
+    "sig": "func _zpracuj_ai_diplomacii(ai_staty: Array) -> Array:"
+  },
+  {
+    "line": 9808,
+    "name": "_zpracuj_ai_aliance",
+    "sig": "func _zpracuj_ai_aliance(ai_staty: Array) -> Array:"
+  },
+  {
+    "line": 9945,
+    "name": "_zpracuj_ai_neagresivni_smlouvy",
+    "sig": "func _zpracuj_ai_neagresivni_smlouvy(ai_staty: Array) -> Array:"
+  },
+  {
+    "line": 10005,
+    "name": "_zobraz_hlaseni_neagresivnich_smluv_hrace",
+    "sig": "func _zobraz_hlaseni_neagresivnich_smluv_hrace(zmeny: Array) -> void:"
+  },
+  {
+    "line": 10039,
+    "name": "_zpracuj_ai_opusteni_alianci",
+    "sig": "func _zpracuj_ai_opusteni_alianci(ai_staty: Array) -> Array:"
+  },
+  {
+    "line": 10110,
+    "name": "_zobraz_hlaseni_opusteni_alianci_hrace",
+    "sig": "func _zobraz_hlaseni_opusteni_alianci_hrace(zmeny: Array) -> void:"
+  },
+  {
+    "line": 10138,
+    "name": "_zobraz_hlaseni_alianci_hrace",
+    "sig": "func _zobraz_hlaseni_alianci_hrace(zmeny: Array) -> void:"
+  },
+  {
+    "line": 10172,
+    "name": "_zobraz_hlaseni_vztahu_hrace",
+    "sig": "func _zobraz_hlaseni_vztahu_hrace(zmeny: Array):"
+  },
+  {
+    "line": 10199,
+    "name": "_vyhodnot_mirove_nabidky_pred_ai",
+    "sig": "func _vyhodnot_mirove_nabidky_pred_ai():"
+  },
+  {
+    "line": 10238,
+    "name": "zaregistruj_obsazeni_hlavniho_mesta",
+    "sig": "func zaregistruj_obsazeni_hlavniho_mesta(obrance: String, utocnik: String, capital_province_id: int):"
+  },
+  {
+    "line": 10264,
+    "name": "vyhodnot_odlozene_kapitulace",
+    "sig": "func vyhodnot_odlozene_kapitulace() -> Array:"
+  },
+  {
+    "line": 10291,
+    "name": "_je_more_provincie_v_datech",
+    "sig": "func _je_more_provincie_v_datech(all_provinces: Dictionary, prov_id: int) -> bool:"
+  },
+  {
+    "line": 10300,
+    "name": "_je_pobrezni_v_datech",
+    "sig": "func _je_pobrezni_v_datech(all_provinces: Dictionary, prov_id: int) -> bool:"
+  },
+  {
+    "line": 10311,
+    "name": "_vyber_startovni_port_kandidata",
+    "sig": "func _vyber_startovni_port_kandidata(all_provinces: Dictionary, kandidati: Array) -> int:"
+  },
+  {
+    "line": 10330,
+    "name": "pridej_startovni_pristavy",
+    "sig": "func pridej_startovni_pristavy(all_provinces: Dictionary):"
+  },
+  {
+    "line": 10366,
+    "name": "spocitej_prijem",
+    "sig": "func spocitej_prijem(all_provinces: Dictionary, emit_ui_signal: bool = true):"
+  },
+  {
+    "line": 10413,
+    "name": "_spocitej_hdp_statu",
+    "sig": "func _spocitej_hdp_statu(tag: String) -> float:"
+  },
+  {
+    "line": 10427,
+    "name": "_nastav_stav_zpracovani_tahu",
+    "sig": "func _nastav_stav_zpracovani_tahu(aktivni: bool) -> void:"
+  },
+  {
+    "line": 10434,
+    "name": "_spust_turn_watchdog",
+    "sig": "func _spust_turn_watchdog(token: int) -> void:"
+  },
+  {
+    "line": 10445,
+    "name": "_zrus_turn_watchdog",
+    "sig": "func _zrus_turn_watchdog() -> void:"
+  },
+  {
+    "line": 10449,
+    "name": "muze_ukoncit_kolo",
+    "sig": "func muze_ukoncit_kolo() -> bool:"
+  },
+  {
+    "line": 10456,
+    "name": "pozaduj_ukonceni_kola",
+    "sig": "func pozaduj_ukonceni_kola() -> bool:"
+  },
+  {
+    "line": 10470,
+    "name": "_spust_dalsi_pozadovane_kolo",
+    "sig": "func _spust_dalsi_pozadovane_kolo() -> void:"
+  },
+  {
+    "line": 10480,
+    "name": "_dokoncit_ukonceni_kola",
+    "sig": "func _dokoncit_ukonceni_kola(turn_start_ms: int, turn_phases: Dictionary) -> void:"
+  },
+  {
+    "line": 10487,
+    "name": "_append_debug_turn_event",
+    "sig": "func _append_debug_turn_event(message: String) -> void:"
+  },
+  {
+    "line": 10496,
+    "name": "_uloz_debug_turn_profile",
+    "sig": "func _uloz_debug_turn_profile(total_ms: int, phases: Dictionary) -> void:"
+  },
+  {
+    "line": 10513,
+    "name": "_log_turn_profile",
+    "sig": "func _log_turn_profile(total_ms: int, phases: Dictionary) -> void:"
+  },
+  {
+    "line": 10538,
+    "name": "_log_ai_profile",
+    "sig": "func _log_ai_profile(total_ms: int, phases: Dictionary) -> void:"
+  },
+  {
+    "line": 10559,
+    "name": "_ai_debug",
+    "sig": "func _ai_debug(msg: String) -> void:"
+  },
+  {
+    "line": 10576,
+    "name": "_money_debug",
+    "sig": "func _money_debug(msg: String) -> void:"
+  },
+  {
+    "line": 10583,
+    "name": "_money_debug_expense",
+    "sig": "func _money_debug_expense(state_tag: String, category: String, amount: float, treasury_before: float, treasury_after: float, detail: String = \"\") -> void:"
+  },
+  {
+    "line": 10593,
+    "name": "_money_debug_income_event",
+    "sig": "func _money_debug_income_event(state_tag: String, category: String, amount: float, treasury_before: float, treasury_after: float, detail: String = \"\") -> void:"
+  },
+  {
+    "line": 10604,
+    "name": "_snapshot_lidske_kasy",
+    "sig": "func _snapshot_lidske_kasy() -> Dictionary:"
+  },
+  {
+    "line": 10615,
+    "name": "_with_finance_projection_cash_overrides",
+    "sig": "func _with_finance_projection_cash_overrides(overrides: Dictionary, callback: Callable):"
+  },
+  {
+    "line": 10625,
+    "name": "_money_debug_log_delta",
+    "sig": "func _money_debug_log_delta(stage: String, before: Dictionary) -> void:"
+  },
+  {
+    "line": 10642,
+    "name": "_turn_slice_wait",
+    "sig": "func _turn_slice_wait(counter: int, chunk: int) -> int:"
+  },
+  {
+    "line": 10655,
+    "name": "ukonci_kolo",
+    "sig": "func ukonci_kolo():"
+  },
+  {
+    "line": 10868,
+    "name": "_aplikuj_bonus",
+    "sig": "func _aplikuj_bonus(prov_id: int, typ):"
+  },
+  {
+    "line": 10902,
+    "name": "_vyres_bankrot",
+    "sig": "func _vyres_bankrot(tag: String):"
+  },
+  {
+    "line": 10923,
+    "name": "hrac_verbuje",
+    "sig": "func hrac_verbuje(provincie_id: int, pocet: int) -> bool:"
+  },
+  {
+    "line": 10948,
+    "name": "_ai_vytvor_profil_pro_ideologii",
+    "sig": "func _ai_vytvor_profil_pro_ideologii(ideology: String) -> Dictionary:"
+  },
+  {
+    "line": 11011,
+    "name": "_ai_ziskej_profil",
+    "sig": "func _ai_ziskej_profil(state_tag: String) -> Dictionary:"
+  },
+  {
+    "line": 11022,
+    "name": "ziskej_ai_profil_statu",
+    "sig": "func ziskej_ai_profil_statu(state_tag: String) -> Dictionary:"
+  },
+  {
+    "line": 11033,
+    "name": "nastav_ai_agresivitu_statu",
+    "sig": "func nastav_ai_agresivitu_statu(state_tag: String, aggression_0_to_1: float) -> Dictionary:"
+  },
+  {
+    "line": 11066,
+    "name": "nastav_globalni_ai_agresi",
+    "sig": "func nastav_globalni_ai_agresi(level: float) -> void:"
+  },
+  {
+    "line": 11078,
+    "name": "_ai_randomizuj_ideologie_a_profily",
+    "sig": "func _ai_randomizuj_ideologie_a_profily(ai_staty: Array) -> void:"
+  },
+  {
+    "line": 11120,
+    "name": "_ai_ziskej_nepratele_statu",
+    "sig": "func _ai_ziskej_nepratele_statu(state_tag: String) -> Array:"
+  },
+  {
+    "line": 11142,
+    "name": "_ai_sdili_nepritele_s",
+    "sig": "func _ai_sdili_nepritele_s(state_a: String, state_b: String) -> bool:"
+  },
+  {
+    "line": 11154,
+    "name": "_ai_ziskej_mindset",
+    "sig": "func _ai_ziskej_mindset(state_tag: String) -> Dictionary:"
+  },
+  {
+    "line": 11284,
+    "name": "_ai_ziskej_strategicky_cil",
+    "sig": "func _ai_ziskej_strategicky_cil(state_tag: String) -> Dictionary:"
+  },
+  {
+    "line": 11371,
+    "name": "_ai_goal_signature",
+    "sig": "func _ai_goal_signature(owner_tag: String, target_tag: String) -> Dictionary:"
+  },
+  {
+    "line": 11410,
+    "name": "_ai_aktualizuj_goal_progres",
+    "sig": "func _ai_aktualizuj_goal_progres(state_tag: String) -> void:"
+  },
+  {
+    "line": 11458,
+    "name": "_ai_spocitej_war_exhaustion",
+    "sig": "func _ai_spocitej_war_exhaustion(state_tag: String) -> float:"
+  },
+  {
+    "line": 11510,
+    "name": "_ai_ziskej_operacni_plan",
+    "sig": "func _ai_ziskej_operacni_plan(state_tag: String) -> Dictionary:"
+  },
+  {
+    "line": 11560,
+    "name": "_ai_je_blizko_fronty",
+    "sig": "func _ai_je_blizko_fronty(state_tag: String, province_id: int, frontline_cache: Dictionary) -> bool:"
+  },
+  {
+    "line": 11576,
+    "name": "_ai_urci_roli_jednotky",
+    "sig": "func _ai_urci_roli_jednotky(state_tag: String, province_id: int, own_capital_id: int, frontline_cache: Dictionary) -> String:"
+  },
+  {
+    "line": 11602,
+    "name": "_ai_provincie_hranicni_k_targetu",
+    "sig": "func _ai_provincie_hranicni_k_targetu(state_tag: String, province_id: int, target_owner: String) -> bool:"
+  },
+  {
+    "line": 11620,
+    "name": "_ai_provincie_hranicni_k_neprateli",
+    "sig": "func _ai_provincie_hranicni_k_neprateli(state_tag: String, province_id: int, enemies_set: Dictionary) -> bool:"
+  },
+  {
+    "line": 11633,
+    "name": "_ai_stat_ma_hranici_s_neprateli",
+    "sig": "func _ai_stat_ma_hranici_s_neprateli(state_tag: String, owned: Array, enemies_set: Dictionary) -> bool:"
+  },
+  {
+    "line": 11645,
+    "name": "_ai_ziskej_primarni_front",
+    "sig": "func _ai_ziskej_primarni_front(state_tag: String) -> Dictionary:"
+  },
+  {
+    "line": 11697,
+    "name": "_ai_ziskej_recruit_kandidaty",
+    "sig": "func _ai_ziskej_recruit_kandidaty(state_tag: String, owned: Array, pressure: float) -> Array:"
+  },
+  {
+    "line": 11930,
+    "name": "_ai_spocitej_tlak_statu",
+    "sig": "func _ai_spocitej_tlak_statu(state_tag: String, owned: Array) -> float:"
+  },
+  {
+    "line": 11946,
+    "name": "_ai_spocitej_recruit_pass_skore",
+    "sig": "func _ai_spocitej_recruit_pass_skore(state_tag: String, p_id: int, cap_id: int, war_focus_target: String, enemies_set: Dictionary, recruit_orders_in_province: int, at_war_state: bool) -> float:"
+  },
+  {
+    "line": 12009,
+    "name": "_ai_ziskej_recruit_emergency_level",
+    "sig": "func _ai_ziskej_recruit_emergency_level(state_tag: String, owned: Array, at_war_state: bool, state_pressure: float, state_exhaustion: float) -> float:"
+  },
+  {
+    "line": 12039,
+    "name": "_ai_odhad_dostupnych_rekrutu",
+    "sig": "func _ai_odhad_dostupnych_rekrutu(state_tag: String, owned: Array, recruit_targets: Array, at_war_state: bool) -> int:"
+  },
+  {
+    "line": 12100,
+    "name": "_ai_odhad_max_rekrutu_na_tah",
+    "sig": "func _ai_odhad_max_rekrutu_na_tah(state_tag: String, recruit_targets: Array, recruit_order_cap: int, at_war_state: bool, state_pressure: float, recruit_spend_cap: float, emergency_level: float = 0.0) -> int:"
+  },
+  {
+    "line": 12196,
+    "name": "_ai_vypocitej_hotovostni_rezervu",
+    "sig": "func _ai_vypocitej_hotovostni_rezervu(state_tag: String, owned: Array) -> float:"
+  },
+  {
+    "line": 12207,
+    "name": "_ai_uprav_hotovostni_rezervu_pro_spending",
+    "sig": "func _ai_uprav_hotovostni_rezervu_pro_spending(state_tag: String, reserve: float, treasury: float, at_war_state: bool, pressure: float) -> float:"
+  },
+  {
+    "line": 12235,
+    "name": "_ai_skore_vyzkumu",
+    "sig": "func _ai_skore_vyzkumu(state_tag: String, project: Dictionary, pressure: float, treasury: float) -> float:"
+  },
+  {
+    "line": 12266,
+    "name": "_ai_zvaz_vyzkum",
+    "sig": "func _ai_zvaz_vyzkum(state_tag: String, reserve: float, pressure: float) -> bool:"
+  },
+  {
+    "line": 12309,
+    "name": "_ai_stat_ma_pristav",
+    "sig": "func _ai_stat_ma_pristav(owned: Array) -> bool:"
+  },
+  {
+    "line": 12319,
+    "name": "_ai_spocitej_core_defense_ohrozeni",
+    "sig": "func _ai_spocitej_core_defense_ohrozeni(state_tag: String, owned: Array) -> Dictionary:"
+  },
+  {
+    "line": 12353,
+    "name": "_ai_zvaz_stavby",
+    "sig": "func _ai_zvaz_stavby(state_tag: String, owned: Array, reserve: float, pressure: float) -> int:"
+  },
+  {
+    "line": 12524,
+    "name": "_ai_zvaz_armadni_lab",
+    "sig": "func _ai_zvaz_armadni_lab(state_tag: String, reserve: float) -> bool:"
+  },
+  {
+    "line": 12612,
+    "name": "zpracuj_tah_ai",
+    "sig": "func zpracuj_tah_ai():"
+  },
+  {
+    "line": 13374,
+    "name": "_vyber_ai_kandidata_pro_presun_hlavniho_mesta",
+    "sig": "func _vyber_ai_kandidata_pro_presun_hlavniho_mesta(state_tag: String, current_capital_id: int) -> int:"
+  },
+  {
+    "line": 13407,
+    "name": "_ai_zvaz_presun_hlavniho_mesta",
+    "sig": "func _ai_zvaz_presun_hlavniho_mesta(state_tag: String) -> void:"
+  },
+  {
+    "line": 13443,
+    "name": "_naplanuj_ai_presuny",
+    "sig": "func _naplanuj_ai_presuny(map_loader, ai_staty_override: Array = []):"
+  },
+  {
+    "line": 13778,
+    "name": "_vyber_ai_staty_pro_tah",
+    "sig": "func _vyber_ai_staty_pro_tah(ai_staty_all: Array) -> Array:"
+  },
+  {
+    "line": 13850,
+    "name": "_ai_spocitej_ekonomicky_tok_statu_pro_tah",
+    "sig": "func _ai_spocitej_ekonomicky_tok_statu_pro_tah(state_tags: Array) -> Dictionary:"
+  },
+  {
+    "line": 13892,
+    "name": "_ai_pripis_pasivni_ekonomiku_mimo_subset",
+    "sig": "func _ai_pripis_pasivni_ekonomiku_mimo_subset(ai_staty_all: Array, ai_staty_subset: Array, net_income_by_state: Dictionary = {}) -> void:"
+  },
+  {
+    "line": 13925,
+    "name": "_seradene_ai_provincie",
+    "sig": "func _seradene_ai_provincie(state_tag: String) -> Array:"
+  },
+  {
+    "line": 13981,
+    "name": "_ai_ma_namorni_prilezitost",
+    "sig": "func _ai_ma_namorni_prilezitost(state_tag: String, from_id: int, preferred_front_owner: String = \"\") -> bool:"
+  },
+  {
+    "line": 14015,
+    "name": "_ma_nepratelskeho_souseda",
+    "sig": "func _ma_nepratelskeho_souseda(state_tag: String, province_id: int) -> bool:"
+  },
+  {
+    "line": 14045,
+    "name": "_spocitej_hrozbu_nepratel_u_provincie",
+    "sig": "func _spocitej_hrozbu_nepratel_u_provincie(province_id: int, state_tag: String) -> int:"
+  },
+  {
+    "line": 14073,
+    "name": "_spocitej_silu_na_hranici",
+    "sig": "func _spocitej_silu_na_hranici(state_tag: String, enemy: String) -> Dictionary:"
+  },
+  {
+    "line": 14124,
+    "name": "_ziskej_ai_border_strength_cached",
+    "sig": "func _ziskej_ai_border_strength_cached(state_tag: String, target_owner: String) -> Dictionary:"
+  },
+  {
+    "line": 14135,
+    "name": "_ziskej_ai_war_pair_eval_cached",
+    "sig": "func _ziskej_ai_war_pair_eval_cached(state_tag: String, target_owner: String) -> Dictionary:"
+  },
+  {
+    "line": 14203,
+    "name": "_ma_smyls_vyhlasit_valku",
+    "sig": "func _ma_smyls_vyhlasit_valku(state_tag: String, target_owner: String, from_id: int, to_id: int, amount: int) -> bool:"
+  },
+  {
+    "line": 14313,
+    "name": "_ai_otevri_valky",
+    "sig": "func _ai_otevri_valky(ai_staty: Array) -> int:"
+  },
+  {
+    "line": 14420,
+    "name": "_navrhni_krizovy_protiutok",
+    "sig": "func _navrhni_krizovy_protiutok(state_tag: String, from_id: int, own_capital_id: int, frontline_cache: Dictionary = {}) -> Dictionary:"
+  },
+  {
+    "line": 14478,
+    "name": "_ziskej_ai_vztah_cached",
+    "sig": "func _ziskej_ai_vztah_cached(tag_a: String, tag_b: String) -> float:"
+  },
+  {
+    "line": 14491,
+    "name": "_je_pratelsky_vztah_ai_cached",
+    "sig": "func _je_pratelsky_vztah_ai_cached(tag_a: String, tag_b: String) -> bool:"
+  },
+  {
+    "line": 14497,
+    "name": "_jsou_ve_valce_ai_cached",
+    "sig": "func _jsou_ve_valce_ai_cached(tag_a: String, tag_b: String) -> bool:"
+  },
+  {
+    "line": 14510,
+    "name": "_ziskej_uroven_aliance_ai_cached",
+    "sig": "func _ziskej_uroven_aliance_ai_cached(tag_a: String, tag_b: String) -> int:"
+  },
+  {
+    "line": 14523,
+    "name": "_ma_neagresivni_smlouvu_ai_cached",
+    "sig": "func _ma_neagresivni_smlouvu_ai_cached(tag_a: String, tag_b: String) -> bool:"
+  },
+  {
+    "line": 14536,
+    "name": "_muze_upravit_vztah_ai_cached",
+    "sig": "func _muze_upravit_vztah_ai_cached(tag_a: String, tag_b: String) -> bool:"
+  },
+  {
+    "line": 14550,
+    "name": "_ma_spolecnou_hranici_ai_cached",
+    "sig": "func _ma_spolecnou_hranici_ai_cached(tag_a: String, tag_b: String) -> bool:"
+  },
+  {
+    "line": 14563,
+    "name": "_je_frontline_cached",
+    "sig": "func _je_frontline_cached(state_tag: String, province_id: int, frontline_cache: Dictionary) -> bool:"
+  },
+  {
+    "line": 14571,
+    "name": "_ai_vycisti_runtime_cache_pro_stat",
+    "sig": "func _ai_vycisti_runtime_cache_pro_stat(state_tag: String) -> void:"
+  },
+  {
+    "line": 14582,
+    "name": "_ai_vycisti_runtime_cache",
+    "sig": "func _ai_vycisti_runtime_cache() -> void:"
+  },
+  {
+    "line": 14601,
+    "name": "_navrhni_neutocny_presun",
+    "sig": "func _navrhni_neutocny_presun(state_tag: String, from_id: int, frontline_cache: Dictionary = {}, preferred_front_owner: String = \"\", staging_mode: bool = false) -> Dictionary:"
+  },
+  {
+    "line": 14653,
+    "name": "_ziskej_core_state",
+    "sig": "func _ziskej_core_state(state_tag: String) -> String:"
+  },
+  {
+    "line": 14663,
+    "name": "_ziskej_core_state_cached",
+    "sig": "func _ziskej_core_state_cached(state_tag: String) -> String:"
+  },
+  {
+    "line": 14673,
+    "name": "_je_core_provincie",
+    "sig": "func _je_core_provincie(state_tag: String, province_id: int, core_state: String) -> bool:"
+  },
+  {
+    "line": 14686,
+    "name": "_navrhni_core_obranu",
+    "sig": "func _navrhni_core_obranu(state_tag: String, from_id: int, core_state: String = \"\", frontline_cache: Dictionary = {}) -> Dictionary:"
+  },
+  {
+    "line": 14728,
+    "name": "_navrhni_utok",
+    "sig": "func _navrhni_utok(state_tag: String, from_id: int, frontline_cache: Dictionary = {}, preferred_front_owner: String = \"\", coordinated_commitment: Dictionary = {}, strike_mode: bool = true) -> Dictionary:"
+  },
+  {
+    "line": 14939,
+    "name": "_navrhni_namorni_presun",
+    "sig": "func _navrhni_namorni_presun(state_tag: String, from_id: int, preferred_front_owner: String = \"\") -> Dictionary:"
+  },
+  {
+    "line": 15018,
+    "name": "nastav_potato_mode",
+    "sig": "func nastav_potato_mode(enabled: bool) -> void:"
+  },
+  {
+    "line": 15022,
+    "name": "nastav_spectate_mode",
+    "sig": "func nastav_spectate_mode(enabled: bool) -> void:"
+  },
+  {
+    "line": 15031,
+    "name": "je_spectate_mode_aktivni",
+    "sig": "func je_spectate_mode_aktivni() -> bool:"
+  },
+  {
+    "line": 15035,
+    "name": "nastav_ai_debug_mode",
+    "sig": "func nastav_ai_debug_mode(enabled: bool) -> void:"
+  },
+  {
+    "line": 15041,
+    "name": "je_ai_debug_mode_zapnuty",
+    "sig": "func je_ai_debug_mode_zapnuty() -> bool:"
+  },
+  {
+    "line": 15045,
+    "name": "ziskej_debug_historii_tahu",
+    "sig": "func ziskej_debug_historii_tahu(limit: int = 6) -> Array:"
+  },
+  {
+    "line": 15053,
+    "name": "ziskej_ai_debug_snapshot",
+    "sig": "func ziskej_ai_debug_snapshot(state_tag: String = \"\") -> Dictionary:"
+  }
+]

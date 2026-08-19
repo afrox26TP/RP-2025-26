@@ -80,18 +80,41 @@ const INFO_PANEL_MAX_W := 360.0
 const ACTION_MENU_MIN_W := 300.0
 const ACTION_MENU_MAX_W := 560.0
 
-# Fetches data for callers.
+# Inputs:
+# - none
+# Outputs:
+# - Dictionary: active province dictionary from Map node or GameManager fallback
+# Execution timing:
+# - Shared helper used by almost all province action handlers.
+# Steps:
+# - Prefer Map node province store.
+# - Fallback to GameManager.map_data.
 func _ziskej_provincie_data() -> Dictionary:
 	var map_loader = get_tree().current_scene.find_child("Map", true, false)
 	if map_loader and "provinces" in map_loader:
 		return map_loader.provinces
 	return GameManager.map_data
 
-# Returns current runtime data.
+# Inputs:
+# - none
+# Outputs:
+# - Node|null: Map node when available
+# Execution timing:
+# - Utility for systems that need map-specific methods.
+# Steps:
+# - Search current scene for Map node.
 func _ziskej_map_loader():
 	return get_tree().current_scene.find_child("Map", true, false)
 
-# Turns raw data into readable text.
+# Inputs:
+# - value: decimal ratio (for example 0.2)
+# Outputs:
+# - String: signed percentage text (for example +20%)
+# Execution timing:
+# - Used while rendering terrain defense modifiers.
+# Steps:
+# - Convert ratio to rounded percent.
+# - Prefix plus sign for non-negative values.
 func _format_pct_signed(value: float) -> String:
 	var pct = int(round(value * 100.0))
 	if pct >= 0:
@@ -116,7 +139,16 @@ func _terenni_obranny_bonus_fallback(terrain_raw: String) -> float:
 		_:
 			return 0.0
 
-# Returns current runtime data.
+# Inputs:
+# - data: province dictionary with optional province id
+# - terrain_raw: fallback terrain key
+# Outputs:
+# - float: terrain defense bonus ratio for province
+# Execution timing:
+# - Used by province detail rendering.
+# Steps:
+# - Try map loader terrain-bonus API.
+# - Fallback to static terrain mapping.
 # Ai generated or editted end (priloha_a.txt)
 func _ziskej_terenni_obranny_bonus_pro_data(data: Dictionary, terrain_raw: String) -> float:
 	var prov_id = int(data.get("id", -1))
@@ -125,29 +157,62 @@ func _ziskej_terenni_obranny_bonus_pro_data(data: Dictionary, terrain_raw: Strin
 		return float(map_loader.ziskej_terenni_obranny_bonus_pct(prov_id))
 	return _terenni_obranny_bonus_fallback(terrain_raw)
 
-# Read-only data accessor.
+# Inputs:
+# - none
+# Outputs:
+# - float: effective recruit cost per soldier for current player state
+# Execution timing:
+# - Used by recruit slider preview and bulk recruit calculations.
 func _ziskej_cenu_za_vojaka() -> float:
 	if GameManager.has_method("ziskej_cenu_za_vojaka"):
 		return float(GameManager.ziskej_cenu_za_vojaka(GameManager.hrac_stat))
 	return cena_za_vojaka
 
-# Read-only data accessor.
+# Inputs:
+# - none
+# Outputs:
+# - float: effective upkeep cost per soldier for current player state
+# Execution timing:
+# - Used in income preview for recruit/building actions.
 func _ziskej_udrzbu_za_vojaka() -> float:
 	if GameManager.has_method("ziskej_udrzbu_za_vojaka"):
 		return float(GameManager.ziskej_udrzbu_za_vojaka(GameManager.hrac_stat))
 	return 0.001
 
-# Read-only data accessor.
+# Inputs:
+# - none
+# Outputs:
+# - float: current GDP income rate used for state income computations
+# Execution timing:
+# - Used by building preview calculations (especially econ hub).
 func _ziskej_prijmovou_sazbu_hdp() -> float:
 	if GameManager.has_method("ziskej_prijmovou_sazbu_hdp"):
 		return float(GameManager.ziskej_prijmovou_sazbu_hdp(GameManager.hrac_stat))
 	return 0.1
 
+# Inputs:
+# - menu_id: popup item id
+# Outputs:
+# - String: building id mapped to menu item, empty when out of range
+# Execution timing:
+# - Used when handling build menu focus/selection callbacks.
+# Steps:
+# - Validate index range.
+# - Return mapped building id.
 func _ziskej_stavba_menu_building_id(menu_id: int) -> String:
 	if menu_id < 0 or menu_id >= _stavba_menu_build_ids.size():
 		return ""
 	return str(_stavba_menu_build_ids[menu_id])
 
+# Inputs:
+# - building_id: building key
+# Outputs:
+# - Dictionary: building definition for UI, or empty dictionary when unavailable
+# Execution timing:
+# - Used by build preview and tooltip generation.
+# Steps:
+# - Return empty when id is blank.
+# - Query GameManager UI building definition API.
 func _ziskej_stavba_def(building_id: String) -> Dictionary:
 	if building_id == "":
 		return {}
@@ -155,6 +220,17 @@ func _ziskej_stavba_def(building_id: String) -> Dictionary:
 		return GameManager.ziskej_building_def_pro_ui(building_id) as Dictionary
 	return {}
 
+# Inputs:
+# - building_id: building key used as fallback label
+# - bdef: building definition dictionary
+# Outputs:
+# - String: multiline tooltip text with costs, effects, and limits
+# Execution timing:
+# - Called when rebuilding build PopupMenu items.
+# Steps:
+# - Emit base lines (name, cost, build time).
+# - Append local/state modifier lines when present.
+# - Return joined tooltip text.
 func _sestav_building_tooltip(building_id: String, bdef: Dictionary) -> String:
 	var lines: Array = []
 	lines.append(str(bdef.get("name", building_id)))
@@ -201,6 +277,16 @@ func _sestav_building_tooltip(building_id: String, bdef: Dictionary) -> String:
 	lines.append("Max level: %d" % max(1, int(bdef.get("max_level", 1))))
 	return "\n".join(lines)
 
+# Inputs:
+# - none
+# Outputs:
+# - none; rebuilds build menu items, disabled states, and tooltips from live definitions
+# Execution timing:
+# - Called during _ready and before build interactions.
+# Steps:
+# - Clear menu and id mapping cache.
+# - Load available building ids from backend.
+# - Add each item with cost and tooltip.
 func _obnov_stavba_popup_polozky() -> void:
 	# Rebuild menu from live building defs so costs/effects always match current rules.
 	# Pro male dite: znovu naplnime seznam budov, aby ukazoval spravne ceny.
@@ -217,10 +303,10 @@ func _obnov_stavba_popup_polozky() -> void:
 		var bdef = _ziskej_stavba_def(building_id)
 		if bdef.is_empty():
 			continue
-		var name = str(bdef.get("name", building_id))
+		var building_name = str(bdef.get("building_name", building_id))
 		var cost = max(0.0, float(bdef.get("cost", 0.0)))
 		var item_id = _stavba_menu_build_ids.size()
-		popup_stavba.add_item("%s (%dM)" % [name, int(round(cost))], item_id)
+		popup_stavba.add_item("%s (%dM)" % [building_name, int(round(cost))], item_id)
 		popup_stavba.set_item_tooltip(item_id, _sestav_building_tooltip(building_id, bdef))
 		_stavba_menu_build_ids.append(building_id)
 
@@ -235,7 +321,16 @@ func _limit_verbovani_v_okupaci(requested: int, prov_data: Dictionary) -> int:
 	# This prevents unrealistic instant manpower from freshly occupied territory.
 	return int(max(0, floor(float(requested) * 0.2)))
 
-# Initializes references, connects signals, and prepares default runtime state.
+# Inputs:
+# - none
+# Outputs:
+# - none; initializes InfoUI widgets, signals, popup state, and responsive layout hooks
+# Execution timing:
+# - Called once when InfoUI enters scene tree.
+# Steps:
+# - Hide transient popups and setup inline preview rows.
+# - Connect GameManager, viewport, and button signals.
+# - Build tooltip text and trigger initial layout pass.
 func _ready():
 	action_menu.hide()
 	if info_panel:
@@ -279,14 +374,27 @@ func _ready():
 		viewport.size_changed.connect(_on_viewport_resized)
 	call_deferred("_on_viewport_resized")
 
-# Handles this signal callback.
+# Inputs:
+# - none
+# Outputs:
+# - none; recomputes InfoUI layout and asks GameUI to realign
+# Execution timing:
+# - Triggered by viewport size_changed signal.
+# Steps:
+# - Recompute responsive geometry.
+# - Trigger GameUI layout refresh when available.
 func _on_viewport_resized() -> void:
 	_aktualizuj_responzivni_layout()
 	var game_ui = get_tree().current_scene.find_child("GameUI", true, false)
 	if game_ui and game_ui.has_method("obnov_layout_ui"):
 		game_ui.obnov_layout_ui()
 
-# Refreshes existing content to reflect current runtime values.
+# Inputs:
+# - none
+# Outputs:
+# - none; reapplies responsive layout for InfoUI and requests GameUI layout refresh
+# Execution timing:
+# - Called after data/panel visibility changes and deferred UI updates.
 func obnov_layout_ui() -> void:
 	_aktualizuj_responzivni_layout()
 	var game_ui = get_tree().current_scene.find_child("GameUI", true, false)
@@ -312,7 +420,17 @@ func _ziskej_safe_bottom_inset() -> float:
 		return 0.0
 	return float(overlap_px) * (vp_h / win_h)
 
-# Refreshes cached/UI state.
+# Inputs:
+# - none
+# Outputs:
+# - none; recomputes bottom-anchored info/action menu geometry
+# Execution timing:
+# - Called on viewport changes and when panels open/close.
+# Steps:
+# - Compute target widths from viewport bounds.
+# - Anchor info panel to bottom-left.
+# - Place action menu beside info panel or snap to bottom-right fallback.
+# - Apply compact button sizing for narrow widths.
 func _aktualizuj_responzivni_layout() -> void:
 	# Keep province panel and action panel pinned to bottom edge across resolutions.
 	# Pro male dite: i kdyz zmenis velikost okna, panely zustanou pekne dole.
@@ -413,7 +531,15 @@ func _clamp_popup_rect_to_viewport(rect: Rect2i) -> Rect2i:
 	out.position.y = int(clampi(out.position.y, 4, int(maxf(4.0, vp.y - out.size.y - 4.0))))
 	return out
 
-# Applies updates and syncs dependent state.
+# Inputs:
+# - none
+# Outputs:
+# - none; fills tooltip texts for labels, buttons, and popup controls
+# Execution timing:
+# - Called during _ready after node references are valid.
+# Steps:
+# - Assign feature-specific tooltip strings.
+# - Apply shared tooltip defaults utility.
 # Ai generated or editted end (priloha_a.txt)
 func _nastav_tooltipy_ui() -> void:
 	id_label.tooltip_text = "Name of the selected province."
@@ -442,7 +568,12 @@ func _nastav_tooltipy_ui() -> void:
 	btn_likvidace_zrusit.tooltip_text = "Close disband window without changes."
 	TooltipUtils.apply_default_tooltips(self)
 
-# Builds UI objects and default wiring.
+# Inputs:
+# - none
+# Outputs:
+# - none; creates inline preview label inside province info panel
+# Execution timing:
+# - Called once during _ready before action previews are used.
 func _vytvor_preview_label() -> void:
 	if _preview_label and is_instance_valid(_preview_label):
 		return
@@ -492,7 +623,15 @@ func _wrap_metric_label(key: String, base_label: Label) -> void:
 	_metric_rows[key] = row
 	_metric_deltas[key] = delta
 
-# Runs the local feature logic.
+# Inputs:
+# - none
+# Outputs:
+# - none; creates per-metric rows with inline delta labels
+# Execution timing:
+# - Called once during _ready before preview updates can occur.
+# Steps:
+# - Wrap key metric labels into row containers.
+# - Register delta label references for runtime updates.
 # Ai generated or editted end (priloha_a.txt)
 func _setup_inline_delta_rows() -> void:
 	_wrap_metric_label("pop", pop_label)
@@ -501,14 +640,27 @@ func _setup_inline_delta_rows() -> void:
 	_wrap_metric_label("income", income_label)
 	_wrap_metric_label("soldiers", soldiers_label)
 
-# Writes new values and refreshes related state.
+# Inputs:
+# - key: metric key identifier
+# - metric_visible: target visibility flag
+# Outputs:
+# - none; toggles metric row visibility and clears delta when hidden
+# Execution timing:
+# - Used by province/bulk render paths.
 func _set_metric_visible(key: String, metric_visible: bool) -> void:
 	if _metric_rows.has(key):
 		(_metric_rows[key] as Control).visible = metric_visible
 	if not metric_visible:
 		_set_metric_delta(key, "", Color.WHITE)
 
-# Applies updates and syncs dependent state.
+# Inputs:
+# - key: metric key identifier
+# - text: delta text without parentheses
+# - color: delta font color
+# Outputs:
+# - none; sets inline metric delta label contents/visibility
+# Execution timing:
+# - Used by action preview builders.
 func _set_metric_delta(key: String, text: String, color: Color) -> void:
 	if not _metric_deltas.has(key):
 		return
@@ -524,12 +676,22 @@ func _set_metric_delta(key: String, text: String, color: Color) -> void:
 	lbl.add_theme_color_override("font_color", color)
 	lbl.visible = true
 
-# Wipes short-lived state.
+# Inputs:
+# - none
+# Outputs:
+# - none; clears all inline metric deltas
+# Execution timing:
+# - Called when preview state is reset.
 func _clear_inline_deltas() -> void:
 	for key in _metric_deltas.keys():
 		_set_metric_delta(str(key), "", Color.WHITE)
 
-# Writes new values and refreshes related state.
+# Inputs:
+# - text: preview summary line
+# Outputs:
+# - none; shows/hides bottom preview label with normalized text
+# Execution timing:
+# - Updated by build/recruit preview functions.
 func _set_preview_text(text: String) -> void:
 	if not _preview_label:
 		return
@@ -541,18 +703,34 @@ func _set_preview_text(text: String) -> void:
 	_preview_label.text = "Preview: " + clean
 	_preview_label.visible = true
 
-# Runs the local feature logic.
+# Inputs:
+# - deltas: overview delta dictionary consumed by GameUI
+# Outputs:
+# - none; forwards preview deltas to GameUI when available
+# Execution timing:
+# - Called whenever local action preview changes.
 func _push_overview_deltas(deltas: Dictionary) -> void:
 	var game_ui = get_tree().current_scene.find_child("GameUI", true, false)
 	if game_ui and game_ui.has_method("nastav_akce_nahled_delta"):
 		game_ui.nastav_akce_nahled_delta(deltas)
 
+# Inputs:
+# - preview: economy preview dictionary consumed by GameUI ideology block
+# Outputs:
+# - none; forwards economy preview payload to GameUI
+# Execution timing:
+# - Called by build preview paths that affect economy metrics.
 func _push_overview_ekonomicky_nahled(preview: Dictionary) -> void:
 	var game_ui = get_tree().current_scene.find_child("GameUI", true, false)
 	if game_ui and game_ui.has_method("nastav_akce_nahled_ekonomiky"):
 		game_ui.nastav_akce_nahled_ekonomiky(preview)
 
-# Wipes short-lived state.
+# Inputs:
+# - none
+# Outputs:
+# - none; resets local/overview preview text, deltas, and ideology-preview flag
+# Execution timing:
+# - Called when popups close or actions are canceled/committed.
 func _clear_preview_text() -> void:
 	_set_preview_text("")
 	_clear_inline_deltas()
@@ -749,7 +927,12 @@ func _nahled_stavby_text(building_id: String, prov_data: Dictionary) -> String:
 	_push_overview_deltas(overview_deltas)
 	return "%s | Cost: %s | Funds after purchase: %s | Completion time: %d turns" % [bonus_text, _format_money_auto(cena, 2), _format_money_auto(cash_after, 2), build_time]
 
-# Feature logic entry point.
+# Inputs:
+# - pocet: recruited soldier count selected in slider
+# Outputs:
+# - String: formatted recruitment preview text with cost, upkeep delta, and projected income
+# Execution timing:
+# - Called from recruit slider callback and before recruit confirmation.
 func _nahled_verbovani_text(pocet: int) -> String:
 	_clear_inline_deltas()
 	_push_overview_ekonomicky_nahled({})
@@ -770,7 +953,16 @@ func _nahled_verbovani_text(pocet: int) -> String:
 	})
 	return "Recruitment: %s soldiers | Cost: %s | Funds after purchase: %s | Upkeep: %s | New net income: %s" % [_formatuj_cislo(pocet), _format_money_auto(cena, 2), _format_money_auto(cash_after, 2), _format_money_auto(upkeep_delta, 2, true, true), _format_money_auto(projected_income, 2, false, true)]
 
-# Runs the local feature logic.
+# Inputs:
+# - none
+# Outputs:
+# - none; refreshes build popup item states/tooltips and positions popup near button
+# Execution timing:
+# - Triggered before build popup opens.
+# Steps:
+# - Re-evaluate per-item availability.
+# - Update disabled states and status reasons.
+# - Clamp popup position to viewport and enable hover tracking.
 func _posun_stavba_menu():
 	var p = btn_stavet.get_popup()
 	# pred otevrenim menu znovu prepocitame disabled stavy i tooltipy (muze se to menit po tahu).
@@ -795,7 +987,12 @@ func _posun_stavba_menu():
 	_stavba_last_focus_idx = -2
 	set_process(true)
 
-# Handles this signal callback.
+# Inputs:
+# - id: focused popup item id
+# Outputs:
+# - none; updates build preview for currently focused menu item
+# Execution timing:
+# - Triggered by build PopupMenu id_focused signal.
 func _on_stavba_zvyraznena(id: int) -> void:
 	_nastav_nahled_stavby_podle_id(id)
 
@@ -811,7 +1008,12 @@ func _nastav_nahled_stavby_podle_id(id: int) -> void:
 		return
 	_nahled_stavby_text(building_id, province_data[aktualni_provincie_id])
 
-# Triggered by a UI/game signal.
+# Inputs:
+# - none
+# Outputs:
+# - none; resets build-menu hover tracking and clears temporary preview deltas
+# Execution timing:
+# - Triggered when build PopupMenu closes.
 func _on_stavba_menu_zavreno() -> void:
 	_stavba_last_focus_idx = -2
 	set_process(false)
@@ -840,7 +1042,16 @@ func _process(_delta: float) -> void:
 
 	_nastav_nahled_stavby_podle_id(int(_stavba_popup.get_item_id(idx)))
 
-# Hides UI/output and resets related temporary state.
+# Inputs:
+# - none
+# Outputs:
+# - none; hides InfoUI/popup state and clears temporary preview/selection flags
+# Execution timing:
+# - Called on deselect, cancel paths, and when switching to move-target mode.
+# Steps:
+# - Hide info/action and all active popups.
+# - Reset selection/multi-select state.
+# - Clear preview deltas and request layout refresh.
 func schovej_se():
 	$PanelContainer.hide()
 	action_menu.hide()
@@ -858,7 +1069,17 @@ func schovej_se():
 	_clear_preview_text()
 	call_deferred("obnov_layout_ui")
 
-# Updates what the player sees.
+# Inputs:
+# - data: selected province dictionary
+# Outputs:
+# - none; renders province detail panel and action availability for current context
+# Execution timing:
+# - Called when a province is selected or refreshed.
+# Steps:
+# - Resolve ownership/terrain/army context.
+# - Update detail labels and metric visibility.
+# - Enable/disable action buttons by legality.
+# - Show panel and schedule layout refresh.
 func zobraz_data(data: Dictionary):
 	if data.is_empty():
 		schovej_se()
@@ -971,7 +1192,12 @@ func zobraz_data(data: Dictionary):
 		_clear_preview_text()
 	call_deferred("obnov_layout_ui")
 
-# Callback for UI/game events.
+# Inputs:
+# - none
+# Outputs:
+# - none; opens disband popup for selected province or delegates to bulk disband flow
+# Execution timing:
+# - Triggered by Disband button in action menu.
 func _on_likvidovat_pressed():
 	if je_hromadny_rezim:
 		_otevri_hromadne_likvidovani()
@@ -1008,7 +1234,12 @@ func _on_likvidovat_pressed():
 	rect = _clamp_popup_rect_to_viewport(rect)
 	likvidace_popup.popup(rect)
 
-# Triggered by a UI/game signal.
+# Inputs:
+# - hodnota: disband slider value
+# Outputs:
+# - none; updates disband info text and confirm-button state
+# Execution timing:
+# - Triggered while user adjusts disband slider.
 func _on_likvidace_slider_zmenen(hodnota: float):
 	if not likvidace_info:
 		return
@@ -1021,7 +1252,12 @@ func _on_likvidace_slider_zmenen(hodnota: float):
 	if btn_likvidace_potvrdit:
 		btn_likvidace_potvrdit.disabled = (pocet <= 0)
 
-# Triggered by a UI/game signal.
+# Inputs:
+# - none
+# Outputs:
+# - none; commits disband action, applies refund, and refreshes province/UI state
+# Execution timing:
+# - Triggered by Disband popup confirm button.
 func _on_potvrdit_likvidaci():
 	if je_hromadne_likvidovani:
 		_potvrd_hromadne_likvidovani()
@@ -1065,7 +1301,12 @@ func _on_potvrdit_likvidaci():
 	zobraz_data(prov_data)
 	GameManager.kolo_zmeneno.emit()
 
-# Event handler for user or game actions.
+# Inputs:
+# - none
+# Outputs:
+# - none; starts single/bulk move flow depending on current selection mode
+# Execution timing:
+# - Triggered by Move button in action menu.
 func _on_presunout_pressed():
 	if je_hromadny_rezim:
 		if hromadny_vyber_ids.is_empty():
@@ -1113,12 +1354,22 @@ func zobraz_presun_slider(from_id: int, to_id: int, max_troops: int, path: Array
 	else:
 		move_popup.show()
 
-# Reacts to incoming events.
+# Inputs:
+# - hodnota: move slider value
+# Outputs:
+# - none; updates move popup soldier-count label
+# Execution timing:
+# - Triggered while user adjusts move slider.
 func _on_move_slider_zmenen(hodnota: float):
 	if move_count_label:
 		move_count_label.text = _formatuj_cislo(int(hodnota)) + " soldiers"
 
-# Triggered by a UI/game signal.
+# Inputs:
+# - none
+# Outputs:
+# - none; confirms move amount and sends move order to map system
+# Execution timing:
+# - Triggered by move popup confirm button.
 func _on_potvrdit_presun():
 	var amount = int(move_slider.value)
 	move_popup.hide()
@@ -1131,7 +1382,16 @@ func _on_potvrdit_presun():
 		map_loader.zaregistruj_presun_armady(presun_od_id, presun_do_id, amount, true, presun_path)
 # ------------------------------------------------------------------
 
-# Handles this signal callback.
+# Inputs:
+# - id: selected build-menu item id
+# Outputs:
+# - none; executes single or bulk building flow and displays result feedback
+# Execution timing:
+# - Triggered by build PopupMenu id_pressed signal.
+# Steps:
+# - Resolve building id from menu mapping.
+# - Generate and show preview text.
+# - Call build backend and handle success/failure UI updates.
 func _on_stavba_vybrana(id: int):
 	var building_id = _ziskej_stavba_menu_building_id(id)
 	if building_id == "":
@@ -1180,7 +1440,12 @@ func _ukaz_stavbu_info(title: String, text: String):
 	if map_loader and map_loader.has_method("_ukaz_bitevni_popup"):
 		map_loader._ukaz_bitevni_popup(title, text)
 
-# Triggered by a UI/game signal.
+# Inputs:
+# - none
+# Outputs:
+# - none; opens recruit popup for selected province or delegates to bulk recruit flow
+# Execution timing:
+# - Triggered by Recruit button in action menu.
 # Ai generated or editted end (priloha_a.txt)
 func _on_verbovat_pressed():
 	if je_hromadny_rezim:
@@ -1211,7 +1476,12 @@ func _on_verbovat_pressed():
 	rect = _clamp_popup_rect_to_viewport(rect)
 	recruit_popup.popup(rect)
 
-# Reacts to incoming events.
+# Inputs:
+# - hodnota: recruit slider value
+# Outputs:
+# - none; refreshes recruit info text and live recruitment preview deltas
+# Execution timing:
+# - Triggered while user adjusts recruit slider.
 func _on_slider_zmenen(hodnota: float):
 	var cena = hodnota * _ziskej_cenu_za_vojaka()
 	# slider callback drzi info text + mini preview stale v syncu.
@@ -1226,7 +1496,12 @@ func _on_slider_zmenen(hodnota: float):
 		_push_overview_deltas({})
 	btn_potvrdit.disabled = (hodnota == 0)
 
-# Event handler for user or game actions.
+# Inputs:
+# - none
+# Outputs:
+# - none; validates and commits recruitment for selected province or bulk set
+# Execution timing:
+# - Triggered by recruit popup confirm button.
 func _on_potvrdit_verbovani():
 	if je_hromadne_verbovani:
 		_potvrd_hromadne_verbovani()
@@ -1260,7 +1535,12 @@ func _on_potvrdit_verbovani():
 	zobraz_data(prov_data) 
 	GameManager.kolo_zmeneno.emit()
 
-# Triggered by a UI/game signal.
+# Inputs:
+# - none
+# Outputs:
+# - none; refreshes shown province/bulk info on turn-change signal
+# Execution timing:
+# - Connected to GameManager signal kolo_zmeneno.
 func _on_kolo_zmeneno():
 	if je_hromadny_rezim:
 		var map_loader = get_tree().current_scene.find_child("Map", true, false)
@@ -1301,7 +1581,17 @@ func _format_money_auto(value: float, mil_decimals: int = 2, signed: bool = fals
 	var txt_mil = fmt_mil % value
 	return txt_mil + "M" + ("/turn" if per_turn else "")
 
-# Applies visual/UI updates.
+# Inputs:
+# - ids: selected province ids
+# - all_provinces: province dictionary source
+# Outputs:
+# - none; renders aggregated multi-selection view and bulk-action availability
+# Execution timing:
+# - Called when map enters/updates multi-select province mode.
+# Steps:
+# - Aggregate totals and owned/actionable subsets.
+# - Update labels to bulk summary mode.
+# - Configure bulk action buttons and refresh layout.
 func zobraz_hromadna_data(ids: Array, all_provinces: Dictionary):
 	if ids.size() <= 1:
 		if ids.size() == 1 and all_provinces.has(int(ids[0])):
@@ -1369,7 +1659,12 @@ func zobraz_hromadna_data(ids: Array, all_provinces: Dictionary):
 	btn_stavet.text = "Build"
 	call_deferred("obnov_layout_ui")
 
-# Reads values from active state.
+# Inputs:
+# - none
+# Outputs:
+# - Array: selected owned land province ids (non-sea)
+# Execution timing:
+# - Used by bulk recruit/build flows.
 func _ziskej_hromadne_vlastni_pozemni() -> Array:
 	var out: Array = []
 	var province_data = _ziskej_provincie_data()
@@ -1383,7 +1678,12 @@ func _ziskej_hromadne_vlastni_pozemni() -> Array:
 			out.append(pid)
 	return out
 
-# Pulls current state data.
+# Inputs:
+# - none
+# Outputs:
+# - Array: selected province ids that currently contain player's army units
+# Execution timing:
+# - Used by bulk move/disband flows.
 func _ziskej_hromadne_zdroje_s_armadou() -> Array:
 	var out: Array = []
 	var province_data = _ziskej_provincie_data()
@@ -1400,7 +1700,16 @@ func _ziskej_hromadne_zdroje_s_armadou() -> Array:
 			out.append(pid)
 	return out
 
-# Opens a UI flow/panel and prepares its data and position.
+# Inputs:
+# - none
+# Outputs:
+# - none; prepares and opens bulk recruit popup for current multi-selection
+# Execution timing:
+# - Triggered by Recruit button while multi-select mode is active.
+# Steps:
+# - Build candidate province list and capacity caps.
+# - Clamp by available funds.
+# - Initialize popup slider and show popup.
 func _otevri_hromadne_verbovani():
 	var pozemni = _ziskej_hromadne_vlastni_pozemni()
 	if pozemni.is_empty():
@@ -1434,7 +1743,17 @@ func _otevri_hromadne_verbovani():
 	rect = _clamp_popup_rect_to_viewport(rect)
 	recruit_popup.popup(rect)
 
-# Validates and confirms an action, then commits the result.
+# Inputs:
+# - none
+# Outputs:
+# - none; distributes bulk recruitment across selected provinces and commits costs
+# Execution timing:
+# - Triggered by recruit popup confirm when bulk mode is active.
+# Steps:
+# - Compute valid province caps.
+# - Split requested recruits equally (floor).
+# - Apply soldier/recruit updates and treasury deduction.
+# - Close popup and emit turn-changed refresh.
 func _potvrd_hromadne_verbovani():
 	var total_to_recruit = int(recruit_slider.value)
 	if total_to_recruit <= 0:
@@ -1487,7 +1806,16 @@ func _potvrd_hromadne_verbovani():
 	_clear_preview_text()
 	GameManager.kolo_zmeneno.emit()
 
-# Opens bulk-disband popup for all selected provinces with armies.
+# Inputs:
+# - none
+# Outputs:
+# - none; prepares and opens bulk disband popup for selected armies
+# Execution timing:
+# - Triggered by Disband button while multi-select mode is active.
+# Steps:
+# - Compute total disbandable soldiers.
+# - Prime fixed slider/info text.
+# - Show popup near Disband button.
 func _otevri_hromadne_likvidovani():
 	var s_armadou = _ziskej_hromadne_zdroje_s_armadou()
 	if s_armadou.is_empty():
@@ -1517,7 +1845,16 @@ func _otevri_hromadne_likvidovani():
 	rect = _clamp_popup_rect_to_viewport(rect)
 	likvidace_popup.popup(rect)
 
-# Confirms bulk disband and removes all armies in selected provinces.
+# Inputs:
+# - none
+# Outputs:
+# - none; disbands selected armies, applies refunds, and refreshes UI
+# Execution timing:
+# - Triggered by disband popup confirm in bulk mode.
+# Steps:
+# - Zero selected army stacks and clear sea army owners.
+# - Add refunds to treasury.
+# - Close popup and report result summary.
 func _potvrd_hromadne_likvidovani():
 	var s_armadou = _ziskej_hromadne_zdroje_s_armadou()
 	var province_data = _ziskej_provincie_data()
@@ -1553,7 +1890,12 @@ func _potvrd_hromadne_likvidovani():
 	else:
 		_ukaz_stavbu_info("BULK DISBAND", "No troops were disbanded.")
 
-# Handles this gameplay/UI path.
+# Inputs:
+# - building_id: building identifier selected in build menu
+# Outputs:
+# - none; attempts construction across selected owned provinces and reports summary
+# Execution timing:
+# - Triggered when build is chosen while bulk-selection mode is active.
 func _postav_hromadne(building_id: String):
 	var pozemni = _ziskej_hromadne_vlastni_pozemni()
 	if pozemni.is_empty():

@@ -13,216 +13,7 @@ extends CanvasLayer
 # Hard part: keeps turn-state UI responsive while turn processing may run in slices,
 # and updates map-mode controls consistently with current scene state.
 
-class StatsLineChart:
-	extends Control
-	signal chart_point_selected(info: Dictionary)
-	signal chart_point_hovered(info: Dictionary)
-	var series: Array = []
-	var turn_values: Array = []
-	var y_tick_count: int = 4
-	var value_suffix: String = ""
-	var value_decimals: int = 2
-	var title: String = ""
-	var _hover_info: Dictionary = {}
-
-	# Initializes references, connects signals, and prepares default runtime state.
-	func _ready() -> void:
-		# Keep explicit chart sizes set by the stats popup; only apply defaults when unset.
-		if custom_minimum_size.x <= 0.0 or custom_minimum_size.y <= 0.0:
-			custom_minimum_size = Vector2(780, 170)
-		mouse_filter = Control.MOUSE_FILTER_STOP
-
-	# Paints custom control visuals.
-	func _draw() -> void:
-		var r = Rect2(Vector2.ZERO, size)
-		draw_rect(r, Color(0.05, 0.08, 0.12, 0.75), true)
-		draw_rect(r, Color(0.35, 0.47, 0.62, 0.9), false, 1.0)
-
-		var plot_data = _build_plot_data()
-		var valid_series = plot_data.get("valid_series", []) as Array
-		if valid_series.is_empty():
-			return
-		var plot = plot_data.get("plot_rect", Rect2()) as Rect2
-
-		for i in range(y_tick_count + 1):
-			var t = float(i) / float(max(1, y_tick_count))
-			var y = lerpf(plot.position.y + plot.size.y, plot.position.y, t)
-			draw_line(Vector2(plot.position.x, y), Vector2(plot.position.x + plot.size.x, y), Color(0.22, 0.30, 0.40, 0.55), 1.0)
-
-		draw_line(Vector2(plot.position.x, plot.position.y), Vector2(plot.position.x, plot.position.y + plot.size.y), Color(0.55, 0.65, 0.78, 0.8), 1.0)
-		draw_line(Vector2(plot.position.x, plot.position.y + plot.size.y), Vector2(plot.position.x + plot.size.x, plot.position.y + plot.size.y), Color(0.55, 0.65, 0.78, 0.8), 1.0)
-
-		for s_any in valid_series:
-			var s = s_any as Dictionary
-			var c = s.get("color", Color(0.95, 0.95, 0.95, 1.0)) as Color
-			var points = s.get("points", PackedVector2Array()) as PackedVector2Array
-			if points.size() >= 2:
-				draw_polyline(points, c, 2.0, true)
-				draw_circle(points[points.size() - 1], 3.0, c)
-
-		if not _hover_info.is_empty():
-			var hp = _hover_info.get("point", Vector2(-1000, -1000)) as Vector2
-			if hp.x > -999.0:
-				draw_line(Vector2(hp.x, plot.position.y), Vector2(hp.x, plot.position.y + plot.size.y), Color(1, 1, 1, 0.25), 1.0)
-				draw_line(Vector2(plot.position.x, hp.y), Vector2(plot.position.x + plot.size.x, hp.y), Color(1, 1, 1, 0.15), 1.0)
-				draw_circle(hp, 4.0, Color(1, 1, 1, 0.95))
-				var txt = str(_hover_info.get("text", ""))
-				if txt != "":
-					var f = get_theme_font("font")
-					var fs = get_theme_font_size("font_size")
-					if f:
-						var text_size = f.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
-						var pad = Vector2(8, 5)
-						var box_pos = hp + Vector2(10, -text_size.y - 14)
-						box_pos.x = clampf(box_pos.x, 4.0, maxf(4.0, size.x - text_size.x - pad.x * 2.0 - 4.0))
-						box_pos.y = clampf(box_pos.y, 4.0, maxf(4.0, size.y - text_size.y - pad.y * 2.0 - 4.0))
-						var box = Rect2(box_pos, text_size + pad * 2.0)
-						draw_rect(box, Color(0.04, 0.06, 0.10, 0.95), true)
-						draw_rect(box, Color(0.58, 0.70, 0.86, 0.95), false, 1.0)
-						draw_string(f, box.position + Vector2(pad.x, pad.y + text_size.y - 2.0), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.96, 0.98, 1.0, 1.0))
-
-	# Runs the local feature logic.
-	func _gui_input(event: InputEvent) -> void:
-		if series.is_empty():
-			return
-		if event is InputEventMouseMotion:
-			_aktualizuj_hover(event.position)
-		elif event is InputEventMouseButton:
-			var mb = event as InputEventMouseButton
-			if mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:
-				_aktualizuj_hover(mb.position)
-				if not _hover_info.is_empty():
-					chart_point_selected.emit(_hover_info.duplicate(true))
-
-	# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_gui_input]
-	func _exit_tree() -> void:
-		_hover_info.clear()
-
-	# Feature logic entry point.
-	func _build_plot_data() -> Dictionary:
-		var valid_series: Array = []
-		for s_any in series:
-			var s0 = s_any as Dictionary
-			var vals = s0.get("values", []) as Array
-			if vals.size() >= 2:
-				valid_series.append({
-					"name": str(s0.get("name", "series")),
-					"color": s0.get("color", Color(0.95, 0.95, 0.95, 1.0)),
-					"values": vals
-				})
-
-		if valid_series.is_empty():
-			return {"valid_series": []}
-
-		var left_pad = 44.0
-		var right_pad = 12.0
-		var top_pad = 12.0
-		var bottom_pad = 26.0
-		var plot = Rect2(
-			Vector2(left_pad, top_pad),
-			Vector2(max(1.0, size.x - left_pad - right_pad), max(1.0, size.y - top_pad - bottom_pad))
-		)
-
-		var min_v = INF
-		var max_v = -INF
-		# Compute global Y range across all series so lines share one comparable scale.
-		# Pro male dite: najdeme nejmensi a nejvetsi cislo, aby se graf vesel do ramecku.
-		for s_any in valid_series:
-			var vals = (s_any as Dictionary).get("values", []) as Array
-			for v_any in vals:
-				var v = float(v_any)
-				min_v = minf(min_v, v)
-				max_v = maxf(max_v, v)
-
-		if not is_finite(min_v) or not is_finite(max_v):
-			return {"valid_series": []}
-		if absf(max_v - min_v) <= 0.000001:
-			var pad = maxf(1.0, absf(max_v) * 0.08)
-			min_v -= pad
-			max_v += pad
-
-		for i in range(valid_series.size()):
-			var s = valid_series[i] as Dictionary
-			var vals = s.get("values", []) as Array
-			var pts: PackedVector2Array = []
-			var count = vals.size()
-			for j in range(count):
-				# Convert index/value pair to screen coordinates inside plot rectangle.
-				var x_t = float(j) / float(max(1, count - 1))
-				var x = plot.position.x + (plot.size.x * x_t)
-				var v = float(vals[j])
-				var y_t = (v - min_v) / (max_v - min_v)
-				var y = plot.position.y + plot.size.y - (plot.size.y * y_t)
-				pts.append(Vector2(x, y))
-			s["points"] = pts
-			valid_series[i] = s
-
-		return {
-			"valid_series": valid_series,
-			"plot_rect": plot,
-			"min": min_v,
-			"max": max_v
-		}
-
-	# Display formatting helper.
-	func _format_value(v: float) -> String:
-		return "%.*f%s" % [max(0, value_decimals), v, value_suffix]
-
-	# Refreshes cached/UI state.
-	func _aktualizuj_hover(local_pos: Vector2) -> void:
-		var plot_data = _build_plot_data()
-		var valid_series = plot_data.get("valid_series", []) as Array
-		if valid_series.is_empty():
-			if not _hover_info.is_empty():
-				_hover_info.clear()
-				chart_point_hovered.emit({})
-				queue_redraw()
-			return
-
-		var plot = plot_data.get("plot_rect", Rect2()) as Rect2
-		if not plot.has_point(local_pos):
-			if not _hover_info.is_empty():
-				_hover_info.clear()
-				chart_point_hovered.emit({})
-				queue_redraw()
-			return
-
-		var best_dist = INF
-		var best: Dictionary = {}
-		# Pick nearest rendered point across all series for stable tooltip behavior.
-		# Pro male dite: najdeme nejblizsi tecku pod mysi a ukazeme jeji hodnotu.
-		for s_any in valid_series:
-			var s = s_any as Dictionary
-			var vals = s.get("values", []) as Array
-			var pts = s.get("points", PackedVector2Array()) as PackedVector2Array
-			for idx in range(pts.size()):
-				var p = pts[idx]
-				var d = p.distance_to(local_pos)
-				if d < best_dist:
-					best_dist = d
-					var turn_val = idx + 1
-					if idx < turn_values.size():
-						turn_val = int(turn_values[idx])
-					best = {
-						"series": str(s.get("name", "series")),
-						"series_index": idx,
-						"turn": turn_val,
-						"value": float(vals[idx]),
-						"point": p,
-						"color": s.get("color", Color.WHITE)
-					}
-
-		if best.is_empty():
-			return
-		var text = "%s | T%d | %s" % [
-			str(best.get("series", "series")),
-			int(best.get("turn", 0)),
-			_format_value(float(best.get("value", 0.0)))
-		]
-		best["text"] = text
-		_hover_info = best
-		chart_point_hovered.emit(best.duplicate(true))
-		queue_redraw()
+const StatsLineChart = preload("res://scripts/ui/components/StatsLineChart.gd")
 
 @onready var money_label = $Panel/HBoxContainer/MoneyLabel
 @onready var date_label = $Panel/HBoxContainer/DateLabel
@@ -399,9 +190,10 @@ func _normalizuj_ideologii(ideologie: String) -> String:
 		_:
 			return raw
 
-# Handles this gameplay/UI path.
-# Ai generated or editted end (priloha_a.txt)
 func _ensure_ideology_flag_index() -> void:
+	# Inputs: None (uses directory scan)
+	# Outputs: Populates ideology_flag_path_index Dictionary mapping "TAG|ideology" → resource path
+	# Execution timing: Called on first flag-by-ideology lookup; recursively scans FlagsIdeology directory
 	if ideology_flag_index_ready:
 		return
 	ideology_flag_index_ready = true
@@ -455,8 +247,10 @@ func _ensure_ideology_flag_index() -> void:
 			ideology_flag_path_index[key] = path
 	dir.list_dir_end()
 
-# Initializes references, connects signals, and prepares default runtime state.
 func _ready():
+	# Inputs: None (called by Godot on scene entry)
+	# Outputs: Connects signals to handlers; creates UI panels/popups; initializes turn counter formatting
+	# Execution timing: Called once at scene startup; sets up all button connections and statistics UI
 	# Connect button clicks and GameManager signals
 	_inicializuj_startovni_datum_hry()
 	if next_btn and not next_btn.pressed.is_connected(_on_next_turn_pressed):
@@ -492,8 +286,10 @@ func _ready():
 	call_deferred("_registruj_anchor_zprav")
 	call_deferred("_aktualizuj_stav_tlacitek_modu")
 
-# Applies incoming data to runtime state.
 func _nastav_tooltipy_ui() -> void:
+	# Inputs: None (uses internal node references)
+	# Outputs: Sets tooltip_text property on all labeled UI elements (buttons, labels)
+	# Execution timing: Called by _ready() after UI components created; enables default Godot tooltip display
 	if money_label:
 		money_label.tooltip_text = ""
 	if _stats_button:
@@ -516,23 +312,29 @@ func _nastav_tooltipy_ui() -> void:
 	if money_label:
 		money_label.tooltip_text = ""
 
-# Handles this gameplay/UI path.
 func _inicializuj_startovni_datum_hry() -> void:
+	# Inputs: None (queries system date/time)
+	# Outputs: Sets _calendar_start_day/month/year from system clock for calendar offset calculation
+	# Execution timing: Called by _ready(); establishes turn 1 = current date for turn numbering
 	var datum: Dictionary = Time.get_datetime_dict_from_system()
 	_calendar_start_day = clampi(int(datum.get("day", 1)), 1, 31)
 	_calendar_start_month = clampi(int(datum.get("month", 1)), 1, 12)
 	_calendar_start_year = int(datum.get("year", 2026))
 
-# Read-only data accessor.
 func _ziskej_text_data_pro_kolo(kolo: int) -> String:
+	# Inputs: kolo (int) - turn number (1-based)
+	# Outputs: String "Date: DD.MM.YYYY (Turn N)" with calendar offset from start date
+	# Execution timing: Called by aktualizuj_ui() to display current turn date
 	var offset_mesicu = maxi(0, kolo - 1)
 	var month_index = (_calendar_start_month - 1) + offset_mesicu
 	var month = int(month_index % 12) + 1
 	var year = _calendar_start_year + int(floor(float(month_index) / 12.0))
 	return "Date: %02d.%02d.%04d (Turn %d)" % [_calendar_start_day, month, year, maxi(1, kolo)]
 
-# Pulls current state data.
 func _ziskej_jmeno_statu_pro_frontu(tag: String) -> String:
+	# Inputs: tag (String) - country tag (e.g., "USA", "GBR")
+	# Outputs: Country name from map_data or GameManager, fallback to tag if name unavailable
+	# Execution timing: Called by turn queue UI functions; translates tags to display names
 	var wanted = tag.strip_edges().to_upper()
 	if wanted == "":
 		return ""
@@ -550,8 +352,10 @@ func _ziskej_jmeno_statu_pro_frontu(tag: String) -> String:
 				return state_name
 	return wanted
 
-# Runs the local feature logic.
 func _sestav_text_fronty_tahu() -> String:
+	# Inputs: None (queries GameManager.lokalni_hraci_staty and aktivni_hrac_index)
+	# Outputs: String describing turn queue (Singleplayer or [NOW] Player -> Player -> ...)
+	# Execution timing: Called by aktualizuj_ui() for local multiplayer queue display
 	var hraci = GameManager.lokalni_hraci_staty
 	if not (hraci is Array) or hraci.size() <= 1:
 		return "Queue: Singleplayer"
@@ -568,8 +372,10 @@ func _sestav_text_fronty_tahu() -> String:
 			casti.append(state_name)
 	return "Queue: %s" % " -> ".join(casti)
 
-# Pulls current state data.
 func _ziskej_texturu_vlajky_fronty(tag: String):
+	# Inputs: tag (String) - country tag to load flag for
+	# Outputs: Texture2D for country flag SVG or PNG; returns null if not found
+	# Execution timing: Called by turn queue UI functions; loads texture via _cached_texture()
 	var cisty_tag = tag.strip_edges().to_upper()
 	for path in ["res://map_data/Flags/%s.svg" % cisty_tag, "res://map_data/Flags/%s.png" % cisty_tag]:
 		var tex = _cached_texture(path)
@@ -577,15 +383,19 @@ func _ziskej_texturu_vlajky_fronty(tag: String):
 			return tex
 	return null
 
-# Resets transient runtime/UI data.
 func _vycisti_frontu_tahu_vlajek() -> void:
+	# Inputs: None (uses turn_queue_flags node reference)
+	# Outputs: Removes all child nodes from turn_queue_flags container
+	# Execution timing: Called before rebuilding queue to clear old flag nodes
 	if turn_queue_flags == null:
 		return
 	for child in turn_queue_flags.get_children():
 		child.queue_free()
 
-# Runs the local feature logic.
 func _pridej_vlajku_do_fronty(tag: String, aktivni: bool) -> void:
+	# Inputs: tag (String) - country tag to display; aktivni (bool) - whether player is current
+	# Outputs: Creates TextureRect child node with flag and name tooltip; modulates opacity for inactive players
+	# Execution timing: Called by queue rebuilding; adds one flag to turn_queue_flags for each upcoming player
 	if turn_queue_flags == null:
 		return
 	var tex = _ziskej_texturu_vlajky_fronty(tag)
@@ -604,8 +414,10 @@ func _pridej_vlajku_do_fronty(tag: String, aktivni: bool) -> void:
 		rect.modulate = Color(0.62, 0.62, 0.62, 0.52)
 	turn_queue_flags.add_child(rect)
 
-# Refreshes cached/UI state.
 func _aktualizuj_frontu_tahu_vlajky() -> void:
+	# Inputs: None (uses GameManager state)
+	# Outputs: Clears and rebuilds turn_queue_flags with upcoming players; hidden in singleplayer
+	# Execution timing: Called by aktualizuj_ui() to sync queue UI with game state
 	if turn_queue_flags == null:
 		return
 	_vycisti_frontu_tahu_vlajek()
@@ -623,8 +435,10 @@ func _aktualizuj_frontu_tahu_vlajky() -> void:
 		var tag = str(hraci[idx]).strip_edges().to_upper()
 		_pridej_vlajku_do_fronty(tag, false)
 
-# Recomputes values from current data.
 func _aktualizuj_sirku_panelu_hrace() -> void:
+	# Inputs: None (reads viewport size and GameManager state)
+	# Outputs: Resizes player_turn_panel, adjusts _turn_busy_indicator width, recomputes UI layout
+	# Execution timing: Called on viewport resize and after UI updates; maintains responsive panel sizing
 	if player_turn_panel == null:
 		return
 	var viewport = get_viewport()
@@ -677,6 +491,9 @@ func _aktualizuj_sirku_panelu_hrace() -> void:
 	_aktualizuj_statistics_popup_layout()
 
 func _ziskej_statistics_popup_target_size() -> Vector2i:
+	# Inputs: None (reads viewport size and sizing constants)
+	# Outputs: Vector2i clamped to STATS_POPUP_MIN/BASE_SIZE and viewport bounds
+	# Execution timing: Called by _aktualizuj_statistics_popup_layout() for responsive popup sizing
 	var viewport = get_viewport()
 	if viewport == null:
 		return STATS_POPUP_BASE_SIZE
@@ -686,6 +503,9 @@ func _ziskej_statistics_popup_target_size() -> Vector2i:
 	return Vector2i(w, h)
 
 func _aktualizuj_statistics_popup_layout() -> void:
+	# Inputs: None (reads target size and updates chart nodes)
+	# Outputs: Resizes _stats_popup and all child StatsLineChart nodes to viewport-scaled dimensions
+	# Execution timing: Called on viewport update or statistics display
 	if _stats_popup == null:
 		return
 	var target = _ziskej_statistics_popup_target_size()
@@ -698,8 +518,10 @@ func _aktualizuj_statistics_popup_layout() -> void:
 	if _stats_compare_chart:
 		_stats_compare_chart.custom_minimum_size = Vector2(0.0, clampf(float(target.y) * 0.42, 240.0, 520.0))
 
-# Updates derived state and UI.
 func _aktualizuj_responzivni_topbar(vp_width: float) -> void:
+	# Inputs: vp_width (float) - viewport width in pixels
+	# Outputs: Adjusts visibility/sizing of map_modes_box/dropdown/labels based on breakpoints
+	# Execution timing: Called on viewport resize; enables responsive UI layout for different screen sizes
 	var compact = vp_width < 1360.0
 	var narrow = vp_width < MAP_MODE_DROPDOWN_BREAKPOINT
 	var tiny = vp_width < 980.0
@@ -725,8 +547,10 @@ func _aktualizuj_responzivni_topbar(vp_width: float) -> void:
 		zpravy_btn.custom_minimum_size.x = 130.0 if compact else 175.0
 		zpravy_btn.add_theme_font_size_override("font_size", 20 if compact else 26)
 
-# Recomputes values from current data.
 func _aktualizuj_zarovnani_nazvu_statu() -> void:
+	# Inputs: None (reads player_name text and flag width)
+	# Outputs: Sets player_name size_flags/custom_minimum_size and horizontal_alignment based on name width
+	# Execution timing: Called by aktualizuj_ui(); centers short names under flag or expands wide names
 	if player_name == null:
 		return
 
@@ -752,29 +576,35 @@ func _aktualizuj_zarovnani_nazvu_statu() -> void:
 		player_name.custom_minimum_size.x = 0.0
 		player_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 
-# Read-only data accessor.
 func _ziskej_game_ui_node() -> Node:
+	# Inputs: None (walks scene tree)
+	# Outputs: Node reference to GameUI control or null
+	# Execution timing: Called to locate GameUI for message panel integration
 	var scene_root = get_tree().current_scene
 	if scene_root == null:
 		return null
 	return scene_root.find_child("GameUI", true, false)
 
-# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_ziskej_game_ui_node]
-# Ai generated or editted start (priloha_a.txt)
 func _registruj_anchor_zprav() -> void:
+	# Inputs: None (finds GameUI child)
+	# Outputs: Calls nastav_zpravy_anchor_control on GameUI if available
+	# Execution timing: Called deferred after _ready(); registers messages button as UI anchor
 	var game_ui = _ziskej_game_ui_node()
 	if game_ui and game_ui.has_method("nastav_zpravy_anchor_control"):
 		game_ui.nastav_zpravy_anchor_control(zpravy_btn)
 
-# Reacts to incoming events.
-# Ai generated or editted end (priloha_a.txt)
 func _on_zpravy_pressed() -> void:
+	# Inputs: None (button pressed signal)
+	# Outputs: Calls prepni_zpravy_panel on GameUI to toggle message panel
+	# Execution timing: Called when messages button clicked; routes to centralized message UI
 	var game_ui = _ziskej_game_ui_node()
 	if game_ui and game_ui.has_method("prepni_zpravy_panel"):
 		game_ui.prepni_zpravy_panel()
 
-# Writes new values and refreshes related state.
 func _nastav_tooltipy_mapovych_modu() -> void:
+	# Inputs: None (uses MAP_MODE button references)
+	# Outputs: Sets tooltip_text on all map mode buttons with display name + hotkey
+	# Execution timing: Called by _ready(); enables mode selection hints
 	if map_modes_box == null:
 		return
 	for mod in MAP_MODE_TO_BUTTON_PATHS.keys():
@@ -788,8 +618,10 @@ func _nastav_tooltipy_mapovych_modu() -> void:
 	if _map_modes_dropdown:
 		_map_modes_dropdown.tooltip_text = "Map mode menu (auto-shown on small screens)."
 
-# Creates required nodes and connects signals.
 func _vytvor_dropdown_mapovych_modu() -> void:
+	# Inputs: None (creates new OptionButton node)
+	# Outputs: Instantiates _map_modes_dropdown with all MAP_MODE_ORDER items; adds to top_panel
+	# Execution timing: Called by _ready(); shown only on narrow viewports
 	if _map_modes_dropdown != null:
 		return
 	if top_panel == null:
@@ -817,8 +649,10 @@ func _vytvor_dropdown_mapovych_modu() -> void:
 	if map_modes_box and map_modes_box.get_parent() == box:
 		box.move_child(_map_modes_dropdown, map_modes_box.get_index() + 1)
 
-# Callback for UI/game events.
 func _on_map_mode_dropdown_selected(index: int) -> void:
+	# Inputs: index (int) - selected item index
+	# Outputs: Calls _prepni_mapovy_mod with mode from item metadata
+	# Execution timing: Called on OptionButton selection
 	if _map_modes_dropdown == null:
 		return
 	if index < 0 or index >= _map_modes_dropdown.item_count:
@@ -828,8 +662,10 @@ func _on_map_mode_dropdown_selected(index: int) -> void:
 		return
 	_prepni_mapovy_mod(mod)
 
-# Read-only data accessor.
 func _ziskej_cesty_ikony_map_modu(mod: String) -> Array:
+	# Inputs: mod (String) - map mode name (political/population/etc.)
+	# Outputs: Array of resource paths to try for mode icon; relationships has fallback chain
+	# Execution timing: Called during icon loading
 	# Relationships icon can be replaced later by adding one of these files.
 	if mod == "relationships":
 		return [
@@ -843,8 +679,10 @@ func _ziskej_cesty_ikony_map_modu(mod: String) -> Array:
 		return [str(MAP_MODE_ICON_PATHS[mod])]
 	return []
 
-# Load pass with basic validation.
 func _nacti_bilou_ikonu(path: String):
+	# Inputs: path (String) - texture resource path
+	# Outputs: Cached texture; converts to white (alpha preserved) if image available
+	# Execution timing: Called by _nacti_ikonu_map_modu(); converts colored icons to monochrome
 	if path == "":
 		return null
 	if _map_mode_white_icon_cache.has(path):
@@ -871,16 +709,20 @@ func _nacti_bilou_ikonu(path: String):
 	_map_mode_white_icon_cache[path] = out_tex
 	return out_tex
 
-# Data/resource load and sanity checks.
 func _nacti_ikonu_map_modu(mod: String):
+	# Inputs: mod (String) - map mode name
+	# Outputs: White monochrome texture for mode icon or null
+	# Execution timing: Called during button setup; loads and processes mode icons
 	for path in _ziskej_cesty_ikony_map_modu(mod):
 		var tex = _nacti_bilou_ikonu(str(path))
 		if tex:
 			return tex
 	return null
 
-# Writes new values and refreshes related state.
 func _nastav_hotkey_badge(btn: Button, hotkey: String) -> void:
+	# Inputs: btn (Button) - button to add badge to; hotkey (String) - hotkey text
+	# Outputs: Creates/updates HotkeyBadge label in bottom-right corner of button with shadow
+	# Execution timing: Called during map mode button setup
 	if btn == null:
 		return
 
@@ -910,8 +752,10 @@ func _nastav_hotkey_badge(btn: Button, hotkey: String) -> void:
 	badge.offset_top = -13.0
 	badge.offset_bottom = -1.0
 
-# Applies updates and syncs dependent state.
 func _nastav_ikony_mapovych_modu() -> void:
+	# Inputs: None (loads icons for all map modes)
+	# Outputs: Sets icon/styling on each map mode button and applies hotkey badges
+	# Execution timing: Called by _zapoj_tlacitka_mapovych_modu(); initializes mode selector appearance
 	if map_modes_box == null:
 		return
 	for mod in MAP_MODE_TO_BUTTON_PATHS.keys():
@@ -930,20 +774,26 @@ func _nastav_ikony_mapovych_modu() -> void:
 			b.custom_minimum_size = Vector2(MAP_MODE_BUTTON_WIDTH, MAP_MODE_BUTTON_HEIGHT)
 			_nastav_hotkey_badge(b, str(MAP_MODE_HOTKEYS.get(mod, "")))
 
-# Core flow for this feature.
 func _napoj_signal_mapoveho_modu() -> void:
+	# Inputs: None (connects to map_loader signal)
+	# Outputs: Wires mapovy_mod_zmenen signal to _on_mapovy_mod_zmenen handler
+	# Execution timing: Called by _ready(); enables UI-to-game-state sync
 	var map_loader = _ziskej_map_loader()
 	if map_loader == null:
 		return
 	if map_loader.has_signal("mapovy_mod_zmenen") and not map_loader.mapovy_mod_zmenen.is_connected(_on_mapovy_mod_zmenen):
 		map_loader.mapovy_mod_zmenen.connect(_on_mapovy_mod_zmenen)
 
-# Reacts to incoming events.
 func _on_mapovy_mod_zmenen(mod: String) -> void:
+	# Inputs: mod (String) - new active map mode
+	# Outputs: Updates button pressed states and visual highlighting
+	# Execution timing: Called on map_loader.mapovy_mod_zmenen signal
 	_aktualizuj_stav_tlacitek_modu(mod)
 
-# Read-only data accessor.
 func _ziskej_map_loader() -> Node:
+	# Inputs: None (walks scene tree for map2D or root node)
+	# Outputs: Node with nastav_mapovy_mod method or null
+	# Execution timing: Called by map mode functions; locates map controller
 	var scene_root = get_tree().current_scene
 	if scene_root and scene_root.has_method("nastav_mapovy_mod"):
 		return scene_root
@@ -953,8 +803,10 @@ func _ziskej_map_loader() -> Node:
 			return map_node
 	return null
 
-# Applies mode change side effects.
 func _prepni_mapovy_mod(mod: String) -> void:
+	# Inputs: mod (String) - target map mode
+	# Outputs: Calls nastav_mapovy_mod on map_loader; updates button UI state
+	# Execution timing: Called by mode button handlers and dropdown selection
 	var map_loader = _ziskej_map_loader()
 	if map_loader == null:
 		return
@@ -962,15 +814,19 @@ func _prepni_mapovy_mod(mod: String) -> void:
 		map_loader.nastav_mapovy_mod(mod)
 	_aktualizuj_stav_tlacitek_modu(mod)
 
-# Returns current runtime data.
 func _ziskej_aktualni_mapovy_mod() -> String:
+	# Inputs: None (queries map_loader state)
+	# Outputs: Current map mode name or default "political"
+	# Execution timing: Called to read current selection state
 	var map_loader = _ziskej_map_loader()
 	if map_loader == null:
 		return "political"
 	return str(map_loader.get("aktualni_mapovy_mod"))
 
-# Recomputes values from current data.
 func _aktualizuj_stav_tlacitek_modu(active_mode: String = "") -> void:
+	# Inputs: active_mode (String) - mode to highlight (empty = query current)
+	# Outputs: Sets button_pressed state on map mode buttons; highlights selected; syncs dropdown
+	# Execution timing: Called on mode change or UI update
 	var mode = active_mode if active_mode != "" else _ziskej_aktualni_mapovy_mod()
 	if map_modes_box:
 		for child in map_modes_box.get_children():
@@ -995,8 +851,10 @@ func _aktualizuj_stav_tlacitek_modu(active_mode: String = "") -> void:
 				_map_modes_dropdown.select(i)
 				break
 
-# Feature logic entry point.
 func _zapoj_tlacitka_mapovych_modu() -> void:
+	# Inputs: None (connects all map mode buttons to handlers)
+	# Outputs: Wires pressed signals to _on_mode_*_pressed handlers; sets up icon and tooltip display
+	# Execution timing: Called by _ready(); initializes map mode selector UI
 	if map_modes_box == null:
 		return
 	_nastav_ikony_mapovych_modu()
@@ -1027,44 +885,64 @@ func _zapoj_tlacitka_mapovych_modu() -> void:
 
 	_aktualizuj_stav_tlacitek_modu()
 
-# Reacts to incoming events.
 func _on_mode_political_pressed() -> void:
+	# Inputs: None (button pressed signal)
+	# Outputs: Calls _prepni_mapovy_mod("political")
+	# Execution timing: Called on political mode button press
 	_prepni_mapovy_mod("political")
 
-# Event handler for user or game actions.
 func _on_mode_population_pressed() -> void:
+	# Inputs: None (button pressed signal)
+	# Outputs: Calls _prepni_mapovy_mod("population")
+	# Execution timing: Called on population mode button press
 	_prepni_mapovy_mod("population")
 
-# Event handler for user or game actions.
 func _on_mode_gdp_pressed() -> void:
+	# Inputs: None (button pressed signal)
+	# Outputs: Calls _prepni_mapovy_mod("gdp")
+	# Execution timing: Called on GDP mode button press
 	_prepni_mapovy_mod("gdp")
 
-# Handles this signal callback.
 func _on_mode_ideology_pressed() -> void:
+	# Inputs: None (button pressed signal)
+	# Outputs: Calls _prepni_mapovy_mod("ideology")
+	# Execution timing: Called on ideology mode button press
 	_prepni_mapovy_mod("ideology")
 
-# Triggered by a UI/game signal.
 func _on_mode_recruits_pressed() -> void:
+	# Inputs: None (button pressed signal)
+	# Outputs: Calls _prepni_mapovy_mod("recruitable_population")
+	# Execution timing: Called on recruits mode button press
 	_prepni_mapovy_mod("recruitable_population")
 
-# Callback for UI/game events.
 func _on_mode_relations_pressed() -> void:
+	# Inputs: None (button pressed signal)
+	# Outputs: Calls _prepni_mapovy_mod("relationships")
+	# Execution timing: Called on relations mode button press
 	_prepni_mapovy_mod("relationships")
 
-# Handles this signal callback.
 func _on_mode_terrain_pressed() -> void:
+	# Inputs: None (button pressed signal)
+	# Outputs: Calls _prepni_mapovy_mod("terrain")
+	# Execution timing: Called on terrain mode button press
 	_prepni_mapovy_mod("terrain")
 
-# Triggered by a UI/game signal.
 func _on_mode_resources_pressed() -> void:
+	# Inputs: None (button pressed signal)
+	# Outputs: Calls _prepni_mapovy_mod("resources")
+	# Execution timing: Called on resources mode button press
 	_prepni_mapovy_mod("resources")
 
-# Handles this signal callback.
 func _on_mode_alliances_pressed() -> void:
+	# Inputs: None (button pressed signal)
+	# Outputs: Calls _prepni_mapovy_mod("alliances")
+	# Execution timing: Called on alliances mode button press
 	_prepni_mapovy_mod("alliances")
 
-# Refreshes cached/UI state.
 func aktualizuj_ui():
+	# Inputs: None (reads GameManager state)
+	# Outputs: Updates all UI labels (money/date), player info, turn queue, camera focus, statistics cache
+	# Execution timing: Called by GameManager.kolo_zmeneno signal on each turn; main UI refresh loop
 	# Update money and date counters
 	# topbar balance bereme z cashflow projekce, ne z cistyho profitu, at sedi s kasou.
 	var topbar_balance = float(GameManager.celkovy_prijem)
@@ -1096,15 +974,19 @@ func aktualizuj_ui():
 		# report obnovujem jen kdyz je popup otevreny, jinak by to zbytecne zralo vykon.
 		_aktualizuj_statistics_report()
 
-# Callback for UI/game events.
 func _on_next_turn_pressed():
+	# Inputs: None (button pressed signal)
+	# Outputs: Calls GameManager.pozaduj_ukonceni_kola() or fallback ukonci_kolo()
+	# Execution timing: Called when next turn button pressed; initiates turn processing
 	if GameManager.has_method("pozaduj_ukonceni_kola"):
 		GameManager.pozaduj_ukonceni_kola()
 	else:
 		GameManager.ukonci_kolo()
 
-# Construct/setup block for required nodes.
 func _vytvor_statistics_tlacitko() -> void:
+	# Inputs: None (creates new Button node)
+	# Outputs: Instantiates _stats_button in top panel near zpravy_btn; connects pressed signal
+	# Execution timing: Called by _ready(); adds statistics button to topbar
 	if _stats_button != null:
 		return
 	if not is_instance_valid(top_panel):
@@ -1128,8 +1010,10 @@ func _vytvor_statistics_tlacitko() -> void:
 		var msg_idx = zpravy_btn.get_index()
 		box.move_child(_stats_button, msg_idx + 1)
 
-# Builds UI objects and default wiring.
 func _vytvor_statistics_popup() -> void:
+	# Inputs: None (creates complex PopupPanel hierarchy)
+	# Outputs: Instantiates _stats_popup with tabs, charts (growth/GDP/pop/army/finance), KPI cards, compare tools
+	# Execution timing: Called by _ready(); creates entire statistics UI structure
 	if _stats_popup != null:
 		return
 
@@ -1429,15 +1313,17 @@ func _vytvor_statistics_popup() -> void:
 	add_child(_stats_popup)
 	_aktualizuj_statistics_popup_layout()
 
-# Creates required nodes and connects signals.
 func _vytvor_statistics_chart_blok(parent: Node, title: String) -> StatsLineChart:
-	var wrap := PanelContainer.new()
-	wrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	parent.add_child(wrap)
+	# Inputs: parent (Node) - container to add chart to; title (String) - chart label text
+	# Outputs: PanelContainer with nested StatsLineChart; returns chart reference for data binding
+	# Execution timing: Called by _vytvor_statistics_popup(); creates one chart block per metric
+	var panel_wrapper := PanelContainer.new()
+	panel_wrapper.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(panel_wrapper)
 
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 4)
-	wrap.add_child(box)
+	panel_wrapper.add_child(box)
 
 	var lbl := Label.new()
 	lbl.text = title
@@ -1451,8 +1337,10 @@ func _vytvor_statistics_chart_blok(parent: Node, title: String) -> StatsLineChar
 	box.add_child(chart)
 	return chart
 
-# Construct/setup block for required nodes.
 func _vytvor_stats_kpi_card(key: String, title: String, accent: Color) -> void:
+	# Inputs: key (String) - statistic key (gdp/population/etc.); title/accent for styling
+	# Outputs: Creates PanelContainer card in _stats_kpi_grid with label; stores value label in _stats_kpi_labels
+	# Execution timing: Called by _vytvor_statistics_popup() for each KPI metric
 	if _stats_kpi_grid == null:
 		return
 	var card := PanelContainer.new()
@@ -1493,16 +1381,20 @@ func _vytvor_stats_kpi_card(key: String, title: String, accent: Color) -> void:
 	box.add_child(v)
 	_stats_kpi_labels[key] = v
 
-# Core flow for this feature.
 func _stats_set_kpi(key: String, value_text: String) -> void:
+	# Inputs: key (String) - KPI identifier; value_text (String) - formatted display text
+	# Outputs: Updates label text for key in _stats_kpi_labels
+	# Execution timing: Called during statistics update to refresh KPI displays
 	if not _stats_kpi_labels.has(key):
 		return
 	var lbl = _stats_kpi_labels[key] as Label
 	if lbl:
 		lbl.text = value_text
 
-# Triggered by a UI/game signal.
 func _on_statistics_pressed() -> void:
+	# Inputs: None (button pressed signal)
+	# Outputs: Refreshes statistics data; populates UI; displays _stats_popup centered
+	# Execution timing: Called when statistics button pressed; opens dashboard
 	_aktualizuj_statistiky_kola(true)
 	_obnov_statistics_state_options()
 	_aktualizuj_statistics_report()
@@ -1510,51 +1402,69 @@ func _on_statistics_pressed() -> void:
 		_aktualizuj_statistics_popup_layout()
 		_stats_popup.popup_centered(_ziskej_statistics_popup_target_size())
 
-# Handles this signal callback.
 func _on_statistics_close_pressed() -> void:
+	# Inputs: None (button pressed signal)
+	# Outputs: Hides _stats_popup
+	# Execution timing: Called when statistics close button pressed
 	if _stats_popup:
 		_stats_popup.hide()
 
-# Callback for UI/game events.
 func _on_statistics_refresh_pressed() -> void:
+	# Inputs: None (button pressed signal)
+	# Outputs: Force-refreshes statistics data and report display
+	# Execution timing: Called when refresh button pressed; updates UI with latest data
 	_aktualizuj_statistiky_kola(true)
 	_obnov_statistics_state_options()
 	_aktualizuj_statistics_report()
 
-# Reacts to incoming events.
 func _on_statistics_state_selected(_index: int) -> void:
+	# Inputs: _index (int) - selected country index in dropdown
+	# Outputs: Refreshes statistics report for selected country
+	# Execution timing: Called on country selection in statistics
 	_aktualizuj_statistics_report()
 
-# Handles this signal callback.
 func _on_statistics_time_window_selected(_index: int) -> void:
+	# Inputs: _index (int) - selected time window (12/24/48/all turns)
+	# Outputs: Refreshes charts and report with new time window
+	# Execution timing: Called on window selection in statistics
 	_aktualizuj_statistics_report()
 
-# Handles this signal callback.
 func _on_statistics_compare_controls_changed(_index: int) -> void:
+	# Inputs: _index (int) - selected comparison metric
+	# Outputs: Refreshes comparison report with new metric
+	# Execution timing: Called on metric selection change
 	_aktualizuj_statistics_report()
 
-# Callback for UI/game events.
 func _on_statistics_compare_multi_selected(_index: int, _selected: bool) -> void:
+	# Inputs: _index (int) - state list item index; _selected (bool) - selection state
+	# Outputs: Refreshes comparison chart with updated state selection
+	# Execution timing: Called on state selection toggle in compare list
 	_aktualizuj_statistics_report()
 
-# Reacts to incoming events.
 func _on_stats_compare_select_all_pressed() -> void:
+	# Inputs: None (button pressed signal)
+	# Outputs: Selects all states in comparison list; refreshes report
+	# Execution timing: Called when select all button pressed
 	if _stats_compare_state_list == null:
 		return
 	for i in range(_stats_compare_state_list.item_count):
 		_stats_compare_state_list.select(i, false)
 	_aktualizuj_statistics_report()
 
-# Handles this signal callback.
 func _on_stats_compare_clear_pressed() -> void:
+	# Inputs: None (button pressed signal)
+	# Outputs: Deselects all states in comparison list; refreshes report
+	# Execution timing: Called when clear button pressed
 	if _stats_compare_state_list == null:
 		return
 	for i in range(_stats_compare_state_list.item_count):
 		_stats_compare_state_list.deselect(i)
 	_aktualizuj_statistics_report()
 
-# Handles this signal callback.
 func _on_statistics_chart_point_hovered(info: Dictionary) -> void:
+	# Inputs: info (Dictionary) - chart point hover data with text/value
+	# Outputs: Updates _stats_compare_hint label with point information
+	# Execution timing: Called when chart point hovered in comparison view
 	if _stats_compare_hint == null:
 		return
 	if info.is_empty():
@@ -1562,8 +1472,10 @@ func _on_statistics_chart_point_hovered(info: Dictionary) -> void:
 		return
 	_stats_compare_hint.text = str(info.get("text", ""))
 
-# Reads values from active state.
 func _ziskej_stats_window_size() -> int:
+	# Inputs: None (reads _stats_time_window_option selection)
+	# Outputs: Integer turn count (12/24/48/0=all)
+	# Execution timing: Called during chart building
 	if _stats_time_window_option == null:
 		return 24
 	match _stats_time_window_option.selected:
@@ -1576,8 +1488,10 @@ func _ziskej_stats_window_size() -> int:
 		_:
 			return 0
 
-# Runs the local feature logic.
 func _orez_series_na_okno(values: Array, turns: Array, window_size: int) -> Dictionary:
+	# Inputs: values (Array) - data points; turns (Array) - turn numbers; window_size (int) - max length
+	# Outputs: Dictionary with clipped values/turns arrays from right side
+	# Execution timing: Called during chart data preparation; limits history to window
 	if values.is_empty() or turns.is_empty():
 		return {"values": [], "turns": []}
 	if window_size <= 0 or values.size() <= window_size:
@@ -1588,8 +1502,10 @@ func _orez_series_na_okno(values: Array, turns: Array, window_size: int) -> Dict
 		"turns": turns.slice(from_idx, turns.size())
 	}
 
-# Feature logic entry point.
 func _stats_metric_def() -> Dictionary:
+	# Inputs: None (reads _stats_compare_metric_option selection)
+	# Outputs: Dictionary with key/name/suffix/decimals/growth for selected metric
+	# Execution timing: Called during chart setup for comparison view
 	var idx = 0
 	if _stats_compare_metric_option:
 		idx = _stats_compare_metric_option.selected
@@ -1617,8 +1533,10 @@ func _stats_metric_def() -> Dictionary:
 		_:
 			return {"key": "gdp", "name": "GDP total", "suffix": " M", "decimals": 2, "growth": false}
 
-# Feature logic entry point.
 func _vybrane_staty_pro_compare() -> Array:
+	# Inputs: None (reads _stats_compare_state_list selection)
+	# Outputs: Array of selected country tags from comparison list
+	# Execution timing: Called during comparison chart update
 	var out: Array = []
 	if _stats_compare_state_list == null:
 		return out
@@ -1631,14 +1549,18 @@ func _vybrane_staty_pro_compare() -> Array:
 		out.append(tag)
 	return out
 
-# Runs the local feature logic.
 func _barva_pro_stat_index(i: int, total: int) -> Color:
+	# Inputs: i (int) - state index; total (int) - total state count
+	# Outputs: Color from HSV color wheel distributed across states
+	# Execution timing: Called during comparison chart series setup
 	var count = max(1, total)
 	var h = fposmod(float(i) / float(count), 1.0)
 	return Color.from_hsv(h, 0.68, 0.98, 1.0)
 
-# Rebuilds state from latest data.
 func _aktualizuj_compare_chart(window_size: int) -> void:
+	# Inputs: window_size (int) - history window to display
+	# Outputs: Populates _stats_compare_chart with selected states' metric data
+	# Execution timing: Called during statistics report update
 	if _stats_compare_chart == null:
 		return
 	var selected_states = _vybrane_staty_pro_compare()
@@ -1694,8 +1616,10 @@ func _aktualizuj_compare_chart(window_size: int) -> void:
 			selected_states.size()
 		]
 
-# Returns current runtime data.
 func _ziskej_vsechny_staty_z_mapy() -> Array:
+	# Inputs: None (reads GameManager.map_data)
+	# Outputs: Sorted Array of all countries/owners found in provinces (excluding SEA)
+	# Execution timing: Called during statistics popup population
 	var out: Array = []
 	var seen: Dictionary = {}
 	var data = GameManager.map_data
@@ -1703,18 +1627,20 @@ func _ziskej_vsechny_staty_z_mapy() -> Array:
 		return out
 	for p_id in data:
 		var d = data[p_id] as Dictionary
-		var owner = str(d.get("owner", "")).strip_edges().to_upper()
-		if owner == "" or owner == "SEA":
+		var province_owner = str(d.get("province_owner", "")).strip_edges().to_upper()
+		if province_owner == "" or province_owner == "SEA":
 			continue
-		if seen.has(owner):
+		if seen.has(province_owner):
 			continue
-		seen[owner] = true
-		out.append(owner)
+		seen[province_owner] = true
+		out.append(province_owner)
 	out.sort()
 	return out
 
-# Fetches data for callers.
 func _ziskej_jmeno_statu_z_mapy(tag: String) -> String:
+	# Inputs: tag (String) - country tag
+	# Outputs: Country name from map_data or fallback to tag
+	# Execution timing: Called during statistics list population
 	var wanted = str(tag).strip_edges().to_upper()
 	if wanted == "":
 		return ""
@@ -1729,8 +1655,10 @@ func _ziskej_jmeno_statu_z_mapy(tag: String) -> String:
 				return n
 	return wanted
 
-# Computes derived values from current inputs and game state.
 func _spocitej_snapshot_statu(tag: String) -> Dictionary:
+	# Inputs: tag (String) - country tag to calculate
+	# Outputs: Dictionary with gdp/population/army/provinces/ports/ideology and finance breakdown
+	# Execution timing: Called during statistics calculation for single turn snapshot
 	var state = str(tag).strip_edges().to_upper()
 	if state == "" or state == "SEA":
 		return {}
@@ -1834,8 +1762,10 @@ func _spocitej_snapshot_statu(tag: String) -> Dictionary:
 		"expense_other": expense_other
 	}
 
-# Handles this gameplay/UI path.
 func _sanitize_stats_metric_value(key: String, value: Variant, previous_value: Variant) -> Variant:
+	# Inputs: key (String) - metric name; value (Variant) - raw data; previous_value (Variant) - fallback for NaN
+	# Outputs: Clamped/validated numeric value or previous_value if invalid
+	# Execution timing: Called during history record to ensure valid numbers
 	match key:
 		"population", "recruits", "army", "provinces", "ports":
 			return clampi(maxi(0, int(value)), 0, 2000000000)
@@ -1850,8 +1780,10 @@ func _sanitize_stats_metric_value(key: String, value: Variant, previous_value: V
 				limit = 1000000.0
 			return clampf(f, -limit, limit)
 
-# Applies incoming data to runtime state.
 func _set_or_append_metric_for_turn(history: Dictionary, key: String, value, max_items: int) -> void:
+	# Inputs: history (Dictionary) - state history record; key (String) - metric name; value - new data; max_items (int) - array size limit
+	# Outputs: Appends or updates value in history[key] array; maintains alignment with turns array
+	# Execution timing: Called during snapshot recording to update metric series
 	var turns = history.get("turns", []) as Array
 	var values = history.get(key, []) as Array
 	var previous_value: Variant = value
@@ -1877,8 +1809,10 @@ func _set_or_append_metric_for_turn(history: Dictionary, key: String, value, max
 
 	history[key] = values
 
-# Handles this gameplay/UI path.
 func _zapis_snapshot_statu_do_historie(snapshot: Dictionary, turn: int) -> void:
+	# Inputs: snapshot (Dictionary) - state metrics snapshot; turn (int) - turn number
+	# Outputs: Records/updates snapshot data in _stats_history_by_state with turn history
+	# Execution timing: Called during statistics calculation to maintain rolling history
 	if snapshot.is_empty():
 		return
 	var state = str(snapshot.get("state", "")).strip_edges().to_upper()
@@ -1947,8 +1881,10 @@ func _zapis_snapshot_statu_do_historie(snapshot: Dictionary, turn: int) -> void:
 
 	_stats_last_recorded_turn_by_state[state] = turn
 
-# Rebuilds state from latest data.
 func _aktualizuj_statistiky_kola(force_refresh: bool = false) -> void:
+	# Inputs: force_refresh (bool) - skip turn cache check
+	# Outputs: Calculates and records statistics for all countries on current turn
+	# Execution timing: Called by aktualizuj_ui() and on stats button open; rebuilds history
 	var turn = max(1, int(GameManager.aktualni_kolo))
 	for state_any in _ziskej_vsechny_staty_z_mapy():
 		var state = str(state_any)
@@ -1957,8 +1893,10 @@ func _aktualizuj_statistiky_kola(force_refresh: bool = false) -> void:
 		var snapshot = _spocitej_snapshot_statu(state)
 		_zapis_snapshot_statu_do_historie(snapshot, turn)
 
-# Refreshes existing content to reflect current runtime values.
 func _obnov_statistics_state_options() -> void:
+	# Inputs: None (populates from ziskej_vsechny_staty_z_mapy)
+	# Outputs: Refreshes _stats_state_option and _stats_compare_state_list dropdowns with current country list
+	# Execution timing: Called when statistics popup opened to sync with game state
 	if _stats_state_option == null:
 		return
 
@@ -1974,8 +1912,8 @@ func _obnov_statistics_state_options() -> void:
 
 	for state_any in states:
 		var state = str(state_any)
-		var name = _ziskej_jmeno_statu_z_mapy(state)
-		var label = "%s (%s)" % [name, state]
+		var country_name = _ziskej_jmeno_statu_z_mapy(state)
+		var label = "%s (%s)" % [country_name, state]
 		_stats_state_option.add_item(label)
 		_stats_country_options.append(state)
 		if _stats_compare_state_list:
@@ -1994,8 +1932,10 @@ func _obnov_statistics_state_options() -> void:
 	if selected_idx >= 0:
 		_stats_state_option.select(selected_idx)
 
-# Returns current runtime data.
 func _ziskej_selected_statistics_state() -> String:
+	# Inputs: None (reads _stats_state_option selection)
+	# Outputs: Country tag of selected state in statistics dropdown or empty string
+	# Execution timing: Called during statistics report generation
 	if _stats_state_option == null:
 		return ""
 	var idx = _stats_state_option.selected
@@ -2003,12 +1943,16 @@ func _ziskej_selected_statistics_state() -> String:
 		return ""
 	return str(_stats_country_options[idx])
 
-# User-facing value formatter.
 func _format_signed_percent(value: float) -> String:
+	# Inputs: value (float) - percentage value (e.g., 5.25)
+	# Outputs: String "%+.2f%%" formatted
+	# Execution timing: Called during report text generation
 	return "%+.2f%%" % value
 
-# Computes derived values from current inputs and game state.
 func _calc_growth_series(values: Array) -> Array:
+	# Inputs: values (Array) - numeric values to calculate period-over-period growth
+	# Outputs: Array with growth percentages (clamped to -500% to 500%)
+	# Execution timing: Called during growth metric chart generation
 	var out: Array = []
 	if values.size() <= 1:
 		return out
@@ -2022,14 +1966,18 @@ func _calc_growth_series(values: Array) -> Array:
 			out.append(clampf(growth, -500.0, 500.0))
 	return out
 
-# Handles this gameplay/UI path.
 func _value_last(values: Array, default_value) -> Variant:
+	# Inputs: values (Array) - array to get last element from; default_value (Variant) - fallback if empty
+	# Outputs: Last array element or default_value
+	# Execution timing: Called during statistics report to extract current value from series
 	if values.is_empty():
 		return default_value
 	return values[values.size() - 1]
 
-# Runs the local feature logic.
 func _as_float_series(values: Array) -> Array:
+	# Inputs: values (Array) - mixed numeric values
+	# Outputs: Array with NaN replaced by previous value; all values clamped to valid range
+	# Execution timing: Called before chart rendering to ensure valid graphable data
 	var out: Array = []
 	var previous := 0.0
 	for v_any in values:
@@ -2041,22 +1989,28 @@ func _as_float_series(values: Array) -> Array:
 		previous = f
 	return out
 
-# Wipes short-lived state.
 func _vycisti_children(node: Node) -> void:
+	# Inputs: node (Node) - parent node to clear
+	# Outputs: Queues all child nodes for deletion
+	# Execution timing: Called during UI rebuild to clean old content
 	if node == null:
 		return
 	for child in node.get_children():
 		child.queue_free()
 
-# Writes new values and refreshes related state.
 func _nastav_chart_data(chart: StatsLineChart, chart_series: Array) -> void:
+	# Inputs: chart (StatsLineChart) - chart to populate; chart_series (Array) - series data dictionaries
+	# Outputs: Sets chart.series and queues redraw
+	# Execution timing: Called during statistics report update
 	if chart == null:
 		return
 	chart.series = chart_series
 	chart.queue_redraw()
 
-# Builds UI objects and default wiring.
 func _vytvor_breakdown_sloupce(container: VBoxContainer, title: String, rows: Array, total: float) -> void:
+	# Inputs: container (VBoxContainer) - target layout; title (String) - section label; rows (Array) - items with name/value/color; total (float) - max for bar scale
+	# Outputs: Creates heading and row-based bar charts in container
+	# Execution timing: Called during statistics report to display finance composition
 	if container == null:
 		return
 	var heading := Label.new()
@@ -2066,7 +2020,7 @@ func _vytvor_breakdown_sloupce(container: VBoxContainer, title: String, rows: Ar
 
 	for row_any in rows:
 		var row = row_any as Dictionary
-		var name = str(row.get("name", "-"))
+		var row_name = str(row.get("row_name", "-"))
 		var value = float(row.get("value", 0.0))
 		var color = row.get("color", Color(0.85, 0.85, 0.85, 1.0)) as Color
 
@@ -2077,7 +2031,7 @@ func _vytvor_breakdown_sloupce(container: VBoxContainer, title: String, rows: Ar
 
 		var name_lbl = Label.new()
 		name_lbl.custom_minimum_size.x = 120
-		name_lbl.text = name
+		name_lbl.text = row_name
 		h.add_child(name_lbl)
 
 		var bar = ProgressBar.new()
@@ -2097,8 +2051,10 @@ func _vytvor_breakdown_sloupce(container: VBoxContainer, title: String, rows: Ar
 		val_lbl.text = "%.2f M (%.0f%%)" % [value, pct]
 		h.add_child(val_lbl)
 
-# Feature logic entry point.
 func _top_states_by_metric(metric_key: String, limit: int = 8) -> Array:
+	# Inputs: metric_key (String) - metric to rank by (gdp/population/etc.); limit (int) - max states to return
+	# Outputs: Sorted Array of top states with state/name/latest_value
+	# Execution timing: Called during statistics report generation
 	var rows: Array = []
 	for state_any in _stats_history_by_state.keys():
 		var state = str(state_any)
@@ -2116,8 +2072,10 @@ func _top_states_by_metric(metric_key: String, limit: int = 8) -> Array:
 		rows.resize(limit)
 	return rows
 
-# Recomputes values from current data.
 func _aktualizuj_statistics_report() -> void:
+	# Inputs: None (reads selected state and history data)
+	# Outputs: Updates _stats_report text and all chart data; refreshes KPI and breakdown displays
+	# Execution timing: Called on every statistics state/filter change; main dashboard refresh
 	if _stats_report == null:
 		return
 	# tohle je centralni refresh vsech statistik: text, KPI, grafy i breakdown sloupce.
@@ -2195,7 +2153,7 @@ func _aktualizuj_statistics_report() -> void:
 	var growth_chart_turns = (_orez_series_na_okno(gdp_growth, growth_turns, window_size).get("turns", []) as Array)
 	var pop_growth_chart = (_orez_series_na_okno(pop_growth, growth_turns, window_size).get("values", []) as Array)
 
-	var name = str(h.get("name", selected))
+	var history_name = str(h.get("history_name", selected))
 	var latest_turn = int(_value_last(turns, int(GameManager.aktualni_kolo)))
 	var latest_gdp = float(_value_last(gdp_series, 0.0))
 	var latest_gdp_pc = float(_value_last(gdp_pc_series, 0.0))
@@ -2221,7 +2179,7 @@ func _aktualizuj_statistics_report() -> void:
 
 	var text := ""
 	text += "[b][color=#FFFFFF]State Overview[/color][/b]\n"
-	text += "[color=#A6D3FF]%s (%s)[/color] | Turn [b]%d[/b]" % [name, selected, latest_turn]
+	text += "[color=#A6D3FF]%s (%s)[/color] | Turn [b]%d[/b]" % [history_name, selected, latest_turn]
 	if ideology != "":
 		text += " | Ideology: [color=#D5E8FF]%s[/color]" % ideology
 	text += "\n\n"
@@ -2251,7 +2209,7 @@ func _aktualizuj_statistics_report() -> void:
 			var row = top_gdp[i] as Dictionary
 			text += "%d. [color=#E7EDF8]%s[/color] (%s): %.2f M USD\n" % [
 				i + 1,
-				str(row.get("name", "-")),
+				str(row.get("history_name", "-")),
 				str(row.get("state", "-")),
 				float(row.get("value", 0.0))
 			]
@@ -2327,8 +2285,10 @@ func _aktualizuj_statistics_report() -> void:
 			latest_turn
 		]
 
-# Initialization for UI objects and hooks.
 func _vytvor_turn_busy_indicator() -> void:
+	# Inputs: None (creates new Label node)
+	# Outputs: Instantiates _turn_busy_indicator child of next_btn parent; initially hidden
+	# Execution timing: Called by _ready(); shows animated spinner during turn processing
 	if _turn_busy_indicator != null:
 		return
 	if next_btn == null:
@@ -2347,8 +2307,10 @@ func _vytvor_turn_busy_indicator() -> void:
 	parent.add_child(_turn_busy_indicator)
 	parent.move_child(_turn_busy_indicator, next_btn.get_index() + 1)
 
-# Returns current runtime data.
 func _ziskej_sirku_turn_busy_indicatoru() -> float:
+	# Inputs: None (calculates from longest TURN_BUSY_FRAMES string)
+	# Outputs: Width in pixels for busy indicator label
+	# Execution timing: Called during panel resize calculation
 	if _turn_busy_indicator == null:
 		return 92.0
 	var font = _turn_busy_indicator.get_theme_font("font")
@@ -2361,8 +2323,10 @@ func _ziskej_sirku_turn_busy_indicatoru() -> float:
 		return clampf(font.get_string_size(longest, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x + 10.0, 70.0, 180.0)
 	return 92.0
 
-# Event handler for user or game actions.
 func _on_zpracovani_tahu_zmeneno(aktivni: bool) -> void:
+	# Inputs: aktivni (bool) - whether turn is processing
+	# Outputs: Disables next_btn; shows/hides busy indicator; starts animation
+	# Execution timing: Called on GameManager.zpracovani_tahu_zmeneno signal
 	_is_turn_processing = aktivni
 	# indicator + next_btn drzi hrace informovanyho, ze tah fakt stale bezi.
 	if next_btn:
@@ -2375,15 +2339,19 @@ func _on_zpracovani_tahu_zmeneno(aktivni: bool) -> void:
 	_aktualizuj_sirku_panelu_hrace()
 	set_process(aktivni)
 
-# Writes new values and refreshes related state.
 func nastav_pozastaveni_turn_busy_indicator(pozastavit: bool) -> void:
+	# Inputs: pozastavit (bool) - whether to hide busy indicator
+	# Outputs: Updates _turn_busy_suppressed flag; toggles indicator visibility
+	# Execution timing: Called to temporarily hide busy indicator (e.g., during popups)
 	_turn_busy_suppressed = pozastavit
 	if _turn_busy_indicator:
 		_turn_busy_indicator.visible = _is_turn_processing and not _turn_busy_suppressed
 	_aktualizuj_sirku_panelu_hrace()
 
-# Runs each frame when active.
 func _process(delta: float) -> void:
+	# Inputs: delta (float) - frame time delta
+	# Outputs: Animates busy indicator frames and updates finance tooltip position
+	# Execution timing: Called every frame when turn processing active
 	if _finance_tooltip_visible:
 		_aktualizuj_financni_tooltip_pozici()
 
@@ -2396,8 +2364,10 @@ func _process(delta: float) -> void:
 	_turn_busy_anim_step = (_turn_busy_anim_step + 1) % TURN_BUSY_FRAMES.size()
 	_turn_busy_indicator.text = TURN_BUSY_FRAMES[_turn_busy_anim_step]
 
-# Construct/setup block for required nodes.
 func _vytvor_financni_tooltip_panel() -> void:
+	# Inputs: None (creates new PanelContainer with RichTextLabel child)
+	# Outputs: Instantiates _finance_tooltip_panel and _finance_tooltip_text; adds to scene
+	# Execution timing: Called by _ready(); creates finance breakdown tooltip panel
 	if _finance_tooltip_panel != null:
 		return
 	_finance_tooltip_panel = PanelContainer.new()
@@ -2432,8 +2402,10 @@ func _vytvor_financni_tooltip_panel() -> void:
 	_finance_tooltip_panel.add_child(_finance_tooltip_text)
 	add_child(_finance_tooltip_panel)
 
-# Feature logic entry point.
 func _napoj_financni_hover() -> void:
+	# Inputs: None (connects money_label signals)
+	# Outputs: Wires mouse_entered/exited to show/hide finance tooltip
+	# Execution timing: Called by _ready(); enables income breakdown tooltip
 	if money_label == null:
 		return
 	money_label.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -2442,30 +2414,40 @@ func _napoj_financni_hover() -> void:
 	if not money_label.mouse_exited.is_connected(_on_money_label_mouse_exited):
 		money_label.mouse_exited.connect(_on_money_label_mouse_exited)
 
-# Reacts to incoming events.
 func _on_money_label_mouse_entered() -> void:
+	# Inputs: None (mouse hover signal)
+	# Outputs: Shows finance tooltip and updates text/position
+	# Execution timing: Called on money label hover
 	_finance_tooltip_visible = true
 	_aktualizuj_financni_tooltip_text()
 	_aktualizuj_financni_tooltip_pozici()
 	if _finance_tooltip_panel:
 		_finance_tooltip_panel.show()
 
-# Callback for UI/game events.
 func _on_money_label_mouse_exited() -> void:
+	# Inputs: None (mouse exit signal)
+	# Outputs: Hides finance tooltip
+	# Execution timing: Called on money label mouse exit
 	_finance_tooltip_visible = false
 	if _finance_tooltip_panel:
 		_finance_tooltip_panel.hide()
 
-# Display formatting helper.
 func _format_finance_value(value: float) -> String:
+	# Inputs: value (float) - amount in millions
+	# Outputs: String "X.XX M USD"
+	# Execution timing: Called during finance tooltip text generation
 	return "%.2f M USD" % value
 
-# Display formatting helper.
 func _format_finance_signed(value: float) -> String:
+	# Inputs: value (float) - signed amount in millions
+	# Outputs: String "%+X.XX M USD"
+	# Execution timing: Called during finance tooltip text generation
 	return "%+.2f M USD" % value
 
-# Refreshes cached/UI state.
 func _aktualizuj_financni_tooltip_text() -> void:
+	# Inputs: None (reads GameManager finance breakdown)
+	# Outputs: Updates _finance_tooltip_text with formatted income/expense/profit display
+	# Execution timing: Called on money label hover and during process frame
 	if _finance_tooltip_text == null:
 		return
 	# tooltip zamerne ukazuje profit i cashflow zvlast, aby nevznikal zmatek.
@@ -2505,8 +2487,8 @@ func _aktualizuj_financni_tooltip_text() -> void:
 	t += "[b][color=#FFFFFF]TREASURY CHANGE (CASHFLOW): %s[/color][/b]" % _format_finance_signed(cashflow)
 	_finance_tooltip_text.text = t
 
-# Recomputes values from current data.
 func _aktualizuj_financni_tooltip_pozici() -> void:
+	# Inputs: None (reads money_label and viewport position)\n\t# Outputs: Positions _finance_tooltip_panel below/above money_label with viewport clamping\n\t# Execution timing: Called on mouse hover over money label and each frame
 	if _finance_tooltip_panel == null:
 		return
 	var mouse_pos = get_viewport().get_mouse_position()
@@ -2528,8 +2510,10 @@ func _aktualizuj_financni_tooltip_pozici() -> void:
 	desired.y = clampf(desired.y, topbar_bottom + 8.0, max(topbar_bottom + 8.0, viewport_size.y - tooltip_size.y - 4.0))
 	_finance_tooltip_panel.position = desired
 
-# Applies updates and syncs dependent state.
 func nastav_hrace(tag: String, jmeno_statu: String, ideologie: String = ""):
+	# Inputs: tag (String) - country code; jmeno_statu (String) - display name; ideologie (String) - optional ideology
+	# Outputs: Sets player_name text and player_flag texture (ideology or standard flag)
+	# Execution timing: Called by aktualizuj_ui() on player change
 	if player_name:
 		player_name.text = jmeno_statu
 		
@@ -2558,8 +2542,10 @@ func nastav_hrace(tag: String, jmeno_statu: String, ideologie: String = ""):
 				return
 		player_flag.texture = null
 
-# Reads values from active state.
 func _ziskej_map_loader_node() -> Node:
+	# Inputs: None (walks scene tree for map methods)
+	# Outputs: Node with map position/offset methods or null
+	# Execution timing: Called when needing map coordinate queries
 	var scene_root = get_tree().current_scene
 	if scene_root and scene_root.has_method("_ziskej_map_pozici_provincie") and scene_root.has_method("_ziskej_map_offset"):
 		return scene_root
@@ -2569,8 +2555,10 @@ func _ziskej_map_loader_node() -> Node:
 			return by_name
 	return null
 
-# Returns current runtime data.
 func _ziskej_map_pozici_provincie_bezpecne(map_loader: Node, prov_id: int, prov_data: Dictionary) -> Vector2:
+	# Inputs: map_loader (Node) - map controller; prov_id (int) - province ID; prov_data (Dictionary) - province record
+	# Outputs: Screen position with map offset applied; returns Vector2.ZERO for invalid data
+	# Execution timing: Called during camera focus calculation
 	var pos := Vector2.ZERO
 	var map_offset := Vector2.ZERO
 	if map_loader.has_method("_ziskej_map_offset"):
@@ -2591,8 +2579,10 @@ func _ziskej_map_pozici_provincie_bezpecne(map_loader: Node, prov_id: int, prov_
 		return Vector2.ZERO
 	return pos
 
-# Fetches data for callers.
 func _ziskej_fokus_statu_na_mape(tag: String) -> Dictionary:
+	# Inputs: tag (String) - country to find on map
+	# Outputs: Dictionary with ok/pos; prefers capital, falls back to most-populated
+	# Execution timing: Called during camera focus operation
 	var wanted = tag.strip_edges().to_upper()
 	if wanted == "" or wanted == "SEA":
 		return {"ok": false}
@@ -2635,8 +2625,10 @@ func _ziskej_fokus_statu_na_mape(tag: String) -> Dictionary:
 
 	return {"ok": false}
 
-# Core flow for this feature.
 func _vycentruj_kameru_na_stat(tag: String, smooth: bool = true) -> void:
+	# Inputs: tag (String) - country to focus on; smooth (bool) - whether to animate
+	# Outputs: Centers camera on country capital or most-populated province
+	# Execution timing: Called on player change in local multiplayer
 	var center = _ziskej_fokus_statu_na_mape(tag)
 	if not bool(center.get("ok", false)):
 		return

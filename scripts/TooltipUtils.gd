@@ -14,8 +14,10 @@ extends RefCounted
 # It can auto-generate fallback tooltips and fix controls with IGNORE mouse filter
 # so hover hints still work reliably.
 
-# Builds UI objects and default wiring.
 static func create_help_button(tooltip_text: String) -> Button:
+	# Inputs: tooltip_text (String) - text to display on hover
+	# Outputs: Button node configured with help icon styling and tooltip
+	# Execution timing: Called during UI initialization to create standardized help buttons
 	var button := Button.new()
 	button.text = "?"
 	button.tooltip_text = tooltip_text
@@ -49,8 +51,10 @@ static func create_help_button(tooltip_text: String) -> Button:
 	button.add_theme_stylebox_override("focus", hover)
 	return button
 
-# Applies visual/UI updates.
 static func show_help_dropdown(owner: Node, anchor: Control, text: String) -> void:
+	# Inputs: owner (Node) - parent container; anchor (Control) - position reference; text (String) - help content
+	# Outputs: Displays/updates PopupPanel with help text; re-parents under owner if new
+	# Execution timing: Called when user triggers help display; positions popup relative to anchor with viewport clamping
 	if owner == null or anchor == null:
 		return
 	var clean_text := text.strip_edges()
@@ -123,14 +127,18 @@ static func show_help_dropdown(owner: Node, anchor: Control, text: String) -> vo
 	popup.position = pos
 	popup.popup()
 
-# Applies prepared settings/effects to runtime systems.
 static func apply_default_tooltips(root: Node) -> void:
+	# Inputs: root (Node) - UI tree root node to process
+	# Outputs: Modifies all Control descendants with auto-generated tooltips and IGNORE→PASS mouse filter conversion
+	# Execution timing: Called during scene initialization to enable tooltip detection on entire UI subtree
 	if root == null:
 		return
 	_apply_recursive(root)
 
-# Applies prepared settings/effects to runtime systems.
 static func _apply_recursive(node: Node) -> void:
+	# Inputs: node (Node) - current node in recursion traversal
+	# Outputs: Modifies node.tooltip_text (if Control) and mouse_filter (if tooltip present); recurses to children
+	# Execution timing: Called recursively by apply_default_tooltips; walks entire UI tree depth-first
 	if node is Control:
 		var control := node as Control
 		if control.tooltip_text.strip_edges() == "":
@@ -149,6 +157,10 @@ static func _apply_recursive(node: Node) -> void:
 # Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
 # Ai generated or editted start (priloha_a.txt)
 static func _guess_tooltip(control: Control) -> String:
+	# Inputs: control (Control) - UI control node to generate tooltip for
+	# Outputs: String with auto-generated tooltip text or empty string if no suitable content found
+	# Execution timing: Called by _apply_recursive when no explicit tooltip exists; checks control type hierarchy
+	# Steps: (1) Check Button/MenuButton text, (2) Return "Select option" for OptionButton, (3) Check LineEdit placeholder, (4) Extract RichTextLabel/Label text (max 80 chars), (5) Special case TextureRect for flags, (6) Fallback to control name with underscores replaced
 	if control is Button:
 		var button_text := (control as Button).text.strip_edges()
 		if button_text != "":

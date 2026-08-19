@@ -10,6 +10,7 @@ extends Node2D
 # this script drives a specific gameplay/UI area and keeps related logic together.
 
 const CountryCustomization = preload("res://scripts/CountryCustomization.gd")
+const DelimitedData = preload("res://scripts/DelimitedData.gd")
 
 # Loads province data, switches map modes and resolves army movement on the actual map.
 # This is the world-side orchestrator for province data, map visuals and unit markers.
@@ -115,53 +116,38 @@ const ATTACKER_LIBERATION_BONUS_PCT := 0.10
 
 # Tries a few filename variants because raw data names changed during dev a bit.
 func _raw_data_path_exists(path: String) -> bool:
-	return FileAccess.file_exists(path) or ResourceLoader.exists(path)
+	return DelimitedData.path_exists(path)
 
-# Runs the local feature logic.
+# Inputs: None.
+# Outputs: First existing provinces data path candidate, or the final fallback path.
+# Execution timing: Called during province-load bootstrap before parsing source data.
 func _resolve_provinces_data_path() -> String:
-	for path in PROVINCES_DATA_PATHS:
-		if _raw_data_path_exists(path):
-			return path
-	return str(PROVINCES_DATA_PATHS[PROVINCES_DATA_PATHS.size() - 1])
+	return DelimitedData.first_existing_path(PROVINCES_DATA_PATHS)
 
-# hot path
+# Inputs: Header line from semicolon-delimited province data.
+# Outputs: Lowercased column-name to index map.
+# Execution timing: Called at the start of province-data parsing.
 func _build_column_index(header_line: String) -> Dictionary:
-	var out: Dictionary = {}
-	var cols = header_line.split(";")
-	for i in range(cols.size()):
-		out[str(cols[i]).strip_edges().to_lower()] = i
-	return out
+	return DelimitedData.build_column_index(header_line)
 
 # Data lookup with best-match logic.
 func _find_column_idx(col_index: Dictionary, names: Array, fallback_idx: int = -1) -> int:
-	for raw_name in names:
-		var key = str(raw_name).strip_edges().to_lower()
-		if col_index.has(key):
-			return int(col_index[key])
-	return fallback_idx
+	return DelimitedData.find_column(col_index, names, fallback_idx)
 
-# hot path
+# Inputs: Parsed CSV/TXT row parts, target column index, and default value.
+# Outputs: Parsed integer value or default when column is missing/empty.
+# Execution timing: Called repeatedly while reading province source rows.
 func _read_int(parts: Array, idx: int, default_val: int = 0) -> int:
-	if idx < 0 or idx >= parts.size():
-		return default_val
-	var raw = str(parts[idx]).strip_edges()
-	if raw == "":
-		return default_val
-	return int(raw)
+	return DelimitedData.read_int(parts, idx, default_val)
 
-# edge case
+# Inputs: Parsed CSV/TXT row parts, target column index, and default value.
+# Outputs: Parsed float value or default when column is missing/empty.
+# Execution timing: Called while importing numeric province attributes.
 func _read_float(parts: Array, idx: int, default_val: float = 0.0) -> float:
-	if idx < 0 or idx >= parts.size():
-		return default_val
-	var raw = str(parts[idx]).strip_edges()
-	if raw == "":
-		return default_val
-	return float(raw)
+	return DelimitedData.read_float(parts, idx, default_val)
 
 func _read_text(parts: Array, idx: int, default_val: String = "") -> String:
-	if idx < 0 or idx >= parts.size():
-		return default_val
-	return str(parts[idx]).strip_edges()
+	return DelimitedData.read_text(parts, idx, default_val)
 
 func _army_turn_slice_wait(counter: int, chunk: int = TURN_ARMY_SLICE_BATCH) -> int:
 	if not TURN_ARMY_SLICE_ENABLED:
@@ -172,7 +158,9 @@ func _army_turn_slice_wait(counter: int, chunk: int = TURN_ARMY_SLICE_BATCH) -> 
 		return 0
 	return next_counter
 
-# Boolean check for required state.
+# Inputs: None.
+# Outputs: `true` when potato mode is enabled in saved settings.
+# Execution timing: Used during scene initialization before applying performance settings.
 func _je_potato_mode_ze_settings() -> bool:
 	var cfg = ConfigFile.new()
 	if cfg.load(SETTINGS_FILE_PATH) != OK:
@@ -213,7 +201,10 @@ func nastav_potato_mode(enabled: bool) -> void:
 func nastav_skip_battle_reportu(enabled: bool) -> void:
 	_skip_battle_reports_enabled = enabled
 
-# Sets up nodes, defaults, and signals.
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called during `_ready()` before staged loading begins.
+# Steps: Builds the full-screen loading overlay with label and progress bar.
 func _vytvor_loading_overlay() -> void:
 	if _loading_layer != null:
 		return
@@ -262,7 +253,9 @@ func _vytvor_loading_overlay() -> void:
 	_loading_bar.show_percentage = true
 	vbox.add_child(_loading_bar)
 
-# data pass
+# Inputs: Status text and normalized progress in `<0..1>`.
+# Outputs: None.
+# Execution timing: Called during staged map loading to update overlay UI.
 func _nastav_loading_stav(text: String, progress_0_1: float) -> void:
 	if _loading_label:
 		_loading_label.text = text
@@ -285,17 +278,24 @@ func nastav_mapovy_mod(mod: String):
 	_aplikuj_viditelnost_ukazatelu_jednotek()
 	emit_signal("mapovy_mod_zmenen", aktualni_mapovy_mod)
 
-# data pass
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called after `nastav_mapovy_mod` updates local mode state.
 func _aktualizuj_aktivni_mapovy_mod() -> void:
 	var sprite = $Sprite2D
 	if sprite and sprite.has_method("aktualizuj_mapovy_mod"):
 		sprite.aktualizuj_mapovy_mod(aktualni_mapovy_mod, provinces)
 
-# safety check
+# Inputs: None.
+# Outputs: `true` when army/port markers should be visible for current map mode.
+# Execution timing: Queried before icon visibility and zoom updates.
 func _jsou_ukazatele_jednotek_povolene() -> bool:
 	return aktualni_mapovy_mod == "political"
 
-# Applies prepared settings/effects to runtime systems.
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called after map-mode changes and icon refreshes.
+# Steps: Toggles army/port marker containers and hides stale army nodes when markers are disabled.
 func _aplikuj_viditelnost_ukazatelu_jednotek():
 	var ukazovat = _jsou_ukazatele_jednotek_povolene()
 	var army_container = get_node_or_null("ArmyContainer")
@@ -311,7 +311,9 @@ func _aplikuj_viditelnost_ukazatelu_jednotek():
 			if army_node:
 				army_node.hide()
 
-# edge case
+# Inputs: None.
+# Outputs: Sprite2D map offset used to convert local province coordinates to scene coordinates.
+# Execution timing: Called by icon/overlay placement helpers.
 func _ziskej_map_offset() -> Vector2:
 	# Sprite anchor
 	var sprite = $Sprite2D
@@ -321,7 +323,9 @@ func _ziskej_map_offset() -> Vector2:
 		return sprite.position
 	return Vector2.ZERO
 
-# edge case
+# Inputs: Local province position candidate.
+# Outputs: `true` when the position is usable within current map bounds.
+# Execution timing: Used while resolving province centers from raw coordinates.
 func _je_validni_lokalni_pozice(pos: Vector2) -> bool:
 	# Fast reject
 	if pos == Vector2.ZERO:
@@ -334,7 +338,9 @@ func _je_validni_lokalni_pozice(pos: Vector2) -> bool:
 		return true
 	return pos.x >= 0.0 and pos.y >= 0.0 and pos.x <= size.x and pos.y <= size.y
 
-# state sync
+# Inputs: Province id.
+# Outputs: Best-available local province position (raw, centroid fallback, or cached sea estimate).
+# Execution timing: Core helper for all map marker and path visualization placement.
 func _ziskej_lokalni_pozici_provincie(prov_id: int) -> Vector2:
 	# Guard id
 	if not provinces.has(prov_id):
@@ -418,7 +424,9 @@ func _ziskej_lokalni_pozici_provincie(prov_id: int) -> Vector2:
 	_sea_position_cache[prov_id] = avg
 	return avg
 
-# Read-only data accessor.
+# Inputs: Province id.
+# Outputs: Approximate pixel-center position for the province mask color, or `Vector2.ZERO`.
+# Execution timing: Used when province-local position data is missing and a centroid fallback is needed.
 func _ziskej_lokalni_pozici_z_masky_provincie(prov_id: int) -> Vector2:
 	# Cache hit
 	if _province_pixel_center_cache.has(prov_id):
@@ -471,12 +479,16 @@ func _ziskej_lokalni_pozici_z_masky_provincie(prov_id: int) -> Vector2:
 	_province_pixel_center_cache[prov_id] = center
 	return center
 
-# Reads values from active state.
+# Inputs: Province id and precomputed map offset.
+# Outputs: Final map-space position for the province.
+# Execution timing: Used by army, port, and overlay placement helpers.
 func _ziskej_map_pozici_provincie(prov_id: int, offset: Vector2) -> Vector2:
 	# Local + map
 	return _ziskej_lokalni_pozici_provincie(prov_id) + offset
 
-# cache path
+# Inputs: Global mouse position and optional hit tolerance.
+# Outputs: Province id whose visible army icon is under cursor, or `-1`.
+# Execution timing: Called from map interaction hit-tests before color-map fallback.
 func ziskej_prov_id_podle_ikony_armady(global_mouse_pos: Vector2, tolerance: float = 16.0) -> int:
 	if aktivni_armady.is_empty():
 		return -1
@@ -509,7 +521,10 @@ func ziskej_prov_id_podle_ikony_armady(global_mouse_pos: Vector2, tolerance: flo
 
 	return best_prov_id
 
-# hot path
+# Inputs: Primary selected province id.
+# Outputs: None.
+# Execution timing: Called after selection changes and icon refreshes.
+# Steps: Shows selection rings only on selected armies controlled by player.
 func nastav_vybranou_armadu_provincie(selected_prov_id: int):
 	var vybrane_armady: Dictionary = {}
 	if selected_prov_id >= 0:
@@ -530,7 +545,9 @@ func nastav_vybranou_armadu_provincie(selected_prov_id: int):
 			var je_moje_armada = owner_tag == GameManager.hrac_stat
 			ring.visible = vybrane_armady.has(prov_id) and je_moje_armada
 
-# cache path
+# Inputs: Army node instance.
+# Outputs: None.
+# Execution timing: Called when army icon texture/scale changes.
 func _aktualizuj_selection_ring_geometrii(army_node: Node2D):
 	if not army_node:
 		return
@@ -561,7 +578,9 @@ func _aktualizuj_selection_ring_geometrii(army_node: Node2D):
 	ring.add_point(Vector2(-ring_half_w, ring_half_h))
 	ring.add_point(Vector2(-ring_half_w, -ring_half_h))
 
-# flow
+# Inputs: Province id and precomputed map offset.
+# Outputs: Army marker position adjusted for sea/land placement rules.
+# Execution timing: Used during army icon creation and repositioning.
 func _ziskej_pozici_armady_v_provincii(prov_id: int, offset: Vector2) -> Vector2:
 	var base_pos = _ziskej_map_pozici_provincie(prov_id, offset)
 	# Keep sea fleets centered on sea tile, but move land armies below province names.
@@ -574,7 +593,9 @@ func _ziskej_pozici_armady_v_provincii(prov_id: int, offset: Vector2) -> Vector2
 		y_offset = 17.0
 	return base_pos + Vector2(0, y_offset)
 
-# Pulls current state data.
+# Inputs: Lane slot index for repeated route rendering between the same province pair.
+# Outputs: Signed lane index spreading overlapping trajectories to alternating sides.
+# Execution timing: Called while drawing queued and preview move paths.
 func _ziskej_lane_index(slot: int) -> int:
 	if slot <= 0:
 		return 0
@@ -583,7 +604,9 @@ func _ziskej_lane_index(slot: int) -> int:
 		return magnitude
 	return -magnitude
 
-# Handles this gameplay/UI path.
+# Inputs: Source/target province ids and their rendered start/end positions.
+# Outputs: Per-lane orthogonal offset used to separate overlapping route lines.
+# Execution timing: Called when building move-trajectory overlays.
 func _vypocitej_ofset_trasy(from_id: int, to_id: int, start_pos: Vector2, end_pos: Vector2) -> Vector2:
 	# Pair key
 	var a = min(from_id, to_id)
@@ -603,7 +626,9 @@ func _vypocitej_ofset_trasy(from_id: int, to_id: int, start_pos: Vector2, end_po
 	# Side offset
 	return dir.normalized().orthogonal() * (12.0 * float(lane_index))
 
-# guard rails
+# Inputs: Preferred position, already occupied positions, and minimal spacing.
+# Outputs: Collision-free position candidate for army marker placement.
+# Execution timing: Called while spreading visible army markers to avoid overlap.
 func _najdi_volnou_pozici(base_pos: Vector2, occupied_positions: Array, min_distance: float) -> Vector2:
 	# No overlap set
 	if occupied_positions.is_empty():
@@ -635,7 +660,9 @@ func _najdi_volnou_pozici(base_pos: Vector2, occupied_positions: Array, min_dist
 
 	return base_pos + Vector2(42, 0)
 
-# Pulls current state data.
+# Inputs: None.
+# Outputs: Array of visible army node positions already occupying the map.
+# Execution timing: Used before resolving army marker overlaps.
 func _ziskej_obsazene_pozice_armad() -> Array:
 	var occupied: Array = []
 	for prov_id in aktivni_armady.keys():
@@ -644,7 +671,9 @@ func _ziskej_obsazene_pozice_armad() -> Array:
 			occupied.append(army_node.position)
 	return occupied
 
-# ui glue
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called after icon refreshes and zoom changes in non-merged mode.
 func _rozmisti_armady_bez_overlapu():
 	if aktivni_armady.is_empty():
 		return
@@ -669,7 +698,9 @@ func _rozmisti_armady_bez_overlapu():
 		army_node.position = final_pos
 		occupied.append(final_pos)
 
-# Returns current runtime data.
+# Inputs: Resource path and cache dictionary.
+# Outputs: Cached texture resource or `null` when unavailable.
+# Execution timing: Shared asset loader for flags/army icons/port icons.
 func _get_cached_texture(path: String, cache: Dictionary):
 	# Empty path
 	if path == "":
@@ -684,7 +715,9 @@ func _get_cached_texture(path: String, cache: Dictionary):
 	cache[path] = tex
 	return tex
 
-# data pass
+# Inputs: Raw ideology label.
+# Outputs: Normalized ideology key used for flag lookup.
+# Execution timing: Called while building and querying ideology flag index.
 func _normalizuj_ideologii(ideology: String) -> String:
 	var raw = ideology.strip_edges().to_lower()
 	match raw:
@@ -759,7 +792,9 @@ func _ensure_ideology_flag_index() -> void:
 			ideology_flag_path_index[key] = path
 	dir.list_dir_end()
 
-# flow
+# Inputs: State tag and ideology label.
+# Outputs: Best matching flag texture (custom, ideology-specific, or generic).
+# Execution timing: Called when drawing/updating capital flags.
 func _get_flag_texture(tag: String, ideology: String):
 	var custom_tex = CountryCustomization.load_custom_flag_texture(tag, flag_texture_cache)
 	if custom_tex:
@@ -794,14 +829,18 @@ func _get_army_icon_texture(owner_tag: String):
 		return icon_tex
 	return _get_cached_texture(fallback_path, army_icon_texture_cache)
 
-# Fetches data for callers.
+# Inputs: None.
+# Outputs: Cached port icon texture, with fallback if the main asset is missing.
+# Execution timing: Used when creating or refreshing port markers.
 func _get_port_icon_texture():
 	var icon_tex = _get_cached_texture(PORT_ICON_PATH, army_icon_texture_cache)
 	if icon_tex:
 		return icon_tex
 	return _get_cached_texture(PORT_ICON_FALLBACK_PATH, army_icon_texture_cache)
 
-# Reads values from active state.
+# Inputs: Country tag.
+# Outputs: Opaque base color for that state, using sprite palette or deterministic fallback hue.
+# Execution timing: Used by army/path overlay color helpers.
 func _ziskej_zakladni_barvu_statu(tag: String) -> Color:
 	if tag == "":
 		return Color(0.62, 0.62, 0.66, 1.0)
@@ -816,7 +855,9 @@ func _ziskej_zakladni_barvu_statu(tag: String) -> Color:
 	var hue = float(abs(tag.hash()) % 360) / 360.0
 	return Color.from_hsv(hue, 0.62, 0.86, 1.0)
 
-# state sync
+# Inputs: State tag and attack-mode flag.
+# Outputs: Overlay color tuned for move vs. attack trajectories.
+# Execution timing: Used by queued/preview/minimal move rendering.
 func _ziskej_barvu_overlay_statu(tag: String, is_attack: bool) -> Color:
 	var base = _ziskej_zakladni_barvu_statu(tag)
 	var out_col: Color
@@ -830,7 +871,9 @@ func _ziskej_barvu_overlay_statu(tag: String, is_attack: bool) -> Color:
 		out_col.a = 0.86
 	return out_col
 
-# Fetches data for callers.
+# Inputs: State tag.
+# Outputs: Combat-strength multiplier for the state, defaulting safely to `1.0`.
+# Execution timing: Used by battle-resolution and combat-preview calculations.
 func _ziskej_nasobic_sily_statu(state_tag: String) -> float:
 	var cisty = state_tag.strip_edges().to_upper()
 	if cisty == "" or cisty == "SEA":
@@ -865,7 +908,9 @@ func _ziskej_lab_nasobic_statu(state_tag: String) -> float:
 	var bonus_pct = max(0.0, float(info.get("bonus_pct", 0.0)))
 	return max(1.0, 1.0 + bonus_pct)
 
-# turn logic
+# Inputs: Defender province id.
+# Outputs: Total defender bonus percentage from terrain and defensive structures.
+# Execution timing: Called by battle prediction and battle resolution.
 func _ziskej_terenni_obranny_bonus_pct(prov_id: int) -> float:
 	if not provinces.has(prov_id):
 		return 0.0
@@ -880,7 +925,9 @@ func _ziskej_terenni_obranny_bonus_pct(prov_id: int) -> float:
 
 	return bonus
 
-# guard rails
+# Inputs: Province id and attacker tag.
+# Outputs: Liberation attack bonus percentage when reclaiming own occupied core.
+# Execution timing: Called by battle prediction and battle resolution.
 func _ziskej_bonus_utocnika_pri_osvobozovani(prov_id: int, attacker_tag: String) -> float:
 	if not provinces.has(prov_id):
 		return 0.0
@@ -899,15 +946,21 @@ func _ziskej_bonus_utocnika_pri_osvobozovani(prov_id: int, attacker_tag: String)
 		return ATTACKER_LIBERATION_BONUS_PCT
 	return 0.0
 
-# guard rails
+# Inputs: Province id.
+# Outputs: Public wrapper for terrain defender bonus percentage.
+# Execution timing: Called by external systems requesting combat modifiers.
 func ziskej_terenni_obranny_bonus_pct(prov_id: int) -> float:
 	return _ziskej_terenni_obranny_bonus_pct(prov_id)
 
-# turn logic
+# Inputs: Province id and attacker tag.
+# Outputs: Public wrapper for liberation attacker bonus percentage.
+# Execution timing: Called by external systems requesting combat modifiers.
 func ziskej_bonus_utocnika_pri_osvobozovani(prov_id: int, attacker_tag: String) -> float:
 	return _ziskej_bonus_utocnika_pri_osvobozovani(prov_id, attacker_tag)
 
-# hot path
+# Inputs: Source and target province ids.
+# Outputs: Dictionary with attack/defense bonus preview and total multipliers.
+# Execution timing: Called by hover tooltip logic before confirming attacks.
 func ziskej_nahled_bojovych_modifikatoru(from_id: int, to_id: int) -> Dictionary:
 	if not provinces.has(from_id) or not provinces.has(to_id):
 		return {"ok": false, "reason": "invalid_province"}
@@ -1043,7 +1096,9 @@ func _vytvor_bitevni_payload(attacker_tag: String, defender_tag: String, attacke
 		"province_name": province_name.strip_edges()
 	}
 
-# Core flow for this feature.
+# Inputs: Attacker/defender tags, troop counts, and optional terrain/liberation bonuses.
+# Outputs: Battle result dictionary with winner flags, survivors, and computed power values.
+# Execution timing: Called during army-turn resolution and combat previews.
 func _vyres_souboj_podle_sily(attacker_tag: String, attacker_soldiers: int, defender_tag: String, defender_soldiers: int, defender_bonus_pct: float = 0.0, attacker_bonus_pct: float = 0.0) -> Dictionary:
 	var att_count = max(0, attacker_soldiers)
 	var def_count = max(0, defender_soldiers)
@@ -1101,7 +1156,10 @@ func _vyres_souboj_podle_sily(attacker_tag: String, attacker_soldiers: int, defe
 		"defender_power": def_power
 	}
 
-# data pass
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Runs once when the map scene becomes ready.
+# Steps: Loads provinces, initializes camera/map mode, creates labels, computes economy, and builds army icons.
 func _ready():
 	_inicializace_hotova = false
 	_vytvor_loading_overlay()
@@ -1164,11 +1222,15 @@ func _ready():
 	_inicializace_hotova = true
 	print("[MapInit] done")
 
-# safety check
+# Inputs: None.
+# Outputs: `true` when map initialization finished and load-dependent systems are ready.
+# Execution timing: Queried by save/load and UI flows that depend on completed map bootstrap.
 func je_pripraveno_pro_load() -> bool:
 	return _inicializace_hotova
 
-# Per-frame update while active.
+# Inputs: Frame delta.
+# Outputs: None.
+# Execution timing: Runs only while animated move/preview markers are active.
 func _process(delta: float):
 	if _ai_anim_markery.is_empty() and _cekajici_anim_markery.is_empty() and _preview_anim_markery.is_empty():
 		set_process(false)
@@ -1181,7 +1243,9 @@ func _process(delta: float):
 	if _ai_anim_markery.is_empty() and _cekajici_anim_markery.is_empty() and _preview_anim_markery.is_empty():
 		set_process(false)
 
-# Updates derived state and UI.
+# Inputs: Existing animated marker store and frame delta.
+# Outputs: Filtered marker array with updated animation progress.
+# Execution timing: Called every frame while any move/battle preview marker is active.
 func _aktualizuj_anim_markery(markery: Array, delta: float) -> Array:
 	var out = markery
 	for i in range(out.size() - 1, -1, -1):
@@ -1525,7 +1589,9 @@ func generuj_nazvy_provincii():
 		if not moc_blizko:
 			umistene_pozice.append(pozice)
 
-# flow
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called after map/flag updates to sync capital flag visibility on province labels.
 # Ai generated or editted end (priloha_a.txt)
 func aktualizuj_vlajky_hlavnich_mest() -> void:
 	var labels = get_node_or_null("ProvinceLabels")
@@ -1573,11 +1639,15 @@ func get_province_data_by_color(clicked_color: Color):
 			
 	return null
 
-# state sync
+# Inputs: None.
+# Outputs: Copy of currently bulk-selected province ids.
+# Execution timing: Called by UI and map interaction when reading bulk selection state.
 func ziskej_hromadne_vybrane_provincie() -> Array:
 	return hromadne_vybrane_provincie.duplicate()
 
-# edge case
+# Inputs: Province id to add into bulk selection.
+# Outputs: `true` when province was newly added, otherwise `false`.
+# Execution timing: Called by drag-select and toggle-select workflows.
 func pridej_hromadny_vyber_provincie(prov_id: int) -> bool:
 	if not je_platna_provincie_pro_hromadny_vyber(prov_id):
 		return false
@@ -1586,7 +1656,9 @@ func pridej_hromadny_vyber_provincie(prov_id: int) -> bool:
 	hromadne_vybrane_provincie.append(prov_id)
 	return true
 
-# Cleanup for temporary values.
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called when bulk province selection is cleared.
 func vycisti_hromadny_vyber_provincii():
 	hromadne_vybrane_provincie.clear()
 	vycisti_hromadny_vyber_overlay()
@@ -1599,7 +1671,10 @@ func vycisti_hromadny_vyber_overlay():
 	for child in overlay.get_children():
 		child.queue_free()
 
-# Handles this gameplay/UI path.
+# Inputs: Province id array currently in multi-selection.
+# Outputs: None.
+# Execution timing: Called when bulk-selection contents change.
+# Steps: Normalizes ids, rebuilds overlay nodes, and caches the rendered selection key.
 func vykresli_hromadny_vyber_overlay(ids: Array):
 	if ids.is_empty():
 		vycisti_hromadny_vyber_overlay()
@@ -1654,7 +1729,9 @@ func vykresli_hromadny_vyber_overlay(ids: Array):
 			ring.add_point(center + Vector2(cos(a), sin(a)) * radius)
 		overlay.add_child(ring)
 
-# guard rails
+# Inputs: Province id.
+# Outputs: `true` when province becomes selected; `false` when it gets unselected or is invalid.
+# Execution timing: Called by click toggling in bulk-selection mode.
 func prepni_hromadny_vyber_provincie(prov_id: int) -> bool:
 	if not je_platna_provincie_pro_hromadny_vyber(prov_id):
 		return false
@@ -1703,7 +1780,9 @@ func aktivuj_rezim_hromadneho_presunu(from_ids: Array) -> bool:
 	vycisti_nahled_presunu()
 	return true
 
-# ui glue
+# Inputs: Candidate target province id.
+# Outputs: `true` when at least one selected source army has a valid path to target.
+# Execution timing: Called while hovering potential bulk movement targets.
 func ma_hromadny_platny_cil_presunu(to_id: int) -> bool:
 	if hromadny_presun_zdroje.is_empty():
 		return false
@@ -1766,7 +1845,9 @@ func zaregistruj_hromadny_presun_armad(to_id: int) -> int:
 	vycisti_nahled_presunu()
 	return planned
 
-# state sync
+# Inputs: Current camera zoom.
+# Outputs: None.
+# Execution timing: Triggered by camera zoom signal to sync labels, icons, and indicators.
 func _na_zmenu_zoomu(aktualni_zoom):
 	if _potato_mode_enabled:
 		# Low mode
@@ -1805,7 +1886,9 @@ func _na_zmenu_zoomu(aktualni_zoom):
 	_aktualizuj_zoom_pristavu(aktualni_zoom)
 	_aktualizuj_indikatory_kapitulace()
 
-# flow
+# Inputs: Integer value.
+# Outputs: Short human-readable number format (`k`, `M`).
+# Execution timing: Used when rendering troop amounts on icons and overlays.
 func _formatuj_cislo(cislo: int) -> String:
 	if cislo >= 1000000:
 		return str(snapped(cislo / 1000000.0, 0.1)) + "M"
@@ -1899,7 +1982,9 @@ func _aktualizuj_zoom_armad(aktualni_zoom: float):
 				else:
 					army_node.hide()
 
-# ui glue
+# Inputs: Current camera zoom.
+# Outputs: None.
+# Execution timing: Called after zoom changes and when port icons are rebuilt.
 func _aktualizuj_zoom_pristavu(aktualni_zoom: float):
 	if aktivni_porty.is_empty():
 		return
@@ -2034,7 +2119,9 @@ func _je_more_provincie(prov_id: int) -> bool:
 	_sea_province_cache[prov_id] = is_sea
 	return is_sea
 
-# flow
+# Inputs: Province id.
+# Outputs: Cached bool indicating whether the province touches sea.
+# Execution timing: Used by naval embark/path checks and topology rebuild.
 func _je_pobrezni_provincie(prov_id: int) -> bool:
 	if _coastal_province_cache.has(prov_id):
 		return bool(_coastal_province_cache[prov_id])
@@ -2042,7 +2129,9 @@ func _je_pobrezni_provincie(prov_id: int) -> bool:
 	_coastal_province_cache[prov_id] = result
 	return result
 
-# flow
+# Inputs: Province id.
+# Outputs: Freshly computed coastal-state bool.
+# Execution timing: Called on cache misses for `_je_pobrezni_provincie`.
 func _spocitej_je_pobrezni_provincie(prov_id: int) -> bool:
 	if not provinces.has(prov_id):
 		return false
@@ -2053,7 +2142,9 @@ func _spocitej_je_pobrezni_provincie(prov_id: int) -> bool:
 			return true
 	return false
 
-# flow
+# Inputs: Two neighboring land province ids.
+# Outputs: Local-step distance between provinces, or `-1.0` when position is missing.
+# Execution timing: Called by movement cap and path validation helpers.
 func _ziskej_delku_pozemniho_kroku(from_id: int, to_id: int) -> float:
 	var from_pos = _ziskej_lokalni_pozici_provincie(from_id)
 	var to_pos = _ziskej_lokalni_pozici_provincie(to_id)
@@ -2061,7 +2152,9 @@ func _ziskej_delku_pozemniho_kroku(from_id: int, to_id: int) -> float:
 		return -1.0
 	return from_pos.distance_to(to_pos)
 
-# ui glue
+# Inputs: Province id.
+# Outputs: Local hard-cap distance for allowed land step transitions.
+# Execution timing: Called during movement topology rebuild and path validation.
 func _spocitej_lokalni_land_cap(prov_id: int) -> float:
 	if _land_step_distance_cap_cache.has(prov_id):
 		return float(_land_step_distance_cap_cache[prov_id])
@@ -2092,7 +2185,9 @@ func _spocitej_lokalni_land_cap(prov_id: int) -> float:
 	_land_step_distance_cap_cache[prov_id] = cap_val
 	return cap_val
 
-# data pass
+# Inputs: Source and neighbor province ids.
+# Outputs: `true` when step distance is within dynamic hard-cap threshold.
+# Execution timing: Called while constructing valid land-step adjacency caches.
 func _splnuje_hard_cap_pozemniho_kroku(from_id: int, to_id: int) -> bool:
 	var step_dist = _ziskej_delku_pozemniho_kroku(from_id, to_id)
 	if step_dist < 0.0:
@@ -2103,7 +2198,9 @@ func _splnuje_hard_cap_pozemniho_kroku(from_id: int, to_id: int) -> bool:
 	var allowed_cap = max(from_cap, to_cap)
 	return step_dist <= allowed_cap
 
-# cache path
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called before rebuilding movement topology or after major map-state changes.
 func _invalidate_movement_topology_cache() -> void:
 	_sea_province_cache.clear()
 	_coastal_province_cache.clear()
@@ -2113,7 +2210,10 @@ func _invalidate_movement_topology_cache() -> void:
 	_land_step_distance_cap_cache.clear()
 	_last_army_state_signature = -1
 
-# Handles this gameplay/UI path.
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called after province ownership/topology changes that invalidate movement caches.
+# Steps: Recomputes land/sea/coastal adjacency caches used by pathfinding and reachability checks.
 func _rebuild_movement_topology_cache() -> void:
 	_invalidate_movement_topology_cache()
 
@@ -2156,12 +2256,16 @@ func _rebuild_movement_topology_cache() -> void:
 		_land_step_neighbors_cache[p_id] = land_steps
 		_land_plus_sea_step_neighbors_cache[p_id] = land_plus_sea_steps
 
-# guard rails
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called when movement source changes or movement ownership changes.
 func _invalidate_naval_reachability_cache() -> void:
 	_naval_reachable_cache_from = -1
 	_naval_reachable_cache.clear()
 
-# Returns current runtime data.
+# Inputs: Source province id.
+# Outputs: Cached dictionary of sea provinces reachable from source.
+# Execution timing: Called by movement/path checks involving embark or naval transit.
 func _ziskej_dostupna_moreni_pole(from_id: int) -> Dictionary:
 	if _naval_reachable_cache_from == from_id and not _naval_reachable_cache.is_empty():
 		return _naval_reachable_cache
@@ -2207,7 +2311,9 @@ func _ziskej_dostupna_moreni_pole(from_id: int) -> Dictionary:
 	_naval_reachable_cache = reachable
 	return _naval_reachable_cache
 
-# Eligibility/guard check.
+# Inputs: Land province id and reachable sea dictionary.
+# Outputs: `true` when land province has adjacent reachable sea tile.
+# Execution timing: Used by movement validation for naval-assisted paths.
 func _ma_pobrezni_pristup_k_dostupnemu_mori(land_id: int, reachable_sea: Dictionary) -> bool:
 	if not provinces.has(land_id):
 		return false
@@ -2219,7 +2325,9 @@ func _ma_pobrezni_pristup_k_dostupnemu_mori(land_id: int, reachable_sea: Diction
 			return true
 	return false
 
-# safety check
+# Inputs: Province id.
+# Outputs: Effective army owner tag for province (army_owner override with fallback).
+# Execution timing: Core helper used by selection, pathing, and battle logic.
 func _ziskej_vlastnika_armady_v_provincii(prov_id: int) -> String:
 	if not provinces.has(prov_id):
 		return ""
@@ -2243,7 +2351,9 @@ func _ziskej_braniciho_vlastnika_v_provincii(prov_id: int) -> String:
 		return army_owner
 	return owner_tag
 
-# Feature logic entry point.
+# Inputs: Existing owner tag and incoming owner tag for a friendly stack merge.
+# Outputs: Owner tag that should control the merged stack.
+# Execution timing: Called when two non-hostile armies merge in one province.
 func _zvol_vlastnika_pri_pratelskem_slouceni(existing_owner_tag: String, incoming_owner_tag: String) -> String:
 	var existing_owner = str(existing_owner_tag).strip_edges().to_upper()
 	var incoming_owner = str(incoming_owner_tag).strip_edges().to_upper()
@@ -2269,7 +2379,9 @@ func _zvol_vlastnika_pri_pratelskem_slouceni(existing_owner_tag: String, incomin
 	# Keep current controller for allied merges to avoid last-move ownership flips.
 	return existing_owner
 
-# Reads values from active state.
+# Inputs: Province id.
+# Outputs: Port marker position shifted toward the nearest reachable sea side.
+# Execution timing: Used while placing and refreshing port icons.
 func _ziskej_pozici_pristavu_v_provincii(prov_id: int) -> Vector2:
 	var center = _ziskej_lokalni_pozici_provincie(prov_id)
 	if not provinces.has(prov_id):
@@ -2304,14 +2416,18 @@ func _ziskej_pozici_pristavu_v_provincii(prov_id: int) -> Vector2:
 
 	return center + dir.normalized() * 16.0
 
-# Eligibility/guard check.
+# Inputs: Sea province id and moving owner tag.
+# Outputs: `true` when sea province currently contains hostile garrison ownership.
+# Execution timing: Used by movement traversal validation for naval steps.
 func _ma_nepratelskou_posadku_na_mori(prov_id: int, owner_tag: String) -> bool:
 	if not _je_more_provincie(prov_id):
 		return false
 	var sea_army_owner = str(provinces[prov_id].get("army_owner", "")).strip_edges().to_upper()
 	return sea_army_owner != "" and sea_army_owner != owner_tag
 
-# hot path
+# Inputs: Province id and moving owner tag.
+# Outputs: `true` when province can be traversed as intermediate path step.
+# Execution timing: Called by BFS pathfinding for army movement.
 func _je_pruchozi_mezikrok_presunu(prov_id: int, owner_tag: String) -> bool:
 	if not provinces.has(prov_id):
 		return false
@@ -2332,7 +2448,9 @@ func _je_pruchozi_mezikrok_presunu(prov_id: int, owner_tag: String) -> bool:
 		return true
 	return land_owner == owner_tag
 
-# Reads values from active state.
+# Inputs: Province id serving as the current BFS/pathfinding node.
+# Outputs: Cached neighbor list allowed for one movement step from that node.
+# Execution timing: Called repeatedly by movement validation and pathfinding.
 func _ziskej_krokove_sousedy_presunu(from_id: int) -> Array:
 	if not provinces.has(from_id):
 		return []
@@ -2347,7 +2465,9 @@ func _ziskej_krokove_sousedy_presunu(from_id: int) -> Array:
 		return _land_plus_sea_step_neighbors_cache.get(from_id, [])
 	return _land_step_neighbors_cache.get(from_id, [])
 
-# safety check
+# Inputs: None.
+# Outputs: Hash signature of current army/map icon state.
+# Execution timing: Used to skip unnecessary full army-icon rebuilds.
 func _spocitej_army_state_signature() -> int:
 	var signature := 216613626
 	for p_id_any in provinces:
@@ -2364,7 +2484,9 @@ func _spocitej_army_state_signature() -> int:
 		signature = int((signature ^ 0x1A2B3C4D) & 0x7fffffff)
 	return signature
 
-# turn logic
+# Inputs: Source and destination province ids.
+# Outputs: Shortest valid movement path as province-id array.
+# Execution timing: Core movement/pathfinding query used by previews and move registration.
 func najdi_nejrychlejsi_cestu_presunu(from_id: int, to_id: int) -> Array:
 	if from_id == to_id:
 		return []
@@ -2524,7 +2646,9 @@ func _ziskej_profil_statu(owner_tag: String) -> Dictionary:
 func je_platny_cil_presunu(from_id: int, to_id: int) -> bool:
 	return najdi_nejrychlejsi_cestu_presunu(from_id, to_id).size() >= 2
 
-# flow
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called when port ownership/availability changes or icons are first created.
 func aktualizuj_ikony_pristavu():
 	var container = get_node_or_null("PortContainer")
 	if not container:
@@ -2567,11 +2691,15 @@ func aktualizuj_ikony_pristavu():
 	if kamera:
 		_aktualizuj_zoom_pristavu(kamera.zoom.x)
 
-# Core flow for this feature.
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called when province ownership/port state changes require a later port-icon rebuild.
 func oznac_pristavy_k_aktualizaci():
 	_port_icons_dirty = true
 
-# Activates target selection mode
+# Inputs: Source province id and max troop count.
+# Outputs: None.
+# Execution timing: Called when player enters single-army target selection mode.
 # Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [oznac_pristavy_k_aktualizaci]
 # Ai generated or editted start (priloha_a.txt)
 func aktivuj_rezim_vyberu_cile(from_id: int, max_troops: int):
@@ -2583,7 +2711,9 @@ func aktivuj_rezim_vyberu_cile(from_id: int, max_troops: int):
 	vycisti_nahled_presunu()
 	print("Click on the map to select a move target.")
 
-# ui glue
+# Inputs: State tag.
+# Outputs: Land province ids currently owned by the state.
+# Execution timing: Used by peace/trade/capital mode setup and previews.
 # Ai generated or editted end (priloha_a.txt)
 func _ziskej_provincie_statu_v_mape(state_tag: String) -> Array:
 	var out: Array = []
@@ -2602,7 +2732,9 @@ func _ziskej_provincie_statu_v_mape(state_tag: String) -> Array:
 		out.append(p_id)
 	return out
 
-# Fetches data for callers.
+# Inputs: Winner and defeated state tags.
+# Outputs: Province id array valid for peace-conference selection.
+# Execution timing: Called when entering peace-target selection mode.
 func _ziskej_dostupne_cile_miru(vitez: String, porazeny: String) -> Array:
 	var win = vitez.strip_edges().to_upper()
 	var lose = porazeny.strip_edges().to_upper()
@@ -2627,7 +2759,9 @@ func _ziskej_dostupne_cile_miru(vitez: String, porazeny: String) -> Array:
 
 	return out
 
-# data pass
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called when peace-conference province selection mode is cancelled or finished.
 func zrus_rezim_vyberu_miru() -> void:
 	ceka_na_cil_miru = false
 	stat_mirove_konference_vitez = ""
@@ -2644,7 +2778,10 @@ func zrus_rezim_vyberu_miru() -> void:
 	if sprite and sprite.has_method("_aktualizuj_hromadny_selection_texture"):
 		sprite._aktualizuj_hromadny_selection_texture([])
 
-# edge case
+# Inputs: Winner tag, defeated tag, and optional preselected province ids.
+# Outputs: Status dictionary with available and preselected peace-target provinces.
+# Execution timing: Called when peace conference UI enters province-picking mode.
+# Steps: Resets old peace state, computes valid targets, applies previews, and syncs selected highlights.
 func aktivuj_rezim_vyberu_miru(vitez_tag: String, porazeny_tag: String, preselected_ids: Array = []) -> Dictionary:
 	var vitez = vitez_tag.strip_edges().to_upper()
 	var porazeny = porazeny_tag.strip_edges().to_upper()
@@ -2691,17 +2828,23 @@ func aktivuj_rezim_vyberu_miru(vitez_tag: String, porazeny_tag: String, preselec
 		"selected": vybrane_cile_miru.duplicate()
 	}
 
-# Eligibility/guard check.
+# Inputs: Province id.
+# Outputs: `true` when province is currently selectable within active peace conference mode.
+# Execution timing: Called during map click/hover handling in peace-selection mode.
 func je_platna_provincie_pro_mir(prov_id: int) -> bool:
 	if not ceka_na_cil_miru:
 		return false
 	return dostupne_cile_miru.has(int(prov_id))
 
-# Eligibility/guard check.
+# Inputs: Province id.
+# Outputs: `true` when province is currently included in selected peace targets.
+# Execution timing: Queried by UI and map interaction while peace mode is active.
 func je_provincie_vybrana_v_miru(prov_id: int) -> bool:
 	return vybrane_cile_miru.has(int(prov_id))
 
-# ui glue
+# Inputs: Province id.
+# Outputs: Result dictionary with toggle status and selected peace-province list.
+# Execution timing: Called from map click handling in peace-selection mode.
 func prepni_vyber_mirove_provincie(prov_id: int) -> Dictionary:
 	var pid = int(prov_id)
 	if not je_platna_provincie_pro_mir(pid):
@@ -2723,11 +2866,15 @@ func prepni_vyber_mirove_provincie(prov_id: int) -> Dictionary:
 		"selected_count": vybrane_cile_miru.size()
 	}
 
-# hot path
+# Inputs: None.
+# Outputs: Copy of currently selected peace-conference province ids.
+# Execution timing: Called when UI confirms or previews peace terms.
 func ziskej_vybrane_mirove_provincie() -> Array:
 	return vybrane_cile_miru.duplicate()
 
-# Cancels the active flow and restores a safe default state.
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called when trade-province selection mode is cancelled or confirmed.
 func zrus_rezim_vyberu_trade_provincie() -> void:
 	ceka_na_cil_trade_provincie = false
 	stat_trade_province_source = ""
@@ -2743,7 +2890,10 @@ func zrus_rezim_vyberu_trade_provincie() -> void:
 	if sprite and sprite.has_method("obnov_trade_single_selection_highlight"):
 		sprite.obnov_trade_single_selection_highlight()
 
-# Core flow for this feature.
+# Inputs: Source state tag and optional preselected province ids.
+# Outputs: Status dictionary describing available/selected trade-transfer provinces.
+# Execution timing: Called when UI activates trade-province selection mode.
+# Steps: Clears previous trade state, filters valid provinces, then pushes preview/highlight updates to the sprite.
 func aktivuj_rezim_vyberu_trade_provincie(source_tag: String, preselected_ids: Array = []) -> Dictionary:
 	var source = source_tag.strip_edges().to_upper()
 	zrus_rezim_vyberu_trade_provincie()
@@ -2796,13 +2946,17 @@ func aktivuj_rezim_vyberu_trade_provincie(source_tag: String, preselected_ids: A
 		"source": stat_trade_province_source
 	}
 
-# Eligibility/guard check.
+# Inputs: Province id.
+# Outputs: `true` when province is currently selectable for trade transfer.
+# Execution timing: Called during trade-mode click handling.
 func je_platna_provincie_pro_trade(prov_id: int) -> bool:
 	if not ceka_na_cil_trade_provincie:
 		return false
 	return dostupne_cile_trade_provincie.has(int(prov_id))
 
-# State/mode switch with visual update.
+# Inputs: Province id.
+# Outputs: Result dictionary with selected trade provinces after toggle operation.
+# Execution timing: Called from map click handling in trade-selection mode.
 func prepni_vyber_trade_provincie(prov_id: int) -> Dictionary:
 	var pid = int(prov_id)
 	if not je_platna_provincie_pro_trade(pid):
@@ -2824,11 +2978,15 @@ func prepni_vyber_trade_provincie(prov_id: int) -> Dictionary:
 		"source": stat_trade_province_source
 	}
 
-# hot path
+# Inputs: None.
+# Outputs: Copy of currently selected trade-transfer province ids.
+# Execution timing: Called by trade UI before final confirmation.
 func ziskej_vybrane_trade_provincie() -> Array:
 	return vybrane_cile_trade_provincie.duplicate()
 
-# cache path
+# Inputs: None.
+# Outputs: Confirmation dictionary with sorted selected ids, names, and source tag.
+# Execution timing: Called when user confirms trade-province transfer selection.
 func potvrd_vyber_trade_provincii() -> Dictionary:
 	if not ceka_na_cil_trade_provincie:
 		return {"ok": false, "reason": "Trade province selection mode is not active."}
@@ -2841,10 +2999,10 @@ func potvrd_vyber_trade_provincii() -> Dictionary:
 	var selected_names: Array = []
 	for pid_any in selected_ids:
 		var pid = int(pid_any)
-		var name = "Province %d" % pid
+		var province_name = "Province %d" % pid
 		if provinces.has(pid):
-			name = str((provinces[pid] as Dictionary).get("province_name", name))
-		selected_names.append(name)
+			province_name = str((provinces[pid] as Dictionary).get("province_name", province_name))
+		selected_names.append(province_name)
 	var source = stat_trade_province_source
 
 	zrus_rezim_vyberu_trade_provincie()
@@ -2856,7 +3014,9 @@ func potvrd_vyber_trade_provincii() -> Dictionary:
 		"source": source
 	}
 
-# state sync
+# Inputs: State tag.
+# Outputs: Province ids eligible for capital relocation.
+# Execution timing: Called when entering capital-relocation mode.
 func _ziskej_dostupne_cile_hlavniho_mesta(state_tag: String) -> Array:
 	var state = state_tag.strip_edges().to_upper()
 	if state == "" or state == "SEA":
@@ -2884,7 +3044,9 @@ func _ziskej_dostupne_cile_hlavniho_mesta(state_tag: String) -> Array:
 
 	return out
 
-# Cancels the active flow and restores a safe default state.
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called when capital-relocation target selection ends or is aborted.
 func zrus_rezim_vyberu_hlavniho_mesta() -> void:
 	ceka_na_cil_hlavniho_mesta = false
 	dostupne_cile_hlavniho_mesta.clear()
@@ -2928,7 +3090,9 @@ func aktivuj_rezim_vyberu_hlavniho_mesta(state_tag: String) -> Dictionary:
 	print("Click on the map to choose a new capital. The cost is shown dynamically when hovering a target.")
 	return {"ok": true, "count": targets.size()}
 
-# Condition check helper.
+# Inputs: Province id candidate.
+# Outputs: `true` when the province is currently selectable as the new capital.
+# Execution timing: Called by map interaction before confirming capital relocation.
 # Ai generated or editted end (priloha_a.txt)
 func je_platny_cil_hlavniho_mesta(prov_id: int) -> bool:
 	if not ceka_na_cil_hlavniho_mesta:
@@ -2948,18 +3112,25 @@ func potvrd_cil_hlavniho_mesta(prov_id: int) -> Dictionary:
 	zrus_rezim_vyberu_hlavniho_mesta()
 	return result
 
-# Core flow for this feature.
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called before AI/batch movement accumulation begins.
 func zacni_davkovy_presun():
 	_pozastavit_aktualizaci_ikon = true
 	_minimalni_ai_tahy.clear()
 
-# Core flow for this feature.
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called after batch movement accumulation ends.
+# Steps: Re-enables icon refreshes, renders aggregated AI movement indicators, and refreshes army icons.
 func ukonci_davkovy_presun():
 	_pozastavit_aktualizaci_ikon = false
 	_vykresli_minimalni_ai_presuny()
 	aktualizuj_ikony_armad()
 
-# Feature logic entry point.
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called before redrawing AI movement indicators or when clearing them entirely.
 func _vymaz_minimalni_ai_presuny():
 	_ai_anim_markery.clear()
 	if _cekajici_anim_markery.is_empty():
@@ -2970,7 +3141,9 @@ func _vymaz_minimalni_ai_presuny():
 	for child in container.get_children():
 		child.queue_free()
 
-# Handles this gameplay/UI path.
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called when queued move overlays must be cleared before redraw or after turn resolution.
 func _vymaz_indikaci_cekajicich_presunu():
 	_cekajici_anim_markery.clear()
 	if _ai_anim_markery.is_empty():
@@ -3062,7 +3235,9 @@ func _zobraz_minimalni_presun(from_id: int, to_id: int, owner_tag: String, is_at
 	if not _ai_anim_markery.is_empty():
 		set_process(true)
 
-# state sync
+# Inputs: Remaining path array, owner tag, attack flag, total troop amount, and grouped count.
+# Outputs: None.
+# Execution timing: Called while rendering aggregated minimal AI move previews along multi-step paths.
 func _zobraz_minimalni_presun_po_ceste(path: Array, owner_tag: String, is_attack: bool, total_amount: int, count: int = 1):
 	if path.size() < 2:
 		return
@@ -3132,7 +3307,9 @@ func _zobraz_minimalni_presun_po_ceste(path: Array, owner_tag: String, is_attack
 	if not _ai_anim_markery.is_empty():
 		set_process(true)
 
-# safety check
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called after grouped AI movement registration to rebuild minimal movement visuals.
 func _vykresli_minimalni_ai_presuny():
 	_vymaz_minimalni_ai_presuny()
 	if _minimalni_ai_tahy.is_empty():
@@ -3171,7 +3348,9 @@ func _vykresli_minimalni_ai_presuny():
 	if not _ai_anim_markery.is_empty():
 		set_process(true)
 
-# state sync
+# Inputs: Queued move dictionary.
+# Outputs: Remaining path from current path index to destination.
+# Execution timing: Used when drawing queued movement indicators.
 func _ziskej_zbyvajici_cestu_presunu(move: Dictionary) -> Array:
 	var path: Array = move.get("path", [])
 	var path_index = int(move.get("path_index", 0))
@@ -3187,7 +3366,9 @@ func _ziskej_zbyvajici_cestu_presunu(move: Dictionary) -> Array:
 		out.append(int(path[i]))
 	return out
 
-# cache path
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called after queue mutations to redraw pending-move overlays.
 func _vykresli_indikaci_cekajicich_presunu():
 	_vymaz_indikaci_cekajicich_presunu()
 	if cekajici_presuny.is_empty():
@@ -3225,7 +3406,9 @@ func _vykresli_indikaci_cekajicich_presunu():
 	if not _cekajici_anim_markery.is_empty():
 		set_process(true)
 
-# turn logic
+# Inputs: Overlay container, source/destination ids, owner tag, attack flag, and troop amount.
+# Outputs: None.
+# Execution timing: Called while visualizing single-segment queued moves.
 func _zobraz_cekajici_presun(container: Node2D, from_id: int, to_id: int, owner_tag: String, is_attack: bool, amount: int):
 	if not provinces.has(from_id) or not provinces.has(to_id):
 		return
@@ -3487,7 +3670,10 @@ func zaregistruj_presun_armady(from_id: int, to_id: int, amount: int, vykreslit_
 		root.ceka_na_cil_presunu = false
 
 # Process all movements and await player confirmation for their battles
-# Feature logic entry point.
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called when a turn ends and queued army moves are resolved.
+# Steps: Drains the movement queue, resolves path steps/battles, updates overlays, and leaves unfinished moves queued.
 func zpracuj_tah_armad():
 	if cekajici_presuny.is_empty():
 		_vymaz_indikaci_cekajicich_presunu()
@@ -4055,7 +4241,9 @@ func _ma_rychle_zpracovani_tahu() -> bool:
 		return false
 	return bool(GameManager.zpracovava_se_tah)
 
-# safety check
+# Inputs: Battle event dictionaries.
+# Outputs: None.
+# Execution timing: Called in fast-turn mode to show compact grouped battle summary.
 func _ukaz_souhrn_bitevnich_udalosti(udalosti: Array) -> void:
 	if udalosti.is_empty():
 		return
@@ -4156,14 +4344,18 @@ func _ukaz_batch_popup(items: Array):
 	await _ukaz_bitevni_popup("Reports", "\n\n".join(bloky))
 	_uvolni_turn_indicator_suppression_lock()
 
-# Returns current runtime data.
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called before showing report popups that should suppress turn busy indicators.
 func _ziskej_turn_indicator_suppression_lock() -> void:
 	# Ref++
 	_turn_indicator_suppress_locks += 1
 	if _turn_indicator_suppress_locks == 1:
 		_nastav_pozastaveni_turn_indikatoru(true)
 
-# flow
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called after popup/report flow ends to release suppression lock.
 func _uvolni_turn_indicator_suppression_lock() -> void:
 	# Ref--
 	_turn_indicator_suppress_locks = max(0, _turn_indicator_suppress_locks - 1)
@@ -4182,7 +4374,9 @@ func _nastav_pozastaveni_turn_indikatoru(pozastavit: bool) -> void:
 	if top_bar and top_bar.has_method("nastav_pozastaveni_turn_busy_indicator"):
 		top_bar.nastav_pozastaveni_turn_busy_indicator(pozastavit)
 
-# edge case
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called before province-focused battle popup camera move.
 func _zacni_bitevni_kameru():
 	var kamera = $Camera2D
 	if not kamera:
@@ -4193,7 +4387,9 @@ func _zacni_bitevni_kameru():
 	_bitevni_puvodni_pozice = kamera.position
 	_bitevni_kamera_aktivni = true
 
-# state sync
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called after battle popup sequence to tween camera back to prior position.
 func _obnov_bitevni_kameru():
 	if not _bitevni_kamera_aktivni:
 		return
@@ -4208,7 +4404,9 @@ func _obnov_bitevni_kameru():
 	await t.finished
 	_bitevni_kamera_aktivni = false
 
-# state sync
+# Inputs: Popup title/text, focus province id, and optional battle payload.
+# Outputs: None.
+# Execution timing: Called when battle popup should focus camera on specific province.
 func _ukaz_bitevni_popup_na_provincii(titulek: String, text: String, province_id: int, battle_payload: Dictionary = {}):
 	var kamera = $Camera2D
 	if not kamera or not provinces.has(province_id):
@@ -4268,7 +4466,9 @@ func zrus_cekajici_utoky_na_stat(target_tag: String) -> int:
 		_vykresli_indikaci_cekajicich_presunu()
 	return removed
 
-# Fetches data for callers.
+# Inputs: State tag.
+# Outputs: Country-name and ideology snapshot representative for that state.
+# Execution timing: Used by capitulation and ownership-transfer flows when metadata must be restored.
 func _ziskej_reprezentaci_statu(tag: String) -> Dictionary:
 	var hledany = tag.strip_edges().to_upper()
 	# Core first
@@ -4291,7 +4491,10 @@ func _ziskej_reprezentaci_statu(tag: String) -> Dictionary:
 		"ideology": ""
 	}
 
-# Runs the local feature logic.
+# Inputs: Defeated state tag and optional fallback winner tag.
+# Outputs: Result dictionary describing whether the capitulation split happened and who received provinces.
+# Execution timing: Called by surrender/capitulation resolution flows.
+# Steps: Reassigns province ownership, clears obsolete armies/capitals, and refreshes current map visuals.
 func _kapituluj_stat_rozdelenim(cilovy_stat: String, fallback_vitez: String = "") -> Dictionary:
 	var target_owner = cilovy_stat.strip_edges().to_upper()
 	var winner = fallback_vitez.strip_edges().to_upper()
@@ -4417,7 +4620,9 @@ func _kapituluj_stat_rozdelenim(cilovy_stat: String, fallback_vitez: String = ""
 		"okupanti": okupanti
 	}
 
-# Runs the local feature logic.
+# Inputs: Current aggregated battle/capitulation report text.
+# Outputs: Report text extended with automatic-capitulation outcomes.
+# Execution timing: Called near the end of turn resolution after battles finish.
 func _zpracuj_automaticke_kapitulace(celkovy_report: String) -> String:
 	var states_under_capitulation_pressure: Dictionary = {}
 	if "cekajici_kapitulace" in GameManager:
@@ -4489,7 +4694,9 @@ func _zpracuj_automaticke_kapitulace(celkovy_report: String) -> String:
 
 	return celkovy_report
 
-# Core flow for this feature.
+# Inputs: Current aggregated battle/capitulation report text.
+# Outputs: Report text extended with delayed-capitulation outcomes.
+# Execution timing: Called after automatic capitulation checks, once delayed holds are evaluated.
 func _zpracuj_odlozene_kapitulace(celkovy_report: String) -> String:
 	var hotove_kapitulace = GameManager.vyhodnot_odlozene_kapitulace()
 	if hotove_kapitulace.is_empty():
@@ -4523,7 +4730,9 @@ func _zpracuj_odlozene_kapitulace(celkovy_report: String) -> String:
 
 	return celkovy_report
 
-# Runs the local feature logic.
+# Inputs: State tag of the human-controlled country surrendering.
+# Outputs: `true` when surrender processing succeeded, otherwise `false`.
+# Execution timing: Called from player surrender flow.
 func hrac_se_vzdal(state_tag: String) -> bool:
 	var target_owner = state_tag.strip_edges().to_upper()
 	if target_owner == "" or target_owner == "SEA":
@@ -4542,7 +4751,9 @@ func hrac_se_vzdal(state_tag: String) -> bool:
 	GameManager.kolo_zmeneno.emit()
 	return true
 
-# guard rails
+# Inputs: None.
+# Outputs: None.
+# Execution timing: Called after surrender/capitulation changes to refresh on-map capitulation markers.
 func _aktualizuj_indikatory_kapitulace():
 	var container = get_node_or_null("CapitulationIndicators")
 	if not container:

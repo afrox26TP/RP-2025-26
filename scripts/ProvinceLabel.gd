@@ -27,14 +27,18 @@ var aktualni_zoom: float = 1.0
 
 var plny_nazev: String = ""
 
-# Initializes references, connects signals, and prepares default runtime state.
 func _ready():
+	# Inputs: None.
+	# Outputs: None.
+	# Execution timing: Called once when province label node enters scene tree.
 	if label and plny_nazev == "":
 		plny_nazev = label.text
 	reset_stav()
 
-# Fetches data for callers.
 func get_spravny_scale() -> Vector2:
+	# Inputs: None.
+	# Outputs: Scale vector for current zoom/capital presentation state.
+	# Execution timing: Called before applying visual state changes.
 	if is_zoomed_out and is_capital:
 		# Capitals keep visual priority when zoomed out so player can orient quickly.
 		var zvetseni = clamp(1.0 / aktualni_zoom, 1.0, 4.0) 
@@ -43,8 +47,10 @@ func get_spravny_scale() -> Vector2:
 		return Vector2(1.0, 1.0)
 
 # Checks if troops are present and toggles the army icon independently
-# Core flow for this feature.
 func _zkontroluj_armadu() -> bool:
+	# Inputs: None.
+	# Outputs: `true` when province currently has soldiers and army icon should be visible.
+	# Execution timing: Called from state-application helpers before deciding node visibility.
 	if army_icon and province_id != -1 and GameManager.map_data.has(province_id):
 		var troop_count = int(GameManager.map_data[province_id].get("soldiers", 0))
 		if troop_count > 0:
@@ -55,8 +61,11 @@ func _zkontroluj_armadu() -> bool:
 		army_icon.hide()
 	return false
 
-# Writes new values and refreshes related state.
 func nastav_stav_souseda(je_cil: bool, je_soused: bool):
+	# Inputs: Flags indicating whether province is the selected target or a neighboring province.
+	# Outputs: None.
+	# Execution timing: Called by map interaction when hover/selection states change.
+	# Steps: Applies label style/scale priority and keeps icon visibility synchronized with troop presence.
 	var ma_armadu = _zkontroluj_armadu()
 	
 	if is_zoomed_out and not is_capital:
@@ -86,8 +95,11 @@ func nastav_stav_souseda(je_cil: bool, je_soused: bool):
 		
 	visible = true 
 
-# Core flow for this feature.
 func reset_stav():
+	# Inputs: None.
+	# Outputs: None.
+	# Execution timing: Called after zoom changes, initialization, and when hover/selection clears.
+	# Steps: Restores default visuals and keeps node visible when either UI text or army icon should remain shown.
 	z_index = 0              
 	scale = get_spravny_scale() 
 	

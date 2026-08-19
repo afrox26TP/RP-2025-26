@@ -19,7 +19,14 @@ extends Node2D
 var aktivni_labely: Dictionary = {}
 var potato_mode_enabled: bool = false
 
-# Applies updates and syncs dependent state.
+# Inputs:
+# - `enabled`: `true` disables country labels for performance mode.
+# Outputs: none
+# Execution timing: Called when potato/performance mode is toggled.
+# Steps:
+# 1. Store mode flag and update this node visibility.
+# 2. If enabled, free all active label instances.
+# 3. Clear `aktivni_labely` dictionary to reset state.
 func nastav_potato_mode(enabled: bool) -> void:
 	potato_mode_enabled = enabled
 	visible = not enabled
@@ -30,7 +37,17 @@ func nastav_potato_mode(enabled: bool) -> void:
 				lbl.queue_free()
 		aktivni_labely.clear()
 
-# Updates derived state and UI.
+# Inputs:
+# - `all_provinces`: Province data map keyed by province id.
+# - `prov_labels_node`: Node containing province label children with `province_id`.
+# Outputs: none
+# Execution timing: Called on map/ownership refresh to rebuild state labels.
+# Steps:
+# 1. Exit early when potato mode is enabled.
+# 2. Aggregate province positions per owning state (`staty_data`).
+# 3. For each state, compute center, size, and call `_vykresli_label()`.
+# 4. Remove labels for owners no longer present this refresh.
+# 5. Erase removed owners from `aktivni_labely`.
 func aktualizuj_labely_statu(all_provinces: Dictionary, prov_labels_node: Node2D):
 	# Rebuild visible state labels each refresh and remove dead entries.
 	if potato_mode_enabled:
@@ -90,6 +107,20 @@ func aktualizuj_labely_statu(all_provinces: Dictionary, prov_labels_node: Node2D
 
 # Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_vykresli_label]
 # Ai generated or editted start (priloha_a.txt)
+# Inputs:
+# - `tag`: State owner tag used as active-label dictionary key.
+# - `jmeno`: Displayed country name.
+# - `pozice`: World-space label position.
+# - `velikost`: Calculated country size metric for visibility decisions.
+# - `_ideologie`: Ideology value (currently unused in rendering).
+# Outputs: none
+# Execution timing: Called from `aktualizuj_labely_statu()` for each visible owner.
+# Steps:
+# 1. Reuse existing label instance or instantiate a new one.
+# 2. Move instance to computed global position.
+# 3. Set mouse filter ignore on child controls so map input is not blocked.
+# 4. Update label text.
+# 5. Hide/show label and flag based on `velikost` threshold.
 func _vykresli_label(tag: String, jmeno: String, pozice: Vector2, velikost: float, _ideologie: String):
 	var inst
 	if not aktivni_labely.has(tag):

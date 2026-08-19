@@ -19,13 +19,26 @@ var alliances: Dictionary = {}  # alliance_id -> {name, color, founded_year, des
 var country_alliances: Dictionary = {}  # country_iso3 -> [alliance_ids]
 var alliance_members: Dictionary = {}  # alliance_id -> [country_iso3s]
 
-# Initializes references, connects signals, and prepares default runtime state.
+# Inputs: none
+# Outputs: none
+# Execution timing: Called once when this node enters the scene tree.
+# Steps:
+# 1. Load alliance definitions from `Alliances.csv`.
+# 2. Load country membership mappings from `CountryAllianceMembership.csv`.
 func _ready():
 	load_alliances()
 	load_country_alliance_membership()
 
-# Reads base alliance defs first, then membership is linked in second pass.
-# Load pass with basic validation.
+# Inputs: none
+# Outputs: none
+# Execution timing: Called during startup from `_ready()`.
+# Steps:
+# 1. Open `Alliances.csv` and return early on failure.
+# 2. Skip CSV header row.
+# 3. Parse each non-empty row and validate field count.
+# 4. Create alliance entries in `alliances` with metadata and empty members.
+# 5. Initialize empty member arrays in `alliance_members`.
+# 6. Print total loaded alliances for debugging.
 func load_alliances():
 	"""Load alliances from CSV file"""
 	# First pass: create alliance definitions only.
@@ -67,8 +80,17 @@ func load_alliances():
 	
 	print("Loaded ", alliances.size(), " alliances")
 
-# Separate pass so missing alliance rows dont instantly break everything.
-# Loads resources and validates parsed data.
+# Inputs: none
+# Outputs: none
+# Execution timing: Called during startup from `_ready()`, after `load_alliances()`.
+# Steps:
+# 1. Open `CountryAllianceMembership.csv` and return early on failure.
+# 2. Skip CSV header row.
+# 3. Parse each non-empty row and validate field count.
+# 4. Add alliance ids to `country_alliances` reverse mapping.
+# 5. Add countries to `alliance_members` with duplicate protection.
+# 6. Mirror members into `alliances[alliance_id]["members"]` when alliance exists.
+# 7. Print completion message for debugging.
 func load_country_alliance_membership():
 	"""Load country-alliance membership mappings"""
 	# Second pass: connect countries to alliances and sync all lookup dictionaries.
@@ -111,29 +133,66 @@ func load_country_alliance_membership():
 	
 	print("Loaded country-alliance memberships")
 
-# Read-only data accessor.
+# Inputs:
+# - `country_iso3`: ISO3 code of the country to query.
+# Outputs:
+# - `Array`: Alliance ids for the country, or empty array if none.
+# Execution timing: Called whenever another system needs country alliance list.
+# Steps:
+# 1. Look up `country_iso3` in `country_alliances`.
+# 2. Return stored list or `[]` fallback.
 func get_country_alliances(country_iso3: String) -> Array:
 	"""Get list of alliances a country belongs to"""
 	return country_alliances.get(country_iso3, [])
 
-# Read-only data accessor.
+# Inputs:
+# - `alliance_id`: Alliance identifier.
+# Outputs:
+# - `Array`: Country ISO3 member list, or empty array if unknown alliance.
+# Execution timing: Called by UI/gameplay systems that need alliance membership.
+# Steps:
+# 1. Look up `alliance_id` in `alliance_members`.
+# 2. Return stored member list or `[]` fallback.
 func get_alliance_members(alliance_id: String) -> Array:
 	"""Get list of countries in an alliance"""
 	return alliance_members.get(alliance_id, [])
 
-# Reads values from active state.
+# Inputs:
+# - `alliance_id`: Alliance identifier.
+# Outputs:
+# - `Dictionary`: Alliance metadata dictionary, or `{}` when not found.
+# Execution timing: Called on demand for full alliance detail reads.
+# Steps:
+# 1. Look up `alliance_id` in `alliances`.
+# 2. Return stored dictionary or `{}` fallback.
 func get_alliance_info(alliance_id: String) -> Dictionary:
 	"""Get alliance details"""
 	return alliances.get(alliance_id, {})
 
-# Pulls current state data.
+# Inputs:
+# - `alliance_id`: Alliance identifier.
+# Outputs:
+# - `Color`: Alliance color, or `Color.WHITE` fallback.
+# Execution timing: Called when visual systems need alliance tint/color.
+# Steps:
+# 1. Check if `alliance_id` exists in `alliances`.
+# 2. Return stored `color` field when present.
+# 3. Return `Color.WHITE` when missing.
 func get_alliance_color(alliance_id: String) -> Color:
 	"""Get alliance color"""
 	if alliances.has(alliance_id):
 		return alliances[alliance_id]["color"]
 	return Color.WHITE
 
-# Fetches data for callers.
+# Inputs:
+# - `country_iso3`: ISO3 code of the country.
+# Outputs:
+# - `String`: First alliance id in list (primary), or empty string when none.
+# Execution timing: Called when systems need a single representative alliance.
+# Steps:
+# 1. Fetch country alliance list via `get_country_alliances()`.
+# 2. Return first item if available.
+# 3. Return `""` fallback when list is empty.
 func get_country_primary_alliance(country_iso3: String) -> String:
 	"""Get the first (primary) alliance of a country"""
 	var alliances_list = get_country_alliances(country_iso3)
@@ -141,7 +200,13 @@ func get_country_primary_alliance(country_iso3: String) -> String:
 		return alliances_list[0]
 	return ""
 
-# Runs the local feature logic.
+# Inputs: none
+# Outputs: none
+# Execution timing: Manual debug utility, called only when explicitly invoked.
+# Steps:
+# 1. Iterate every alliance id in `alliances`.
+# 2. Read alliance metadata and member list.
+# 3. Print id/name, members, and color for inspection.
 func print_alliances_info():
 	"""Debug: Print all alliances and their members"""
 	for alliance_id in alliances:

@@ -16,6 +16,7 @@ extends Control
 const ControlsConfig = preload("res://scripts/ControlsConfig.gd")
 const CountryCustomization = preload("res://scripts/CountryCustomization.gd")
 const TooltipUtilsScript = preload("res://scripts/TooltipUtils.gd")
+const DelimitedData = preload("res://scripts/DelimitedData.gd")
 
 @onready var selected_country_label: Label = $CenterPanel/MarginContainer/VBoxContainer/SelectedCountryLabel
 @onready var menu_hint_label: Label = $CenterPanel/MarginContainer/VBoxContainer/MenuHint
@@ -98,7 +99,6 @@ var _btn_reset_cache: Button = null
 var _keybind_buttons: Dictionary = {}
 var _keybind_capture_action: String = ""
 var _keybind_state: Dictionary = {}
-var _keybind_grid: GridContainer = null
 var _center_panel_cache: PanelContainer = null
 
 # List of playable countries (Display Name : Tag)
@@ -356,7 +356,12 @@ func _load_normalized_flag_texture(path: String, width: int, height: int):
 	normalized_flag_texture_cache[cache_key] = normalized_tex
 	return normalized_tex
 
-# Runs the local feature logic.
+# Inputs:
+# - label: label before which helper row should be inserted
+# Outputs:
+# - Button|null: created help button, or null when label/parent is invalid
+# Execution timing:
+# - Used while constructing compact helper UI rows.
 func _vloz_centered_helper_pred_label(label: Label) -> Button:
 	if label == null or label.get_parent() == null:
 		return null
@@ -376,7 +381,12 @@ func _vloz_centered_helper_pred_label(label: Label) -> Button:
 	label.hide()
 	return help_btn
 
-# Builds UI objects and default wiring.
+# Inputs:
+# - none
+# Outputs:
+# - none; creates compact helper buttons and wires their tooltip dropdown behavior
+# Execution timing:
+# - Called during _ready after initial UI text setup.
 func _vytvor_clean_helpery() -> void:
 	if _browser_helper_btn == null and btn_close_corner and btn_close_corner.get_parent() != null:
 		_browser_helper_btn = TooltipUtilsScript.create_help_button("")
@@ -394,7 +404,12 @@ func _vytvor_clean_helpery() -> void:
 		language_hint.hide()
 	_aktualizuj_clean_helpery()
 
-# Rebuilds state from latest data.
+# Inputs:
+# - none
+# Outputs:
+# - none; refreshes helper-button tooltip content/visibility from current hint labels
+# Execution timing:
+# - Called after localized text refreshes and browser hint updates.
 func _aktualizuj_clean_helpery() -> void:
 	if _browser_helper_btn:
 		var browser_parts: Array[String] = []
@@ -478,7 +493,12 @@ func _ready():
 	if get_viewport() and not get_viewport().size_changed.is_connected(_on_viewport_size_changed):
 		get_viewport().size_changed.connect(_on_viewport_size_changed)
 
-# Runs the local feature logic.
+# Inputs:
+# - none
+# Outputs:
+# - none; logs export/build data availability diagnostics to output
+# Execution timing:
+# - Called during _ready before browser startup completes.
 func _log_export_data_diagnostics() -> void:
 	# Export diagnostics for missing data/assets in standalone builds.
 	var checks: Array[String] = [
@@ -531,7 +551,12 @@ func _show_export_diagnostics_if_missing_data() -> void:
 	add_child(dlg)
 	dlg.popup_centered_ratio(0.72)
 
-# Applies prepared settings/effects to runtime systems.
+# Inputs:
+# - none
+# Outputs:
+# - none; resizes and re-anchors country-browser window for current viewport
+# Execution timing:
+# - Called on browser open and viewport-resize events.
 func _apply_country_browser_window_size() -> void:
 	if country_browser_panel == null:
 		return
@@ -694,7 +719,6 @@ func _apply_country_browser_compact_mode(vp_size: Vector2) -> void:
 		country_list_scroll.custom_minimum_size.y = 84 if tiny else (120 if compact else 260)
 	if browser_buttons_row:
 		browser_buttons_row.add_theme_constant_override("separation", 6 if tiny else (8 if compact else 10))
-		browser_buttons_row.vertical = tiny
 	if btn_confirm_country:
 		btn_confirm_country.custom_minimum_size.y = COUNTRY_BROWSER_BUTTON_H_TINY if tiny else (COUNTRY_BROWSER_BUTTON_H_COMPACT if compact else COUNTRY_BROWSER_BUTTON_H_DEFAULT)
 		btn_confirm_country.add_theme_font_size_override("font_size", 14 if tiny else (16 if compact else 18))
@@ -711,7 +735,12 @@ func _apply_country_browser_compact_mode(vp_size: Vector2) -> void:
 			row_btn.autowrap_mode = TextServer.AUTOWRAP_OFF if tiny else TextServer.AUTOWRAP_WORD_SMART
 	_obnov_texty_radku_statu()
 
-# Applies prepared settings/effects to runtime systems.
+# Inputs:
+# - none
+# Outputs:
+# - none; resizes center main-menu panel based on current viewport
+# Execution timing:
+# - Called on _ready and viewport resize.
 func _apply_main_menu_window_size() -> void:
 	if _center_panel_cache == null:
 		_center_panel_cache = get_node_or_null("CenterPanel") as PanelContainer
@@ -733,13 +762,23 @@ func _apply_main_menu_window_size() -> void:
 		selected_country_label.max_lines_visible = 2
 		selected_country_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
-# Callback for UI/game events.
+# Inputs:
+# - none
+# Outputs:
+# - none; reapplies responsive sizing/styling for menu, browser, and dialogs
+# Execution timing:
+# - Connected to viewport size_changed signal.
 func _on_viewport_size_changed() -> void:
 	_apply_main_menu_window_size()
 	_apply_country_browser_window_size()
 	_styluj_mainmenu_popup_dialogy()
 
-# Handles this gameplay/UI path.
+# Inputs:
+# - ideology_raw: ideology text token
+# Outputs:
+# - float: default AI aggression value for ideology class
+# Execution timing:
+# - Used as base when computing per-tag aggression preview.
 func _default_ai_aggression_from_ideology(ideology_raw: String) -> float:
 	var ideol = ideology_raw.strip_edges().to_lower()
 	match ideol:
@@ -765,7 +804,12 @@ func _get_ai_aggression_for_tag(tag: String) -> float:
 		return clamp((ideology_default * 0.20) + (_global_ai_aggression * 0.80), 0.0, 1.0)
 	return clamp(_global_ai_aggression, 0.0, 1.0)
 
-# Handles this gameplay/UI path.
+# Inputs:
+# - none
+# Outputs:
+# - none; creates browser-side current-game settings panel (aggression/debug/spectate toggles)
+# Execution timing:
+# - Called once during _ready before browser is shown.
 func _ensure_ai_aggression_control() -> void:
 	if _browser_current_settings_panel != null:
 		return
@@ -848,8 +892,8 @@ func _ensure_ai_aggression_control() -> void:
 
 	var insert_index := root_vbox.get_child_count()
 	if selected_players_title and selected_players_title.get_parent() and selected_players_title.get_parent().get_parent() and selected_players_title.get_parent().get_parent().get_parent():
-		var selected_players_panel = selected_players_title.get_parent().get_parent().get_parent()
-		insert_index = selected_players_panel.get_index()
+		var selected_players_container = selected_players_title.get_parent().get_parent().get_parent()
+		insert_index = selected_players_container.get_index()
 
 	root_vbox.add_child(_browser_current_settings_panel)
 	root_vbox.move_child(_browser_current_settings_panel, insert_index)
@@ -864,7 +908,12 @@ func _ensure_ai_aggression_control() -> void:
 	# Initialize the global aggression slider from current stored value.
 	_set_ai_aggression_ui_for_tag("")  # tag ignored Ä‚ËĂ˘â€šÂ¬Ă˘â‚¬ĹĄ always shows global value
 
-# Handles this gameplay/UI path.
+# Inputs:
+# - none
+# Outputs:
+# - none; builds modern selected-player chip list with optional clickable rows
+# Execution timing:
+# - Called once during _ready after browser panel nodes exist.
 func _ensure_selected_players_flag_list() -> void:
 	if _selected_players_flag_list != null:
 		return
@@ -900,7 +949,15 @@ func _clear_selected_players_flag_rows() -> void:
 	for child in _selected_players_flag_list.get_children():
 		child.queue_free()
 
-# Feature logic entry point.
+# Inputs:
+# - row_text: label text for chip
+# - tag: country tag used for flag loading
+# - is_active: whether chip is highlighted as active setup player
+# - player_index: setup-player index for click-to-select behavior
+# Outputs:
+# - none; appends one row to selected-player chip list
+# Execution timing:
+# - Called while rebuilding selected-player list UI.
 func _add_selected_player_row(row_text: String, tag: String, is_active: bool, player_index: int = -1) -> void:
 	if _selected_players_flag_list == null:
 		return
@@ -964,7 +1021,14 @@ func _add_selected_player_row(row_text: String, tag: String, is_active: bool, pl
 
 	_selected_players_flag_list.add_child(row)
 
-# Reacts to incoming events.
+# Inputs:
+# - event: GUI input event
+# - player_index: clicked setup-player index
+# - tag: clicked country tag
+# Outputs:
+# - none; selects active setup player from clicked chip
+# Execution timing:
+# - Triggered by chip gui_input callback.
 func _on_selected_player_chip_gui_input(event: InputEvent, player_index: int, tag: String) -> void:
 	if not (event is InputEventMouseButton):
 		return
@@ -1001,14 +1065,24 @@ func _set_ai_aggression_ui_for_tag(_tag: String) -> void:
 	_ai_aggression_slider.set_block_signals(false)
 	_ai_aggression_value.text = "%d%%" % percent
 
-# Triggered by a UI/game signal.
+# Inputs:
+# - value: slider value 0..100
+# Outputs:
+# - none; updates global aggression override value and percent label
+# Execution timing:
+# - Triggered by browser AI aggression slider value_changed signal.
 func _on_ai_aggression_changed(value: float) -> void:
 	var percent = int(round(value))
 	if _ai_aggression_value:
 		_ai_aggression_value.text = "%d%%" % percent
 	_global_ai_aggression = clamp(value / 100.0, 0.0, 1.0)
 
-# Callback for UI/game events.
+# Inputs:
+# - enabled: potato-mode toggle state
+# Outputs:
+# - none; synchronizes browser toggle with global settings checkbox and runtime mode
+# Execution timing:
+# - Triggered by browser potato-mode checkbox.
 func _on_browser_potato_mode_toggled(enabled: bool) -> void:
 	nastaveni_data["other"]["potato_mode"] = enabled
 	_aplikuj_potato_mode_globalne(enabled)
@@ -1017,7 +1091,12 @@ func _on_browser_potato_mode_toggled(enabled: bool) -> void:
 		potato_mode_check.button_pressed = enabled
 		potato_mode_check.set_block_signals(false)
 
-# Event handler for user or game actions.
+# Inputs:
+# - enabled: debug-mode toggle state
+# Outputs:
+# - none; synchronizes browser debug toggle with settings checkbox and runtime mode
+# Execution timing:
+# - Triggered by browser debug-mode checkbox.
 func _on_browser_ai_debug_mode_toggled(enabled: bool) -> void:
 	nastaveni_data["other"]["ai_debug_mode"] = enabled
 	_aplikuj_ai_debug_mode_globalne(enabled)
@@ -1026,7 +1105,7 @@ func _on_browser_ai_debug_mode_toggled(enabled: bool) -> void:
 		ai_debug_mode_check.button_pressed = enabled
 		ai_debug_mode_check.set_block_signals(false)
 
-func _on_browser_spectate_mode_toggled(enabled: bool) -> void:
+func _on_browser_spectate_mode_toggled(_enabled: bool) -> void:
 	if _browser_spectate_mode_check:
 		_browser_spectate_mode_check.set_block_signals(true)
 		_browser_spectate_mode_check.button_pressed = false
@@ -1072,7 +1151,12 @@ func _aktualizuj_stav_blokace_vyberu_statu() -> void:
 	if btn_confirm_country:
 		btn_confirm_country.disabled = lock_selection
 
-# Applies prepared settings/effects to runtime systems.
+# Inputs:
+# - _local_tags: local player tag array (reserved for future per-player overrides)
+# Outputs:
+# - none; applies global AI aggression override to GameManager
+# Execution timing:
+# - Called before new game starts and when setup values are applied.
 func _apply_ai_aggression_overrides(_local_tags: Array) -> void:
 	if not GameManager or not GameManager.has_method("nastav_globalni_ai_agresi"):
 		return
@@ -1121,7 +1205,12 @@ func _nastav_tooltipy_ui() -> void:
 		skip_battle_reports_check.tooltip_text = "When enabled, battle/frontline popups are skipped and turn processing continues immediately."
 	TooltipUtilsScript.apply_default_tooltips(self)
 
-# Feature logic entry point.
+# Inputs:
+# - none
+# Outputs:
+# - none; ensures potato-mode checkbox exists in settings panel and is placed before volume controls
+# Execution timing:
+# - Called during _ready before settings UI is filled from config.
 func _ensure_potato_mode_checkbox() -> void:
 	if potato_mode_check != null or settings_content == null:
 		return
@@ -1137,7 +1226,12 @@ func _ensure_potato_mode_checkbox() -> void:
 	settings_content.add_child(potato_mode_check)
 	settings_content.move_child(potato_mode_check, insert_index)
 
-# Runs the local feature logic.
+# Inputs:
+# - none
+# Outputs:
+# - none; ensures debug-mode checkbox exists in settings panel
+# Execution timing:
+# - Called during _ready before settings UI is synchronized.
 func _ensure_ai_debug_mode_checkbox() -> void:
 	if ai_debug_mode_check != null or settings_content == null:
 		return
@@ -1222,7 +1316,12 @@ func _get_settings_button_reset() -> Button:
 	
 	return null
 
-# Handles this gameplay/UI path.
+# Inputs:
+# - none
+# Outputs:
+# - none; connects apply/reset settings buttons with safe fallback lookup
+# Execution timing:
+# - Called during _ready after settings dialog nodes are available.
 func _ensure_settings_buttons_connected() -> void:
 	var apply_btn = _get_settings_button_apply()
 	var reset_btn = _get_settings_button_reset()
@@ -1252,7 +1351,13 @@ func _ensure_settings_buttons_connected() -> void:
 		_exit_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		_exit_lbl.size_flags_vertical = Control.SIZE_EXPAND_FILL
 
-# Applies prepared settings/effects to runtime systems.
+# Inputs:
+# - dialog: popup dialog window to style
+# - target_size: desired size for this dialog
+# Outputs:
+# - none; applies shared popup visual style and base sizing
+# Execution timing:
+# - Shared helper used by settings/credits/exit/load dialog styling.
 func _aplikuj_spolecny_popup_styl(dialog: Window, target_size: Vector2i) -> void:
 	if dialog == null:
 		return
@@ -1266,7 +1371,12 @@ func _aplikuj_spolecny_popup_styl(dialog: Window, target_size: Vector2i) -> void
 	if base_panel != null:
 		dialog.add_theme_stylebox_override("panel", base_panel.duplicate())
 
-# Core flow for this feature.
+# Inputs:
+# - none
+# Outputs:
+# - none; recomputes and reapplies style/size for all main-menu dialogs
+# Execution timing:
+# - Called on _ready and viewport resize.
 func _styluj_mainmenu_popup_dialogy() -> void:
 	_apply_settings_dialog_window_size()
 	_aplikuj_spolecny_popup_styl(credits_dialog, _calc_dialog_target_size(Vector2i(680, 360), Vector2i(420, 260), 0.72))
@@ -1381,7 +1491,12 @@ func _nacti_nastaveni() -> void:
 	nastaveni_data["other"]["master_volume"] = float(cfg.get_value("other", "master_volume", nastaveni_data["other"]["master_volume"]))
 	ControlsConfig.apply_bindings(_keybind_state)
 
-# Persistence write helper.
+# Inputs:
+# - none
+# Outputs:
+# - none; writes current settings dictionary values into config file
+# Execution timing:
+# - Called after pressing Apply in settings dialog.
 func _uloz_nastaveni() -> void:
 	var cfg = ConfigFile.new()
 	cfg.set_value("controls", "camera_speed", float(nastaveni_data["controls"]["camera_speed"]))
@@ -1401,7 +1516,12 @@ func _uloz_nastaveni() -> void:
 	if save_err != OK:
 		push_warning("Failed to save settings. Error: %s" % str(save_err))
 
-# Handles this gameplay/UI path.
+# Inputs:
+# - raw_code: raw language code candidate
+# Outputs:
+# - String: normalized supported language code
+# Execution timing:
+# - Used when reading/syncing language settings.
 func _normalizuj_jazyk(raw_code: String) -> String:
 	var code = raw_code.strip_edges().to_lower()
 	if code != "en":
@@ -1410,12 +1530,22 @@ func _normalizuj_jazyk(raw_code: String) -> String:
 		return SETTINGS_DEFAULT_LANGUAGE
 	return code
 
-# Feature logic entry point.
+# Inputs:
+# - none
+# Outputs:
+# - String: currently active normalized language code
+# Execution timing:
+# - Shared helper for UI text lookup.
 func _aktualni_jazyk() -> String:
 	var code = str(nastaveni_data.get("language", {}).get("code", SETTINGS_DEFAULT_LANGUAGE))
 	return _normalizuj_jazyk(code)
 
-# Feature logic entry point.
+# Inputs:
+# - none
+# Outputs:
+# - Dictionary: UI text dictionary for active language
+# Execution timing:
+# - Used by localized UI refresh routines.
 func _texty_ui() -> Dictionary:
 	return UI_TEXTS[_aktualni_jazyk()]
 
@@ -1483,12 +1613,22 @@ func _aktualizuj_settings_hodnoty(_v: float = 0.0) -> void:
 	zoom_speed_value.text = "%.2f" % zoom_speed_slider.value
 	master_volume_value.text = "%d%%" % int(round(master_volume_slider.value * 100.0))
 
-# Construct/setup block for required nodes.
+# Inputs:
+# - none
+# Outputs:
+# - none; placeholder for future keybind control construction (currently no-op)
+# Execution timing:
+# - Called during settings initialization path.
 func _ensure_keybind_controls() -> void:
 	# Rebinding UI intentionally disabled for now.
 	return
 
-# Refreshes existing content to reflect current runtime values.
+# Inputs:
+# - none
+# Outputs:
+# - none; refreshes keybind button captions and capture-state hint text
+# Execution timing:
+# - Called after keybind capture starts/finishes and when settings load.
 func _refresh_keybind_buttons() -> void:
 	for action_any in _keybind_buttons.keys():
 		var action = str(action_any)
@@ -1497,12 +1637,22 @@ func _refresh_keybind_buttons() -> void:
 			continue
 		btn.text = "Press key..." if action == _keybind_capture_action else ControlsConfig.get_binding_text(action, _keybind_state)
 
-# Event handler for user or game actions.
+# Inputs:
+# - action: action id selected for key rebinding
+# Outputs:
+# - none; enters capture mode for requested action and refreshes button labels
+# Execution timing:
+# - Triggered by keybind action button press.
 func _on_keybind_button_pressed(action: String) -> void:
 	_keybind_capture_action = action
 	_refresh_keybind_buttons()
 
-# Callback for UI/game events.
+# Inputs:
+# - event: key input event while settings dialog is focused
+# Outputs:
+# - bool: true when event was consumed by keybind capture logic
+# Execution timing:
+# - Called from _unhandled_input while settings dialog is open.
 func _capture_menu_keybind(event: InputEventKey) -> bool:
 	if _keybind_capture_action == "":
 		return false
@@ -1518,7 +1668,12 @@ func _capture_menu_keybind(event: InputEventKey) -> bool:
 	_refresh_apply_button_state()
 	return true
 
-# Applies prepared settings/effects to runtime systems.
+# Inputs:
+# - none
+# Outputs:
+# - none; applies current settings to controls, window mode, vsync, runtime toggles, and audio
+# Execution timing:
+# - Called on startup and after Apply in settings dialog.
 func _aplikuj_nastaveni_globalne() -> void:
 	ControlsConfig.apply_bindings(nastaveni_data.get("keybinds", ControlsConfig.get_default_bindings()))
 	var fullscreen = bool(nastaveni_data["other"]["fullscreen"])
@@ -1535,18 +1690,33 @@ func _aplikuj_nastaveni_globalne() -> void:
 		var db_volume = -80.0 if linear_volume <= 0.0001 else linear_to_db(linear_volume)
 		AudioServer.set_bus_volume_db(master_bus, db_volume)
 
-# Applies prepared settings/effects to runtime systems.
+# Inputs:
+# - enabled: potato mode state
+# Outputs:
+# - none; configures engine frame cap and low-power behavior
+# Execution timing:
+# - Called when global settings are applied.
 func _aplikuj_potato_mode_globalne(enabled: bool) -> void:
 	Engine.max_fps = 45 if enabled else 0
 	OS.low_processor_usage_mode = enabled
 	OS.low_processor_usage_mode_sleep_usec = 12000 if enabled else 6900
 
-# Applies prepared settings/effects to runtime systems.
+# Inputs:
+# - enabled: AI debug mode state
+# Outputs:
+# - none; forwards debug-mode toggle to GameManager runtime
+# Execution timing:
+# - Called when global settings are applied.
 func _aplikuj_ai_debug_mode_globalne(enabled: bool) -> void:
 	if GameManager and GameManager.has_method("nastav_ai_debug_mode"):
 		GameManager.nastav_ai_debug_mode(enabled)
 
-# Refresh pass for current state.
+# Inputs:
+# - none
+# Outputs:
+# - none; updates all visible labels/buttons to currently selected language
+# Execution timing:
+# - Called after language changes and after settings refresh.
 func _aktualizuj_texty_dle_jazyka() -> void:
 	var t = _texty_ui()
 	title_label.text = str(t["title"])
@@ -1593,7 +1763,12 @@ func _aktualizuj_texty_dle_jazyka() -> void:
 	_refresh_keybind_buttons()
 	_aktualizuj_clean_helpery()
 
-# Updates derived state and UI.
+# Inputs:
+# - dirty: whether current settings differ from original dialog snapshot
+# Outputs:
+# - none; updates settings header subtitle text and color state
+# Execution timing:
+# - Called by apply-button dirty-state refresh.
 func _aktualizuj_settings_header_stav(dirty: bool) -> void:
 	var t = _texty_ui()
 	if dirty:
@@ -1620,7 +1795,13 @@ func _read_settings_from_ui() -> Dictionary:
 		"master_volume": snapped(master_volume_slider.value, 0.01)
 	}
 
-# Runs the local feature logic.
+# Inputs:
+# - a: first settings snapshot
+# - b: second settings snapshot
+# Outputs:
+# - bool: true when all compared settings/keybind fields are identical
+# Execution timing:
+# - Called by apply-button dirty-state logic.
 # Ai generated or editted end (priloha_a.txt)
 func _settings_state_equals(a: Dictionary, b: Dictionary) -> bool:
 	for key in ["camera_speed", "zoom_speed", "invert_zoom", "language", "fullscreen", "vsync", "potato_mode", "ai_debug_mode", "skip_battle_reports", "master_volume"]:
@@ -1632,7 +1813,12 @@ func _settings_state_equals(a: Dictionary, b: Dictionary) -> bool:
 		return false
 	return true
 
-# Refreshes existing content to reflect current runtime values.
+# Inputs:
+# - none
+# Outputs:
+# - none; enables/disables Apply button based on settings dirty-state comparison
+# Execution timing:
+# - Called on any settings UI value change.
 func _refresh_apply_button_state() -> void:
 	var apply_btn = _get_settings_button_apply()
 	var reset_btn = _get_settings_button_reset()
@@ -1680,59 +1866,60 @@ func _nastav_vychozi_vyber_statu():
 	vsechny_tagy.sort()
 	selected_country_tag = str(vsechny_tagy[0])
 
-# Handles this gameplay/UI path.
+# Inputs:
+# - path: candidate raw data path
+# Outputs:
+# - bool: true when file/resource exists at path
+# Execution timing:
+# - Helper used by data-path resolution before loading browser dataset.
 func _raw_data_path_exists(path: String) -> bool:
-	return FileAccess.file_exists(path) or ResourceLoader.exists(path)
+	return DelimitedData.path_exists(path)
 
-# Handles this gameplay/UI path.
+# Inputs:
+# - none
+# Outputs:
+# - String: first existing provinces data path from predefined candidates
+# Execution timing:
+# - Called before reading country browser data.
 func _resolve_provinces_data_path() -> String:
-	for path in PROVINCES_DATA_PATHS:
-		if _raw_data_path_exists(path):
-			return path
-	return str(PROVINCES_DATA_PATHS[PROVINCES_DATA_PATHS.size() - 1])
+	return DelimitedData.first_existing_path(PROVINCES_DATA_PATHS)
 
 # Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_resolve_provinces_data_path]
 # Ai generated or editted start (priloha_a.txt)
 func _build_column_index(header_line: String) -> Dictionary:
-	var out: Dictionary = {}
-	var cols = header_line.split(";")
-	for i in range(cols.size()):
-		out[str(cols[i]).strip_edges().to_lower()] = i
-	return out
+	return DelimitedData.build_column_index(header_line)
 
 # Search helper over available data.
 # Ai generated or editted end (priloha_a.txt)
 func _find_column_idx(col_index: Dictionary, names: Array, fallback_idx: int = -1) -> int:
-	for raw_name in names:
-		var key = str(raw_name).strip_edges().to_lower()
-		if col_index.has(key):
-			return int(col_index[key])
-	return fallback_idx
+	return DelimitedData.find_column(col_index, names, fallback_idx)
 
-# Runs the local feature logic.
+# Inputs:
+# - parts: parsed CSV row array
+# - idx: value index
+# - default_val: fallback integer value
+# Outputs:
+# - int: parsed integer or fallback value
+# Execution timing:
+# - Used by country dataset parsing helpers.
 func _read_int(parts: Array, idx: int, default_val: int = 0) -> int:
-	if idx < 0 or idx >= parts.size():
-		return default_val
-	var raw = str(parts[idx]).strip_edges()
-	if raw == "":
-		return default_val
-	return int(raw)
+	return DelimitedData.read_int(parts, idx, default_val)
 
-# Runs the local feature logic.
+# Inputs:
+# - parts: parsed CSV row array
+# - idx: value index
+# - default_val: fallback float value
+# Outputs:
+# - float: parsed float or fallback value
+# Execution timing:
+# - Used by country dataset parsing helpers.
 func _read_float(parts: Array, idx: int, default_val: float = 0.0) -> float:
-	if idx < 0 or idx >= parts.size():
-		return default_val
-	var raw = str(parts[idx]).strip_edges()
-	if raw == "":
-		return default_val
-	return float(raw)
+	return DelimitedData.read_float(parts, idx, default_val)
 
 # Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.  # [_read_float]
 # Ai generated or editted start (priloha_a.txt)
 func _read_text(parts: Array, idx: int, default_val: String = "") -> String:
-	if idx < 0 or idx >= parts.size():
-		return default_val
-	return str(parts[idx]).strip_edges()
+	return DelimitedData.read_text(parts, idx, default_val)
 
 # Data/resource load and sanity checks.
 # Ai generated or editted end (priloha_a.txt)
@@ -1791,7 +1978,12 @@ func _nacti_data_statu_pro_browser():
 		country_stats[tag]["province_count"] += 1
 		country_stats[tag]["soldiers"] += _read_int(parts, idx_soldiers)
 
-# Core flow for this feature.
+# Inputs:
+# - none
+# Outputs:
+# - none; rebuilds country browser list buttons from loaded country stats
+# Execution timing:
+# - Called after dataset load and when browser rows need full refresh.
 func _naplni_browser_seznam():
 	for child in country_list.get_children():
 		child.queue_free()
@@ -1837,7 +2029,12 @@ func _vytvor_radek_statu(tag: String) -> Button:
 	row_btn.pressed.connect(func(): _on_country_row_pressed(tag))
 	return row_btn
 
-# Runs the local feature logic.
+# Inputs:
+# - tag: country tag
+# Outputs:
+# - String: formatted row text with badges/population/GDP according to current browser mode
+# Execution timing:
+# - Called when creating and refreshing country browser rows.
 func _sestav_text_radku_statu(tag: String) -> String:
 	if not country_stats.has(tag):
 		return tag
@@ -1880,7 +2077,12 @@ func _sestav_text_radku_statu(tag: String) -> String:
 		float(stats["gdp"])
 	]
 
-# Refreshes existing content to reflect current runtime values.
+# Inputs:
+# - none
+# Outputs:
+# - none; refreshes per-country row text/disabled/modulate state
+# Execution timing:
+# - Called after selection/player-assignment state changes.
 func _obnov_texty_radku_statu() -> void:
 	var spectate_lock = _je_spectate_new_game_aktivni()
 	# Pro male dite: projdeme vsechny radky statu a nastavime jim spravny vzhled.
@@ -1969,7 +2171,12 @@ func _aktualizuj_panel_vyberu_hracu() -> void:
 	# Deferred reset to prevent the panel from jumping when layout recalculates
 	call_deferred("_apply_country_browser_window_size")
 
-# Runs the local feature logic.
+# Inputs:
+# - tag: country tag
+# Outputs:
+# - String: display country name resolved from playable map or loaded stats
+# Execution timing:
+# - Used in sorting, row rendering, and detail headers.
 func _zobrazene_jmeno_statu(tag: String) -> String:
 	for nazev in hratelne_staty.keys():
 		if hratelne_staty[nazev] == tag:
@@ -2068,7 +2275,12 @@ func _vytvor_souhrn_statu(jmeno: String, s: Dictionary, compact_summary: bool = 
 
 	return "%s is a %s country with a %s base and %s military readiness. Strengths: %s. Risks: %s." % [jmeno, velikost, vyspelost, vojenska_sila, silne_text, slabiny_text]
 
-# Callback for UI/game events.
+# Inputs:
+# - tag: clicked country tag
+# Outputs:
+# - none; updates selection/assignment flow based on browser mode and occupancy
+# Execution timing:
+# - Triggered by country row button press in browser list.
 func _on_country_row_pressed(tag: String):
 	if _je_spectate_new_game_aktivni():
 		return
@@ -2088,7 +2300,12 @@ func _on_country_row_pressed(tag: String):
 	_nastav_detail_statu(tag)
 	_obnov_texty_radku_statu()
 
-# Fetches data for callers.
+# Inputs:
+# - none
+# Outputs:
+# - String: currently assigned tag for active local setup player
+# Execution timing:
+# - Used by setup hint text and assignment flow.
 func _ziskej_setup_tag_aktivniho_hrace() -> String:
 	if local_player_tags.is_empty():
 		return ""
@@ -2096,7 +2313,12 @@ func _ziskej_setup_tag_aktivniho_hrace() -> String:
 		return ""
 	return str(local_player_tags[setup_active_player_index])
 
-# Finds the best matching result.
+# Inputs:
+# - none
+# Outputs:
+# - String: first free country tag not already used by local players
+# Execution timing:
+# - Called when adding a new player in new-game browser flow.
 func _najdi_prvni_volny_tag() -> String:
 	var vsechny_tagy = country_stats.keys()
 	vsechny_tagy.sort_custom(func(a, b):
@@ -2110,7 +2332,12 @@ func _najdi_prvni_volny_tag() -> String:
 
 	return ""
 
-# Feature logic entry point.
+# Inputs:
+# - tag: country tag to assign
+# Outputs:
+# - none; assigns tag to active local player slot and refreshes browser UI
+# Execution timing:
+# - Called from row click flow during new-game browser setup.
 func _prirad_stat_aktivnimu_hraci(tag: String) -> void:
 	if _je_spectate_new_game_aktivni():
 		return
@@ -2135,7 +2362,12 @@ func _prirad_stat_aktivnimu_hraci(tag: String) -> void:
 	_aktualizuj_panel_vyberu_hracu()
 	_aktualizuj_browser_napovedu()
 
-# Runs the local feature logic.
+# Inputs:
+# - none
+# Outputs:
+# - none; appends a new local player slot with first available country assignment
+# Execution timing:
+# - Triggered by confirm/add-player flow in browser setup.
 func _pridej_dalsiho_hrace_do_setupu() -> void:
 	if _je_spectate_new_game_aktivni():
 		return
@@ -2153,7 +2385,12 @@ func _pridej_dalsiho_hrace_do_setupu() -> void:
 	_aktualizuj_panel_vyberu_hracu()
 	_aktualizuj_browser_napovedu()
 
-# Opens a UI flow/panel and prepares its data and position.
+# Inputs:
+# - none
+# Outputs:
+# - none; opens country browser and refreshes selection/lock hint state
+# Execution timing:
+# - Called from New Game and other browser-open entry points.
 func _otevri_browser_statu():
 	_apply_country_browser_window_size()
 	if selected_country_tag != "" and country_stats.has(selected_country_tag):
@@ -2162,7 +2399,12 @@ func _otevri_browser_statu():
 	_aktualizuj_browser_napovedu()
 	country_browser_panel.show()
 
-# Triggered by a UI/game signal.
+# Inputs:
+# - none
+# Outputs:
+# - none; confirms browser selection or advances multiplayer setup flow
+# Execution timing:
+# - Triggered by Confirm/Add Player button in browser footer.
 func _on_confirm_country_pressed():
 	if _je_spectate_new_game_aktivni():
 		return
@@ -2177,7 +2419,12 @@ func _on_confirm_country_pressed():
 
 	country_browser_panel.hide()
 
-# Callback for UI/game events.
+# Inputs:
+# - none
+# Outputs:
+# - none; closes browser and optionally starts game depending on current flow state
+# Execution timing:
+# - Triggered by Close/Start button in browser footer.
 func _on_close_browser_pressed():
 	if new_game_browser_flow:
 		# In spectate flow, closing browser means immediate AI-vs-AI start.
@@ -2220,7 +2467,12 @@ func _on_close_browser_pressed():
 	_aktualizuj_browser_napovedu()
 	country_browser_panel.hide()
 
-# Handles this signal callback.
+# Inputs:
+# - none
+# Outputs:
+# - none; cancels browser setup state and closes browser via corner close action
+# Execution timing:
+# - Triggered by corner close button.
 func _on_close_browser_corner_pressed():
 	new_game_browser_flow = false
 	setup_active_player_index = 0
@@ -2237,7 +2489,12 @@ func _on_close_browser_corner_pressed():
 	_aktualizuj_browser_napovedu()
 	country_browser_panel.hide()
 
-# Refreshes existing content to reflect current runtime values.
+# Inputs:
+# - none
+# Outputs:
+# - none; refreshes selected-country summary label and contextual menu hint text
+# Execution timing:
+# - Called after selection/player-list state changes.
 func _obnov_text_vyberu():
 	if local_player_tags.size() > 1:
 		selected_country_label.text = "Local players: %s" % ", ".join(local_player_tags)
@@ -2259,7 +2516,12 @@ func _obnov_text_vyberu():
 	_aktualizuj_panel_vyberu_hracu()
 	_aktualizuj_clean_helpery()
 
-# Rebuilds state from latest data.
+# Inputs:
+# - none
+# Outputs:
+# - none; updates browser guidance/subtitle texts for current flow mode
+# Execution timing:
+# - Called after setup mode, active player, or selection changes.
 func _aktualizuj_browser_napovedu():
 	if not browser_flow_hint or not browser_subtitle or not list_hint:
 		return
@@ -2285,7 +2547,12 @@ func _aktualizuj_browser_napovedu():
 		browser_flow_hint.text = "Solo mode: choose a country and confirm."
 	_aktualizuj_clean_helpery()
 
-# Writes new values and refreshes related state.
+# Inputs:
+# - none
+# Outputs:
+# - none; updates Continue button enabled state and localized label text
+# Execution timing:
+# - Called after save availability or language changes.
 func _nastav_stav_pokracovani():
 	var ma_save = FileAccess.file_exists(SAVE_FILE_PATH)
 	if GameManager and GameManager.has_method("ma_ulozene_hry"):
@@ -2297,7 +2564,12 @@ func _nastav_stav_pokracovani():
 	else:
 		btn_continue.text = str(t["continue_empty"])
 
-# Construct/setup block for required nodes.
+# Inputs:
+# - none
+# Outputs:
+# - none; lazily creates and wires complete Load dialog UI hierarchy
+# Execution timing:
+# - Called on first open of load flow.
 func _vytvor_load_dialog() -> void:
 	if _load_dialog != null:
 		return
@@ -2399,7 +2671,12 @@ func _vytvor_load_dialog() -> void:
 	_styluj_mainmenu_popup_dialogy()
 	_obnov_load_sloty_v_menu()
 
-# Builds UI objects and default wiring.
+# Inputs:
+# - selected: whether row is selected/highlighted
+# Outputs:
+# - StyleBoxFlat: stylebox used for load-slot row states
+# Execution timing:
+# - Used by load-slot list renderer/highlight updater.
 func _vytvor_load_row_style(selected: bool) -> StyleBoxFlat:
 	var s = StyleBoxFlat.new()
 	if selected:
@@ -2426,7 +2703,12 @@ func _vytvor_load_row_style(selected: bool) -> StyleBoxFlat:
 	s.corner_radius_bottom_left = 6
 	return s
 
-# Refreshes existing content to reflect current runtime values.
+# Inputs:
+# - none
+# Outputs:
+# - none; rebuilds load-slot list and initializes current selection/status text
+# Execution timing:
+# - Called when opening load dialog and after refresh action.
 func _obnov_load_sloty_v_menu() -> void:
 	if _load_scroll_vbox == null:
 		return
@@ -2517,18 +2799,33 @@ func _obnov_load_sloty_v_menu() -> void:
 		var first_key = str((all_slots[0] as Dictionary).get("key", ""))
 		_on_load_row_highlight(first_key)
 
-# Opens a UI flow/panel and prepares its data and position.
+# Inputs:
+# - none
+# Outputs:
+# - none; ensures load dialog exists, refreshes slots, and opens dialog centered
+# Execution timing:
+# - Triggered by Continue button flow.
 func _otevri_load_okno() -> void:
 	if _load_dialog == null:
 		_vytvor_load_dialog()
 	_obnov_load_sloty_v_menu()
 	_load_dialog.popup_centered(_load_dialog.min_size)
 
-# Reacts to incoming events.
+# Inputs:
+# - slot_key: clicked load-slot key
+# Outputs:
+# - none; forwards slot selection to highlight handler
+# Execution timing:
+# - Triggered by load-slot row button press.
 func _on_load_row_pressed(slot_key: String) -> void:
 	_on_load_row_highlight(slot_key)
 
-# Handles this signal callback.
+# Inputs:
+# - slot_key: selected save-slot key
+# Outputs:
+# - none; applies row highlight styles and updates Load button availability
+# Execution timing:
+# - Called from row-click handler and initial load-list selection.
 func _on_load_row_highlight(slot_key: String) -> void:
 	_selected_load_slot_key = slot_key
 	for key in _load_slot_btns.keys():
@@ -2540,11 +2837,21 @@ func _on_load_row_highlight(slot_key: String) -> void:
 	if _load_open_button:
 		_load_open_button.disabled = slot_key == ""
 
-# Pulls current state data.
+# Inputs:
+# - none
+# Outputs:
+# - String: currently selected load-slot key
+# Execution timing:
+# - Utility used by load-confirm button action.
 func _ziskej_vybrany_load_slot() -> String:
 	return _selected_load_slot_key
 
-# Reacts to incoming events.
+# Inputs:
+# - none
+# Outputs:
+# - none; validates selected slot and starts corresponding load flow
+# Execution timing:
+# - Triggered by Load button in load dialog.
 func _on_load_selected_pressed() -> void:
 	var slot_key = _ziskej_vybrany_load_slot()
 	if slot_key == "":
@@ -2555,7 +2862,13 @@ func _on_load_selected_pressed() -> void:
 		_load_dialog.hide()
 	_spust_load_ze_slotu(slot_key)
 
-# Feature logic entry point.
+# Inputs:
+# - tree: active SceneTree
+# - max_frames: polling frame limit
+# Outputs:
+# - bool: true when map loader is ready for load operations
+# Execution timing:
+# - Called during scene transition before applying save data.
 func _pockej_na_map_scenu(tree: SceneTree, max_frames: int = 180) -> bool:
 	if tree == null:
 		return false
@@ -2572,7 +2885,12 @@ func _pockej_na_map_scenu(tree: SceneTree, max_frames: int = 180) -> bool:
 		await tree.process_frame
 	return false
 
-# Handles this gameplay/UI path.
+# Inputs:
+# - slot_key: slot identifier to load
+# Outputs:
+# - none; opens map scene, loads save, and synchronizes loader caches/visuals
+# Execution timing:
+# - Called by load dialog action flow.
 func _spust_load_ze_slotu(slot_key: String) -> void:
 	if GameManager and GameManager.has_method("spust_load_ze_slotu_pres_scenu"):
 		GameManager.spust_load_ze_slotu_pres_scenu(slot_key, MAP_SCENE_PATH)
@@ -2629,8 +2947,18 @@ func _spust_load_ze_slotu(slot_key: String) -> void:
 			if loader.has_method("aktualizuj_vlajky_hlavnich_mest"):
 				loader.aktualizuj_vlajky_hlavnich_mest()
 
-# Navrh teto funkce vznikl s podporou AI, nasledne byl upraven a integrovan mnou.
-# Ai generated or editted start (priloha_a.txt)
+# Inputs:
+# - player_tags: selected local player country tags
+# - spectate_mode: observer-mode request flag
+# Outputs:
+# - none; resets new-game runtime state and starts map scene with selected setup
+# Execution timing:
+# - Called after browser setup is finalized.
+# Steps:
+# - Resolve final local-player tag set.
+# - Reset GameManager/new-game state and custom flags.
+# - Apply player setup and AI aggression overrides.
+# - Switch to map scene.
 func _spust_hru_vyberem(player_tags: Array = [], spectate_mode: bool = false):
 	# One entry point for both normal player start and observer/spectate start.
 	# Pro male dite: tohle je hlavni cudlik v kodu, co opravdu pusti mapu.
@@ -2665,7 +2993,12 @@ func _spust_hru_vyberem(player_tags: Array = [], spectate_mode: bool = false):
 	# Load the main map scene
 	get_tree().change_scene_to_file(MAP_SCENE_PATH)
 
-# Reacts to incoming events.
+# Inputs:
+# - none
+# Outputs:
+# - none; resets new-game setup state and opens browser in multiplayer-assignment mode
+# Execution timing:
+# - Triggered by New Game main-menu button.
 # Ai generated or editted end (priloha_a.txt)
 func _on_new_game_pressed():
 	# Reset setup state so previous browser/session choices cannot leak into new game.
@@ -2699,11 +3032,21 @@ func _on_new_game_pressed():
 	_aktualizuj_browser_napovedu()
 	_otevri_browser_statu()
 
-# Handles this signal callback.
+# Inputs:
+# - none
+# Outputs:
+# - none; opens load dialog from Continue action
+# Execution timing:
+# - Triggered by Continue button in main menu.
 func _on_continue_pressed():
 	_otevri_load_okno()
 
-# Callback for UI/game events.
+# Inputs:
+# - none
+# Outputs:
+# - none; opens settings dialog with synchronized UI state and tab defaults
+# Execution timing:
+# - Triggered by Settings main-menu button.
 func _on_settings_pressed():
 	_ensure_keybind_controls()
 	_nastav_settings_ui_z_dat()
@@ -2730,7 +3073,12 @@ func _on_settings_pressed():
 	settings_dialog.popup_centered(settings_dialog.size)
 	call_deferred("_refresh_apply_button_state")
 
-# Display update for visible data.
+# Inputs:
+# - tab_index: 0 for Controls tab, 1 for Settings tab
+# Outputs:
+# - none; toggles visible settings panel and tab visual emphasis/cursor hints
+# Execution timing:
+# - Called by settings tab buttons and initial settings open.
 func _show_settings_tab(tab_index: int) -> void:
 	if tab_index == 0:
 		controls_panel.show()
@@ -2747,15 +3095,30 @@ func _show_settings_tab(tab_index: int) -> void:
 		settings_btn.modulate = Color(1.0, 1.0, 1.0, 1.0)
 		settings_btn.mouse_default_cursor_shape = Control.CURSOR_ARROW
 
-# Event handler for user or game actions.
+# Inputs:
+# - none
+# Outputs:
+# - none; switches settings dialog to Controls tab
+# Execution timing:
+# - Triggered by Controls tab button.
 func _on_controls_tab_clicked() -> void:
 	_show_settings_tab(0)
 
-# Callback for UI/game events.
+# Inputs:
+# - none
+# Outputs:
+# - none; switches settings dialog to Settings tab
+# Execution timing:
+# - Triggered by Settings tab button.
 func _on_settings_tab_clicked() -> void:
 	_show_settings_tab(1)
 
-# Triggered by a UI/game signal.
+# Inputs:
+# - none
+# Outputs:
+# - none; commits current settings UI values, persists them, and updates dirty-state baseline
+# Execution timing:
+# - Triggered by Apply button in settings dialog.
 func _on_apply_settings_pressed() -> void:
 	_uloz_settings_ui_do_dat()
 	_aplikuj_nastaveni_globalne()
@@ -2765,7 +3128,12 @@ func _on_apply_settings_pressed() -> void:
 	_settings_original_ui_state = _read_settings_from_ui()
 	_refresh_apply_button_state()
 
-# Callback for UI/game events.
+# Inputs:
+# - none
+# Outputs:
+# - none; restores default settings, applies/persists them, and resets dirty-state baseline
+# Execution timing:
+# - Triggered by Reset button in settings dialog.
 func _on_reset_settings_pressed() -> void:
 	nastaveni_data = _vytvor_vychozi_nastaveni()
 	_nastav_settings_ui_z_dat()
@@ -2787,16 +3155,31 @@ func _on_language_option_selected(_idx: int) -> void:
 	_settings_original_ui_state = _read_settings_from_ui()
 	_refresh_apply_button_state()
 
-# Reacts to incoming events.
+# Inputs:
+# - _value: slider value (unused directly)
+# Outputs:
+# - none; refreshes displayed settings values and apply-button dirty state
+# Execution timing:
+# - Triggered by settings slider value_changed signals.
 func _on_settings_value_changed(_value: float) -> void:
 	_aktualizuj_settings_hodnoty()
 	_refresh_apply_button_state()
 
-# Triggered by a UI/game signal.
+# Inputs:
+# - _pressed: checkbox state (unused directly)
+# Outputs:
+# - none; refreshes apply-button dirty state for settings toggles
+# Execution timing:
+# - Triggered by settings checkbox toggled signals.
 func _on_settings_toggle_changed(_pressed: bool) -> void:
 	_refresh_apply_button_state()
 
-# Handles immediate input callbacks.
+# Inputs:
+# - event: unhandled input event
+# Outputs:
+# - none; captures keybind assignment input when settings dialog is active
+# Execution timing:
+# - Called by Godot unhandled input pipeline.
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and settings_dialog and settings_dialog.visible and _keybind_capture_action != "":
 		if _capture_menu_keybind(event as InputEventKey):
@@ -2809,12 +3192,22 @@ func _on_credits_pressed():
 	_styluj_mainmenu_popup_dialogy()
 	credits_dialog.popup_centered(credits_dialog.min_size)
 
-# Reacts to incoming events.
+# Inputs:
+# - none
+# Outputs:
+# - none; opens exit confirmation dialog with responsive popup sizing
+# Execution timing:
+# - Triggered by Exit main-menu button.
 func _on_exit_pressed():
 	_styluj_mainmenu_popup_dialogy()
 	exit_dialog.popup_centered(exit_dialog.min_size)
 
-# Triggered by a UI/game signal.
+# Inputs:
+# - none
+# Outputs:
+# - none; confirms exit and quits application
+# Execution timing:
+# - Triggered by exit confirmation dialog accept action.
 func _on_exit_confirmed():
 	get_tree().quit()
 
