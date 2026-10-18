@@ -455,6 +455,8 @@ func _ensure_ideology_flag_index() -> void:
 			break
 		if dir.current_is_dir():
 			continue
+		# Exported builds list imported assets as "<name>.import"; strip it so lookups match the editor.
+		file_name = file_name.trim_suffix(".import").trim_suffix(".remap")
 
 		var lower = file_name.to_lower()
 		if not (lower.ends_with(".svg") or lower.ends_with(".png")):
@@ -977,6 +979,9 @@ func _setup_country_name_rename_link() -> void:
 		name_label.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 
 func _setup_country_flag_upload_link() -> void:
+	if OS.has_feature("web"):
+		# No host file access in the browser: do not advertise double-click flag upload there.
+		return
 	if country_flag and not country_flag.gui_input.is_connected(_on_country_flag_gui_input):
 		country_flag.gui_input.connect(_on_country_flag_gui_input)
 		country_flag.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -990,6 +995,9 @@ func _setup_country_flag_upload_link() -> void:
 # - Called during _ready UI bootstrap.
 func _vytvor_custom_flag_dialog() -> void:
 	if _custom_flag_dialog:
+		return
+	if OS.has_feature("web"):
+		# Browser builds cannot reach the player's file system, so the upload dialog is never created there.
 		return
 	_custom_flag_dialog = FileDialog.new()
 	_custom_flag_dialog.name = "CustomFlagDialog"
@@ -1203,6 +1211,9 @@ func _vytvor_prejmenovani_statu_dialog() -> void:
 	row.add_child(_rename_country_upload_flag_btn)
 	if not _rename_country_upload_flag_btn.pressed.is_connected(_on_rename_country_upload_flag_pressed):
 		_rename_country_upload_flag_btn.pressed.connect(_on_rename_country_upload_flag_pressed)
+	if OS.has_feature("web"):
+		# Custom flag upload needs host file-system access, which the web build does not have.
+		_rename_country_upload_flag_btn.hide()
 
 	_rename_country_confirm_btn = Button.new()
 	_rename_country_confirm_btn.text = "Save"
@@ -4830,6 +4841,8 @@ func _ziskej_dostupne_ideologie_pro_stat(tag: String) -> Array:
 			break
 		if dir.current_is_dir():
 			continue
+		# Exported builds list imported assets as "<name>.import"; strip it so lookups match the editor.
+		file_name = file_name.trim_suffix(".import").trim_suffix(".remap")
 		var lower = file_name.to_lower()
 		if not (lower.ends_with(".svg") or lower.ends_with(".png")):
 			continue

@@ -755,6 +755,8 @@ func _ensure_ideology_flag_index() -> void:
 			break
 		if dir.current_is_dir():
 			continue
+		# Exported builds list imported assets as "<name>.import"; strip it so lookups match the editor.
+		file_name = file_name.trim_suffix(".import").trim_suffix(".remap")
 		var lower = file_name.to_lower()
 		if not (lower.ends_with(".svg") or lower.ends_with(".png")):
 			continue

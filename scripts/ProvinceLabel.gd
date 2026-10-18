@@ -17,7 +17,7 @@ extends Node2D
 @onready var hbox = $HBoxContainer # Reference to the container holding text/flag
 @onready var label = $HBoxContainer/Label
 @onready var flag = $HBoxContainer/Flag
-@onready var army_icon = $ArmyIcon # Army icon is now OUTSIDE the HBoxContainer
+@onready var army_icon = get_node_or_null("ArmyIcon") # Optional: the scene currently has no ArmyIcon node
 
 var province_id: int = -1
 var je_hlavni: bool = true 

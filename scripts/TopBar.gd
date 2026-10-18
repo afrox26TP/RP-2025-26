@@ -158,7 +158,9 @@ const MAP_MODE_ORDER := [
 	"resources",
 	"alliances"
 ]
-const MAP_MODE_DROPDOWN_BREAKPOINT := 1817.0
+# The full 9-button row plus money/date/messages/statistics needs roughly 2100+ canvas units;
+# below that the dropdown layout is used (web builds run on a 1920-wide canvas).
+const MAP_MODE_DROPDOWN_BREAKPOINT := 2150.0
 
 # Feature logic entry point.
 # Ai generated or editted start (priloha_a.txt)
@@ -210,6 +212,8 @@ func _ensure_ideology_flag_index() -> void:
 			break
 		if dir.current_is_dir():
 			continue
+		# Exported builds list imported assets as "<name>.import"; strip it so lookups match the editor.
+		file_name = file_name.trim_suffix(".import").trim_suffix(".remap")
 		var lower = file_name.to_lower()
 		if not (lower.ends_with(".svg") or lower.ends_with(".png")):
 			continue

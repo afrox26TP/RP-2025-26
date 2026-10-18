@@ -27,6 +27,10 @@ AlliancesManager="*uid://bb5k4wmp61jps"
 
 window/size/viewport_width=2500
 window/size/viewport_height=1350
+window/size/viewport_width.web=1920
+window/size/viewport_height.web=1037
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
 
 [gui]
 

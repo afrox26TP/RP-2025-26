@@ -817,39 +817,44 @@ func _unhandled_input(event):
 			_odzanc_vse()
 			return
 		if "provinces" in root:
-			if event.keycode == KEY_1:
+			# Browsers report layout-dependent keycodes (on a Czech QWERTZ layout the digit row gives +,ě,š...),
+			# so fall back to the physical key when the keycode itself is not a digit.
+			var digit_key: Key = event.keycode
+			if (digit_key < KEY_1 or digit_key > KEY_9) and event.physical_keycode >= KEY_1 and event.physical_keycode <= KEY_9:
+				digit_key = event.physical_keycode
+			if digit_key == KEY_1:
 				aktualizuj_mapovy_mod("political", root.provinces)
 				if root.has_method("nastav_mapovy_mod"):
 					root.nastav_mapovy_mod("political")
-			elif event.keycode == KEY_2:
+			elif digit_key == KEY_2:
 				aktualizuj_mapovy_mod("population", root.provinces)
 				if root.has_method("nastav_mapovy_mod"):
 					root.nastav_mapovy_mod("population")
-			elif event.keycode == KEY_3:
+			elif digit_key == KEY_3:
 				aktualizuj_mapovy_mod("gdp", root.provinces)
 				if root.has_method("nastav_mapovy_mod"):
 					root.nastav_mapovy_mod("gdp")
-			elif event.keycode == KEY_4:
+			elif digit_key == KEY_4:
 				aktualizuj_mapovy_mod("ideology", root.provinces)
 				if root.has_method("nastav_mapovy_mod"):
 					root.nastav_mapovy_mod("ideology")
-			elif event.keycode == KEY_5:
+			elif digit_key == KEY_5:
 				aktualizuj_mapovy_mod("recruitable_population", root.provinces)
 				if root.has_method("nastav_mapovy_mod"):
 					root.nastav_mapovy_mod("recruitable_population")
-			elif event.keycode == KEY_6:
+			elif digit_key == KEY_6:
 				aktualizuj_mapovy_mod("relationships", root.provinces)
 				if root.has_method("nastav_mapovy_mod"):
 					root.nastav_mapovy_mod("relationships")
-			elif event.keycode == KEY_7:
+			elif digit_key == KEY_7:
 				aktualizuj_mapovy_mod("terrain", root.provinces)
 				if root.has_method("nastav_mapovy_mod"):
 					root.nastav_mapovy_mod("terrain")
-			elif event.keycode == KEY_8:
+			elif digit_key == KEY_8:
 				aktualizuj_mapovy_mod("resources", root.provinces)
 				if root.has_method("nastav_mapovy_mod"):
 					root.nastav_mapovy_mod("resources")
-			elif event.keycode == KEY_9:
+			elif digit_key == KEY_9:
 				aktualizuj_mapovy_mod("alliances", root.provinces)
 				if root.has_method("nastav_mapovy_mod"):
 					root.nastav_mapovy_mod("alliances")

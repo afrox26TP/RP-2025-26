@@ -454,6 +454,9 @@ func _ready():
 	btn_settings.pressed.connect(_on_settings_pressed)
 	btn_credits.pressed.connect(_on_credits_pressed)
 	btn_exit.pressed.connect(_on_exit_pressed)
+	if OS.has_feature("web"):
+		# Quitting has no meaning inside a browser tab; the player just closes the page.
+		btn_exit.hide()
 	btn_confirm_country.pressed.connect(_on_confirm_country_pressed)
 	btn_close_browser.pressed.connect(_on_close_browser_pressed)
 	btn_close_corner.pressed.connect(_on_close_browser_corner_pressed)

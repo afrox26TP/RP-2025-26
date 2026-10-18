@@ -1,6 +1,9 @@
 # Godot import/cache artifacts (generated automatically)
 .import/
 *.import
+# Keep the CSV import settings versioned: they must stay "keep" (no import),
+# otherwise Godot imports the CSVs as translations and the raw files are missing from exports.
+!map_data/*.csv.import
 .godot/
 
 # Godot generated texture/cache formats
